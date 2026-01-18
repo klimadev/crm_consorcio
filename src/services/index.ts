@@ -1,0 +1,1 @@
+export { analyzeDeal } from './geminiService';
