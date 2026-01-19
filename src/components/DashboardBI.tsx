@@ -9,6 +9,7 @@ import {
   ArrowUpRight, ArrowDownRight, GripHorizontal, Edit3, Check, Trophy, Target
 } from 'lucide-react';
 import { Modal } from './Modal';
+import { generateStableId } from '@/utils/idUtils';
 
 const WIDGET_OPTIONS: { type: WidgetType; title: string; colSpan: number; description: string }[] = [
   { type: 'GOAL_PROGRESS', title: 'Metas do Mês', colSpan: 4, description: 'Barra de progresso de metas financeiras e de volume.' },
@@ -346,7 +347,7 @@ export const DashboardBI: React.FC = () => {
                <button 
                  key={idx}
                  onClick={() => {
-                    addWidget({ id: `w-${Date.now()}`, type: opt.type, title: opt.title, colSpan: opt.colSpan as any });
+                    addWidget({ id: generateStableId('w'), type: opt.type, title: opt.title, colSpan: opt.colSpan as any });
                     setIsAddModalOpen(false);
                  }}
                  className="text-left p-4 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50 transition-all group"

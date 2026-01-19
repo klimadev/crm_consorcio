@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CRMProvider, useCRM } from '@/context';
-import { KanbanBoard, DashboardBI, SalesEngine, OrganizationView, EmployeesView, ProductsView, CustomersView, IntegrationsView } from '@/components';
+import { KanbanBoard, DashboardBI, SalesEngine, OrganizationView, EmployeesView, ProductsView, CustomersView, IntegrationsView, NoSSR } from '@/components';
 import { 
   LayoutDashboard, Users, Package, Bell, Briefcase, Map, ChevronDown, PieChart, Plug, FileText 
 } from 'lucide-react';
@@ -26,11 +26,20 @@ const NavItem = ({ view, icon: Icon, label, currentView, setCurrentView }: { vie
 
 const InnerApp: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('kanban');
+  const [mounted, setMounted] = useState(false);
   const { currentUser, employees, setCurrentUser, deals, stages } = useCRM();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
-  if (!currentUser) {
-    return null; // Loading state
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || !currentUser) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50">
+        <div className="text-slate-400">Carregando...</div>
+      </div>
+    );
   }
 
   const overdueDeals = deals.filter(d => {
@@ -126,9 +135,11 @@ const InnerApp: React.FC = () => {
 };
 
 const App: React.FC = () => (
-  <CRMProvider>
-    <InnerApp />
-  </CRMProvider>
+  <NoSSR fallback={<div className="flex h-screen items-center justify-center bg-slate-50"><div className="text-slate-400">Carregando...</div></div>}>
+    <CRMProvider>
+      <InnerApp />
+    </CRMProvider>
+  </NoSSR>
 );
 
 export default function Home() {

@@ -6,6 +6,7 @@ import { Deal, CustomFieldDefinition, CustomFieldType } from '@/types';
 import { Plus, Search, Filter, Briefcase, FileText, ChevronRight, Sliders, Trash2, XCircle } from 'lucide-react';
 import { DealForm } from './DealForm';
 import { Modal } from './Modal';
+import { generateStableId, getCurrentDateISO } from '@/utils/idUtils';
 
 interface InputGroupProps {
   label: string;
@@ -40,9 +41,9 @@ export const SalesEngine: React.FC = () => {
     d.customerName.toLowerCase().includes(filter.toLowerCase())
   );
 
-  const createNewDeal = () => {
+const createNewDeal = () => {
     setSelectedDeal({
-        id: Math.random().toString(36).substr(2, 9),
+        id: generateStableId('deal'),
         title: '', 
         pdvId: currentUser.pdvId, 
         customerId: '',
@@ -54,7 +55,7 @@ export const SalesEngine: React.FC = () => {
         tags: [], 
         notes: '', 
         visibility: 'PUBLIC',
-        createdAt: new Date().toISOString()
+        createdAt: getCurrentDateISO()
     } as Deal);
   };
 
@@ -66,7 +67,7 @@ export const SalesEngine: React.FC = () => {
   const saveField = () => {
       if (!fieldData.label) return;
       const key = fieldData.key || fieldData.label.toLowerCase().replace(/\s+/g, '_');
-      const payload = { ...fieldData, key, scope: 'DEAL', id: fieldEditingId || `cf-deal-${Date.now()}` } as CustomFieldDefinition;
+      const payload = { ...fieldData, key, scope: 'DEAL', id: fieldEditingId || generateStableId('cf-deal') } as CustomFieldDefinition;
       
       if (fieldEditingId) updateCustomFieldDef(payload); else addCustomFieldDef(payload);
       

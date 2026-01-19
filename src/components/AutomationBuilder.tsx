@@ -7,6 +7,7 @@ import {
   MessageSquare, Zap, Clock, ArrowDown, CheckCircle2,
   MoreHorizontal
 } from 'lucide-react';
+import { generateStableId } from '@/utils/idUtils';
 
 interface AutomationBuilderProps {
   steps: AutomationStep[];
@@ -34,13 +35,13 @@ export const AutomationBuilder: React.FC<AutomationBuilderProps> = ({
      if (editingStepId) {
         onUpdate(steps.map(s => s.id === editingStepId ? { ...s, ...stepData } as AutomationStep : s));
      } else {
-        const newStep: AutomationStep = {
-           id: `step-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-           name: stepData.name!,
-           delayValue: stepData.delayValue ?? 1,
-           delayUnit: stepData.delayUnit || 'DAYS',
-           messageTemplate: stepData.messageTemplate!
-        };
+const newStep: AutomationStep = {
+            id: generateStableId('step'),
+            name: stepData.name!,
+            delayValue: stepData.delayValue ?? 1,
+            delayUnit: stepData.delayUnit || 'DAYS',
+            messageTemplate: stepData.messageTemplate!
+         };
         onUpdate([...steps, newStep]);
      }
      resetForm();

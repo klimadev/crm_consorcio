@@ -63,13 +63,34 @@ interface CRMContextData {
 const CRMContext = createContext<CRMContextData>({} as CRMContextData);
 
 export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const usePersistedState = <T,>(key: string, initial: T): [T, React.Dispatch<React.SetStateAction<T>>] => {
-    const [state, setState] = useState<T>(() => {
-      if (typeof window === 'undefined') return initial;
-      const saved = localStorage.getItem(key);
-      return saved ? JSON.parse(saved) : initial;
-    });
-    useEffect(() => localStorage.setItem(key, JSON.stringify(state)), [key, state]);
+const usePersistedState = <T,>(key: string, initial: T): [T, React.Dispatch<React.SetStateAction<T>>] => {
+    const [state, setState] = useState<T>(initial);
+    const [isHydrated, setIsHydrated] = useState(false);
+
+    useEffect(() => {
+      if (typeof window !== 'undefined') {
+        try {
+          const saved = localStorage.getItem(key);
+          if (saved) {
+            setState(JSON.parse(saved));
+          }
+        } catch (error) {
+          console.warn(`Error reading localStorage key "${key}":`, error);
+        }
+        setIsHydrated(true);
+      }
+    }, [key]);
+
+    useEffect(() => {
+      if (isHydrated && typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(key, JSON.stringify(state));
+        } catch (error) {
+          console.warn(`Error writing localStorage key "${key}":`, error);
+        }
+      }
+    }, [key, state, isHydrated]);
+
     return [state, setState];
   };
 

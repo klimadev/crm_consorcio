@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useCRM } from '@/context';
 import { Deal, PipelineStage, PipelineStageType, Employee, AutomationStep } from '@/types';
 import { 
@@ -12,6 +12,7 @@ import {
 import { DealForm } from './DealForm';
 import { Modal } from './Modal';
 import { AutomationBuilder } from './AutomationBuilder';
+import { generateStableId, getCurrentDateISO } from '@/utils/idUtils';
 
 const STAGE_COLORS = [
   { label: 'Blue', value: 'border-t-blue-500', bg: 'bg-blue-500' },
@@ -134,7 +135,7 @@ export const KanbanBoard: React.FC = () => {
 
   const handleAddStage = () => {
     const newStage: PipelineStage = {
-      id: `stage-${Math.random().toString(36).substr(2, 5)}`,
+      id: generateStableId('stage'),
       name: 'Nova Etapa',
       color: 'border-t-slate-500',
       type: 'OPEN'
@@ -146,7 +147,13 @@ export const KanbanBoard: React.FC = () => {
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(val);
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const getDaysSince = (dateString: string) => {
+    if (!mounted) return '--';
     const days = Math.floor((new Date().getTime() - new Date(dateString).getTime()) / (1000 * 3600 * 24));
     if (days === 0) return 'Hoje';
     if (days === 1) return 'Ontem';
@@ -158,6 +165,27 @@ export const KanbanBoard: React.FC = () => {
     if (type === 'LOST') return <XOctagon size={14} className="text-red-600" />;
     return <ArrowRightCircle size={14} className="text-blue-500" />;
   };
+
+if (!mounted) {
+    return (
+      <div className="flex flex-col h-full bg-slate-50 relative">
+        <div className="bg-white border-b border-slate-200 shadow-sm z-20 flex-shrink-0">
+          <div className="px-6 py-3">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Funil Operacional</h2>
+                <div className="h-4 w-px bg-slate-200 mx-2"></div>
+                <p className="text-xs text-slate-500">Carregando...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-slate-400">Carregando...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-slate-50 relative">
@@ -282,10 +310,10 @@ export const KanbanBoard: React.FC = () => {
                             <MapPin size={10} className="text-slate-400"/>
                             <span className="truncate max-w-[120px]">{dealPdvName}</span>
                          </div>
-                         <div className="flex items-center gap-1 text-[10px] text-slate-400">
-                            <Clock size={10}/>
-                            {getDaysSince(deal.createdAt)}
-                         </div>
+                          <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                             <Clock size={10}/>
+                             {mounted ? getDaysSince(deal.createdAt) : '--'}
+                          </div>
                       </div>
 
                       <div className="p-4">
@@ -335,9 +363,9 @@ export const KanbanBoard: React.FC = () => {
                   </div>
                 )}
                 
-                <button 
+                  <button 
                   onClick={() => setEditingDeal({ 
-                      id: Math.random().toString(36).substr(2, 9),
+                      id: generateStableId('deal'),
                       title: '', 
                       pdvId: currentUser.pdvId || '',
                       customerId: '',
@@ -349,7 +377,7 @@ export const KanbanBoard: React.FC = () => {
                       tags: [], 
                       notes: '', 
                       visibility: 'PUBLIC',
-                      createdAt: new Date().toISOString()
+                      createdAt: getCurrentDateISO()
                   })}
                   className="w-full py-2 flex items-center justify-center gap-1 text-xs font-bold text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                 >

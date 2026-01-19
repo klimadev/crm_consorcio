@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Modal } from './Modal';
 import { AutomationBuilder } from './AutomationBuilder';
+import { generateStableId, getCurrentDateISO } from '@/utils/idUtils';
 
 const Header = ({ title, subtitle, icon: Icon }: { title: string, subtitle: string, icon: any }) => (
   <div className="flex items-center gap-5 mb-8 pb-6 border-b border-slate-200">
@@ -85,8 +86,8 @@ const OrganizationView: React.FC = () => {
     if (editingId) {
        updatePDV({ ...formData, id: editingId } as PDV);
     } else {
-       addPDV({ 
-         id: `pdv-${Date.now()}`, 
+addPDV({ 
+         id: generateStableId('pdv'), 
          name: formData.name!, 
          type: formData.type as PDVType, 
          regionId: formData.regionId!, 
@@ -271,7 +272,7 @@ const ProductsView: React.FC = () => {
   const handleEdit = (p: Product) => { setEditingId(p.id); setFormData(p); setIsModalOpen(true); };
   
   const handleSave = () => {
-      const payload = { ...formData, id: editingId || `prod-${Date.now()}` } as Product;
+      const payload = { ...formData, id: editingId || generateStableId('prod') } as Product;
       if (editingId) updateProduct(payload); else addProduct(payload);
       setIsModalOpen(false);
   };
@@ -421,7 +422,7 @@ const EmployeesView: React.FC = () => {
      if(!formData.name || !formData.email) return alert('Nome e Email obrigatórios');
      
      const payload = { 
-        id: editingId || `emp-${Date.now()}`,
+        id: editingId || generateStableId('emp'),
         name: formData.name!,
         email: formData.email!,
         role: formData.role as Role,
@@ -537,7 +538,7 @@ const CustomersView: React.FC = () => {
     const pdvIds = formData.pdvIds || [];
     const assignedEmployeeIds = formData.assignedEmployeeIds || [];
 
-    const payload = { ...formData, id: editingId || `cust-${Date.now()}`, pdvIds, assignedEmployeeIds, createdAt: editingId ? formData.createdAt : new Date().toISOString() } as Customer;
+    const payload = { ...formData, id: editingId || generateStableId('cust'), pdvIds, assignedEmployeeIds, createdAt: editingId ? formData.createdAt : getCurrentDateISO() } as Customer;
     
     if(editingId) updateCustomer(payload);
     else addCustomer(payload);
@@ -562,7 +563,7 @@ const CustomersView: React.FC = () => {
   const saveField = () => {
       if (!fieldData.label) return;
       const key = fieldData.key || fieldData.label.toLowerCase().replace(/\s+/g, '_');
-      const payload = { ...fieldData, key, scope: 'CUSTOMER', id: fieldEditingId || `cf-${Date.now()}` } as CustomFieldDefinition;
+      const payload = { ...fieldData, key, scope: 'CUSTOMER', id: fieldEditingId || generateStableId('cf') } as CustomFieldDefinition;
       
       if (fieldEditingId) updateCustomFieldDef(payload); else addCustomFieldDef(payload);
       

@@ -9,6 +9,7 @@ import {
   CheckCircle, Car, Plus, X, Building2, ClipboardList, 
   Lock, Users, Sliders, Zap
 } from 'lucide-react';
+import { generateStableId } from '@/utils/idUtils';
 
 interface DealFormProps {
   deal: Deal;
@@ -145,7 +146,7 @@ export const DealForm: React.FC<DealFormProps> = ({ deal: initialDeal, isOpen, o
         const existing = tags.find(t => t.label.toLowerCase() === tagInput.toLowerCase());
         if (existing) toggleTag(existing);
         else {
-           const newTag: Tag = { id: `tag-${Date.now()}`, label: tagInput.trim(), color: TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)] };
+           const newTag: Tag = { id: generateStableId('tag'), label: tagInput.trim(), color: TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)] };
            addTag(newTag);
            toggleTag(newTag);
         }
