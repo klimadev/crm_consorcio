@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, Suspense } from 'react';
-import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Building2, Lock, Mail, AlertCircle } from 'lucide-react';
 
@@ -22,21 +21,21 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const result = await signIn('credentials', {
-        tenantSlug,
-        email,
-        password,
-        redirect: false,
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantSlug, email, password, callbackUrl }),
       });
 
-      if (result?.error) {
-        setError(result.error);
+      const data = await response.json();
+
+      if (data.success) {
+        window.location.href = data.redirectUrl || '/';
       } else {
-        router.push(callbackUrl);
-        router.refresh();
+        setError(data.message || 'Erro ao fazer login');
       }
     } catch {
-      setError('An unexpected error occurred');
+      setError('Ocorreu um erro inesperado');
     } finally {
       setLoading(false);
     }
