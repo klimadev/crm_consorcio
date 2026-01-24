@@ -16,9 +16,9 @@ function transformPDVToComponent(pdv: PDVDB): PDV {
   };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth(request);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -34,7 +34,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth(request);
     if (!session?.user || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
     }
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth(request);
     if (!session?.user || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
     }
@@ -69,7 +69,15 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'PDV not found' }, { status: 404 });
     }
 
-    const pdv = updatePDV(data.id, data);
+    const pdv = updatePDV(
+      data.id,
+      data.name,
+      data.region_id || data.regionId,
+      data.type,
+      data.address || '',
+      data.city || '',
+      data.state || ''
+    );
     if (!pdv) {
       return NextResponse.json({ error: 'PDV not found' }, { status: 404 });
     }
@@ -83,7 +91,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth(request);
     if (!session?.user || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
     }

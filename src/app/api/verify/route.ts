@@ -1,7 +1,7 @@
 import { getQuery } from '@/lib/db';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     // Check if data exists without authentication
     const regions = getQuery<{ count: number }>('SELECT COUNT(*) as count FROM regions');

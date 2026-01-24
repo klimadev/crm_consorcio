@@ -1,7 +1,7 @@
 import { seedDefaultTenantData } from '@/lib/db/operations';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
     const tenantId = seedDefaultTenantData();
     return NextResponse.json({ 
@@ -15,7 +15,7 @@ export async function POST() {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   return NextResponse.json({ 
     message: 'Use POST to initialize the default tenant with all modules data',
     modules: [

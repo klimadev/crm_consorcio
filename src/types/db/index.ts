@@ -51,8 +51,10 @@ export interface PDV {
 export interface Customer {
   id: string;
   tenant_id: string;
-  type: 'PF' | 'PJ';
+  region_id: string | null;
+  pdv_id: string | null;
   name: string;
+  type: 'PF' | 'PJ';
   document: string;
   email: string;
   phone: string;
@@ -107,7 +109,7 @@ export interface Deal {
   tenant_id: string;
   title: string;
   pdv_id: string | null;
-  customer_id: string;
+  customer_id: string | null;
   customer_name: string;
   value: number;
   stage_id: string;
@@ -140,7 +142,7 @@ export interface CustomFieldDefinition {
   label: string;
   type: 'text' | 'number' | 'date' | 'select' | 'boolean';
   scope: 'DEAL' | 'CUSTOMER';
-  options: string;
+  options: string[];
   required: boolean;
   active: boolean;
   created_at: string;

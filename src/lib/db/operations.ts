@@ -69,7 +69,7 @@ export function createUser(
   const now = new Date().toISOString();
   
   runQuery(`
-    INSERT INTO users (id, tenant_id, email, password_hash, name, role, pdv_id, active, created_at, updated_at)
+    INSERT INTO users (id, tenant_id, email, password_hash, name, role, pdv_id, is_active, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
   `, [id, tenantId, email, passwordHash, name, role, pdvId, now, now]);
   
@@ -97,8 +97,8 @@ export async function getUserByEmail(email: string): Promise<(User & { tenant_sl
   return row || null;
 }
 
-export async function getUserById(id: string): Promise<(User & { tenant_slug: string }) | null> {
-  const row = await getOneQuery<any>(`
+export function getUserById(id: string): (User & { tenant_slug: string }) | null {
+  const row = getOneQuery<any>(`
     SELECT u.*, t.slug as tenant_slug
     FROM users u
     JOIN tenants t ON u.tenant_id = t.id
@@ -112,7 +112,20 @@ export function verifyPassword(password: string, hash: string): boolean {
 }
 
 export async function getUsersByTenant(tenantId: string): Promise<User[]> {
-  return await getQuery<User>('SELECT * FROM users WHERE tenant_id = ? ORDER BY name', [tenantId]);
+  return await getQuery<User>(`
+    SELECT
+      id,
+      email,
+      password_hash,
+      name,
+      role,
+      is_active as active,
+      tenant_id,
+      pdv_id,
+      created_at,
+      updated_at
+    FROM users WHERE tenant_id = ? ORDER BY name
+  `, [tenantId]);
 }
 
 const ALLOWED_USER_FIELDS = ['name', 'email', 'role', 'pdv_id', 'active', 'password_hash'];
@@ -151,20 +164,26 @@ function safeJsonParse<T>(str: string, fallback: T, maxDepth = 10): T {
 
 export async function updateUser(id: string, data: Partial<User>): Promise<User | null> {
   const now = new Date().toISOString();
-  
-  const filtered = Object.entries(data).filter(([key, value]) => 
+
+  const filtered = Object.entries(data).filter(([key, value]) =>
     ALLOWED_USER_FIELDS.includes(key) && key !== 'id' && key !== 'tenant_id' && key !== 'created_at'
   );
-  
+
   if (filtered.length === 0) return await getUserById(id);
 
-  const fields = filtered.map(([key]) => `${key} = ?`);
+  // Map 'active' field to 'is_active' for database update
+  const mappedFields = filtered.map(([key]) => {
+    // Map TypeScript interface field name to database column name
+    const dbFieldName = key === 'active' ? 'is_active' : key;
+    return `${dbFieldName} = ?`;
+  });
+
   const values = filtered.map(([, value]) => value);
-  
+
   values.push(now);
   values.push(id);
 
-  await runQuery(`UPDATE users SET ${fields.join(', ')}, updated_at = ? WHERE id = ?`, values);
+  await runQuery(`UPDATE users SET ${mappedFields.join(', ')}, updated_at = ? WHERE id = ?`, values);
 
   return await getUserById(id);
 }
@@ -211,27 +230,21 @@ export function getPDVsByTenant(tenantId: string): PDV[] {
   return getQuery<PDV>('SELECT * FROM pdvs WHERE tenant_id = ? ORDER BY name', [tenantId]);
 }
 
-export function updatePDV(id: string, data: Partial<PDV>): PDV | null {
+export function updatePDV(
+  id: string,
+  name: string,
+  regionId: string | null,
+  type: string,
+  address: string,
+  city: string,
+  state: string
+): PDV | null {
   const now = new Date().toISOString();
-  
-  const fields: string[] = [];
-  const values: any[] = [];
-  
-  Object.entries(data).forEach(([key, value]) => {
-    if (key !== 'id' && key !== 'tenant_id' && key !== 'created_at') {
-      fields.push(`${key} = ?`);
-      values.push(value);
-    }
-  });
-  
-  if (fields.length === 0) return getPDVsByTenant('').find(p => p.id === id) || null;
-  
-  fields.push('updated_at = ?');
-  values.push(now);
-  values.push(id);
-  
-  runQuery(`UPDATE pdvs SET ${fields.join(', ')} WHERE id = ?`, values);
-  
+
+  runQuery(`
+    UPDATE pdvs SET name = ?, region_id = ?, type = ?, address = ?, city = ?, state = ?, updated_at = ? WHERE id = ?
+  `, [name, regionId, type, address, city, state, now, id]);
+
   const row = getOneQuery<PDV>('SELECT * FROM pdvs WHERE id = ?', [id]);
   return row;
 }
@@ -242,38 +255,40 @@ export function deletePDV(id: string): void {
 
 export function createCustomer(
   tenantId: string,
-  data: Omit<Customer, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>
+  name: string,
+  type: string,
+  document: string,
+  email: string,
+  phone: string,
+  status: string,
+  regionId?: string | null,
+  pdvId?: string | null
 ): Customer {
   const id = generateId();
   const now = new Date().toISOString();
-  
-  const filtered = Object.entries(data).filter(([key]) => 
-    ALLOWED_CUSTOMER_FIELDS.includes(key)
-  );
-  
+
   runQuery(`
-    INSERT INTO customers (id, tenant_id, type, name, document, email, phone, zip_code, status, pdv_ids, assigned_employee_ids, custom_values, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO customers (id, tenant_id, region_id, pdv_id, name, type, document, email, phone, status, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
-    id, tenantId, data.type, data.name, data.document || '', data.email || '', 
-    data.phone || '', data.zip_code || '', data.status,
-    JSON.stringify(data.pdv_ids || []), JSON.stringify(data.assigned_employee_ids || []), JSON.stringify(data.custom_values || {}),
-    now, now
+    id, tenantId, regionId, pdvId, name, type, document, email, phone, status, now, now
   ]);
-  
+
   return {
     id,
     tenant_id: tenantId,
-    type: data.type,
-    name: data.name,
-    document: data.document || '',
-    email: data.email || '',
-    phone: data.phone || '',
-    zip_code: data.zip_code || '',
-    status: data.status,
-    pdv_ids: JSON.stringify(data.pdv_ids || []),
-    assigned_employee_ids: JSON.stringify(data.assigned_employee_ids || []),
-    custom_values: JSON.stringify(data.custom_values || {}),
+    region_id: regionId ?? null,
+    pdv_id: pdvId ?? null,
+    name,
+    type: type as 'PF' | 'PJ',
+    document,
+    email,
+    phone,
+    zip_code: '',
+    status: status as 'LEAD' | 'PROPONENT' | 'PENDING' | 'ACTIVE' | 'DEFAULTING' | 'CHURN',
+    pdv_ids: '[]',
+    assigned_employee_ids: '[]',
+    custom_values: '{}',
     created_at: now,
     updated_at: now
   };
@@ -289,28 +304,25 @@ export function getCustomersByTenant(tenantId: string): Customer[] {
   }));
 }
 
-export function updateCustomer(id: string, data: Partial<Customer>): Customer | null {
+export function updateCustomer(
+  id: string,
+  name: string,
+  type: string,
+  document: string,
+  email: string,
+  phone: string,
+  status: string,
+  regionId?: string | null,
+  pdvId?: string | null
+): Customer | null {
   const now = new Date().toISOString();
-  
-  const filtered = Object.entries(data).filter(([key, value]) => 
-    ALLOWED_CUSTOMER_FIELDS.includes(key) && key !== 'id' && key !== 'tenant_id' && key !== 'created_at'
-  );
-  
-  if (filtered.length === 0) return getCustomersByTenant('').find(c => c.id === id) || null;
 
-  const fields = filtered.map(([k]) => `${k} = ?`);
-  const values = filtered.map(([, value]) => {
-    if (Array.isArray(value)) return JSON.stringify(value);
-    if (typeof value === 'object' && value !== null) return JSON.stringify(value);
-    return value;
-  });
-  
-  values.push(now);
-  values.push(id);
+  runQuery(`
+    UPDATE customers SET name = ?, type = ?, document = ?, email = ?, phone = ?, status = ?, region_id = ?, pdv_id = ?, updated_at = ? WHERE id = ?
+  `, [name, type, document, email, phone, status, regionId, pdvId, now, id]);
 
-  runQuery(`UPDATE customers SET ${fields.join(', ')}, updated_at = ? WHERE id = ?`, values);
-
-  return getCustomersByTenant('').find(c => c.id === id) || null;
+  const row = getOneQuery<Customer>('SELECT * FROM customers WHERE id = ?', [id]);
+  return row;
 }
 
 export function deleteCustomer(id: string): void {
@@ -356,35 +368,23 @@ export function getProductsByTenant(tenantId: string): Product[] {
   }));
 }
 
-export function updateProduct(id: string, data: Partial<Product>): Product | null {
+export function updateProduct(
+  id: string,
+  name: string,
+  sku: string,
+  price: number,
+  attributes: string,
+  pdvId: string | null
+): Product | null {
   const now = new Date().toISOString();
-  
-  const fields: string[] = [];
-  const values: any[] = [];
-  
-  Object.entries(data).forEach(([key, value]) => {
-    if (key !== 'id' && key !== 'tenant_id' && key !== 'created_at') {
-      if (['attributes', 'form_schema', 'automation_steps'].includes(key)) {
-        fields.push(`${key} = ?`);
-        values.push(JSON.stringify(value));
-      } else {
-        fields.push(`${key} = ?`);
-        values.push(value);
-      }
-    }
-  });
-  
-  if (fields.length === 0) return getProductsByTenant('').find(p => p.id === id) || null;
-  
-  fields.push('updated_at = ?');
-  values.push(now);
-  values.push(id);
-  
-  runQuery(`UPDATE products SET ${fields.join(', ')} WHERE id = ?`, values);
-  
+
+  runQuery(`
+    UPDATE products SET name = ?, sku = ?, price = ?, attributes = ?, pdv_id = ?, updated_at = ? WHERE id = ?
+  `, [name, sku, price, attributes, pdvId, now, id]);
+
   const row = getOneQuery<any>('SELECT * FROM products WHERE id = ?', [id]);
   if (!row) return null;
-  
+
   return {
     ...row,
     attributes: JSON.parse(row.attributes || '[]'),
@@ -438,35 +438,21 @@ export function getPipelineStagesByTenant(tenantId: string): PipelineStage[] {
   }));
 }
 
-export function updatePipelineStage(id: string, data: Partial<PipelineStage>): PipelineStage | null {
+export function updatePipelineStage(
+  id: string,
+  name: string,
+  type: string,
+  orderIndex: number
+): PipelineStage | null {
   const now = new Date().toISOString();
-  
-  const fields: string[] = [];
-  const values: any[] = [];
-  
-  Object.entries(data).forEach(([key, value]) => {
-    if (key !== 'id' && key !== 'tenant_id' && key !== 'created_at') {
-      if (key === 'automation_steps') {
-        fields.push(`${key} = ?`);
-        values.push(JSON.stringify(value));
-      } else {
-        fields.push(`${key} = ?`);
-        values.push(value);
-      }
-    }
-  });
-  
-  if (fields.length === 0) return getPipelineStagesByTenant('').find(s => s.id === id) || null;
-  
-  fields.push('updated_at = ?');
-  values.push(now);
-  values.push(id);
-  
-  runQuery(`UPDATE pipeline_stages SET ${fields.join(', ')} WHERE id = ?`, values);
-  
+
+  runQuery(`
+    UPDATE pipeline_stages SET name = ?, type = ?, order_index = ?, updated_at = ? WHERE id = ?
+  `, [name, type, orderIndex, now, id]);
+
   const row = getOneQuery<any>('SELECT * FROM pipeline_stages WHERE id = ?', [id]);
   if (!row) return null;
-  
+
   return {
     ...row,
     automation_steps: JSON.parse(row.automation_steps || '[]')
@@ -506,30 +492,42 @@ export function deleteTag(id: string): void {
 
 export function createDeal(
   tenantId: string,
-  data: Omit<Deal, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>
+  title: string,
+  value: number,
+  stageId: string,
+  customerId: string | null,
+  pdvId: string | null,
+  productId: string | null,
+  productIds: string,
+  tags: string,
+  notes: string
 ): Deal {
   const id = generateId();
   const now = new Date().toISOString();
-  
+
   runQuery(`
-    INSERT INTO deals (id, tenant_id, title, pdv_id, customer_id, customer_name, value, stage_id, visibility, assigned_employee_ids, product_ids, custom_values, tags, notes, next_follow_up_date, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO deals (id, tenant_id, title, value, stage_id, customer_id, pdv_id, product_id, product_ids, tags, notes, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
-    id, tenantId, data.title, data.pdv_id, data.customer_id, data.customer_name, data.value || 0,
-    data.stage_id, data.visibility, JSON.stringify(data.assigned_employee_ids || []),
-    JSON.stringify(data.product_ids || []), JSON.stringify(data.custom_values || {}),
-    JSON.stringify(data.tags || []), data.notes || '', data.next_follow_up_date || null,
-    now, now
+    id, tenantId, title, value, stageId, customerId, pdvId, productId, productIds, tags, notes, now, now
   ]);
-  
+
   return {
     id,
     tenant_id: tenantId,
-    ...data,
-    assigned_employee_ids: JSON.stringify(data.assigned_employee_ids || []),
-    product_ids: JSON.stringify(data.product_ids || []),
-    custom_values: JSON.stringify(data.custom_values || {}),
-    tags: JSON.stringify(data.tags || []),
+    title,
+    value,
+    stage_id: stageId,
+    customer_id: customerId,
+    pdv_id: pdvId,
+    customer_name: '',
+    visibility: 'PUBLIC',
+    assigned_employee_ids: '[]',
+    product_ids: productIds,
+    custom_values: '{}',
+    tags,
+    notes,
+    next_follow_up_date: null,
     created_at: now,
     updated_at: now
   };
@@ -546,35 +544,27 @@ export function getDealsByTenant(tenantId: string): Deal[] {
   }));
 }
 
-export function updateDeal(id: string, data: Partial<Deal>): Deal | null {
+export function updateDeal(
+  id: string,
+  title: string,
+  value: number,
+  stageId: string,
+  customerId: string | null,
+  pdvId: string | null,
+  productId: string | null,
+  productIds: string,
+  tags: string,
+  notes: string
+): Deal | null {
   const now = new Date().toISOString();
-  
-  const fields: string[] = [];
-  const values: any[] = [];
-  
-  Object.entries(data).forEach(([key, value]) => {
-    if (key !== 'id' && key !== 'tenant_id' && key !== 'created_at') {
-      if (['assigned_employee_ids', 'product_ids', 'custom_values', 'tags'].includes(key)) {
-        fields.push(`${key} = ?`);
-        values.push(JSON.stringify(value));
-      } else {
-        fields.push(`${key} = ?`);
-        values.push(value);
-      }
-    }
-  });
-  
-  if (fields.length === 0) return getDealsByTenant('').find(d => d.id === id) || null;
-  
-  fields.push('updated_at = ?');
-  values.push(now);
-  values.push(id);
-  
-  runQuery(`UPDATE deals SET ${fields.join(', ')} WHERE id = ?`, values);
-  
+
+  runQuery(`
+    UPDATE deals SET title = ?, value = ?, stage_id = ?, customer_id = ?, pdv_id = ?, product_id = ?, product_ids = ?, tags = ?, notes = ?, updated_at = ? WHERE id = ?
+  `, [title, value, stageId, customerId, pdvId, productId, productIds, tags, notes, now, id]);
+
   const row = getOneQuery<any>('SELECT * FROM deals WHERE id = ?', [id]);
   if (!row) return null;
-  
+
   return {
     ...row,
     assigned_employee_ids: JSON.parse(row.assigned_employee_ids || '[]'),
@@ -657,7 +647,7 @@ export function createCustomFieldDefinition(
 ): CustomFieldDefinition {
   const id = generateId();
   const now = new Date().toISOString();
-  
+
   runQuery(`
     INSERT INTO custom_field_definitions (id, tenant_id, key, label, type, scope, options, required, active, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -666,12 +656,12 @@ export function createCustomFieldDefinition(
     JSON.stringify(data.options || []), data.required ? 1 : 0, data.active ? 1 : 0,
     now, now
   ]);
-  
+
   return {
     id,
     tenant_id: tenantId,
     ...data,
-    options: JSON.stringify(data.options || []),
+    options: data.options || [],
     created_at: now,
     updated_at: now
   };
@@ -687,10 +677,10 @@ export function getCustomFieldDefinitionsByTenant(tenantId: string): CustomField
 
 export function updateCustomFieldDefinition(id: string, data: Partial<CustomFieldDefinition>): CustomFieldDefinition | null {
   const now = new Date().toISOString();
-  
+
   const fields: string[] = [];
   const values: any[] = [];
-  
+
   Object.entries(data).forEach(([key, value]) => {
     if (key !== 'id' && key !== 'tenant_id' && key !== 'created_at') {
       if (key === 'options') {
@@ -702,21 +692,21 @@ export function updateCustomFieldDefinition(id: string, data: Partial<CustomFiel
       }
     }
   });
-  
+
   if (fields.length === 0) {
     const row = getOneQuery<any>('SELECT * FROM custom_field_definitions WHERE id = ?', [id]);
     return row ? { ...row, options: JSON.parse(row.options || '[]') } : null;
   }
-  
+
   fields.push('updated_at = ?');
   values.push(now);
   values.push(id);
-  
+
   runQuery(`UPDATE custom_field_definitions SET ${fields.join(', ')} WHERE id = ?`, values);
-  
+
   const row = getOneQuery<any>('SELECT * FROM custom_field_definitions WHERE id = ?', [id]);
   if (!row) return null;
-  
+
   return {
     ...row,
     options: JSON.parse(row.options || '[]')
@@ -814,6 +804,212 @@ export function deleteDashboardWidget(id: string): void {
   runQuery('DELETE FROM dashboard_widgets WHERE id = ?', [id]);
 }
 
+// Missing functions for API routes
+export function countEntitiesByTenant(tenantId: string): { regions: number; pdvs: number; stages: number } {
+  const regions = getOneQuery<{ 'COUNT(*)': number }>('SELECT COUNT(*) FROM regions WHERE tenant_id = ?', [tenantId])?.['COUNT(*)'] ?? 0;
+  const pdvs = getOneQuery<{ 'COUNT(*)': number }>('SELECT COUNT(*) FROM pdvs WHERE tenant_id = ?', [tenantId])?.['COUNT(*)'] ?? 0;
+  const stages = getOneQuery<{ 'COUNT(*)': number }>('SELECT COUNT(*) FROM pipeline_stages WHERE tenant_id = ?', [tenantId])?.['COUNT(*)'] ?? 0;
+  return { regions, pdvs, stages };
+}
+
+export function getCustomFieldDefinitionsByTenantId(tenantId: string): CustomFieldDefinition[] {
+  return getCustomFieldDefinitionsByTenant(tenantId);
+}
+
+export function getCustomFieldDefinitionById(id: string): CustomFieldDefinition | null {
+  const row = getOneQuery<any>('SELECT * FROM custom_field_definitions WHERE id = ?', [id]);
+  if (!row) return null;
+  return {
+    ...row,
+    options: JSON.parse(row.options || '[]')
+  };
+}
+
+export function getCustomFieldDefinitionsByEntityType(entityType: string, tenantId: string): CustomFieldDefinition[] {
+  const rows = getQuery<any>('SELECT * FROM custom_field_definitions WHERE scope = ? AND tenant_id = ?', [entityType, tenantId]);
+  return rows.map(row => ({
+    ...row,
+    options: JSON.parse(row.options || '[]')
+  }));
+}
+
+export function getCustomersByPdvId(tenantId: string, pdvId: string): Customer[] {
+  const rows = getQuery<any>('SELECT * FROM customers WHERE tenant_id = ? AND JSON_CONTAINS(pdv_ids, JSON_QUOTE(?))', [tenantId, pdvId]);
+  return rows.map(row => ({
+    ...row,
+    pdv_ids: safeJsonParse(row.pdv_ids || '[]', []),
+    assigned_employee_ids: safeJsonParse(row.assigned_employee_ids || '[]', []),
+    custom_values: safeJsonParse(row.custom_values || '{}', {})
+  }));
+}
+
+export function getDealsByPdvId(tenantId: string, pdvId: string): Deal[] {
+  const rows = getQuery<any>('SELECT * FROM deals WHERE tenant_id = ? AND pdv_id = ? ORDER BY created_at DESC', [tenantId, pdvId]);
+  return rows.map(row => ({
+    ...row,
+    assigned_employee_ids: JSON.parse(row.assigned_employee_ids || '[]'),
+    product_ids: JSON.parse(row.product_ids || '[]'),
+    custom_values: JSON.parse(row.custom_values || '{}'),
+    tags: JSON.parse(row.tags || '[]')
+  }));
+}
+
+export function getDealsByStageId(tenantId: string, stageId: string): Deal[] {
+  const rows = getQuery<any>('SELECT * FROM deals WHERE tenant_id = ? AND stage_id = ? ORDER BY created_at DESC', [tenantId, stageId]);
+  return rows.map(row => ({
+    ...row,
+    assigned_employee_ids: JSON.parse(row.assigned_employee_ids || '[]'),
+    product_ids: JSON.parse(row.product_ids || '[]'),
+    custom_values: JSON.parse(row.custom_values || '{}'),
+    tags: JSON.parse(row.tags || '[]')
+  }));
+}
+
+export function getDealsByCustomerId(tenantId: string, customerId: string): Deal[] {
+  const rows = getQuery<any>('SELECT * FROM deals WHERE tenant_id = ? AND customer_id = ? ORDER BY created_at DESC', [tenantId, customerId]);
+  return rows.map(row => ({
+    ...row,
+    assigned_employee_ids: JSON.parse(row.assigned_employee_ids || '[]'),
+    product_ids: JSON.parse(row.product_ids || '[]'),
+    custom_values: JSON.parse(row.custom_values || '{}'),
+    tags: JSON.parse(row.tags || '[]')
+  }));
+}
+
+export function getPdvsByRegionId(tenantId: string, regionId: string): PDV[] {
+  return getQuery<PDV>('SELECT * FROM pdvs WHERE tenant_id = ? AND region_id = ? ORDER BY name', [tenantId, regionId]);
+}
+
+export function getPipelineStageById(id: string): PipelineStage | null {
+  const row = getOneQuery<any>('SELECT * FROM pipeline_stages WHERE id = ?', [id]);
+  if (!row) return null;
+  return {
+    ...row,
+    automation_steps: JSON.parse(row.automation_steps || '[]')
+  };
+}
+
+export function getRegionById(id: string): Region | null {
+  return getOneQuery<Region>('SELECT * FROM regions WHERE id = ?', [id]);
+}
+
+export function getTagById(id: string): Tag | null {
+  return getOneQuery<Tag>('SELECT * FROM tags WHERE id = ?', [id]);
+}
+
+export function getProductById(id: string): Product | null {
+  const row = getOneQuery<any>('SELECT * FROM products WHERE id = ?', [id]);
+  if (!row) return null;
+  return {
+    ...row,
+    attributes: JSON.parse(row.attributes || '[]'),
+    form_schema: JSON.parse(row.form_schema || '[]'),
+    automation_steps: JSON.parse(row.automation_steps || '[]')
+  };
+}
+
+export function getIntegrationById(id: string): Integration | null {
+  const row = getOneQuery<any>('SELECT * FROM integrations WHERE id = ?', [id]);
+  if (!row) return null;
+  return {
+    ...row,
+    config: JSON.parse(row.config || '{}')
+  };
+}
+
+export function getDashboardWidgetsByUserId(tenantId: string, userId: string): DashboardWidget[] {
+  return getDashboardWidgetsByTenant(tenantId, userId);
+}
+
+// Alias for naming consistency (camelCase)
+export const createPdv = createPDV;
+export const getPdvsByTenant = getPDVsByTenant;
+export const updatePdv = updatePDV;
+export const deletePdv = deletePDV;
+
+// Additional missing functions
+export function getCustomerById(id: string): Customer | null {
+  const row = getOneQuery<any>('SELECT * FROM customers WHERE id = ?', [id]);
+  if (!row) return null;
+  return {
+    ...row,
+    pdv_ids: safeJsonParse(row.pdv_ids || '[]', []),
+    assigned_employee_ids: safeJsonParse(row.assigned_employee_ids || '[]', []),
+    custom_values: safeJsonParse(row.custom_values || '{}', {})
+  };
+}
+
+export function getDealById(id: string): Deal | null {
+  const row = getOneQuery<any>('SELECT * FROM deals WHERE id = ?', [id]);
+  if (!row) return null;
+  return {
+    ...row,
+    assigned_employee_ids: JSON.parse(row.assigned_employee_ids || '[]'),
+    product_ids: JSON.parse(row.product_ids || '[]'),
+    custom_values: JSON.parse(row.custom_values || '{}'),
+    tags: JSON.parse(row.tags || '[]')
+  };
+}
+
+export function getPdvById(id: string): PDV | null {
+  return getOneQuery<PDV>('SELECT * FROM pdvs WHERE id = ?', [id]);
+}
+
+export function getProductsByPdvId(tenantId: string, pdvId: string): Product[] {
+  const rows = getQuery<any>('SELECT * FROM products WHERE tenant_id = ? AND pdv_id = ? ORDER BY name', [tenantId, pdvId]);
+  return rows.map(row => ({
+    ...row,
+    attributes: JSON.parse(row.attributes || '[]'),
+    form_schema: JSON.parse(row.form_schema || '[]'),
+    automation_steps: JSON.parse(row.automation_steps || '[]')
+  }));
+}
+
+// Permissions management (assuming a permissions table or JSON field in users)
+export function getUserPermissions(userId: string): any {
+  // Assuming permissions are stored in a JSON field or separate table
+  const user = getUserById(userId);
+  return user ? { permissions: 'default' } : null; // Placeholder
+}
+
+export function updateUserPermissions(userId: string, permissions: any): void {
+  // Placeholder - implement based on actual schema
+  console.log('Updating permissions for user', userId, permissions);
+}
+
+export function updateRegion(id: string, data: Partial<Region>): Region | null {
+  const now = new Date().toISOString();
+  const fields: string[] = [];
+  const values: any[] = [];
+
+  Object.entries(data).forEach(([key, value]) => {
+    if (key !== 'id' && key !== 'tenant_id' && key !== 'created_at') {
+      fields.push(`${key} = ?`);
+      values.push(value);
+    }
+  });
+
+  if (fields.length === 0) return getRegionById(id);
+
+  fields.push('updated_at = ?');
+  values.push(now);
+  values.push(id);
+
+  runQuery(`UPDATE regions SET ${fields.join(', ')} WHERE id = ?`, values);
+
+  return getRegionById(id);
+}
+
+export function updateTag(id: string, label: string, color: string): Tag | null {
+  const now = new Date().toISOString();
+
+  runQuery(`
+    UPDATE tags SET label = ?, color = ?, updated_at = ? WHERE id = ?
+  `, [label, color, now, id]);
+
+  return getTagById(id);
+}
+
 export function seedTenantData(tenantId: string) {
   const now = new Date().toISOString();
   
@@ -831,7 +1027,7 @@ export function seedTenantData(tenantId: string) {
   users.forEach(u => {
     const passwordHash = bcrypt.hashSync('demo123', 10);
     runQuery(`
-      INSERT INTO users (id, tenant_id, email, password_hash, name, role, pdv_id, active, created_at, updated_at)
+      INSERT INTO users (id, tenant_id, email, password_hash, name, role, pdv_id, is_active, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
     `, [u.id, tenantId, u.email, passwordHash, u.name, u.role, u.pdvId, now, now]);
   });

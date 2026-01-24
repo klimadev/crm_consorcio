@@ -3,12 +3,14 @@
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Building2, Lock, Mail, AlertCircle } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/';
-  
+  const { login } = useAuth();
+
   const [tenantSlug, setTenantSlug] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,20 +23,14 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantSlug, email, password, callbackUrl }),
-      });
+      const result = await login(tenantSlug, email, password);
 
-      const data = await response.json();
-
-      if (data.success) {
-        window.location.href = data.redirectUrl || '/';
+      if (result.success) {
+        window.location.href = callbackUrl;
       } else {
-        setError(data.message || 'Erro ao fazer login');
+        setError(result.message || 'Erro ao fazer login');
       }
-    } catch {
+    } catch (err) {
       setError('Ocorreu um erro inesperado');
     } finally {
       setLoading(false);

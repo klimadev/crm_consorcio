@@ -1,11 +1,10 @@
 'use client';
 
-let idCounter = 0;
-
 export const generateStableId = (prefix: string): string => {
-  if (typeof window === 'undefined') {
-    return `${prefix}-server-${idCounter++}`;
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return `${prefix}-${crypto.randomUUID()}`;
   }
+  // Fallback for older environments
   return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
 };
 

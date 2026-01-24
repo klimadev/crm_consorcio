@@ -1,355 +1,519 @@
-import initSqlJs, { Database } from 'sql.js';
+import Database from 'better-sqlite3';
 import path from 'path';
-import fs from 'fs';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
+import bcrypt from 'bcryptjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dbPath = path.join(process.cwd(), 'data', 'crm.db');
+const dbPath = path.join(process.cwd(), 'data', 'database.db');
 
-let db: Database | null = null;
-let sqlJs: any = null;
-let initializing = false;
-let initPromise: Promise<void> | null = null;
+let dbInstance: Database.Database | null = null;
 
-export async function getDb(): Promise<Database> {
-  const globalDb = (global as any).crmDb;
-  if (globalDb) return globalDb;
-
-  if (db) return db;
-
-  if (initializing) {
-    while (initializing) {
-      await new Promise(resolve => setTimeout(resolve, 50));
-    }
-    return db!;
-  }
-
-  initializing = true;
-  initPromise = (async () => {
-    try {
-      const fs = await import('fs');
-      const dataDir = path.join(process.cwd(), 'data');
-      if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir, { recursive: true });
-      }
-
-      if (!sqlJs) {
-        sqlJs = await initSqlJs({
-          locateFile: (file: string) => {
-            const path = require('path');
-            return path.join(process.cwd(), 'node_modules/sql.js/dist/', file);
-          }
-        });
-      }
-
-      if (fs.existsSync(dbPath)) {
-        const fileBuffer = fs.readFileSync(dbPath);
-        db = new sqlJs.Database(fileBuffer);
-      } else {
-        db = new sqlJs.Database();
-      }
-
-      (global as any).crmDb = db;
-      initDb();
-      saveDb();
-    } finally {
-      initializing = false;
-    }
-  })();
-
-  await initPromise;
-  return db!;
-}
-
-function saveDb() {
-  if (db) {
-    const data = db.export();
-    const buffer = Buffer.from(data);
-    const fs = require('fs');
+/**
+ * Initialize the database connection and create tables if they don't exist
+ */
+export function initDb(): Database.Database {
+  if (!dbInstance) {
+    // Create data directory if it doesn't exist
     const dataDir = path.dirname(dbPath);
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
     }
-    fs.writeFileSync(dbPath, buffer);
+
+    dbInstance = new Database(dbPath);
+
+    // Enable WAL mode for better concurrency
+    dbInstance.pragma('journal_mode = WAL');
+
+    // Create tables if they don't exist
+    dbInstance.exec(`
+      -- Tenants table
+      CREATE TABLE IF NOT EXISTS tenants (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        slug TEXT UNIQUE NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Users table
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        name TEXT NOT NULL,
+        role TEXT DEFAULT 'SALES_REP',
+        is_active BOOLEAN DEFAULT 1,
+        tenant_id TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+      );
+
+      -- Sessions table
+      CREATE TABLE IF NOT EXISTS sessions (
+        id TEXT PRIMARY KEY,
+        refresh_token TEXT UNIQUE NOT NULL,
+        expires_at DATETIME NOT NULL,
+        revoked_at DATETIME,
+        user_id TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      -- Preferences table
+      CREATE TABLE IF NOT EXISTS preferences (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        key TEXT NOT NULL,
+        value TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, key),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      -- Dashboard Widgets table
+      CREATE TABLE IF NOT EXISTS dashboard_widgets (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        widget_type TEXT NOT NULL,
+        data TEXT,
+        position INTEGER DEFAULT 0,
+        size TEXT DEFAULT 'normal',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      -- Regions table
+      CREATE TABLE IF NOT EXISTS regions (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+      );
+
+      -- PDVs table
+      CREATE TABLE IF NOT EXISTS pdvs (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        region_id TEXT,
+        name TEXT NOT NULL,
+        type TEXT DEFAULT 'PHYSICAL_STORE',
+        address TEXT,
+        city TEXT,
+        state TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+        FOREIGN KEY (region_id) REFERENCES regions(id) ON DELETE SET NULL
+      );
+
+      -- Customers table
+      CREATE TABLE IF NOT EXISTS customers (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        region_id TEXT,
+        pdv_id TEXT,
+        name TEXT NOT NULL,
+        type TEXT DEFAULT 'PJ',
+        document TEXT,
+        email TEXT,
+        phone TEXT,
+        status TEXT DEFAULT 'LEAD',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+        FOREIGN KEY (region_id) REFERENCES regions(id) ON DELETE SET NULL,
+        FOREIGN KEY (pdv_id) REFERENCES pdvs(id) ON DELETE SET NULL
+      );
+
+      -- Products table
+      CREATE TABLE IF NOT EXISTS products (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        pdv_id TEXT,
+        name TEXT NOT NULL,
+        sku TEXT,
+        price REAL DEFAULT 0,
+        attributes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+        FOREIGN KEY (pdv_id) REFERENCES pdvs(id) ON DELETE SET NULL
+      );
+
+      -- Pipeline Stages table
+      CREATE TABLE IF NOT EXISTS pipeline_stages (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT DEFAULT 'OPEN',
+        order_val INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+      );
+
+      -- Tags table
+      CREATE TABLE IF NOT EXISTS tags (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        label TEXT NOT NULL,
+        color TEXT DEFAULT '#3B82F6',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+      );
+
+      -- Deals table
+      CREATE TABLE IF NOT EXISTS deals (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        customer_id TEXT,
+        pdv_id TEXT,
+        product_id TEXT,
+        stage_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        value REAL DEFAULT 0,
+        product_ids TEXT,
+        tags TEXT,
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL,
+        FOREIGN KEY (pdv_id) REFERENCES pdvs(id) ON DELETE SET NULL,
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL,
+        FOREIGN KEY (stage_id) REFERENCES pipeline_stages(id) ON DELETE CASCADE
+      );
+
+      -- Custom Field Definitions table
+      CREATE TABLE IF NOT EXISTS custom_field_definitions (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        entity TEXT NOT NULL,
+        field_key TEXT NOT NULL,
+        label TEXT NOT NULL,
+        type TEXT NOT NULL,
+        options TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(tenant_id, entity, field_key),
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+      );
+
+      -- Integrations table
+      CREATE TABLE IF NOT EXISTS integrations (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        status TEXT DEFAULT 'DISCONNECTED',
+        config TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+      );
+
+      -- Widgets table
+      CREATE TABLE IF NOT EXISTS widgets (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        data TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+      );
+    `);
+  }
+  return dbInstance;
+}
+
+/**
+ * Get the database instance
+ */
+export function getDatabase(): Database.Database {
+  return initDb();
+}
+
+/**
+ * Close the database connection
+ */
+export function closeDatabase(): void {
+  if (dbInstance) {
+    dbInstance.close();
+    dbInstance = null;
   }
 }
 
-function initDb() {
-  if (!db) return;
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS tenants (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      slug TEXT NOT NULL UNIQUE,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now'))
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      tenant_id TEXT NOT NULL,
-      email TEXT NOT NULL,
-      password_hash TEXT NOT NULL,
-      name TEXT NOT NULL,
-      role TEXT CHECK(role IN ('ADMIN', 'MANAGER', 'SALES_REP', 'SUPPORT')) NOT NULL DEFAULT 'SALES_REP',
-      pdv_id TEXT,
-      active INTEGER DEFAULT 1,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
-      UNIQUE(tenant_id, email)
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS sessions (
-      id TEXT PRIMARY KEY,
-      session_token TEXT NOT NULL UNIQUE,
-      user_id TEXT NOT NULL,
-      tenant_id TEXT NOT NULL,
-      expires TEXT NOT NULL,
-      created_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS regions (
-      id TEXT PRIMARY KEY,
-      tenant_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS pdvs (
-      id TEXT PRIMARY KEY,
-      tenant_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      type TEXT CHECK(type IN ('PHYSICAL_STORE', 'KIOSK', 'CALL_CENTER', 'ONLINE', 'PARTNER')) NOT NULL,
-      region_id TEXT,
-      location TEXT,
-      is_active INTEGER DEFAULT 1,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
-      FOREIGN KEY (region_id) REFERENCES regions(id) ON DELETE SET NULL
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS customers (
-      id TEXT PRIMARY KEY,
-      tenant_id TEXT NOT NULL,
-      type TEXT CHECK(type IN ('PF', 'PJ')) NOT NULL,
-      name TEXT NOT NULL,
-      document TEXT,
-      email TEXT,
-      phone TEXT,
-      zip_code TEXT,
-      status TEXT CHECK(status IN ('LEAD', 'PROPONENT', 'PENDING', 'ACTIVE', 'DEFAULTING', 'CHURN')) NOT NULL DEFAULT 'LEAD',
-      pdv_ids TEXT NOT NULL DEFAULT '[]',
-      assigned_employee_ids TEXT NOT NULL DEFAULT '[]',
-      custom_values TEXT DEFAULT '{}',
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS products (
-      id TEXT PRIMARY KEY,
-      tenant_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      description TEXT,
-      category TEXT,
-      base_price REAL DEFAULT 0,
-      attributes TEXT DEFAULT '[]',
-      form_schema TEXT DEFAULT '[]',
-      automation_steps TEXT DEFAULT '[]',
-      default_follow_up_days INTEGER,
-      active INTEGER DEFAULT 1,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS pipeline_stages (
-      id TEXT PRIMARY KEY,
-      tenant_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      color TEXT,
-      type TEXT CHECK(type IN ('OPEN', 'WON', 'LOST')) NOT NULL,
-      automation_steps TEXT DEFAULT '[]',
-      order_index INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS tags (
-      id TEXT PRIMARY KEY,
-      tenant_id TEXT NOT NULL,
-      label TEXT NOT NULL,
-      color TEXT NOT NULL,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS deals (
-      id TEXT PRIMARY KEY,
-      tenant_id TEXT NOT NULL,
-      title TEXT NOT NULL,
-      pdv_id TEXT,
-      customer_id TEXT NOT NULL,
-      customer_name TEXT NOT NULL,
-      value REAL DEFAULT 0,
-      stage_id TEXT NOT NULL,
-      visibility TEXT CHECK(visibility IN ('PUBLIC', 'RESTRICTED')) NOT NULL DEFAULT 'PUBLIC',
-      assigned_employee_ids TEXT DEFAULT '[]',
-      product_ids TEXT DEFAULT '[]',
-      custom_values TEXT DEFAULT '{}',
-      tags TEXT DEFAULT '[]',
-      notes TEXT DEFAULT '',
-      next_follow_up_date TEXT,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
-      FOREIGN KEY (pdv_id) REFERENCES pdvs(id) ON DELETE SET NULL,
-      FOREIGN KEY (stage_id) REFERENCES pipeline_stages(id) ON DELETE SET NULL
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS integrations (
-      id TEXT PRIMARY KEY,
-      tenant_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      type TEXT,
-      status TEXT CHECK(status IN ('CONNECTED', 'DISCONNECTED')) NOT NULL DEFAULT 'DISCONNECTED',
-      config TEXT DEFAULT '{}',
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS custom_field_definitions (
-      id TEXT PRIMARY KEY,
-      tenant_id TEXT NOT NULL,
-      key TEXT NOT NULL,
-      label TEXT NOT NULL,
-      type TEXT CHECK(type IN ('text', 'number', 'date', 'select', 'boolean')) NOT NULL,
-      scope TEXT CHECK(scope IN ('DEAL', 'CUSTOMER')) NOT NULL,
-      options TEXT DEFAULT '[]',
-      required INTEGER DEFAULT 0,
-      active INTEGER DEFAULT 1,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS dashboard_widgets (
-      id TEXT PRIMARY KEY,
-      tenant_id TEXT NOT NULL,
-      user_id TEXT,
-      type TEXT NOT NULL,
-      title TEXT NOT NULL,
-      col_span INTEGER DEFAULT 1,
-      config TEXT DEFAULT '{}',
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-    )
-  `);
-
-  db.run('CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id)');
-  db.run('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
-  db.run('CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(session_token)');
-  db.run('CREATE INDEX IF NOT EXISTS idx_regions_tenant ON regions(tenant_id)');
-  db.run('CREATE INDEX IF NOT EXISTS idx_pdvs_tenant ON pdvs(tenant_id)');
-  db.run('CREATE INDEX IF NOT EXISTS idx_customers_tenant ON customers(tenant_id)');
-  db.run('CREATE INDEX IF NOT EXISTS idx_products_tenant ON products(tenant_id)');
-  db.run('CREATE INDEX IF NOT EXISTS idx_pipeline_stages_tenant ON pipeline_stages(tenant_id)');
-  db.run('CREATE INDEX IF NOT EXISTS idx_tags_tenant ON tags(tenant_id)');
-  db.run('CREATE INDEX IF NOT EXISTS idx_deals_tenant ON deals(tenant_id)');
-  db.run('CREATE INDEX IF NOT EXISTS idx_deals_stage ON deals(stage_id)');
-  db.run('CREATE INDEX IF NOT EXISTS idx_deals_customer ON deals(customer_id)');
-
-  console.log('Database initialized successfully');
-}
-
-export function closeDb() {
-  if (db) {
-    saveDb();
-    db.close();
-    db = null;
-  }
-}
-
+/**
+ * Generate a unique ID
+ */
 export function generateId(): string {
-  return crypto.randomUUID();
-}
-
-export function runQuery(sql: string, params?: any[]) {
-  const database = getDbSync();
-  if (!database) throw new Error('Database not initialized');
-  
-  // Filter out undefined values and replace with null
-  const safeParams = (params || []).map(p => {
-    if (p === undefined) return null;
-    return p;
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
   });
-  
-  database.run(sql, safeParams);
-  saveDb();
 }
 
-export function getQuery<T>(sql: string, params?: any[]): T[] {
-  const database = getDbSync();
-  if (!database) throw new Error('Database not initialized');
-  const stmt = database.prepare(sql);
-  const results: T[] = [];
-
-  if (params) {
-    stmt.bind(params);
-  }
-
-  while (stmt.step()) {
-    results.push(stmt.getAsObject() as T);
-  }
-  stmt.free();
-  return results;
+/**
+ * Execute a query that doesn't return results
+ */
+export function executeQuery(sql: string, params?: any[]): void {
+  const db = getDatabase();
+  const stmt = db.prepare(sql);
+  stmt.run(params || []);
 }
 
+/**
+ * Execute a query that returns a single row
+ */
 export function getOneQuery<T>(sql: string, params?: any[]): T | null {
-  const results = getQuery<T>(sql, params);
-  return results.length > 0 ? results[0] : null;
+  const db = getDatabase();
+  const stmt = db.prepare(sql);
+  const result = stmt.get(params || []);
+  return (result as T | undefined) || null;
 }
 
-function getDbSync(): Database | null {
-  const globalDb = (global as any).crmDb;
-  if (!globalDb) {
-    throw new Error('Database not initialized - call getDb() first');
-  }
-  return globalDb;
+/**
+ * Execute a query that returns multiple rows
+ */
+export function getQuery<T>(sql: string, params?: any[]): T[] {
+  const db = getDatabase();
+  const stmt = db.prepare(sql);
+  return stmt.all(params || []) as T[];
 }
+
+/**
+ * Hash a password
+ */
+export async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 12);
+}
+
+/**
+ * Verify a password against a hash
+ */
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  return bcrypt.compare(password, hash);
+}
+
+// Define interfaces for database records
+export interface User {
+  id: string;
+  email: string;
+  password_hash: string;
+  name: string;
+  role: string;
+  is_active: boolean;
+  tenant_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Tenant {
+  id: string;
+  name: string;
+  slug: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Session {
+  id: string;
+  refresh_token: string;
+  expires_at: string;
+  revoked_at: string | null;
+  user_id: string;
+  created_at: string;
+}
+
+// Authentication-related functions
+export function getUserByEmail(email: string): User | null {
+  const db = getDatabase();
+  const result = db.prepare(`
+    SELECT
+      id,
+      email,
+      password_hash,
+      name,
+      role,
+      is_active as active,
+      tenant_id,
+      created_at,
+      updated_at
+    FROM users WHERE email = ?
+  `).get(email);
+  return (result as User | undefined) || null;
+}
+
+export function getUserByEmailAndTenantId(email: string, tenantId: string): User | null {
+  const db = getDatabase();
+  const result = db.prepare(`
+    SELECT
+      id,
+      email,
+      password_hash,
+      name,
+      role,
+      is_active as active,
+      tenant_id,
+      created_at,
+      updated_at
+    FROM users WHERE email = ? AND tenant_id = ?
+  `).get(email, tenantId);
+  return (result as User | undefined) || null;
+}
+
+export function getUserById(id: string): User | null {
+  const db = getDatabase();
+  const result = db.prepare(`
+    SELECT
+      id,
+      email,
+      password_hash,
+      name,
+      role,
+      is_active as active,
+      tenant_id,
+      created_at,
+      updated_at
+    FROM users WHERE id = ?
+  `).get(id);
+  return (result as User | undefined) || null;
+}
+
+export function getTenantById(id: string): Tenant | null {
+  const db = getDatabase();
+  const result = db.prepare('SELECT * FROM tenants WHERE id = ?').get(id);
+  return (result as Tenant | undefined) || null;
+}
+
+export function getTenantBySlug(slug: string): Tenant | null {
+  const db = getDatabase();
+  const result = db.prepare('SELECT * FROM tenants WHERE slug = ?').get(slug);
+  return (result as Tenant | undefined) || null;
+}
+
+export function createTenant(name: string, slug: string): Tenant {
+  const db = getDatabase();
+  const id = generateId();
+  db.prepare('INSERT INTO tenants (id, name, slug) VALUES (?, ?, ?)').run(id, name, slug);
+  return getTenantById(id)!;
+}
+
+export function createUser(email: string, passwordHash: string, name: string, role: string, tenantId: string): User {
+  const db = getDatabase();
+  const id = generateId();
+  db.prepare('INSERT INTO users (id, email, password_hash, name, role, is_active, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+    id, email, passwordHash, name, role, 1, tenantId
+  );
+  return getUserById(id)!;
+}
+
+export function createSession(userId: string, refreshToken: string, expiresAt: string): void {
+  const db = getDatabase();
+  const id = generateId();
+  db.prepare('INSERT INTO sessions (id, user_id, refresh_token, expires_at) VALUES (?, ?, ?, ?)').run(
+    id, userId, refreshToken, expiresAt
+  );
+}
+
+export function getSessionByRefreshToken(refreshToken: string): Session | null {
+  const db = getDatabase();
+  const result = db.prepare('SELECT * FROM sessions WHERE refresh_token = ?').get(refreshToken);
+  return (result as Session | undefined) || null;
+}
+
+export function revokeSession(refreshToken: string): void {
+  const db = getDatabase();
+  db.prepare('UPDATE sessions SET revoked_at = CURRENT_TIMESTAMP WHERE refresh_token = ?').run(refreshToken);
+}
+
+export function deleteExpiredSessions(): void {
+  const db = getDatabase();
+  db.prepare("DELETE FROM sessions WHERE expires_at < datetime('now') OR revoked_at IS NOT NULL").run();
+}
+
+export function getSessionsByUserId(userId: string): Session[] {
+  const db = getDatabase();
+  return db.prepare('SELECT * FROM sessions WHERE user_id = ? ORDER BY created_at DESC').all(userId) as Session[];
+}
+
+export function deleteAllUserSessions(userId: string): void {
+  const db = getDatabase();
+  db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
+}
+
+// Preferences functions
+export interface Preference {
+  id: string;
+  user_id: string;
+  key: string;
+  value: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export function getPreferencesByUserId(userId: string): Preference[] {
+  const db = getDatabase();
+  return db.prepare('SELECT * FROM preferences WHERE user_id = ?').all(userId) as Preference[];
+}
+
+export function getPreference(userId: string, key: string): Preference | null {
+  const db = getDatabase();
+  const result = db.prepare('SELECT * FROM preferences WHERE user_id = ? AND key = ?').get(userId, key);
+  return (result as Preference | undefined) || null;
+}
+
+export function createOrUpdatePreference(userId: string, key: string, value: string): void {
+  const db = getDatabase();
+  const existing = getPreference(userId, key);
+  if (existing) {
+    db.prepare('UPDATE preferences SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(value, existing.id);
+  } else {
+    const id = generateId();
+    db.prepare('INSERT INTO preferences (id, user_id, key, value) VALUES (?, ?, ?, ?)').run(id, userId, key, value);
+  }
+}
+
+// Dashboard Widgets functions
+export interface DashboardWidget {
+  id: string;
+  user_id: string;
+  widget_type: string;
+  data: string;
+  position: number;
+  size: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export function getWidgetsByUserId(userId: string): DashboardWidget[] {
+  const db = getDatabase();
+  return db.prepare('SELECT * FROM dashboard_widgets WHERE user_id = ? ORDER BY position ASC').all(userId) as DashboardWidget[];
+}
+
+export function getWidgetById(id: string): DashboardWidget | null {
+  const db = getDatabase();
+  const result = db.prepare('SELECT * FROM dashboard_widgets WHERE id = ?').get(id);
+  return (result as DashboardWidget | undefined) || null;
+}
+
+export function createWidget(userId: string, widgetType: string, data: string, position: number, size: string): DashboardWidget {
+  const db = getDatabase();
+  const id = generateId();
+  db.prepare('INSERT INTO dashboard_widgets (id, user_id, widget_type, data, position, size) VALUES (?, ?, ?, ?, ?, ?)').run(
+    id, userId, widgetType, data, position, size
+  );
+  return getWidgetById(id)!;
+}
+
+export { getDatabase as getDb, closeDatabase as closeDb };

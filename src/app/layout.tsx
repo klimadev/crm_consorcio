@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AuthProvider } from '@/hooks/useAuth';
 
 export const metadata: Metadata = {
   title: "MC I CRM",
@@ -12,8 +13,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
-      <body className="font-sans antialiased">{children}</body>
+    <html lang="pt-BR" suppressHydrationWarning={true}>
+      <body className="font-sans antialiased">
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </body>
     </html>
   );
 }

@@ -1,0 +1,286 @@
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log('🌱 Starting seed...\n');
+
+  const passwordHash = await bcrypt.hash('admin123', 12);
+
+  console.log('1. Creating tenant...');
+  const tenant = await prisma.tenant.upsert({
+    where: { slug: 'demo' },
+    update: {},
+    create: {
+      name: 'MC I Demo',
+      slug: 'demo',
+    },
+  });
+  console.log(`   Created tenant: ${tenant.name} (${tenant.slug})\n`);
+
+  console.log('2. Creating admin user...');
+  const admin = await prisma.user.upsert({
+    where: { email: 'admin@mc.com' },
+    update: {},
+    create: {
+      email: 'admin@mc.com',
+      passwordHash,
+      name: 'Diretoria (Admin)',
+      role: 'ADMIN',
+      tenantId: tenant.id,
+    },
+  });
+  console.log(`   Created user: ${admin.email}\n`);
+
+  console.log('3. Creating regions...');
+  const regions = await Promise.all([
+    prisma.region.create({
+      data: { name: 'São Paulo', tenantId: tenant.id },
+    }),
+    prisma.region.create({
+      data: { name: 'Paraná', tenantId: tenant.id },
+    }),
+  ]);
+  console.log(`   Created ${regions.length} regions\n`);
+
+  console.log('4. Creating PDVs...');
+  const pdvs = await Promise.all([
+    prisma.pDV.create({
+      data: {
+        name: 'Loja Berrini (SP)',
+        type: 'LOJA',
+        address: 'Av. Berrini, 1000',
+        city: 'São Paulo',
+        state: 'SP',
+        tenantId: tenant.id,
+        regionId: regions[0].id,
+      },
+    }),
+    prisma.pDV.create({
+      data: {
+        name: 'Quiosque Morumbi',
+        type: 'QUIOSQUE',
+        address: 'Shopping Morumbi',
+        city: 'São Paulo',
+        state: 'SP',
+        tenantId: tenant.id,
+        regionId: regions[0].id,
+      },
+    }),
+    prisma.pDV.create({
+      data: {
+        name: 'Filial Curitiba',
+        type: 'LOJA',
+        address: 'Av. Batel, 500',
+        city: 'Curitiba',
+        state: 'PR',
+        tenantId: tenant.id,
+        regionId: regions[1].id,
+      },
+    }),
+  ]);
+  console.log(`   Created ${pdvs.length} PDVs\n`);
+
+  console.log('5. Creating pipeline stages...');
+  const stages = await Promise.all([
+    prisma.pipelineStage.create({
+      data: { name: 'Prospecção', type: 'OPEN', order: 0, tenantId: tenant.id },
+    }),
+    prisma.pipelineStage.create({
+      data: { name: 'Qualificação', type: 'OPEN', order: 1, tenantId: tenant.id },
+    }),
+    prisma.pipelineStage.create({
+      data: { name: 'Apresentação', type: 'OPEN', order: 2, tenantId: tenant.id },
+    }),
+    prisma.pipelineStage.create({
+      data: { name: 'Fechamento', type: 'OPEN', order: 3, tenantId: tenant.id },
+    }),
+    prisma.pipelineStage.create({
+      data: { name: 'Vendido', type: 'WON', order: 4, tenantId: tenant.id },
+    }),
+    prisma.pipelineStage.create({
+      data: { name: 'Perdido', type: 'LOST', order: 5, tenantId: tenant.id },
+    }),
+  ]);
+  console.log(`   Created ${stages.length} stages\n`);
+
+  console.log('6. Creating tags...');
+  const tags = await Promise.all([
+    prisma.tag.create({
+      data: { label: 'VIP', color: '#F59E0B', tenantId: tenant.id },
+    }),
+    prisma.tag.create({
+      data: { label: 'Quente', color: '#EF4444', tenantId: tenant.id },
+    }),
+    prisma.tag.create({
+      data: { label: 'Frio', color: '#3B82F6', tenantId: tenant.id },
+    }),
+  ]);
+  console.log(`   Created ${tags.length} tags\n`);
+
+  console.log('7. Creating products...');
+  const products = await Promise.all([
+    prisma.product.create({
+      data: {
+        name: 'Consórcio Auto 80k',
+        sku: 'CONS-AUTO-80',
+        price: 80000,
+        tenantId: tenant.id,
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Carta Imóvel 500k',
+        sku: 'CONS-IMOV-500',
+        price: 500000,
+        tenantId: tenant.id,
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'iPhone 15 Pro Max',
+        sku: 'IPH-15-PM',
+        price: 9000,
+        tenantId: tenant.id,
+      },
+    }),
+  ]);
+  console.log(`   Created ${products.length} products\n`);
+
+  console.log('8. Creating customers...');
+  const customers = await Promise.all([
+    prisma.customer.create({
+      data: {
+        name: 'Tech Solutions PJ',
+        type: 'PJ',
+        document: '12.345.678/0001-90',
+        email: 'contato@tech.com',
+        phone: '11999999999',
+        status: 'ATIVO',
+        tenantId: tenant.id,
+        regionId: regions[0].id,
+        pdvId: pdvs[0].id,
+      },
+    }),
+    prisma.customer.create({
+      data: {
+        name: 'Agro Sul Ltda',
+        type: 'PJ',
+        document: '98.765.432/0001-10',
+        email: 'comercial@agrosul.com',
+        phone: '41488888888',
+        status: 'EM_APROVACAO',
+        tenantId: tenant.id,
+        regionId: regions[1].id,
+        pdvId: pdvs[2].id,
+      },
+    }),
+    prisma.customer.create({
+      data: {
+        name: 'Investidor João',
+        type: 'PF',
+        document: '12345678900',
+        email: 'joao@gmail.com',
+        phone: '11988887777',
+        status: 'LEAD',
+        tenantId: tenant.id,
+        regionId: regions[0].id,
+        pdvId: pdvs[0].id,
+      },
+    }),
+  ]);
+  console.log(`   Created ${customers.length} customers\n`);
+
+  console.log('9. Creating deals...');
+  await Promise.all([
+    prisma.deal.create({
+      data: {
+        title: 'Expansão Sede Tech',
+        value: 500000,
+        tags: JSON.stringify([tags[0].id]),
+        notes: 'Expansão da sede corporativa',
+        tenantId: tenant.id,
+        customerId: customers[0].id,
+        pdvId: pdvs[0].id,
+        productId: products[1].id,
+        stageId: stages[4].id,
+      },
+    }),
+    prisma.deal.create({
+      data: {
+        title: 'Frota Agro Sul',
+        value: 160000,
+        tags: JSON.stringify([tags[1].id]),
+        notes: 'Frota de veículos para fazenda',
+        tenantId: tenant.id,
+        customerId: customers[1].id,
+        pdvId: pdvs[2].id,
+        productId: products[0].id,
+        stageId: stages[2].id,
+      },
+    }),
+    prisma.deal.create({
+      data: {
+        title: 'Compra iPhone Corporativo',
+        value: 9000,
+        tenantId: tenant.id,
+        customerId: customers[2].id,
+        pdvId: pdvs[1].id,
+        productId: products[2].id,
+        stageId: stages[4].id,
+      },
+    }),
+  ]);
+  console.log('   Created 3 deals\n');
+
+  console.log('10. Creating dashboard widgets...');
+  await prisma.dashboardWidget.createMany({
+    data: [
+      {
+        userId: admin.id,
+        widgetType: 'kpi_total_sales',
+        data: JSON.stringify({ title: 'Vendas Totais', icon: 'DollarSign', color: 'emerald' }),
+        position: 0,
+        size: 'small',
+      },
+      {
+        userId: admin.id,
+        widgetType: 'kpi_active_deals',
+        data: JSON.stringify({ title: 'Negócios Ativos', icon: 'TrendingUp', color: 'blue' }),
+        position: 1,
+        size: 'small',
+      },
+      {
+        userId: admin.id,
+        widgetType: 'kpi_conversion_rate',
+        data: JSON.stringify({ title: 'Taxa de Conversão', icon: 'Target', color: 'purple' }),
+        position: 2,
+        size: 'small',
+      },
+      {
+        userId: admin.id,
+        widgetType: 'funnel',
+        data: JSON.stringify({ title: 'Funil de Vendas' }),
+        position: 3,
+        size: 'large',
+      },
+    ],
+  });
+  console.log('   Created 4 dashboard widgets\n');
+
+  console.log('✅ Seed completed successfully!\n');
+  console.log('Demo credentials:');
+  console.log('  Organization: demo');
+  console.log('  Email: admin@mc.com');
+  console.log('  Password: admin123\n');
+}
+
+main()
+  .catch((e) => {
+    console.error('❌ Seed failed:', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

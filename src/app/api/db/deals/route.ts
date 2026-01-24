@@ -10,7 +10,7 @@ function transformDealToComponent(deal: DealDB): Deal {
     id: deal.id,
     title: deal.title,
     pdvId: deal.pdv_id || null,
-    customerId: deal.customer_id,
+    customerId: deal.customer_id || '',
     customerName: deal.customer_name,
     value: deal.value || 0,
     stageId: deal.stage_id,
@@ -25,9 +25,9 @@ function transformDealToComponent(deal: DealDB): Deal {
   };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth(request);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -43,7 +43,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth(request);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -53,21 +53,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Title, customerId, customerName, and stageId are required' }, { status: 400 });
     }
 
-    const deal = createDeal(session.user.tenantId, {
-      title: data.title,
-      pdv_id: data.pdvId || null,
-      customer_id: data.customerId,
-      customer_name: data.customerName,
-      value: data.value || 0,
-      stage_id: data.stageId,
-      visibility: data.visibility || 'PUBLIC',
-      assigned_employee_ids: data.assignedEmployeeIds || [],
-      product_ids: data.productIds || [],
-      custom_values: data.customValues || {},
-      tags: data.tags || [],
-      notes: data.notes || '',
-      next_follow_up_date: data.nextFollowUpDate || null,
-    });
+    const deal = createDeal(
+      session.user.tenantId,
+      data.title,
+      data.value || 0,
+      data.stageId,
+      data.customerId,
+      data.pdvId || null,
+      null, // productId
+      JSON.stringify(data.productIds || []),
+      JSON.stringify(data.tags || []),
+      data.notes || ''
+    );
 
     return NextResponse.json(deal, { status: 201 });
   } catch (error) {
@@ -78,7 +75,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth(request);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -93,7 +90,18 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Deal not found' }, { status: 404 });
     }
 
-    const deal = updateDeal(data.id, data);
+    const deal = updateDeal(
+      data.id,
+      data.title,
+      data.value || 0,
+      data.stage_id || data.stageId,
+      data.customer_id || data.customerId,
+      data.pdv_id || data.pdvId,
+      data.product_id || null,
+      JSON.stringify(data.product_ids || data.productIds || []),
+      JSON.stringify(data.tags || []),
+      data.notes || ''
+    );
     if (!deal) {
       return NextResponse.json({ error: 'Deal not found' }, { status: 404 });
     }
@@ -107,7 +115,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth(request);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

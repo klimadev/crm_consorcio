@@ -14,14 +14,14 @@ function transformWidgetToComponent(widget: DashboardWidgetDB): DashboardWidget 
   };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth(request);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const widgetsDB = await getDashboardWidgetsByTenant(session.user.tenantId, session.user.id);
+    const widgetsDB = await getDashboardWidgetsByTenant(session.user.tenantId, session.user.userId);
     const widgets = widgetsDB.map(transformWidgetToComponent);
     return NextResponse.json(widgets);
   } catch (error) {
@@ -32,7 +32,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth(request);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
       title: data.title,
       col_span: data.colSpan || 1,
       config: data.config || {},
-      user_id: session.user.id,
+      user_id: session.user.userId,
     });
 
     return NextResponse.json(widget, { status: 201 });
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth(request);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -117,7 +117,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth(request);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

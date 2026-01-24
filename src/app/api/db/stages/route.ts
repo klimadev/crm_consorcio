@@ -15,9 +15,9 @@ function transformStageToComponent(stage: PipelineStageDB): PipelineStage {
   };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth(request);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -33,7 +33,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth(request);
     if (!session?.user || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
     }
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth(request);
     if (!session?.user || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
     }
@@ -80,7 +80,12 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Stage not found' }, { status: 404 });
     }
 
-    const stage = updatePipelineStage(data.id, data);
+    const stage = updatePipelineStage(
+      data.id,
+      data.name,
+      data.type,
+      data.order_index || data.orderIndex
+    );
     if (!stage) {
       return NextResponse.json({ error: 'Stage not found' }, { status: 404 });
     }
@@ -94,7 +99,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth(request);
     if (!session?.user || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
     }

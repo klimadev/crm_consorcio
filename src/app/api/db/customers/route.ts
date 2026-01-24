@@ -22,9 +22,9 @@ function transformCustomerToComponent(customer: CustomerDB): Customer {
   };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth(request);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -40,7 +40,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth(request);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -50,18 +50,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Name and type are required' }, { status: 400 });
     }
 
-    const customer = createCustomer(session.user.tenantId, {
-      type: data.type,
-      name: data.name,
-      document: data.document || '',
-      email: data.email || '',
-      phone: data.phone || '',
-      zip_code: data.zipCode || data.zip_code || '',
-      status: data.status || 'LEAD',
-      pdv_ids: data.pdvIds || [],
-      assigned_employee_ids: data.assignedEmployeeIds || [],
-      custom_values: data.customValues || {},
-    });
+    const customer = createCustomer(
+      session.user.tenantId,
+      data.name,
+      data.type,
+      data.document || '',
+      data.email || '',
+      data.phone || '',
+      data.status || 'LEAD',
+      null, // regionId
+      null  // pdvId
+    );
 
     return NextResponse.json(customer, { status: 201 });
   } catch (error) {
@@ -72,7 +71,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth(request);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -87,7 +86,17 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
     }
 
-    const customer = updateCustomer(data.id, data);
+    const customer = updateCustomer(
+      data.id,
+      data.name,
+      data.type,
+      data.document || '',
+      data.email || '',
+      data.phone || '',
+      data.status || 'LEAD',
+      null, // regionId
+      null  // pdvId
+    );
     if (!customer) {
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
     }
@@ -101,7 +110,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await auth(request);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
