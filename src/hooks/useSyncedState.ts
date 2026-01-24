@@ -47,13 +47,20 @@ export function useSyncedState<T extends { id: string }>({
     try {
       const response = await fetch(endpoint);
       const result = await response.json();
-      
-      if (result.success) {
-        const items = Array.isArray(result.deals) ? result.deals : (Array.isArray(result) ? result : []);
-        setData(items.map(parseResponseItem));
-      } else {
-        throw new Error(result.message || 'Erro ao carregar dados');
+
+      if (!response.ok) {
+        throw new Error(result?.error || result?.message || 'Erro ao carregar dados');
       }
+
+      const items = Array.isArray(result)
+        ? result
+        : Array.isArray(result?.deals)
+          ? result.deals
+          : result && typeof result === 'object'
+            ? [result]
+            : [];
+
+      setData(items.map(parseResponseItem));
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Erro desconhecido');
       setError(error);
@@ -85,14 +92,15 @@ export function useSyncedState<T extends { id: string }>({
         });
 
         const result = await response.json();
-        
-        if (!result.success) {
-          throw new Error(result.message || 'Erro ao sincronizar');
+
+        if (!response.ok) {
+          throw new Error(result?.error || result?.message || 'Erro ao sincronizar');
         }
 
-        if (result.deal) {
+        const updated = result?.deal ?? result;
+        if (updated && typeof updated === 'object' && 'id' in updated) {
           setData(prev => {
-            const parsed = parseResponseItem(result.deal);
+            const parsed = parseResponseItem(updated);
             if (isNew) {
               return prev.map(d => d.id === parsed.id ? parsed : d);
             }
@@ -168,7 +176,7 @@ export function useSyncedState<T extends { id: string }>({
 export function useDealSync(initialData: any[]) {
   return useSyncedState({
     initialData,
-    endpoint: '/api/deals',
+    endpoint: '/api/db/deals',
     parseItem: (item: any) => ({
       id: item.id,
       title: item.title,

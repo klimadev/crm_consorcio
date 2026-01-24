@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAuth } from '@/lib/auth/jwt';
+import { verifyAuth, parseCookies, verifyToken } from '@/lib/auth/jwt';
 import { getWidgetsByUserId, createWidget, updateWidget, deleteWidget, getWidgetById } from '@/lib/db';
 
 export async function GET(request: NextRequest) {

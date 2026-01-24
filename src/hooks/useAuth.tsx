@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, createContext, useContext } from 'react';
+import { usePathname } from 'next/navigation';
 
 interface User {
   id: string;
@@ -21,6 +22,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(() => {
     if (typeof window !== 'undefined') {
       // Client-side - we can check for initial state here if needed
@@ -47,7 +49,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const checkAuthStatus = async () => {
       try {
         setLoading(true); // Start loading again on client
-        const response = await fetch('/api/auth/me');
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
         if (isComponentMounted) { // Verifica se o componente ainda está montado
           if (response.ok) {
             const data = await response.json();
@@ -76,14 +81,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    // Run auth check only on client after initial render
-    checkAuthStatus();
+    const isPublicRoute = pathname.startsWith('/login') || pathname.startsWith('/init');
+    if (isPublicRoute) {
+      if (isComponentMounted) {
+        setUser(null);
+        setIsAuthenticated(false);
+        setLoading(false);
+      }
+    } else {
+      // Run auth check only on client after initial render
+      checkAuthStatus();
+    }
 
     // Cleanup function
     return () => {
       isComponentMounted = false;
     };
-  }, []);
+  }, [pathname]);
 
   const login = async (tenantSlug: string, email: string, password: string) => {
     try {

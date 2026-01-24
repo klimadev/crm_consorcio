@@ -1,9 +1,49 @@
 import { auth } from '@/lib/auth/auth';
-import { getDashboardWidgetsByTenant, createDashboardWidget, updateDashboardWidget, deleteDashboardWidget } from '@/lib/db/operations';
-import { getOneQuery } from '@/lib/db';
+import { getDashboardWidgetsByTenant, createDashboardWidget, updateDashboardWidget, deleteDashboardWidget, getPreference, createOrUpdatePreference } from '@/lib/db/operations';
+import { generateId, getOneQuery } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import type { DashboardWidget as DashboardWidgetDB } from '@/types/db';
 import type { DashboardWidget } from '@/types';
+import { DEFAULT_DASHBOARD_WIDGETS } from '@/constants';
+
+const DASHBOARD_PREF_KEY = 'dashboard_widgets_v1';
+
+function normalizeWidgets(input: unknown): DashboardWidget[] {
+  if (!Array.isArray(input)) return [];
+
+  const colSpanValues = new Set([1, 2, 3, 4]);
+
+  return input
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const candidate = item as Partial<DashboardWidget>;
+      if (!candidate.type || typeof candidate.type !== 'string') return null;
+
+      const id = typeof candidate.id === 'string' && candidate.id.trim().length > 0 ? candidate.id : generateId();
+      const title = typeof candidate.title === 'string' && candidate.title.trim().length > 0 ? candidate.title : candidate.type;
+      const colSpan = colSpanValues.has(Number(candidate.colSpan)) ? (Number(candidate.colSpan) as 1 | 2 | 3 | 4) : 1;
+
+      return { id, type: candidate.type as DashboardWidget['type'], title, colSpan };
+    })
+    .filter((item): item is DashboardWidget => Boolean(item));
+}
+
+function loadPreferenceWidgets(userId: string): DashboardWidget[] | null {
+  const preference = getPreference(userId, DASHBOARD_PREF_KEY);
+  if (!preference?.value) return null;
+
+  try {
+    const parsed = JSON.parse(preference.value);
+    if (!Array.isArray(parsed)) return null;
+    return normalizeWidgets(parsed);
+  } catch {
+    return null;
+  }
+}
+
+function savePreferenceWidgets(userId: string, widgets: DashboardWidget[]): void {
+  createOrUpdatePreference(userId, DASHBOARD_PREF_KEY, JSON.stringify(widgets));
+}
 
 function transformWidgetToComponent(widget: DashboardWidgetDB): DashboardWidget {
   return {
@@ -21,8 +61,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const preferenceWidgets = loadPreferenceWidgets(session.user.userId);
+    if (preferenceWidgets !== null) {
+      return NextResponse.json(preferenceWidgets);
+    }
+
     const widgetsDB = await getDashboardWidgetsByTenant(session.user.tenantId, session.user.userId);
     const widgets = widgetsDB.map(transformWidgetToComponent);
+
+    if (widgets.length === 0) {
+      return NextResponse.json(DEFAULT_DASHBOARD_WIDGETS);
+    }
+
     return NextResponse.json(widgets);
   } catch (error) {
     console.error('Error fetching widgets:', error);
@@ -40,31 +90,14 @@ export async function POST(request: NextRequest) {
     const data = await request.json();
 
     if (data.reset) {
-      const existing = getDashboardWidgetsByTenant(session.user.tenantId);
-      if (existing.length === 0) {
-        const defaultWidgets = [
-          { type: 'GOAL_PROGRESS', title: 'Metas do Mês', colSpan: 4 },
-          { type: 'KPI_TOTAL_SALES', title: 'Volume Geral', colSpan: 1 },
-          { type: 'KPI_ACTIVE_DEALS', title: 'Pipeline Ativo', colSpan: 1 },
-          { type: 'KPI_CONVERSION', title: 'Conversão', colSpan: 1 },
-          { type: 'KPI_AVG_TICKET', title: 'Ticket Médio', colSpan: 1 },
-          { type: 'CHART_FUNNEL', title: 'Funil de Vendas', colSpan: 2 },
-          { type: 'CHART_SALES_BY_REP', title: 'Ranking Equipe', colSpan: 2 },
-        ];
+      savePreferenceWidgets(session.user.userId, DEFAULT_DASHBOARD_WIDGETS);
+      return NextResponse.json(DEFAULT_DASHBOARD_WIDGETS);
+    }
 
-        const widgets = defaultWidgets.map(w => 
-          createDashboardWidget(session.user.tenantId, {
-            type: w.type as any,
-            title: w.title,
-            col_span: w.colSpan,
-            config: '{}',
-            user_id: null,
-          })
-        );
-
-        return NextResponse.json(widgets);
-      }
-      return NextResponse.json(existing);
+    if (data.widgets) {
+      const widgets = normalizeWidgets(data.widgets);
+      savePreferenceWidgets(session.user.userId, widgets);
+      return NextResponse.json(widgets);
     }
 
     if (!data.type || !data.title) {
@@ -94,6 +127,13 @@ export async function PUT(request: NextRequest) {
     }
 
     const data = await request.json();
+
+    if (data.widgets) {
+      const widgets = normalizeWidgets(data.widgets);
+      savePreferenceWidgets(session.user.userId, widgets);
+      return NextResponse.json(widgets);
+    }
+
     if (!data.id) {
       return NextResponse.json({ error: 'ID is required' }, { status: 400 });
     }

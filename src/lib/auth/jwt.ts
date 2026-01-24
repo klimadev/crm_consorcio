@@ -123,7 +123,17 @@ export async function verifyAuth(request?: NextRequest): Promise<AuthUser | null
     const { getUserById } = await import('@/lib/db');
     const user = getUserById(payload.userId);
 
-    if (!user || !user.active) {
+    if (!user) {
+      console.warn('[verifyAuth] User not found for id', payload.userId);
+      return null;
+    }
+
+    const isActive = Boolean((user as any).active ?? (user as any).is_active);
+    if (!isActive) {
+      console.warn('[verifyAuth] Inactive user attempted access', {
+        userId: user.id,
+        email: user.email,
+      });
       return null;
     }
 
@@ -133,7 +143,7 @@ export async function verifyAuth(request?: NextRequest): Promise<AuthUser | null
       name: user.name,
       role: user.role,
       tenantId: user.tenant_id,
-      active: user.active,
+      active: isActive,
     };
   } catch (error) {
     console.error('Erro ao verificar autenticação:', error);
@@ -158,7 +168,17 @@ export async function refreshTokens(refreshToken: string) {
     const { getUserById } = await import('@/lib/db');
     const user = getUserById(refreshPayload.userId);
 
-    if (!user || !user.active) {
+    if (!user) {
+      console.warn('[refreshTokens] User not found for id', refreshPayload.userId);
+      return null;
+    }
+
+    const isActive = Boolean((user as any).active ?? (user as any).is_active);
+    if (!isActive) {
+      console.warn('[refreshTokens] Inactive user attempted refresh', {
+        userId: user.id,
+        email: user.email,
+      });
       return null;
     }
 

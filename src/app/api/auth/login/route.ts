@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const dbModule = await import('@/lib/db');
     const { getTenantBySlug, getUserByEmailAndTenantId, verifyPassword: dbVerifyPassword } = dbModule;
 
-    const tenant = getTenantBySlug(tenantSlug);
+    const tenant = await getTenantBySlug(tenantSlug);
 
     if (!tenant) {
       return NextResponse.json(
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = getUserByEmailAndTenantId(email, tenant.id);
+    const user = await getUserByEmailAndTenantId(email, tenant.id);
 
     if (!user) {
       return NextResponse.json(

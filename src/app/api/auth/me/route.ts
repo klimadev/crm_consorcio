@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const tenant = getTenantById(fullUser.tenant_id);
+    const tenant = await getTenantById(fullUser.tenant_id);
     const preferences = getPreferencesByUserId(fullUser.id);
     const widgets = getWidgetsByUserId(fullUser.id);
 
@@ -44,6 +44,8 @@ export async function GET(request: NextRequest) {
         name: fullUser.name,
         role: fullUser.role,
         tenantId: fullUser.tenant_id,
+        pdvId: fullUser.pdv_id ?? null,
+        active: fullUser.active,
         tenant: tenant ? { id: tenant.id, name: tenant.name, slug: tenant.slug } : null,
         preferences: prefsMap,
         dashboardWidgets: widgets.map(w => ({

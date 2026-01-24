@@ -1,5 +1,5 @@
 import { auth } from '@/lib/auth/auth';
-import { getUsersByTenant, createUser, updateUser, getUserById } from '@/lib/db/operations';
+import { getUsersByTenant, createUser, updateUser, getUserById, deleteUser } from '@/lib/db/operations';
 import { NextRequest, NextResponse } from 'next/server';
 import type { User } from '@/types/db';
 import type { Employee } from '@/types';
@@ -90,6 +90,32 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(userWithoutPassword);
   } catch (error) {
     console.error('Error updating employee:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await auth(request);
+    if (!session?.user || session.user.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+    }
+
+    const existingUser = getUserById(id);
+    if (!existingUser || existingUser.tenant_id !== session.user.tenantId) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    deleteUser(id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting employee:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

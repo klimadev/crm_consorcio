@@ -1,6 +1,6 @@
-import { getDb, runQuery, getQuery, getOneQuery, generateId, closeDb } from './index';
+import { executeQuery as runQuery, getQuery, getOneQuery, generateId, getDatabase } from './client';
 import bcrypt from 'bcryptjs';
-import type { Tenant, User, Region, PDV, Customer, Product, PipelineStage, Tag, Deal, Integration, CustomFieldDefinition, DashboardWidget } from '@/types/db';
+import type { Tenant, User, Region, PDV, Customer, Product, PipelineStage, Tag, Deal, Integration, CustomFieldDefinition, DashboardWidget, Preference, Session } from './schema';
 
 export function createDefaultTenantIfNotExists() {
   const existing = getOneQuery<any>('SELECT id FROM tenants WHERE slug = ?', ['default']);
@@ -56,6 +56,10 @@ export async function getTenantById(id: string): Promise<Tenant | null> {
   return await getOneQuery<Tenant>('SELECT * FROM tenants WHERE id = ?', [id]);
 }
 
+export async function getTenant(id: string): Promise<Tenant | null> {
+  return await getOneQuery<Tenant>('SELECT * FROM tenants WHERE id = ?', [id]);
+}
+
 export function createUser(
   tenantId: string,
   email: string,
@@ -97,17 +101,56 @@ export async function getUserByEmail(email: string): Promise<(User & { tenant_sl
   return row || null;
 }
 
+export async function getUserByEmailAndTenantId(email: string, tenantId: string): Promise<User | null> {
+  const row = await getOneQuery<User>(`
+    SELECT
+      id,
+      email,
+      password_hash,
+      name,
+      role,
+      is_active as active,
+      tenant_id,
+      pdv_id,
+      created_at,
+      updated_at
+    FROM users WHERE email = ? AND tenant_id = ?
+  `, [email, tenantId]);
+  if (!row || !row.password_hash) return null;
+  return row;
+}
+
 export function getUserById(id: string): (User & { tenant_slug: string }) | null {
   const row = getOneQuery<any>(`
-    SELECT u.*, t.slug as tenant_slug
+    SELECT 
+      u.id,
+      u.email,
+      u.password_hash,
+      u.name,
+      u.role,
+      u.is_active as active,
+      u.is_active,
+      u.tenant_id,
+      u.pdv_id,
+      u.created_at,
+      u.updated_at,
+      t.slug as tenant_slug
     FROM users u
     JOIN tenants t ON u.tenant_id = t.id
     WHERE u.id = ?
   `, [id]);
-  return row || null;
+
+  if (!row) return null;
+
+  return {
+    ...row,
+    // Normalize to boolean to match the User interface expectations
+    active: Boolean(row.active ?? row.is_active),
+  };
 }
 
 export function verifyPassword(password: string, hash: string): boolean {
+  if (!hash) return false;
   return bcrypt.compareSync(password, hash);
 }
 
@@ -126,6 +169,59 @@ export async function getUsersByTenant(tenantId: string): Promise<User[]> {
       updated_at
     FROM users WHERE tenant_id = ? ORDER BY name
   `, [tenantId]);
+}
+
+export function createSession(userId: string, refreshToken: string, expiresAt: string): void {
+  const id = generateId();
+  runQuery('INSERT INTO sessions (id, user_id, refresh_token, expires_at) VALUES (?, ?, ?, ?)', [
+    id, userId, refreshToken, expiresAt
+  ]);
+}
+
+export function getSessionByRefreshToken(refreshToken: string): Session | null {
+  return getOneQuery<Session>('SELECT * FROM sessions WHERE refresh_token = ?', [refreshToken]);
+}
+
+export function revokeSession(refreshToken: string): void {
+  runQuery('UPDATE sessions SET revoked_at = CURRENT_TIMESTAMP WHERE refresh_token = ?', [refreshToken]);
+}
+
+export function deleteExpiredSessions(): void {
+  runQuery("DELETE FROM sessions WHERE expires_at < datetime('now') OR revoked_at IS NOT NULL");
+}
+
+export function getSessionsByUserId(userId: string): Session[] {
+  return getQuery<Session>('SELECT * FROM sessions WHERE user_id = ? ORDER BY created_at DESC', [userId]);
+}
+
+export function deleteAllUserSessions(userId: string): void {
+  runQuery('DELETE FROM sessions WHERE user_id = ?', [userId]);
+}
+
+export function getPreferencesByUserId(userId: string): Preference[] {
+  return getQuery<Preference>('SELECT * FROM preferences WHERE user_id = ?', [userId]);
+}
+
+export function getPreference(userId: string, key: string): Preference | null {
+  return getOneQuery<Preference>('SELECT * FROM preferences WHERE user_id = ? AND key = ?', [userId, key]);
+}
+
+export function createOrUpdatePreference(userId: string, key: string, value: string): void {
+  const existing = getPreference(userId, key);
+  if (existing) {
+    runQuery('UPDATE preferences SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [value, existing.id]);
+  } else {
+    const id = generateId();
+    runQuery('INSERT INTO preferences (id, user_id, key, value) VALUES (?, ?, ?, ?)', [id, userId, key, value]);
+  }
+}
+
+export function upsertPreference(userId: string, key: string, value: string): void {
+  createOrUpdatePreference(userId, key, value);
+}
+
+export function deletePreference(userId: string, key: string): void {
+  runQuery('DELETE FROM preferences WHERE user_id = ? AND key = ?', [userId, key]);
 }
 
 const ALLOWED_USER_FIELDS = ['name', 'email', 'role', 'pdv_id', 'active', 'password_hash'];
@@ -186,6 +282,10 @@ export async function updateUser(id: string, data: Partial<User>): Promise<User 
   await runQuery(`UPDATE users SET ${mappedFields.join(', ')}, updated_at = ? WHERE id = ?`, values);
 
   return await getUserById(id);
+}
+
+export function deleteUser(id: string): void {
+  runQuery('DELETE FROM users WHERE id = ?', [id]);
 }
 
 export function createRegion(tenantId: string, name: string): Region {
@@ -917,9 +1017,122 @@ export function getIntegrationById(id: string): Integration | null {
   };
 }
 
+// Normalize widget rows to support both legacy (type/col_span/config) and newer
+// (widget_type/data/position/size) shapes used by the API routes.
+function mapDashboardWidget(row: any, fallbackPosition = 0) {
+  const dataString = typeof row.data === 'string' ? row.data : row.config ?? '{}';
+  const size = row.size ?? (row.col_span && row.col_span > 1 ? 'wide' : 'normal');
+
+  return {
+    ...row,
+    widget_type: row.widget_type ?? row.type ?? row.title,
+    data: dataString ?? '{}',
+    position: row.position ?? fallbackPosition,
+    size,
+    config: safeJsonParse(dataString ?? '{}', {})
+  };
+}
+
 export function getDashboardWidgetsByUserId(tenantId: string, userId: string): DashboardWidget[] {
   return getDashboardWidgetsByTenant(tenantId, userId);
 }
+
+// Compatibility helper expected by API routes that only pass the userId
+export function getWidgetsByUserId(userId: string): any[] {
+  const user = getUserById(userId);
+  if (!user) return [];
+
+  const rows = getQuery<any>(
+    `SELECT * FROM dashboard_widgets WHERE tenant_id = ? AND (user_id = ? OR user_id IS NULL) ORDER BY created_at`,
+    [user.tenant_id, userId]
+  );
+
+  return rows.map((row, index) => mapDashboardWidget(row, index));
+}
+
+export function getWidgetById(id: string): any | null {
+  const row = getOneQuery<any>('SELECT * FROM dashboard_widgets WHERE id = ?', [id]);
+  return row ? mapDashboardWidget(row) : null;
+}
+
+export function createWidget(
+  userId: string,
+  widgetType: string,
+  data: string,
+  position = 0,
+  size: string = 'normal'
+): any {
+  const user = getUserById(userId);
+  if (!user) {
+    throw new Error(`User not found: ${userId}`);
+  }
+
+  const id = generateId();
+  const now = new Date().toISOString();
+  const colSpan = size === 'wide' ? 2 : 1;
+
+  runQuery(
+    `INSERT INTO dashboard_widgets (id, tenant_id, user_id, type, title, col_span, config, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [id, user.tenant_id, userId, widgetType, widgetType, colSpan, data ?? '{}', now, now]
+  );
+
+  return mapDashboardWidget(
+    {
+      id,
+      tenant_id: user.tenant_id,
+      user_id: userId,
+      type: widgetType,
+      title: widgetType,
+      col_span: colSpan,
+      config: data ?? '{}',
+      created_at: now,
+      updated_at: now,
+    },
+    position
+  );
+}
+
+export function updateWidget(
+  id: string,
+  widgetType: string,
+  data: string,
+  position?: number,
+  size?: string
+): any | null {
+  const existing = getWidgetById(id);
+  if (!existing) return null;
+
+  const now = new Date().toISOString();
+  const colSpan = size ? (size === 'wide' ? 2 : 1) : existing.col_span ?? 1;
+  const configValue = data ?? existing.data ?? '{}';
+
+  runQuery(
+    `UPDATE dashboard_widgets
+     SET type = ?, title = ?, col_span = ?, config = ?, updated_at = ?
+     WHERE id = ?`,
+    [widgetType, widgetType, colSpan, configValue, now, id]
+  );
+
+  return mapDashboardWidget(
+    {
+      ...existing,
+      type: widgetType,
+      title: widgetType,
+      col_span: colSpan,
+      config: configValue,
+      updated_at: now,
+    },
+    position ?? existing.position ?? 0
+  );
+}
+
+export function deleteWidget(id: string): void {
+  runQuery('DELETE FROM dashboard_widgets WHERE id = ?', [id]);
+}
+
+// Backwards-compatible alias used by some API routes
+export const getDashboardWidgets = getDashboardWidgetsByTenant;
 
 // Alias for naming consistency (camelCase)
 export const createPdv = createPDV;
@@ -1012,446 +1225,119 @@ export function updateTag(id: string, label: string, color: string): Tag | null 
 
 export function seedTenantData(tenantId: string) {
   const now = new Date().toISOString();
+  const db = getDatabase();
+  db.pragma('foreign_keys = OFF');
   
-  const users = [
-    { id: 'admin-01', name: 'Diretoria (Admin)', email: 'admin@mc.com', role: 'ADMIN', pdvId: null },
-    { id: 'gerente-sp', name: 'Roberto (Gerente SP)', email: 'roberto@mc.com', role: 'MANAGER', pdvId: 'pdv-sp-01' },
-    { id: 'rep-sp-01', name: 'Ana (Vendedora SP)', email: 'ana@mc.com', role: 'SALES_REP', pdvId: 'pdv-sp-01' },
-    { id: 'rep-sp-02', name: 'Marcos (Vendedor SP)', email: 'marcos@mc.com', role: 'SALES_REP', pdvId: 'pdv-sp-01' },
-    { id: 'gerente-sul', name: 'Carla (Gerente Sul)', email: 'carla@mc.com', role: 'MANAGER', pdvId: 'pdv-sul-01' },
-    { id: 'rep-sul-01', name: 'João (Vendedor Sul)', email: 'joao@mc.com', role: 'SALES_REP', pdvId: 'pdv-sul-01' },
-    { id: 'rep-sul-02', name: 'Fernanda (Vendedora Sul)', email: 'fernanda@mc.com', role: 'SALES_REP', pdvId: 'pdv-sul-01' },
-    { id: 'support-01', name: 'Suporte ( Atendimento)', email: 'suporte@mc.com', role: 'SUPPORT', pdvId: null },
-  ];
-  
-  users.forEach(u => {
-    const passwordHash = bcrypt.hashSync('demo123', 10);
-    runQuery(`
-      INSERT INTO users (id, tenant_id, email, password_hash, name, role, pdv_id, is_active, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
-    `, [u.id, tenantId, u.email, passwordHash, u.name, u.role, u.pdvId, now, now]);
-  });
-  
-  const regions = [
-    { id: 'r1', name: 'Sudeste (SP/RJ)' },
-    { id: 'r2', name: 'Sul (PR/SC/RS)' },
-    { id: 'r3', name: 'Nordeste (BA/PE/CE)' },
-    { id: 'r4', name: 'Centro-Oeste (DF/GO)' },
-  ];
-  
-  regions.forEach(r => {
-    runQuery(`
-      INSERT INTO regions (id, tenant_id, name, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?)
-    `, [r.id, tenantId, r.name, now, now]);
-  });
-  
-  const pdvs = [
-    { id: 'pdv-sp-01', name: 'Loja Berrini (SP)', type: 'PHYSICAL_STORE', regionId: 'r1', location: 'São Paulo, SP' },
-    { id: 'pdv-sp-02', name: 'Quiosque Morumbi', type: 'KIOSK', regionId: 'r1', location: 'São Paulo, SP' },
-    { id: 'pdv-sp-03', name: 'Loja Paulista', type: 'PHYSICAL_STORE', regionId: 'r1', location: 'São Paulo, SP' },
-    { id: 'pdv-sul-01', name: 'Filial Curitiba', type: 'PHYSICAL_STORE', regionId: 'r2', location: 'Curitiba, PR' },
-    { id: 'pdv-sul-02', name: 'Loja Floripa', type: 'PHYSICAL_STORE', regionId: 'r2', location: 'Florianópolis, SC' },
-    { id: 'pdv-ne-01', name: 'Loja Salvador', type: 'PHYSICAL_STORE', regionId: 'r3', location: 'Salvador, BA' },
-    { id: 'pdv-co-01', name: 'Loja Brasília', type: 'PHYSICAL_STORE', regionId: 'r4', location: 'Brasília, DF' },
-    { id: 'pdv-online-01', name: 'E-commerce MC', type: 'ONLINE', regionId: 'r1', location: 'Online' },
-    { id: 'pdv-call-01', name: 'Central de Vendas', type: 'CALL_CENTER', regionId: 'r1', location: 'São Paulo, SP' },
-  ];
-  
-  pdvs.forEach(p => {
-    runQuery(`
-      INSERT INTO pdvs (id, tenant_id, name, type, region_id, location, is_active, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
-    `, [p.id, tenantId, p.name, p.type, p.regionId, p.location, now, now]);
-  });
-  
-  const stages = [
-    { id: 'stage-lead', name: 'Prospecção', color: 'border-t-blue-500', type: 'OPEN' },
-    { id: 'stage-contacted', name: 'Qualificação', color: 'border-t-yellow-500', type: 'OPEN' },
-    { id: 'stage-proposal', name: 'Apresentação', color: 'border-t-purple-500', type: 'OPEN' },
-    { id: 'stage-negotiation', name: 'Fechamento', color: 'border-t-orange-500', type: 'OPEN' },
-    { id: 'stage-won', name: 'Vendido', color: 'border-t-green-500', type: 'WON' },
-    { id: 'stage-lost', name: 'Perdido', color: 'border-t-red-500', type: 'LOST' },
-  ];
-  
-  stages.forEach((s, i) => {
-    runQuery(`
-      INSERT INTO pipeline_stages (id, tenant_id, name, color, type, automation_steps, order_index, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, '[]', ?, ?, ?)
-    `, [s.id, tenantId, s.name, s.color, s.type, i, now, now]);
-  });
-  
-  const tags = [
-    { id: 't1', label: 'VIP', color: 'bg-purple-100 text-purple-800' },
-    { id: 't2', label: 'Quente', color: 'bg-red-100 text-red-800' },
-    { id: 't3', label: 'Frio', color: 'bg-blue-100 text-blue-800' },
-    { id: 't4', label: 'Urgente', color: 'bg-orange-100 text-orange-800' },
-    { id: 't5', label: 'Novo Lead', color: 'bg-green-100 text-green-800' },
-    { id: 't6', label: 'Follow-up', color: 'bg-yellow-100 text-yellow-800' },
-    { id: 't7', label: 'Alto Potencial', color: 'bg-pink-100 text-pink-800' },
-    { id: 't8', label: 'Parceiro', color: 'bg-indigo-100 text-indigo-800' },
-  ];
-  
-  tags.forEach(t => {
-    runQuery(`
-      INSERT INTO tags (id, tenant_id, label, color, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `, [t.id, tenantId, t.label, t.color, now, now]);
-  });
-  
-  const customFields = [
-    { id: 'cf-deal-source', key: 'origin_source', label: 'Origem do Lead', type: 'select', scope: 'DEAL', options: ['Google Ads', 'Indicação', 'Instagram', 'Facebook', 'Passante', 'E-mail Marketing', 'Telefone', 'WhatsApp', 'Site'], required: true },
-    { id: 'cf-cust-birth', key: 'birthdate', label: 'Data de Nascimento / Fundação', type: 'date', scope: 'CUSTOMER', required: false },
-    { id: 'cf-cust-segment', key: 'segment', label: 'Segmento', type: 'select', scope: 'CUSTOMER', options: ['Varejo', 'Atacado', 'Serviços', 'Indústria', 'Governo', 'Agronegócio', 'Imobiliário', 'Automotivo', 'Tecnologia', 'Saúde'], required: false },
-    { id: 'cf-deal-expected-close', key: 'expected_close_date', label: 'Previsão de Fechamento', type: 'date', scope: 'DEAL', required: false },
-    { id: 'cf-deal-competitor', key: 'competitor', label: 'Concorrente na disputa', type: 'text', scope: 'DEAL', required: false },
-    { id: 'cf-cust-revenue', key: 'annual_revenue', label: 'Faturamento Anual', type: 'number', scope: 'CUSTOMER', required: false },
-    { id: 'cf-cust-employees', key: 'employees_count', label: 'Número de Funcionários', type: 'number', scope: 'CUSTOMER', required: false },
-  ];
-  
-  customFields.forEach(cf => {
-    runQuery(`
-      INSERT INTO custom_field_definitions (id, tenant_id, key, label, type, scope, options, required, active, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
-    `, [cf.id, tenantId, cf.key, cf.label, cf.type, cf.scope, JSON.stringify(cf.options || []), cf.required ? 1 : 0, now, now]);
-  });
-  
-  const products = [
-    {
-      id: 'p1', name: 'Carta Imóvel 500k', description: 'Consórcio Imobiliário Premium para imóveis de alto padrão', category: 'Consórcio Imóvel', basePrice: 500000,
-      attributes: [{ key: 'taxa', label: 'Taxa Adm', value: '14%' }, { key: 'prazo', label: 'Prazo Máximo', value: '180 meses' }],
-      formSchema: [
-        { key: 'group_number', label: 'Grupo', type: 'text', required: true },
-        { key: 'quota_number', label: 'Cota', type: 'text', required: true },
-        { key: 'contract_term', label: 'Prazo (Meses)', type: 'number', required: true }
-      ],
-      automationSteps: [
-        { id: 's1', name: 'Boas vindas imediata', delayValue: 5, delayUnit: 'MINUTES', messageTemplate: 'Olá, obrigado por adquirir o Consórcio Imóvel. Seu contrato está sendo gerado.' },
-        { id: 's2', name: 'Check de assembleia', delayValue: 20, delayUnit: 'DAYS', messageTemplate: 'Olá, sua primeira assembleia está chegando. Fique atento!' }
-      ],
-      defaultFollowUpDays: 30
-    },
-    {
-      id: 'p2', name: 'Carta Imóvel 250k', description: 'Consórcio Imobiliário Standard para imóveis residenciais', category: 'Consórcio Imóvel', basePrice: 250000,
-      attributes: [{ key: 'taxa', label: 'Taxa Adm', value: '15%' }, { key: 'prazo', label: 'Prazo Máximo', value: '180 meses' }],
-      formSchema: [
-        { key: 'group_number', label: 'Grupo', type: 'text', required: true },
-        { key: 'quota_number', label: 'Cota', type: 'text', required: true },
-      ],
-      automationSteps: [
-        { id: 's1', name: 'Boas vindas', delayValue: 10, delayUnit: 'MINUTES', messageTemplate: 'Bem-vindo ao consórcio! Vamos realizar seu sonho.' }
-      ],
-      defaultFollowUpDays: 30
-    },
-    {
-      id: 'p3', name: 'Consórcio Auto 80k', description: 'Veículos leves e utilitários até 80 mil', category: 'Consórcio Auto', basePrice: 80000,
-      attributes: [{ key: 'taxa', label: 'Taxa Adm', value: '16%' }],
-      formSchema: [
-        { key: 'group_number', label: 'Grupo', type: 'text', required: true },
-        { key: 'quota_number', label: 'Cota', type: 'text', required: true },
-        { key: 'vehicle_type', label: 'Tipo de Veículo', type: 'select', options: ['Carro', 'Moto', 'Caminhão', 'Utilitário'], required: true }
-      ],
-      automationSteps: [],
-      defaultFollowUpDays: 15
-    },
-    {
-      id: 'p4', name: 'Consórcio Auto 150k', description: 'Veículos premium e SUVs', category: 'Consórcio Auto', basePrice: 150000,
-      attributes: [{ key: 'taxa', label: 'Taxa Adm', value: '15%' }],
-      formSchema: [
-        { key: 'group_number', label: 'Grupo', type: 'text', required: true },
-        { key: 'quota_number', label: 'Cota', type: 'text', required: true },
-      ],
-      automationSteps: [],
-      defaultFollowUpDays: 15
-    },
-    {
-      id: 'p5', name: 'Consórcio Moto 25k', description: 'Motocicletas e scooters', category: 'Consórcio Moto', basePrice: 25000,
-      attributes: [{ key: 'taxa', label: 'Taxa Adm', value: '12%' }],
-      formSchema: [
-        { key: 'group_number', label: 'Grupo', type: 'text', required: true },
-        { key: 'quota_number', label: 'Cota', type: 'text', required: true },
-        { key: 'brand', label: 'Marca', type: 'text', required: false }
-      ],
-      automationSteps: [],
-      defaultFollowUpDays: 10
-    },
-    {
-      id: 'p6', name: 'iPhone 15 Pro Max', description: 'Apple iPhone 15 Pro Max 256GB', category: 'Varejo', basePrice: 9000,
-      attributes: [{ key: 'brand', label: 'Marca', value: 'Apple' }, { key: 'warranty', label: 'Garantia', value: '1 ano Apple' }],
-      formSchema: [
-        { key: 'sku', label: 'SKU / Código', type: 'text', required: true },
-        { key: 'color', label: 'Cor', type: 'select', options: ['Titânio Natural', 'Preto', 'Branco', 'Azul'], required: true },
-        { key: 'storage', label: 'Armazenamento', type: 'select', options: ['256GB', '512GB', '1TB'], required: true },
-        { key: 'imei', label: 'IMEI', type: 'text', required: false }
-      ],
-      automationSteps: [],
-      defaultFollowUpDays: 7
-    },
-    {
-      id: 'p7', name: 'Samsung Galaxy S24', description: 'Samsung Galaxy S24 Ultra', category: 'Varejo', basePrice: 7500,
-      attributes: [{ key: 'brand', label: 'Marca', value: 'Samsung' }],
-      formSchema: [
-        { key: 'sku', label: 'SKU', type: 'text', required: true },
-        { key: 'color', label: 'Cor', type: 'select', options: ['Cinza', 'Preto', 'Violeta', 'Amarelo'], required: true },
-      ],
-      automationSteps: [],
-      defaultFollowUpDays: 7
-    },
-    {
-      id: 'p8', name: 'Notebook Dell XPS', description: 'Dell XPS 15 Laptop', category: 'Varejo', basePrice: 12000,
-      attributes: [{ key: 'brand', label: 'Marca', value: 'Dell' }],
-      formSchema: [
-        { key: 'sku', label: 'SKU', type: 'text', required: true },
-        { key: 'processor', label: 'Processador', type: 'text', required: false },
-        { key: 'ram', label: 'RAM', type: 'text', required: false },
-      ],
-      automationSteps: [],
-      defaultFollowUpDays: 14
-    },
-    {
-      id: 'p9', name: 'Serviço de Consultoria Financeira', description: 'Planejamento financeiro pessoal e empresarial', category: 'Serviços', basePrice: 2500,
-      attributes: [{ key: 'duration', label: 'Duração', value: '4 horas' }],
-      formSchema: [
-        { key: 'service_type', label: 'Tipo de Consultoria', type: 'select', options: ['Pessoal', 'Empresarial', 'Investimentos', 'Aposentadoria'], required: true },
-        { key: 'client_name', label: 'Nome do Cliente', type: 'text', required: true },
-      ],
-      automationSteps: [
-        { id: 's1', name: 'Agendamento confirmação', delayValue: 1, delayUnit: 'HOURS', messageTemplate: 'Sua consultoria foi agendada. Prepare-se para transformar suas finanças!' }
-      ],
-      defaultFollowUpDays: 30
-    },
-    {
-      id: 'p10', name: 'Seguro de Vida em Grupo', description: 'Proteção para sua equipe', category: 'Seguros', basePrice: 500,
-      attributes: [{ key: 'coverage', label: 'Cobertura', value: 'R$ 100.000' }],
-      formSchema: [
-        { key: 'company_name', label: 'Empresa', type: 'text', required: true },
-        { key: 'employees_count', label: 'Número de Funcionários', type: 'number', required: true },
-      ],
-      automationSteps: [],
-      defaultFollowUpDays: 45
-    }
-  ];
-  
-  products.forEach(p => {
-    runQuery(`
-      INSERT INTO products (id, tenant_id, name, description, category, base_price, attributes, form_schema, automation_steps, default_follow_up_days, active, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
-    `, [
-      p.id, tenantId, p.name, p.description, p.category, p.basePrice || 0,
-      JSON.stringify(p.attributes || []), JSON.stringify(p.formSchema || []), JSON.stringify(p.automationSteps || []),
-      p.defaultFollowUpDays || null, now, now
-    ]);
-  });
-  
-  const customers = [
-    {
-      id: 'c1', type: 'PJ' as const, name: 'Tech Solutions PJ', document: '12.345.678/0001-90', email: 'contato@tech.com', phone: '11 99999-9999', zipCode: '04551-000',
-      status: 'ACTIVE' as const, pdvIds: ['pdv-sp-01'], assignedEmployeeIds: ['rep-sp-01'],
-      customValues: { segment: 'Tecnologia', annual_revenue: 5000000, employees_count: 50 }
-    },
-    {
-      id: 'c2', type: 'PJ' as const, name: 'Agro Sul Ltda', document: '98.765.432/0001-10', email: 'comercial@agrosul.com', phone: '41 88888-8888', zipCode: '80240-000',
-      status: 'PROPONENT' as const, pdvIds: ['pdv-sul-01'], assignedEmployeeIds: ['rep-sul-01'],
-      customValues: { segment: 'Agronegócio', annual_revenue: 12000000, employees_count: 120 }
-    },
-    {
-      id: 'c3', type: 'PF' as const, name: 'Investidor João Silva', document: '123.456.789-00', email: 'joao.silva@gmail.com', phone: '11 98888-7777', zipCode: '01310-100',
-      status: 'LEAD' as const, pdvIds: ['pdv-sp-01', 'pdv-sul-01'], assignedEmployeeIds: ['gerente-sp'],
-      customValues: { birthdate: '1985-05-15', segment: 'Investidor' }
-    },
-    {
-      id: 'c4', type: 'PJ' as const, name: 'Construtora Delta', document: '45.678.901/0001-23', email: 'vendas@delta.com.br', phone: '21 33333-3333', zipCode: '20040-000',
-      status: 'ACTIVE' as const, pdvIds: ['pdv-sp-01'], assignedEmployeeIds: ['rep-sp-02'],
-      customValues: { segment: 'Imobiliário', annual_revenue: 45000000, employees_count: 200 }
-    },
-    {
-      id: 'c5', type: 'PF' as const, name: 'Empresária Maria Santos', document: '987.654.321-00', email: 'maria.santos@outlook.com', phone: '11 97777-6666', zipCode: '01415-000',
-      status: 'PROPONENT' as const, pdvIds: ['pdv-sp-03'], assignedEmployeeIds: ['rep-sp-01'],
-      customValues: { birthdate: '1978-03-22', segment: 'Empresária' }
-    },
-    {
-      id: 'c6', type: 'PJ' as const, name: 'Frota Rent a Car', document: '33.222.111/0001-44', email: 'frota@frotacar.com.br', phone: '51 32222-2222', zipCode: '90020-000',
-      status: 'LEAD' as const, pdvIds: ['pdv-sul-02'], assignedEmployeeIds: ['rep-sul-02'],
-      customValues: { segment: 'Automotivo', annual_revenue: 8000000, employees_count: 80 }
-    },
-    {
-      id: 'c7', type: 'PJ' as const, name: 'Hospital São Lucas', document: '55.444.333/0001-55', email: 'compras@saolucas.com.br', phone: '71 35555-5555', zipCode: '40110-000',
-      status: 'ACTIVE' as const, pdvIds: ['pdv-ne-01'], assignedEmployeeIds: ['gerente-sul'],
-      customValues: { segment: 'Saúde', annual_revenue: 120000000, employees_count: 1500 }
-    },
-    {
-      id: 'c8', type: 'PF' as const, name: 'Engenheiro Carlos Mendes', document: '111.222.333-44', email: 'carlos.mendes@eng.com.br', phone: '61 34444-4444', zipCode: '70000-000',
-      status: 'DEFAULTING' as const, pdvIds: ['pdv-co-01'], assignedEmployeeIds: ['gerente-sp'],
-      customValues: { birthdate: '1990-08-10', segment: 'Engenharia' }
-    },
-    {
-      id: 'c9', type: 'PJ' as const, name: 'Escola Modelo', document: '66.777.888/0001-99', email: 'financeiro@escolamodelo.edu.br', phone: '11 38888-8888', zipCode: '05051-000',
-      status: 'CHURN' as const, pdvIds: ['pdv-sp-01'], assignedEmployeeIds: ['rep-sp-02'],
-      customValues: { segment: 'Educação', annual_revenue: 3500000, employees_count: 150 }
-    },
-    {
-      id: 'c10', type: 'PF' as const, name: 'Médica Dra. Ana Paula', document: '222.333.444-55', email: 'anapaula@med.com.br', phone: '11 39999-9999', zipCode: '01234-000',
-      status: 'PENDING' as const, pdvIds: ['pdv-sp-02'], assignedEmployeeIds: ['rep-sp-01'],
-      customValues: { birthdate: '1975-12-01', segment: 'Saúde' }
-    }
-  ];
-  
-  customers.forEach(c => {
-    runQuery(`
-      INSERT INTO customers (id, tenant_id, type, name, document, email, phone, zip_code, status, pdv_ids, assigned_employee_ids, custom_values, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      c.id, tenantId, c.type, c.name, c.document, c.email, c.phone, c.zipCode, c.status,
-      JSON.stringify(c.pdvIds), JSON.stringify(c.assignedEmployeeIds), JSON.stringify(c.customValues),
-      now, now
-    ]);
-  });
-  
-  const deals = [
-    {
-      id: 'd1', title: 'Expansão Sede Tech Solutions', pdvId: 'pdv-sp-01', customerId: 'c1', customerName: 'Tech Solutions PJ', value: 500000,
-      stageId: 'stage-won', visibility: 'PUBLIC' as const, assignedEmployeeIds: ['rep-sp-01'], productIds: ['p1'],
-      customValues: { group_number: '1020', quota_number: '55', contract_term: 180, origin_source: 'Indicação' },
-      tags: [{ id: 't1', label: 'VIP', color: 'bg-purple-100 text-purple-800' }],
-      notes: 'Cliente quer usar lance embutido. Grande oportunidade de cross-sell.',
-      nextFollowUpDate: null
-    },
-    {
-      id: 'd2', title: 'Frota Agro Sul - 2 veículos', pdvId: 'pdv-sul-01', customerId: 'c2', customerName: 'Agro Sul Ltda', value: 160000,
-      stageId: 'stage-negotiation', visibility: 'RESTRICTED' as const, assignedEmployeeIds: ['rep-sul-01'], productIds: ['p3'],
-      customValues: { origin_source: 'Google Ads' },
-      tags: [{ id: 't2', label: 'Quente', color: 'bg-red-100 text-red-800' }, { id: 't4', label: 'Urgente', color: 'bg-orange-100 text-orange-800' }],
-      notes: 'Cotando 2 cartas de auto. Cliente precisa para entrega em 60 dias.',
-      nextFollowUpDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: 'd3', title: 'Compra iPhone Corporativo - Tech', pdvId: 'pdv-sp-02', customerId: 'c1', customerName: 'Tech Solutions PJ', value: 27000,
-      stageId: 'stage-won', visibility: 'PUBLIC' as const, assignedEmployeeIds: ['gerente-sp'], productIds: ['p6', 'p6', 'p6'],
-      customValues: { sku: 'IPH15-TIT', color: 'Titânio Natural', origin_source: 'Passante', storage: '256GB' },
-      tags: [],
-      notes: '3 iPhones para equipe de gestão. Retirada em loja.',
-      nextFollowUpDate: null
-    },
-    {
-      id: 'd4', title: 'Imóvel Industrial Delta', pdvId: 'pdv-sp-03', customerId: 'c4', customerName: 'Construtora Delta', value: 1500000,
-      stageId: 'stage-proposal', visibility: 'RESTRICTED' as const, assignedEmployeeIds: ['rep-sp-02'], productIds: ['p1'],
-      customValues: { group_number: '2025', quota_number: '120', contract_term: 200, origin_source: 'Indicação' },
-      tags: [{ id: 't1', label: 'VIP', color: 'bg-purple-100 text-purple-800' }, { id: 't7', label: 'Alto Potencial', color: 'bg-pink-100 text-pink-800' }],
-      notes: 'Grande projeto de expansão industrial. Múltiplas cartas.',
-      nextFollowUpDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: 'd5', title: 'Consultoria Financeira Maria', pdvId: 'pdv-online-01', customerId: 'c5', customerName: 'Empresária Maria Santos', value: 2500,
-      stageId: 'stage-contacted', visibility: 'PUBLIC' as const, assignedEmployeeIds: ['rep-sp-01'], productIds: ['p9'],
-      customValues: { service_type: 'Empresarial', origin_source: 'Instagram' },
-      tags: [{ id: 't5', label: 'Novo Lead', color: 'bg-green-100 text-green-800' }],
-      notes: 'Cliente busca planejamento para expansão do negócio.',
-      nextFollowUpDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: 'd6', title: 'Frota Rent a Car - 10 veículos', pdvId: 'pdv-sul-02', customerId: 'c6', customerName: 'Frota Rent a Car', value: 800000,
-      stageId: 'stage-lead', visibility: 'PUBLIC' as const, assignedEmployeeIds: ['rep-sul-02'], productIds: ['p4'],
-      customValues: { origin_source: 'E-mail Marketing' },
-      tags: [{ id: 't3', label: 'Frio', color: 'bg-blue-100 text-blue-800' }],
-      notes: 'Renovação de frota. Necessidade urgente.',
-      nextFollowUpDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: 'd7', title: 'Equipamentos Hospitalares', pdvId: 'pdv-ne-01', customerId: 'c7', customerName: 'Hospital São Lucas', value: 350000,
-      stageId: 'stage-proposal', visibility: 'RESTRICTED' as const, assignedEmployeeIds: ['gerente-sul'], productIds: ['p8', 'p8', 'p8'],
-      customValues: { origin_source: 'Telefone' },
-      tags: [{ id: 't1', label: 'VIP', color: 'bg-purple-100 text-purple-800' }, { id: 't4', label: 'Urgente', color: 'bg-orange-100 text-orange-800' }],
-      notes: 'Hospital buscando equipamentos para nova ala.',
-      nextFollowUpDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: 'd8', title: 'Imóvel Carlos - Reserva', pdvId: 'pdv-co-01', customerId: 'c8', customerName: 'Engenheiro Carlos Mendes', value: 350000,
-      stageId: 'stage-lost', visibility: 'PUBLIC' as const, assignedEmployeeIds: ['gerente-sp'], productIds: ['p1'],
-      customValues: { origin_source: 'Google Ads' },
-      tags: [],
-      notes: 'Cliente desistiu por questões financeiras.',
-      nextFollowUpDate: null
-    },
-    {
-      id: 'd9', title: 'iPhones Escola Modelo - 50 unidades', pdvId: 'pdv-online-01', customerId: 'c9', customerName: 'Escola Modelo', value: 450000,
-      stageId: 'stage-lost', visibility: 'PUBLIC' as const, assignedEmployeeIds: ['rep-sp-02'], productIds: ['p6'],
-      customValues: { origin_source: 'Facebook' },
-      tags: [],
-      notes: 'Concorrente ofereceu melhor preço.',
-      nextFollowUpDate: null
-    },
-    {
-      id: 'd10', title: 'Consórcio Auto Dra. Ana Paula', pdvId: 'pdv-sp-02', customerId: 'c10', customerName: 'Médica Dra. Ana Paula', value: 80000,
-      stageId: 'stage-qualification', visibility: 'PUBLIC' as const, assignedEmployeeIds: ['rep-sp-01'], productIds: ['p3'],
-      customValues: { origin_source: 'WhatsApp' },
-      tags: [{ id: 't5', label: 'Novo Lead', color: 'bg-green-100 text-green-800' }],
-      notes: 'Primeiro contato realizado. Aguardando documentação.',
-      nextFollowUpDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: 'd11', title: 'Frota Delivery - 5 vans', pdvId: 'pdv-sp-01', customerId: 'c1', customerName: 'Tech Solutions PJ', value: 400000,
-      stageId: 'stage-negotiation', visibility: 'PUBLIC' as const, assignedEmployeeIds: ['rep-sp-01'], productIds: ['p4'],
-      customValues: { vehicle_type: 'Utilitário', origin_source: 'Indicação' },
-      tags: [{ id: 't2', label: 'Quente', color: 'bg-red-100 text-red-800' }],
-      notes: 'Expandindo operação de delivery. Precisa de 5 vans.',
-      nextFollowUpDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: 'd12', title: 'Consórcio Moto - Lote 20 unidades', pdvId: 'pdv-sul-01', customerId: 'c6', customerName: 'Frota Rent a Car', value: 500000,
-      stageId: 'stage-proposal', visibility: 'PUBLIC' as const, assignedEmployeeIds: ['rep-sul-01'], productIds: ['p5'],
-      customValues: { origin_source: 'Telefone' },
-      tags: [{ id: 't7', label: 'Alto Potencial', color: 'bg-pink-100 text-pink-800' }],
-      notes: ' Grande pedido para expansão de entregas rápidas.',
-      nextFollowUpDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-    }
-  ];
-  
-  deals.forEach(d => {
-    runQuery(`
-      INSERT INTO deals (id, tenant_id, title, pdv_id, customer_id, customer_name, value, stage_id, visibility, assigned_employee_ids, product_ids, custom_values, tags, notes, next_follow_up_date, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      d.id, tenantId, d.title, d.pdvId || null, d.customerId, d.customerName, d.value || 0, d.stageId, d.visibility,
-      JSON.stringify(d.assignedEmployeeIds || []), JSON.stringify(d.productIds || []), JSON.stringify(d.customValues || {}),
-      JSON.stringify(d.tags || []), d.notes || '', d.nextFollowUpDate || null, now, now
-    ]);
-  });
-  
-  const integrations = [
-    { id: 'whatsapp-1', name: 'WhatsApp Business', type: 'WHATSAPP', config: { apiUrl: 'https://api.whatsapp.com', enabled: true } },
-    { id: 'email-1', name: 'E-mail Corporativo', type: 'EMAIL', config: { smtp: 'smtp.mc.com', port: 587 } },
-    { id: 'gemini-1', name: 'Google Gemini AI', type: 'AI', config: { model: 'gemini-pro' } },
-    { id: 'zapier-1', name: 'Zapier', type: 'INTEGRATION', config: { webhookUrl: '' } },
-    { id: 'salesforce-1', name: 'Salesforce', type: 'CRM', config: { connected: false } },
-  ];
-  
-  integrations.forEach(i => {
+  try {
+    // Importar exatamente os dados do constants/index.ts
+    const { 
+      INITIAL_REGIONS, INITIAL_PDVS, INITIAL_EMPLOYEES, 
+      INITIAL_PRODUCTS, INITIAL_CUSTOMERS, INITIAL_DEALS, 
+      AVAILABLE_TAGS, INITIAL_STAGES, DEFAULT_DASHBOARD_WIDGETS, 
+      INITIAL_CUSTOM_FIELDS 
+    } = require('@/constants');
+    
+    // Seed Users/Employees
+    INITIAL_EMPLOYEES.forEach((u: any) => {
+      const passwordHash = bcrypt.hashSync('demo123', 10);
+      runQuery(`
+        INSERT INTO users (id, tenant_id, email, password_hash, name, role, pdv_id, is_active, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+      `, [u.id, tenantId, u.email, passwordHash, u.name, u.role, u.pdvId, now, now]);
+    });
+    
+    // Seed Regions
+    INITIAL_REGIONS.forEach((r: any) => {
+      runQuery(`
+        INSERT INTO regions (id, tenant_id, name, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?)
+      `, [r.id, tenantId, r.name, now, now]);
+    });
+    
+    // Seed PDVs
+    INITIAL_PDVS.forEach((p: any) => {
+      runQuery(`
+        INSERT INTO pdvs (id, tenant_id, name, type, region_id, location, is_active, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
+      `, [p.id, tenantId, p.name, p.type, p.regionId, p.location, now, now]);
+    });
+    
+    // Seed Pipeline Stages
+    INITIAL_STAGES.forEach((s: any, i: number) => {
+      runQuery(`
+        INSERT INTO pipeline_stages (id, tenant_id, name, color, type, automation_steps, order_index, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, '[]', ?, ?, ?)
+      `, [s.id, tenantId, s.name, s.color, s.type, i, now, now]);
+    });
+    
+    // Seed Tags
+    AVAILABLE_TAGS.forEach((t: any) => {
+      runQuery(`
+        INSERT INTO tags (id, tenant_id, label, color, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `, [t.id, tenantId, t.label, t.color, now, now]);
+    });
+    
+    // Seed Custom Field Definitions
+    INITIAL_CUSTOM_FIELDS.forEach((cf: any) => {
+      runQuery(`
+        INSERT INTO custom_field_definitions (id, tenant_id, key, label, type, scope, options, required, active, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+      `, [cf.id, tenantId, cf.key, cf.label, cf.type, cf.scope, JSON.stringify(cf.options || []), cf.required ? 1 : 0, now, now]);
+    });
+    
+    // Seed Products
+    INITIAL_PRODUCTS.forEach((p: any) => {
+      runQuery(`
+        INSERT INTO products (id, tenant_id, name, description, category, base_price, attributes, form_schema, automation_steps, default_follow_up_days, active, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+      `, [
+        p.id, tenantId, p.name, p.description, p.category, p.basePrice || 0,
+        JSON.stringify(p.attributes || []), JSON.stringify(p.formSchema || []), JSON.stringify(p.automationSteps || []),
+        p.defaultFollowUpDays || null, now, now
+      ]);
+    });
+    
+    // Seed Customers
+    INITIAL_CUSTOMERS.forEach((c: any) => {
+      runQuery(`
+        INSERT INTO customers (id, tenant_id, type, name, document, email, phone, zip_code, status, pdv_ids, assigned_employee_ids, custom_values, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        c.id, tenantId, c.type, c.name, c.document, c.email, c.phone, c.zipCode, c.status,
+        JSON.stringify(c.pdvIds), JSON.stringify(c.assignedEmployeeIds), JSON.stringify(c.customValues),
+        now, now
+      ]);
+    });
+    
+    // Seed Deals
+    INITIAL_DEALS.forEach((d: any) => {
+      runQuery(`
+        INSERT INTO deals (id, tenant_id, title, pdv_id, customer_id, customer_name, value, stage_id, visibility, assigned_employee_ids, product_ids, custom_values, tags, notes, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        d.id, tenantId, d.title, d.pdvId, d.customerId, d.customerName, d.value, d.stageId, d.visibility,
+        JSON.stringify(d.assignedEmployeeIds), JSON.stringify(d.productIds), JSON.stringify(d.customValues), 
+        JSON.stringify(d.tags), d.notes, now, now
+      ]);
+    });
+    
+    // Seed Dashboard Widgets
+    DEFAULT_DASHBOARD_WIDGETS.forEach((w: any) => {
+      runQuery(`
+        INSERT INTO dashboard_widgets (id, tenant_id, user_id, type, title, col_span, config, created_at, updated_at)
+        VALUES (?, ?, NULL, ?, ?, ?, '{}', ?, ?)
+      `, [w.id, tenantId, w.type, w.title, w.colSpan, now, now]);
+    });
+    
+    // Seed default integration
     runQuery(`
       INSERT INTO integrations (id, tenant_id, name, type, status, config, created_at, updated_at)
-      VALUES (?, ?, ?, ?, 'DISCONNECTED', ?, ?, ?)
-    `, [i.id, tenantId, i.name, i.type, JSON.stringify(i.config), now, now]);
-  });
-  
-  const widgets = [
-    { id: 'w0', type: 'GOAL_PROGRESS', title: 'Metas do Mês', colSpan: 4, config: { goal: 1000000, current: 675000 } },
-    { id: 'w1', type: 'KPI_TOTAL_SALES', title: 'Volume Geral', colSpan: 1 },
-    { id: 'w2', type: 'KPI_ACTIVE_DEALS', title: 'Pipeline Ativo', colSpan: 1 },
-    { id: 'w3', type: 'KPI_CONVERSION', title: 'Conversão', colSpan: 1 },
-    { id: 'w4', type: 'KPI_AVG_TICKET', title: 'Ticket Médio', colSpan: 1 },
-    { id: 'w5', type: 'CHART_FUNNEL', title: 'Funil de Vendas', colSpan: 2 },
-    { id: 'w6', type: 'CHART_SALES_BY_REP', title: 'Ranking Equipe', colSpan: 2 },
-    { id: 'w7', type: 'CHART_SALES_BY_PRODUCT', title: 'Vendas por Produto', colSpan: 2 },
-    { id: 'w8', type: 'CHART_SALES_BY_REGION', title: 'Vendas por Região', colSpan: 2 },
-    { id: 'w9', type: 'LIST_RECENT_DEALS', title: 'Negócios Recentes', colSpan: 4 },
-    { id: 'w10', type: 'LIST_FOLLOW_UPS', title: 'Follow-ups Hoje', colSpan: 2 },
-  ];
-  
-  widgets.forEach(w => {
-    runQuery(`
-      INSERT INTO dashboard_widgets (id, tenant_id, user_id, type, title, col_span, config, created_at, updated_at)
-      VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?)
-    `, [w.id, tenantId, w.type, w.title, w.colSpan, JSON.stringify(w.config || {}), now, now]);
-  });
-  
-  console.log('Tenant data seeded successfully with all modules');
+      VALUES (?, ?, ?, ?, 'DISCONNECTED', '{}', ?, ?)
+    `, ['whatsapp-1', tenantId, 'WhatsApp Business', 'WHATSAPP', now, now]);
+    
+    console.log(`Tenant ${tenantId} seeded successfully with demo data from constants`);
+  } finally {
+    db.pragma('foreign_keys = ON');
+  }
 }

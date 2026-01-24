@@ -14,24 +14,27 @@ const db = new Database(dbPath);
 // Enable WAL mode for better concurrency
 db.pragma('journal_mode = WAL');
 
-// Clear existing data (optional - for fresh seeding)
-db.exec(`
-  DELETE FROM users;
-  DELETE FROM tenants;
-  DELETE FROM sessions;
-  DELETE FROM preferences;
-  DELETE FROM dashboard_widgets;
-  DELETE FROM regions;
-  DELETE FROM pdvs;
-  DELETE FROM customers;
-  DELETE FROM products;
-  DELETE FROM pipeline_stages;
-  DELETE FROM tags;
-  DELETE FROM deals;
-  DELETE FROM custom_field_definitions;
-  DELETE FROM integrations;
-  DELETE FROM widgets;
-`);
+// Temporarily disable foreign keys to avoid seed order issues
+db.pragma('foreign_keys = OFF');
+
+try {
+  // Clear existing data (optional - for fresh seeding)
+  db.exec(`
+    DELETE FROM users;
+    DELETE FROM tenants;
+    DELETE FROM sessions;
+    DELETE FROM preferences;
+    DELETE FROM dashboard_widgets;
+    DELETE FROM regions;
+    DELETE FROM pdvs;
+    DELETE FROM customers;
+    DELETE FROM products;
+    DELETE FROM pipeline_stages;
+    DELETE FROM tags;
+    DELETE FROM deals;
+    DELETE FROM custom_field_definitions;
+    DELETE FROM integrations;
+  `);
 
 // Generate IDs
 function generateId(): string {
@@ -77,8 +80,8 @@ const defaultUser = {
 };
 
 db.prepare(`
-  INSERT INTO users (id, email, password_hash, name, role, is_active, tenant_id, created_at, updated_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO users (id, email, password_hash, name, role, is_active, tenant_id, pdv_id, created_at, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `).run(
   defaultUser.id,
   defaultUser.email,
@@ -87,6 +90,7 @@ db.prepare(`
   defaultUser.role,
   defaultUser.isActive,
   defaultUser.tenantId,
+  null,
   defaultUser.createdAt,
   defaultUser.updatedAt
 );
@@ -136,9 +140,9 @@ const stages = [
 
 for (const stage of stages) {
   db.prepare(`
-    INSERT INTO pipeline_stages (id, tenant_id, name, type, order_val, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(stage.id, stage.tenantId, stage.name, stage.type, stage.order, now, now);
+    INSERT INTO pipeline_stages (id, tenant_id, name, color, type, automation_steps, order_index, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(stage.id, stage.tenantId, stage.name, null, stage.type, '[]', stage.order, now, now);
 }
 
 // Create tags
@@ -211,9 +215,9 @@ const customFields = [
 
 for (const field of customFields) {
   db.prepare(`
-    INSERT INTO custom_field_definitions (id, tenant_id, entity, field_key, label, type, options, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(field.id, field.tenantId, field.entity, field.fieldKey, field.label, field.type, field.options, now, now);
+    INSERT INTO custom_field_definitions (id, tenant_id, key, label, type, scope, options, required, active, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(field.id, field.tenantId, field.fieldKey, field.label, field.type, field.entity, field.options, 0, 1, now, now);
 }
 
 // Create integrations
@@ -233,16 +237,16 @@ for (const integration of integrations) {
 // Create widgets
 console.log('Creating dashboard widgets...');
 const widgets = [
-  { id: generateId(), name: 'Sales Overview', type: 'CHART', tenantId: defaultTenantId },
-  { id: generateId(), name: 'Recent Activity', type: 'LIST', tenantId: defaultTenantId },
-  { id: generateId(), name: 'Top Performers', type: 'TABLE', tenantId: defaultTenantId },
+  { id: generateId(), title: 'Sales Overview', type: 'CHART', tenantId: defaultTenantId, userId: defaultUserId },
+  { id: generateId(), title: 'Recent Activity', type: 'LIST', tenantId: defaultTenantId, userId: defaultUserId },
+  { id: generateId(), title: 'Top Performers', type: 'TABLE', tenantId: defaultTenantId, userId: defaultUserId },
 ];
 
 for (const widget of widgets) {
   db.prepare(`
-    INSERT INTO widgets (id, tenant_id, name, type, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(widget.id, widget.tenantId, widget.name, widget.type, now, now);
+    INSERT INTO dashboard_widgets (id, tenant_id, user_id, type, title, col_span, config, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(widget.id, widget.tenantId, widget.userId, widget.type, widget.title, 1, '{}', now, now);
 }
 
 console.log('Database seeded successfully!');
@@ -252,7 +256,10 @@ console.log('  Email: admin@mc.com');
 console.log('  Password: admin123');
 console.log('  Company: MC Investimentos Demo');
 
-// Close the database connection
-db.close();
+} finally {
+  db.pragma('foreign_keys = ON');
+  // Close the database connection
+  db.close();
+}
 
 console.log('Seeding completed.');

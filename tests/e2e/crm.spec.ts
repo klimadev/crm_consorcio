@@ -35,7 +35,7 @@ test.describe('CRM Next E2E Tests', () => {
       await page.click('button[type="submit"]');
       
       await expect(page).toHaveURL('/');
-      await expect(page.locator('h1')).toContainText('kanban', { timeout: 10000 });
+      await expect(page.locator('text=Funil Operacional')).toBeVisible({ timeout: 10000 });
     });
 
     test('should redirect to login when accessing protected page without auth', async ({ page }) => {

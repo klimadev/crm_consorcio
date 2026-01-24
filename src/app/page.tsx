@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CRMProvider, useCRM } from '@/context';
 import { KanbanBoard, DashboardBI, SalesEngine, OrganizationView, EmployeesView, ProductsView, CustomersView, IntegrationsView, NoSSR } from '@/components';
 import { 
@@ -27,14 +29,22 @@ const NavItem = ({ view, icon: Icon, label, currentView, setCurrentView }: { vie
 const InnerApp: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('kanban');
   const [mounted, setMounted] = useState(false);
-  const { currentUser, employees, setCurrentUser, deals, stages } = useCRM();
+  const { currentUser, employees, setCurrentUser, deals, stages, isAuthResolved } = useCRM();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted || !currentUser) {
+  useEffect(() => {
+    if (!mounted) return;
+    if (isAuthResolved && !currentUser) {
+      router.replace('/login');
+    }
+  }, [mounted, isAuthResolved, currentUser, router]);
+
+  if (!mounted || !isAuthResolved || !currentUser) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50">
         <div className="text-slate-400">Carregando...</div>
@@ -42,9 +52,9 @@ const InnerApp: React.FC = () => {
     );
   }
 
-  const overdueDeals = deals.filter(d => {
+  const overdueDeals = (deals || []).filter(d => {
     if (!d.nextFollowUpDate) return false;
-    const stage = stages.find(s => s.id === d.stageId);
+    const stage = (stages || []).find(s => s.id === d.stageId);
     const isClosed = stage?.type === 'WON' || stage?.type === 'LOST';
     const dealDate = new Date(d.nextFollowUpDate);
     const now = new Date();
@@ -87,23 +97,23 @@ const InnerApp: React.FC = () => {
              className="w-full bg-slate-800/50 hover:bg-slate-800 rounded-xl p-3 border border-slate-700/50 flex items-center justify-between transition-colors"
            >
              <div className="flex items-center gap-3 overflow-hidden">
-               <div className="w-8 h-8 rounded-full bg-blue-500 flex flex-shrink-0 items-center justify-center text-xs font-bold text-white">
-                 {currentUser.name.charAt(0)}
-               </div>
-               <div className="overflow-hidden text-left">
-                 <p className="text-sm font-medium text-white truncate">{currentUser.name}</p>
-                 <p className="text-[10px] text-slate-400 truncate uppercase font-bold">{currentUser.role}</p>
-               </div>
+                <div className="w-8 h-8 rounded-full bg-blue-500 flex flex-shrink-0 items-center justify-center text-xs font-bold text-white">
+                  {currentUser?.name?.charAt(0) ?? '?'}
+                </div>
+                <div className="overflow-hidden text-left">
+                  <p className="text-sm font-medium text-white truncate">{currentUser?.name ?? 'Usuario'}</p>
+                  <p className="text-[10px] text-slate-400 truncate uppercase font-bold">{currentUser.role}</p>
+                </div>
              </div>
              <ChevronDown size={14} className="text-slate-500" />
            </button>
-           {showUserMenu && (
-             <div className="absolute bottom-full left-4 right-4 mb-2 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden py-1 z-50">
-               {employees.map(e => (
-                   <button key={e.id} onClick={() => { setCurrentUser(e); setShowUserMenu(false); }} className={`w-full text-left px-4 py-2 text-sm hover:bg-blue-50 ${currentUser.id === e.id ? 'font-bold text-blue-600 bg-blue-50' : 'text-slate-600'}`}>{e.name}</button>
-               ))}
-             </div>
-           )}
+            {showUserMenu && (
+              <div className="absolute bottom-full left-4 right-4 mb-2 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden py-1 z-50">
+                {(employees || []).map(e => (
+                    <button key={e.id} onClick={() => { setCurrentUser(e); setShowUserMenu(false); }} className={`w-full text-left px-4 py-2 text-sm hover:bg-blue-50 ${currentUser.id === e.id ? 'font-bold text-blue-600 bg-blue-50' : 'text-slate-600'}`}>{e.name}</button>
+                ))}
+              </div>
+            )}
         </div>
       </aside>
 
@@ -134,12 +144,17 @@ const InnerApp: React.FC = () => {
   );
 };
 
+// Create a client
+const queryClient = new QueryClient();
+
 const App: React.FC = () => (
-  <NoSSR fallback={<div className="flex h-screen items-center justify-center bg-slate-50"><div className="text-slate-400">Carregando...</div></div>}>
-    <CRMProvider>
-      <InnerApp />
-    </CRMProvider>
-  </NoSSR>
+  <QueryClientProvider client={queryClient}>
+    <NoSSR fallback={<div className="flex h-screen items-center justify-center bg-slate-50"><div className="text-slate-400">Carregando...</div></div>}>
+      <CRMProvider>
+        <InnerApp />
+      </CRMProvider>
+    </NoSSR>
+  </QueryClientProvider>
 );
 
 export default function Home() {

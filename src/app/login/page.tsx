@@ -17,6 +17,12 @@ function LoginForm() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const handleAutofill = () => {
+    setTenantSlug('demo');
+    setEmail('admin@mc.com');
+    setPassword('admin123');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -118,9 +124,18 @@ function LoginForm() {
               {loading ? 'Entrando...' : 'Entrar'}
             </button>
 
+            <button
+              type="button"
+              onClick={handleAutofill}
+              className="w-full mt-3 border border-emerald-200 text-emerald-700 hover:bg-emerald-50 font-semibold py-3 px-4 rounded-lg transition-colors"
+            >
+              Preencher credenciais padrão
+            </button>
+
             <div className="mt-6 text-center text-sm text-slate-500">
-              <p>Demo: use organization &quot;demo&quot;</p>
-              <p className="mt-1">Admin: admin@mc.com / admin123</p>
+              <p>Organização: demo</p>
+              <p className="mt-1">E-mail: admin@mc.com</p>
+              <p className="mt-1">Senha: admin123</p>
             </div>
           </form>
         </div>
