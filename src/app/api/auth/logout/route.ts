@@ -1,23 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { clearAuthCookies, parseCookies, verifyToken, revokeSessionDb } from '@/lib/auth/jwt';
+import { clearAuthCookies } from '@/lib/auth/jwt';
 
 export async function POST(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const refreshToken = cookies.refresh_token;
-
-    if (refreshToken) {
-      revokeSessionDb(refreshToken);
-    }
-
-    const response = NextResponse.json({
-      success: true,
-      message: 'Logout realizado com sucesso',
-    });
-
-    clearAuthCookies(response);
-
-    return response;
+    // Importar função de logout dinamicamente
+    const jwtAuthModule = await import('@/lib/auth/jwt');
+    return await jwtAuthModule.logout();
   } catch (error) {
     console.error('Logout error:', error);
     return NextResponse.json(

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
     }
 
-    const payload = await verifyToken(accessToken);
+    const payload = verifyToken(accessToken);
     if (!payload) {
       return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
     }
@@ -39,7 +39,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
     }
 
-    const payload = await verifyToken(accessToken);
+    const payload = verifyToken(accessToken);
     if (!payload) {
       return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
     }
@@ -69,7 +69,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
     }
 
-    const payload = await verifyToken(accessToken);
+    const payload = verifyToken(accessToken);
     if (!payload) {
       return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
     }

@@ -1,106 +1,83 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-  getUserByEmail, 
-  verifyPassword, 
-  createSession,
-  getTenantBySlug 
-} from '@/lib/db';
-import { 
-  generateAccessToken, 
+import {
+  generateAccessToken,
   generateRefreshToken,
-  setAuthCookies 
+  setAuthCookies
 } from '@/lib/auth/jwt';
-import cookie from 'cookie';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password, tenantSlug, callbackUrl } = body;
+    const { email, password, tenantSlug } = body;
 
-    console.log('[LOGIN] Attempt for email:', email);
-
-    if (!email || !password) {
-      console.log('[LOGIN] Missing credentials');
+    if (!email || !password || !tenantSlug) {
       return NextResponse.json(
-        { success: false, message: 'Email e senha são obrigatórios' },
+        { success: false, message: 'Email, senha e organização são obrigatórios' },
         { status: 400 }
       );
     }
 
-    const user = getUserByEmail(email);
-    console.log('[LOGIN] User found:', user ? 'yes' : 'no');
+    // Importar funções do banco de dados dinamicamente
+    const dbModule = await import('@/lib/db');
+    const { getTenantBySlug, getUserByEmailAndTenantId, verifyPassword: dbVerifyPassword } = dbModule;
+
+    const tenant = getTenantBySlug(tenantSlug);
+
+    if (!tenant) {
+      return NextResponse.json(
+        { success: false, message: 'Organização não encontrada' },
+        { status: 401 }
+      );
+    }
+
+    const user = getUserByEmailAndTenantId(email, tenant.id);
 
     if (!user) {
-      console.log('[LOGIN] User not found, returning 401');
       return NextResponse.json(
         { success: false, message: 'Credenciais inválidas' },
         { status: 401 }
       );
     }
 
-    const isValid = await verifyPassword(password, user.password_hash);
-    console.log('[LOGIN] Password valid:', isValid);
+    const isValid = await dbVerifyPassword(password, user.password_hash);
 
     if (!isValid) {
-      console.log('[LOGIN] Invalid password, returning 401');
       return NextResponse.json(
         { success: false, message: 'Credenciais inválidas' },
         { status: 401 }
       );
     }
 
-    if (!user.is_active) {
-      console.log('[LOGIN] User inactive, returning 403');
+    if (!user.active) {
       return NextResponse.json(
         { success: false, message: 'Conta desativada' },
         { status: 403 }
       );
     }
 
-    console.log('[LOGIN] Authentication successful for user:', user.email);
-
-    const accessToken = await generateAccessToken({
+    const accessToken = generateAccessToken({
       userId: user.id,
       email: user.email,
       tenantId: user.tenant_id,
       role: user.role,
     });
 
-    console.log('[LOGIN] Access token generated:', accessToken.substring(0, 50) + '...');
+    const refreshToken = generateRefreshToken(user.id);
 
-    const refreshToken = await generateRefreshToken(user.id);
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-
-    createSession(user.id, refreshToken, expiresAt);
-
-    const redirectUrl = callbackUrl || '/';
-    console.log('[LOGIN] Redirecting to:', redirectUrl);
-    
     const response = NextResponse.json({
       success: true,
-      redirectUrl,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        tenantId: user.tenant_id,
+      },
     });
 
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
-      path: '/',
-    };
-
-    response.headers.append('Set-Cookie', cookie.serialize('access_token', accessToken, {
-      ...cookieOptions,
-      maxAge: 60 * 15,
-    }));
-
-    response.headers.append('Set-Cookie', cookie.serialize('refresh_token', refreshToken, {
-      ...cookieOptions,
-      maxAge: 60 * 60 * 24 * 7,
-    }));
-
-    return response;
+    return setAuthCookies(response, accessToken, refreshToken);
   } catch (error) {
-    console.error('[LOGIN] Error:', error);
+    console.error('Login error:', error);
     return NextResponse.json(
       { success: false, message: 'Erro interno do servidor' },
       { status: 500 }

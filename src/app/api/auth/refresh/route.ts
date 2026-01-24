@@ -1,20 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
+  verifyRefreshToken,
   generateAccessToken,
   generateRefreshToken,
   setAuthCookies,
-  createSessionDb,
-  revokeSessionDb,
-  validateRefreshToken,
-  verifyToken,
-  parseCookies
+  refreshTokens
 } from '@/lib/auth/jwt';
-import { getUserById } from '@/lib/db';
+import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const refreshToken = cookies.refresh_token;
+    // Obter refresh token dos cookies
+    const cookieStore = cookies();
+    const refreshToken = cookieStore.get('refresh_token')?.value;
 
     if (!refreshToken) {
       return NextResponse.json(
@@ -23,52 +21,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const payload = await verifyToken(refreshToken);
-    if (!payload) {
-      return NextResponse.json(
-        { success: false, message: 'Refresh token inválido' },
-        { status: 401 }
-      );
-    }
-
-    const isValid = validateRefreshToken(payload.userId, refreshToken);
-    if (!isValid) {
+    // Importar função de atualização de tokens dinamicamente
+    const jwtAuthModule = await import('@/lib/auth/jwt');
+    const tokens = await jwtAuthModule.refreshTokens(refreshToken);
+    if (!tokens) {
       return NextResponse.json(
         { success: false, message: 'Sessão expirada ou revogada' },
         { status: 401 }
       );
     }
 
-    revokeSessionDb(refreshToken);
-
-    const user = getUserById(payload.userId);
-    if (!user || !user.is_active) {
-      return NextResponse.json(
-        { success: false, message: 'Usuário não encontrado ou inativo' },
-        { status: 401 }
-      );
-    }
-
-    const accessToken = await generateAccessToken({
-      userId: user.id,
-      email: user.email,
-      tenantId: user.tenant_id,
-      role: user.role,
-    });
-
-    const newRefreshToken = await generateRefreshToken(user.id);
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-
-    createSessionDb(user.id, newRefreshToken, expiresAt);
-
     const response = NextResponse.json({
       success: true,
       message: 'Token renovado com sucesso',
     });
 
-    setAuthCookies(response, accessToken, newRefreshToken);
-
-    return response;
+    return setAuthCookies(response, tokens.accessToken, tokens.refreshToken);
   } catch (error) {
     console.error('Refresh error:', error);
     return NextResponse.json(

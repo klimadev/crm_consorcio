@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyToken, parseCookies } from '@/lib/auth/middleware-jwt';
+import { verifyAccessToken } from '@/lib/auth/middleware-jwt';
 
-const publicPaths = ['/login', '/api/auth/login', '/api/auth/refresh', '/api/init'];
+const publicPaths = ['/login', '/api/auth/login', '/api/auth/refresh', '/api/auth/me', '/api/init'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -17,8 +17,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (pathname.startsWith('/api/') && !pathname.startsWith('/api/auth/')) {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
+    const accessToken = request.cookies.get('access_token')?.value;
 
     if (!accessToken) {
       return NextResponse.json(
@@ -27,7 +26,7 @@ export async function middleware(request: NextRequest) {
       );
     }
 
-    const payload = await verifyToken(accessToken);
+    const payload = await verifyAccessToken(accessToken);
     if (!payload) {
       return NextResponse.json(
         { success: false, message: 'Token inválido ou expirado' },
@@ -36,9 +35,9 @@ export async function middleware(request: NextRequest) {
     }
 
     const requestHeaders = new Headers(request.headers);
-    requestHeaders.set('x-user-id', payload.userId);
-    requestHeaders.set('x-tenant-id', payload.tenantId);
-    requestHeaders.set('x-user-role', payload.role);
+    requestHeaders.set('x-user-id', payload.userId as string);
+    requestHeaders.set('x-tenant-id', payload.tenantId as string);
+    requestHeaders.set('x-user-role', payload.role as string);
 
     return NextResponse.next({
       request: {
@@ -48,8 +47,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!pathname.startsWith('/login')) {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
+    const accessToken = request.cookies.get('access_token')?.value;
 
     if (!accessToken) {
       const loginUrl = new URL('/login', request.url);
@@ -57,7 +55,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    const payload = await verifyToken(accessToken);
+    const payload = await verifyAccessToken(accessToken);
     if (!payload) {
       const loginUrl = new URL('/login', request.url);
       loginUrl.searchParams.set('callbackUrl', pathname);
@@ -70,6 +68,13 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
     '/((?!_next/static|_next/image|favicon.ico|public).*)',
   ],
 };

@@ -1,38 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken, parseCookies } from '@/lib/auth/jwt';
-import { getUserById, getTenantById, getPreferencesByUserId, getWidgetsByUserId, type User } from '@/lib/db';
+import { verifyAuth } from '@/lib/auth/jwt';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
+    const user = await verifyAuth(request);
 
-    if (!accessToken) {
+    if (!user) {
       return NextResponse.json(
         { success: false, message: 'Não autenticado' },
         { status: 401 }
       );
     }
 
-    const payload = await verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json(
-        { success: false, message: 'Token inválido' },
-        { status: 401 }
-      );
-    }
+    // Importar funções do banco de dados dinamicamente
+    const dbModule = await import('@/lib/db');
+    const { getUserById, getTenantById, getPreferencesByUserId, getWidgetsByUserId } = dbModule;
 
-    const user = getUserById(payload.userId);
-    if (!user || !user.is_active) {
+    // Buscar informações adicionais do usuário
+    const fullUser = getUserById(user.id);
+    if (!fullUser || !fullUser.active) {
       return NextResponse.json(
         { success: false, message: 'Usuário não encontrado ou inativo' },
         { status: 401 }
       );
     }
 
-    const tenant = getTenantById(user.tenant_id);
-    const preferences = getPreferencesByUserId(user.id);
-    const widgets = getWidgetsByUserId(user.id);
+    const tenant = getTenantById(fullUser.tenant_id);
+    const preferences = getPreferencesByUserId(fullUser.id);
+    const widgets = getWidgetsByUserId(fullUser.id);
 
     const prefsMap: Record<string, string> = {};
     for (const pref of preferences) {
@@ -42,11 +39,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        tenantId: user.tenant_id,
+        id: fullUser.id,
+        email: fullUser.email,
+        name: fullUser.name,
+        role: fullUser.role,
+        tenantId: fullUser.tenant_id,
         tenant: tenant ? { id: tenant.id, name: tenant.name, slug: tenant.slug } : null,
         preferences: prefsMap,
         dashboardWidgets: widgets.map(w => ({

@@ -1,39 +1,15 @@
-import * as jose from 'jose';
-import cookie from 'cookie';
+import { jwtVerify } from 'jose';
 
-const JWT_SECRET = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'crm-next-jwt-secret-change-in-production';
-
-const secret = new TextEncoder().encode(JWT_SECRET);
-
-export interface TokenPayload {
-  userId: string;
-  email: string;
-  tenantId: string;
-  role: string;
-}
-
-export async function verifyToken(token: string): Promise<TokenPayload | null> {
+export async function verifyAccessToken(token: string) {
   try {
-    const { payload } = await jose.jwtVerify(token, secret);
-    return {
-      userId: payload.userId as string,
-      email: payload.email as string,
-      tenantId: payload.tenantId as string,
-      role: payload.role as string,
-    };
-  } catch {
+    const secret = process.env.JWT_SECRET || 'crm-next-jwt-secret-key-change-in-production';
+    const key = new TextEncoder().encode(secret);
+    
+    const { payload } = await jwtVerify(token, key);
+    return payload;
+  } catch (error) {
+    // Em produção, remova o console.log para evitar flood
+    console.error('Erro de validação JWT (Edge):', error);
     return null;
   }
-}
-
-export function parseCookies(cookieHeader: string | null): Record<string, string> {
-  if (!cookieHeader) return {};
-  const cookies = cookie.parse(cookieHeader);
-  const result: Record<string, string> = {};
-  for (const [key, value] of Object.entries(cookies)) {
-    if (value !== undefined) {
-      result[key] = value;
-    }
-  }
-  return result;
 }

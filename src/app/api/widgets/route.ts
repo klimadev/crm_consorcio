@@ -1,22 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { parseCookies, verifyToken } from '@/lib/auth/jwt';
+import { verifyAuth } from '@/lib/auth/jwt';
 import { getWidgetsByUserId, createWidget, updateWidget, deleteWidget, getWidgetById } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
-    
-    if (!accessToken) {
+    const user = await verifyAuth(request);
+    if (!user) {
       return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
     }
 
-    const payload = await verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
-    }
-
-    const widgets = getWidgetsByUserId(payload.userId);
+    const widgets = getWidgetsByUserId(user.id);
 
     return NextResponse.json({ 
       success: true, 
@@ -43,7 +36,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
     }
 
-    const payload = await verifyToken(accessToken);
+    const payload = verifyToken(accessToken);
     if (!payload) {
       return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
     }
@@ -84,7 +77,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
     }
 
-    const payload = await verifyToken(accessToken);
+    const payload = verifyToken(accessToken);
     if (!payload) {
       return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
     }
@@ -129,7 +122,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
     }
 
-    const payload = await verifyToken(accessToken);
+    const payload = verifyToken(accessToken);
     if (!payload) {
       return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
     }
