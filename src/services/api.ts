@@ -1,4 +1,18 @@
-import { Deal, Customer, Product, Employee, Region, PDV, PipelineStage, Tag, DashboardWidget, CustomFieldDefinition, Integration } from '@/types';
+import {
+  Deal,
+  Customer,
+  Product,
+  Employee,
+  Region,
+  PDV,
+  PipelineStage,
+  Tag,
+  DashboardWidget,
+  CustomFieldDefinition,
+  Integration,
+  CommercialDashboardFilters,
+  CommercialDashboardMetrics,
+} from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
@@ -169,6 +183,22 @@ export const integrationsApi = {
   create: (integration: Omit<Integration, 'id'>) => api.post<Integration>('/db/integrations', integration),
   update: (id: string, integration: Partial<Integration>) => updateById<Integration>('/db/integrations', id, integration),
   delete: (id: string) => deleteById('/db/integrations', id),
+};
+
+export const commercialDashboardApi = {
+  getMetrics: (filters: CommercialDashboardFilters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.year) params.set('year', String(filters.year));
+    if (typeof filters.month === 'number') params.set('month', String(filters.month));
+    if (filters.period) params.set('period', filters.period);
+    if (filters.regionId) params.set('regionId', filters.regionId);
+    if (filters.pdvId) params.set('pdvId', filters.pdvId);
+    if (filters.managerId) params.set('managerId', filters.managerId);
+    if (filters.sellerId) params.set('sellerId', filters.sellerId);
+    const query = params.toString();
+    const endpoint = query.length > 0 ? `/db/commercial-dashboard?${query}` : '/db/commercial-dashboard';
+    return api.get<CommercialDashboardMetrics>(endpoint);
+  },
 };
 
 export { api };

@@ -10,7 +10,7 @@ import {
   Trash2, Map, User, ShoppingBag, Plus, Search, Mail, MapPin, Tag, Smartphone, 
   Briefcase, Activity, Edit, QrCode, RefreshCw, 
   SmartphoneCharging, Plug, Shield, Building, Globe, Store, Save, FileText,
-  Sliders, Database, XCircle, MessageSquare, Users
+  Sliders, Database, XCircle, MessageSquare, Users, ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
 import { Modal } from './Modal';
 import { AutomationBuilder } from './AutomationBuilder';
@@ -28,11 +28,50 @@ const Header = ({ title, subtitle, icon: Icon }: { title: string, subtitle: stri
   </div>
 );
 
-const Card: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
+export const Card: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
   <div className={`bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg transition-all duration-300 ${className}`}>
     {children}
   </div>
 );
+
+interface KPIWidgetProps {
+  title: string;
+  value: string;
+  icon: React.ElementType;
+  color: 'blue' | 'slate' | 'emerald' | 'amber';
+  trend?: string;
+}
+
+export const KPIWidget: React.FC<KPIWidgetProps> = ({ title, value, icon: Icon, color, trend }) => {
+  const colorClass = {
+    blue: 'bg-blue-50 text-blue-600',
+    slate: 'bg-slate-100 text-slate-700',
+    emerald: 'bg-emerald-50 text-emerald-600',
+    amber: 'bg-amber-50 text-amber-600',
+  }[color];
+
+  const hasPositiveTrend = trend ? Number(trend.replace('%', '')) >= 0 : false;
+
+  return (
+    <div className="flex h-full flex-col justify-between">
+      <div className="mb-4 flex items-start justify-between">
+        <div className={`rounded-xl p-3 ${colorClass}`}>
+          <Icon size={20} />
+        </div>
+        {trend && (
+          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-bold ${hasPositiveTrend ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+            {hasPositiveTrend ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+            {trend}
+          </span>
+        )}
+      </div>
+      <div>
+        <p className="mb-1 truncate text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</p>
+        <p className="text-2xl font-bold text-slate-900">{value}</p>
+      </div>
+    </div>
+  );
+};
 
 const Badge: React.FC<{ children: React.ReactNode; color?: string }> = ({ children, color = 'bg-slate-100 text-slate-600' }) => (
   <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${color}`}>

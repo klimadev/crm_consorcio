@@ -642,6 +642,385 @@ export function getDealsByTenant(tenantId: string): Deal[] {
   }));
 }
 
+export type CommercialPeriod = 'month' | 'year' | 'last_30_days' | 'last_90_days';
+
+export interface CommercialDashboardFilters {
+  year?: number;
+  month?: number | null;
+  period?: CommercialPeriod;
+  regionId?: string;
+  pdvId?: string;
+  managerId?: string;
+  sellerId?: string;
+}
+
+export interface CommercialRankingEntry {
+  employeeId: string;
+  name: string;
+  role: User['role'];
+  pdvId: string | null;
+  totalValue: number;
+  wonDeals: number;
+  avgTicket: number;
+}
+
+export interface CommercialDashboardSnapshot {
+  periodStart: string;
+  periodEnd: string;
+  totalSalesCount: number;
+  totalSalesValue: number;
+  avgTicket: number;
+  monthlyComparisonPct: number;
+  yearlyQuotaCount: number;
+  yearlyCreditValue: number;
+  yearlyAvgTicket: number;
+  yearlyComparisonPct: number;
+  evolutionSeries: Array<{ label: string; value: number; count: number }>;
+  weekdaySeries: Array<{ weekday: number; label: string; value: number; count: number }>;
+  pdvRevenueSeries: Array<{ pdvId: string | null; pdvName: string; value: number; count: number }>;
+  ranking: {
+    sellers: CommercialRankingEntry[];
+    managers: CommercialRankingEntry[];
+  };
+  insuranceBreakdown: {
+    withInsurance: number;
+    withoutInsurance: number;
+    withInsuranceValue: number;
+    withoutInsuranceValue: number;
+  };
+}
+
+interface DateWindow {
+  start: string;
+  end: string;
+}
+
+function toISODate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function getMonthDateWindow(year: number, month: number): DateWindow {
+  const start = new Date(Date.UTC(year, month - 1, 1));
+  const end = new Date(Date.UTC(year, month, 0));
+  return { start: toISODate(start), end: toISODate(end) };
+}
+
+function getYearDateWindow(year: number): DateWindow {
+  return { start: `${year}-01-01`, end: `${year}-12-31` };
+}
+
+function getRollingDateWindow(days: number): DateWindow {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - (days - 1));
+  return { start: toISODate(start), end: toISODate(end) };
+}
+
+function resolveDateWindow(filters: CommercialDashboardFilters, fallbackYear: number, fallbackMonth: number): DateWindow {
+  const year = filters.year ?? fallbackYear;
+  const month = filters.month ?? fallbackMonth;
+  const period = filters.period ?? 'month';
+
+  if (period === 'last_90_days') return getRollingDateWindow(90);
+  if (period === 'last_30_days') return getRollingDateWindow(30);
+  if (period === 'year') return getYearDateWindow(year);
+  return getMonthDateWindow(year, month);
+}
+
+function parseEmployeeIds(raw: string): string[] {
+  try {
+    const parsed = JSON.parse(raw || '[]');
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((value): value is string => typeof value === 'string');
+  } catch {
+    return [];
+  }
+}
+
+function hasInsuranceValue(raw: string): boolean {
+  const parsed = safeJsonParse<Record<string, unknown>>(raw || '{}', {});
+  const candidateKeys = ['insurance', 'seguro', 'hasInsurance', 'comSeguro'];
+
+  for (const key of candidateKeys) {
+    const value = parsed[key];
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value > 0;
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      if (['true', '1', 'sim', 'yes', 'com', 'ativo'].includes(normalized)) return true;
+      if (['false', '0', 'nao', 'não', 'sem', 'no'].includes(normalized)) return false;
+    }
+  }
+
+  return false;
+}
+
+function resolveManagerPdvId(tenantId: string, managerId?: string): string | null {
+  if (!managerId) return null;
+  const manager = getOneQuery<{ pdv_id: string | null }>(
+    'SELECT pdv_id FROM users WHERE tenant_id = ? AND id = ? AND role = ?',
+    [tenantId, managerId, 'MANAGER']
+  );
+  return manager?.pdv_id ?? null;
+}
+
+function buildWonDealsWhere(
+  tenantId: string,
+  filters: CommercialDashboardFilters,
+  extra: { year?: number; month?: number; window?: DateWindow } = {}
+): { sql: string; params: Array<string | number> } {
+  const managerPdvId = resolveManagerPdvId(tenantId, filters.managerId);
+  const clauses = ['d.tenant_id = ?', `s.type = 'WON'`];
+  const params: Array<string | number> = [tenantId];
+
+  if (filters.regionId) {
+    clauses.push('p.region_id = ?');
+    params.push(filters.regionId);
+  }
+
+  if (filters.pdvId) {
+    clauses.push('d.pdv_id = ?');
+    params.push(filters.pdvId);
+  } else if (managerPdvId) {
+    clauses.push('d.pdv_id = ?');
+    params.push(managerPdvId);
+  }
+
+  if (filters.sellerId) {
+    clauses.push('d.assigned_employee_ids LIKE ?');
+    params.push(`%\"${filters.sellerId}\"%`);
+  }
+
+  if (extra.year !== undefined) {
+    clauses.push(`CAST(strftime('%Y', d.created_at) AS INTEGER) = ?`);
+    params.push(extra.year);
+  }
+
+  if (extra.month !== undefined) {
+    clauses.push(`CAST(strftime('%m', d.created_at) AS INTEGER) = ?`);
+    params.push(extra.month);
+  }
+
+  if (extra.window) {
+    clauses.push('date(d.created_at) BETWEEN date(?) AND date(?)');
+    params.push(extra.window.start, extra.window.end);
+  }
+
+  return { sql: clauses.join(' AND '), params };
+}
+
+function getSalesTotals(tenantId: string, filters: CommercialDashboardFilters, extra: { year?: number; month?: number; window?: DateWindow } = {}) {
+  const base = buildWonDealsWhere(tenantId, filters, extra);
+  return getOneQuery<{ totalValue: number | null; totalCount: number | null }>(
+    `
+      SELECT COALESCE(SUM(d.value), 0) AS totalValue, COUNT(*) AS totalCount
+      FROM deals d
+      JOIN pipeline_stages s ON s.id = d.stage_id AND s.tenant_id = d.tenant_id
+      LEFT JOIN pdvs p ON p.id = d.pdv_id AND p.tenant_id = d.tenant_id
+      WHERE ${base.sql}
+    `,
+    base.params
+  ) ?? { totalValue: 0, totalCount: 0 };
+}
+
+export function getCommercialDashboardSnapshot(
+  tenantId: string,
+  filters: CommercialDashboardFilters = {}
+): CommercialDashboardSnapshot {
+  const now = new Date();
+  const selectedYear = filters.year ?? now.getFullYear();
+  const selectedMonth = filters.month ?? now.getMonth() + 1;
+  const selectedWindow = resolveDateWindow(filters, selectedYear, selectedMonth);
+
+  const currentMonthTotals = getSalesTotals(tenantId, filters, { year: selectedYear, month: selectedMonth });
+  const prevMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
+  const prevMonthYear = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
+  const previousMonthTotals = getSalesTotals(tenantId, filters, { year: prevMonthYear, month: prevMonth });
+
+  const yearlyTotals = getSalesTotals(tenantId, filters, { year: selectedYear });
+  const previousYearTotals = getSalesTotals(tenantId, filters, { year: selectedYear - 1 });
+  const selectedWindowTotals = getSalesTotals(tenantId, filters, { window: selectedWindow });
+
+  const monthlyComparisonPct = (previousMonthTotals.totalValue ?? 0) > 0
+    ? (((currentMonthTotals.totalValue ?? 0) - (previousMonthTotals.totalValue ?? 0)) / (previousMonthTotals.totalValue ?? 0)) * 100
+    : 0;
+  const yearlyComparisonPct = (previousYearTotals.totalValue ?? 0) > 0
+    ? (((yearlyTotals.totalValue ?? 0) - (previousYearTotals.totalValue ?? 0)) / (previousYearTotals.totalValue ?? 0)) * 100
+    : 0;
+
+  const baseWhere = buildWonDealsWhere(tenantId, filters, { window: selectedWindow });
+  const evolutionSeries = getQuery<{ label: string; value: number; count: number }>(
+    `
+      SELECT strftime('%Y-%m-%d', d.created_at) AS label,
+             COALESCE(SUM(d.value), 0) AS value,
+             COUNT(*) AS count
+      FROM deals d
+      JOIN pipeline_stages s ON s.id = d.stage_id AND s.tenant_id = d.tenant_id
+      LEFT JOIN pdvs p ON p.id = d.pdv_id AND p.tenant_id = d.tenant_id
+      WHERE ${baseWhere.sql}
+      GROUP BY strftime('%Y-%m-%d', d.created_at)
+      ORDER BY label ASC
+    `,
+    baseWhere.params
+  );
+
+  const weekDayRows = getQuery<{ weekday: number; value: number; count: number }>(
+    `
+      SELECT CAST(strftime('%w', d.created_at) AS INTEGER) AS weekday,
+             COALESCE(SUM(d.value), 0) AS value,
+             COUNT(*) AS count
+      FROM deals d
+      JOIN pipeline_stages s ON s.id = d.stage_id AND s.tenant_id = d.tenant_id
+      LEFT JOIN pdvs p ON p.id = d.pdv_id AND p.tenant_id = d.tenant_id
+      WHERE ${baseWhere.sql}
+      GROUP BY CAST(strftime('%w', d.created_at) AS INTEGER)
+      ORDER BY weekday ASC
+    `,
+    baseWhere.params
+  );
+
+  const weekdayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+  const weekdaySeries = Array.from({ length: 7 }, (_, weekday) => {
+    const found = weekDayRows.find((row) => row.weekday === weekday);
+    return {
+      weekday,
+      label: weekdayLabels[weekday],
+      value: found?.value ?? 0,
+      count: found?.count ?? 0,
+    };
+  });
+
+  const pdvRevenueSeries = getQuery<{ pdvId: string | null; pdvName: string; value: number; count: number }>(
+    `
+      SELECT d.pdv_id AS pdvId,
+             COALESCE(p.name, 'Sem PDV') AS pdvName,
+             COALESCE(SUM(d.value), 0) AS value,
+             COUNT(*) AS count
+      FROM deals d
+      JOIN pipeline_stages s ON s.id = d.stage_id AND s.tenant_id = d.tenant_id
+      LEFT JOIN pdvs p ON p.id = d.pdv_id AND p.tenant_id = d.tenant_id
+      WHERE ${baseWhere.sql}
+      GROUP BY d.pdv_id, p.name
+      ORDER BY value DESC
+    `,
+    baseWhere.params
+  );
+
+  const periodRows = getQuery<{ value: number; assigned_employee_ids: string; custom_values: string; pdv_id: string | null }>(
+    `
+      SELECT d.value, d.assigned_employee_ids, d.custom_values, d.pdv_id
+      FROM deals d
+      JOIN pipeline_stages s ON s.id = d.stage_id AND s.tenant_id = d.tenant_id
+      LEFT JOIN pdvs p ON p.id = d.pdv_id AND p.tenant_id = d.tenant_id
+      WHERE ${baseWhere.sql}
+    `,
+    baseWhere.params
+  );
+
+  const employees = getQuery<{ id: string; name: string; role: User['role']; pdv_id: string | null }>(
+    'SELECT id, name, role, pdv_id FROM users WHERE tenant_id = ? AND is_active = 1',
+    [tenantId]
+  );
+  const employeeMap = new Map(employees.map((employee) => [employee.id, employee]));
+  const sellerAgg = new Map<string, { value: number; count: number }>();
+  const managerAgg = new Map<string, { value: number; count: number }>();
+  const managersByPdv = new Map<string, string>();
+
+  employees
+    .filter((employee) => employee.role === 'MANAGER' && employee.pdv_id)
+    .forEach((manager) => {
+      if (manager.pdv_id) managersByPdv.set(manager.pdv_id, manager.id);
+    });
+
+  let withInsurance = 0;
+  let withoutInsurance = 0;
+  let withInsuranceValue = 0;
+  let withoutInsuranceValue = 0;
+
+  periodRows.forEach((deal) => {
+    const value = Number(deal.value) || 0;
+    const employeeIds = parseEmployeeIds(deal.assigned_employee_ids);
+    const countedSellers = new Set<string>();
+
+    employeeIds.forEach((employeeId) => {
+      const employee = employeeMap.get(employeeId);
+      if (!employee || employee.role !== 'SALES_REP' || countedSellers.has(employeeId)) return;
+      const current = sellerAgg.get(employeeId) ?? { value: 0, count: 0 };
+      sellerAgg.set(employeeId, { value: current.value + value, count: current.count + 1 });
+      countedSellers.add(employeeId);
+    });
+
+    const managerId = deal.pdv_id ? managersByPdv.get(deal.pdv_id) : undefined;
+    if (managerId) {
+      const current = managerAgg.get(managerId) ?? { value: 0, count: 0 };
+      managerAgg.set(managerId, { value: current.value + value, count: current.count + 1 });
+    }
+
+    if (hasInsuranceValue(deal.custom_values)) {
+      withInsurance += 1;
+      withInsuranceValue += value;
+    } else {
+      withoutInsurance += 1;
+      withoutInsuranceValue += value;
+    }
+  });
+
+  const toRankingEntry = (
+    employeeId: string,
+    role: User['role'],
+    aggregate: { value: number; count: number }
+  ): CommercialRankingEntry | null => {
+    const employee = employeeMap.get(employeeId);
+    if (!employee || employee.role !== role) return null;
+    return {
+      employeeId: employee.id,
+      name: employee.name,
+      role: employee.role,
+      pdvId: employee.pdv_id,
+      totalValue: aggregate.value,
+      wonDeals: aggregate.count,
+      avgTicket: aggregate.count > 0 ? aggregate.value / aggregate.count : 0,
+    };
+  };
+
+  const sellers = Array.from(sellerAgg.entries())
+    .map(([employeeId, aggregate]) => toRankingEntry(employeeId, 'SALES_REP', aggregate))
+    .filter((item): item is CommercialRankingEntry => Boolean(item))
+    .sort((a, b) => b.totalValue - a.totalValue);
+
+  const managers = Array.from(managerAgg.entries())
+    .map(([employeeId, aggregate]) => toRankingEntry(employeeId, 'MANAGER', aggregate))
+    .filter((item): item is CommercialRankingEntry => Boolean(item))
+    .sort((a, b) => b.totalValue - a.totalValue);
+
+  return {
+    periodStart: selectedWindow.start,
+    periodEnd: selectedWindow.end,
+    totalSalesCount: selectedWindowTotals.totalCount ?? 0,
+    totalSalesValue: selectedWindowTotals.totalValue ?? 0,
+    avgTicket: (selectedWindowTotals.totalCount ?? 0) > 0
+      ? (selectedWindowTotals.totalValue ?? 0) / (selectedWindowTotals.totalCount ?? 0)
+      : 0,
+    monthlyComparisonPct,
+    yearlyQuotaCount: yearlyTotals.totalCount ?? 0,
+    yearlyCreditValue: yearlyTotals.totalValue ?? 0,
+    yearlyAvgTicket: (yearlyTotals.totalCount ?? 0) > 0
+      ? (yearlyTotals.totalValue ?? 0) / (yearlyTotals.totalCount ?? 0)
+      : 0,
+    yearlyComparisonPct,
+    evolutionSeries,
+    weekdaySeries,
+    pdvRevenueSeries,
+    ranking: { sellers, managers },
+    insuranceBreakdown: {
+      withInsurance,
+      withoutInsurance,
+      withInsuranceValue,
+      withoutInsuranceValue,
+    },
+  };
+}
+
 export function updateDeal(
   id: string,
   title: string,

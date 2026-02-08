@@ -192,3 +192,51 @@ export interface DashboardWidget {
   title: string;
   colSpan: 1 | 2 | 3 | 4;
 }
+
+export type CommercialPeriod = 'month' | 'year' | 'last_30_days' | 'last_90_days';
+
+export interface CommercialDashboardFilters {
+  year?: number;
+  month?: number | null;
+  period?: CommercialPeriod;
+  regionId?: string;
+  pdvId?: string;
+  managerId?: string;
+  sellerId?: string;
+}
+
+export interface CommercialRankingEntry {
+  employeeId: string;
+  name: string;
+  role: Role;
+  pdvId: string | null;
+  totalValue: number;
+  wonDeals: number;
+  avgTicket: number;
+}
+
+export interface CommercialDashboardMetrics {
+  periodStart: string;
+  periodEnd: string;
+  totalSalesCount: number;
+  totalSalesValue: number;
+  avgTicket: number;
+  monthlyComparisonPct: number;
+  yearlyQuotaCount: number;
+  yearlyCreditValue: number;
+  yearlyAvgTicket: number;
+  yearlyComparisonPct: number;
+  evolutionSeries: Array<{ label: string; value: number; count: number }>;
+  weekdaySeries: Array<{ weekday: number; label: string; value: number; count: number }>;
+  pdvRevenueSeries: Array<{ pdvId: string | null; pdvName: string; value: number; count: number }>;
+  ranking: {
+    sellers: CommercialRankingEntry[];
+    managers: CommercialRankingEntry[];
+  };
+  insuranceBreakdown: {
+    withInsurance: number;
+    withoutInsurance: number;
+    withInsuranceValue: number;
+    withoutInsuranceValue: number;
+  };
+}
