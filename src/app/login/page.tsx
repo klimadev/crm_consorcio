@@ -11,14 +11,14 @@ function LoginForm() {
   const callbackUrl = searchParams.get('callbackUrl') || '/';
   const { login } = useAuth();
 
-  const [tenantSlug, setTenantSlug] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [tenantSlug, setTenantSlug] = useState('mc-investimentos');
+  const [email, setEmail] = useState('admin@mc.com');
+  const [password, setPassword] = useState('admin123');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleAutofill = () => {
-    setTenantSlug('demo');
+    setTenantSlug('mc-investimentos');
     setEmail('admin@mc.com');
     setPassword('admin123');
   };
@@ -124,19 +124,22 @@ function LoginForm() {
               {loading ? 'Entrando...' : 'Entrar'}
             </button>
 
+            <div className="mt-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+              <p className="text-sm text-emerald-800 font-medium text-center">
+                ✓ Credenciais padrão preenchidas automaticamente
+              </p>
+              <p className="text-xs text-emerald-600 text-center mt-1">
+                Organização: mc-investimentos | E-mail: admin@mc.com | Senha: admin123
+              </p>
+            </div>
+
             <button
               type="button"
               onClick={handleAutofill}
-              className="w-full mt-3 border border-emerald-200 text-emerald-700 hover:bg-emerald-50 font-semibold py-3 px-4 rounded-lg transition-colors"
+              className="w-full mt-3 text-sm text-slate-500 hover:text-emerald-600 underline transition-colors"
             >
-              Preencher credenciais padrão
+              Restaurar credenciais padrão
             </button>
-
-            <div className="mt-6 text-center text-sm text-slate-500">
-              <p>Organização: demo</p>
-              <p className="mt-1">E-mail: admin@mc.com</p>
-              <p className="mt-1">Senha: admin123</p>
-            </div>
           </form>
         </div>
       </div>
