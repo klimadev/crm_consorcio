@@ -49,7 +49,20 @@ const TAG_COLORS = [
 ];
 
 export const DealForm: React.FC<DealFormProps> = ({ deal: initialDeal, isOpen, onClose, isNew }) => {
-  const { addDeal, updateDeal, removeDeal, products, tags, addTag, stages, currentUser, pdvs, employees, customFieldDefs, customers } = useCRM();
+  const {
+    addDeal,
+    updateDeal,
+    removeDeal,
+    products = [],
+    tags = [],
+    addTag,
+    stages = [],
+    currentUser,
+    pdvs = [],
+    employees = [],
+    customFieldDefs = [],
+    customers = []
+  } = useCRM();
   const [formData, setFormData] = useState<Deal>(initialDeal);
   const [activeTab, setActiveTab] = useState<'details' | 'products' | 'notes'>('details');
   const [tagInput, setTagInput] = useState('');
@@ -64,12 +77,13 @@ export const DealForm: React.FC<DealFormProps> = ({ deal: initialDeal, isOpen, o
   }, [employees, formData.pdvId]);
 
   const availableCustomers = useMemo(() => {
+     if (!currentUser) return customers;
      if (currentUser.role === 'ADMIN') return customers;
      return customers;
   }, [customers, currentUser]);
 
   useEffect(() => {
-    if (isNew) {
+    if (isNew && currentUser) {
       setFormData(prev => {
         const newData = { ...prev };
         if (newData.assignedEmployeeIds.length === 0) newData.assignedEmployeeIds = [currentUser.id];
@@ -281,7 +295,7 @@ export const DealForm: React.FC<DealFormProps> = ({ deal: initialDeal, isOpen, o
                              handleChange('pdvId', val === 'null' ? null : val);
                           }}
                           className={selectClass}
-                          disabled={currentUser.role !== 'ADMIN'}
+                          disabled={currentUser?.role !== 'ADMIN'}
                         >
                           <option value="null">Matriz / Corporativo (HQ)</option>
                           {pdvs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}

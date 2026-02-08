@@ -57,18 +57,18 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, type, orderVal } = body;
+    const { name, type } = body;
 
     if (!name) {
       return NextResponse.json({ success: false, message: 'Nome é obrigatório' }, { status: 400 });
     }
 
-    const stage = createPipelineStage(
-      payload.tenantId,
+    const stage = createPipelineStage(payload.tenantId, {
       name,
-      type || 'OPEN',
-      orderVal || 0
-    );
+      color: body.color || '',
+      type: type || 'OPEN',
+      automation_steps: body.automationSteps || body.automation_steps || [],
+    });
     return NextResponse.json({ success: true, stage });
   } catch (error) {
     console.error('Create stage error:', error);

@@ -24,6 +24,7 @@ const WIDGET_OPTIONS: { type: WidgetType; title: string; colSpan: number; descri
 
 export const DashboardBI: React.FC = () => {
   const { deals, stages, employees, dashboardWidgets, addWidget, updateWidget, removeWidget, reorderWidgets, resetDashboard } = useCRM();
+  const widgetList = dashboardWidgets ?? [];
   const [isEditMode, setIsEditMode] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
@@ -32,11 +33,14 @@ export const DashboardBI: React.FC = () => {
   const dragOverItem = useRef<number | null>(null);
 
   const metrics = useMemo(() => {
-    const getStageType = (stageId: string) => stages.find(s => s.id === stageId)?.type || 'OPEN';
+    const stageList = stages ?? [];
+    const dealList = deals ?? [];
+    const employeeList = employees ?? [];
+    const getStageType = (stageId: string) => stageList.find(s => s.id === stageId)?.type || 'OPEN';
 
-    const wonDeals = deals.filter(d => getStageType(d.stageId) === 'WON');
-    const lostDeals = deals.filter(d => getStageType(d.stageId) === 'LOST');
-    const activeDeals = deals.filter(d => getStageType(d.stageId) === 'OPEN');
+    const wonDeals = dealList.filter(d => getStageType(d.stageId) === 'WON');
+    const lostDeals = dealList.filter(d => getStageType(d.stageId) === 'LOST');
+    const activeDeals = dealList.filter(d => getStageType(d.stageId) === 'OPEN');
     
     const totalSales = wonDeals.reduce((sum, d) => sum + d.value, 0);
     const avgTicket = wonDeals.length > 0 ? totalSales / wonDeals.length : 0;
@@ -44,15 +48,15 @@ export const DashboardBI: React.FC = () => {
     const finishedCount = wonDeals.length + lostDeals.length;
     const conversionRate = finishedCount > 0 ? (wonDeals.length / finishedCount) * 100 : 0;
 
-    const funnelData = stages.map(stage => ({
+    const funnelData = stageList.map(stage => ({
       name: stage.name,
-      value: deals.filter(d => d.stageId === stage.id).reduce((sum, d) => sum + d.value, 0),
-      count: deals.filter(d => d.stageId === stage.id).length,
+      value: dealList.filter(d => d.stageId === stage.id).reduce((sum, d) => sum + d.value, 0),
+      count: dealList.filter(d => d.stageId === stage.id).length,
       color: stage.color.replace('border-t-', 'bg-'),
       type: stage.type
     }));
 
-    const repData = employees
+    const repData = employeeList
       .map(emp => {
         const empDeals = wonDeals.filter(d => d.assignedEmployeeIds.includes(emp.id));
         return {
@@ -64,7 +68,7 @@ export const DashboardBI: React.FC = () => {
       .sort((a, b) => b.total - a.total)
       .slice(0, 5);
 
-    const recentDeals = [...deals].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
+    const recentDeals = [...dealList].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
     
     const goals = {
        financial: { target: 1000000, current: totalSales },
@@ -85,7 +89,7 @@ export const DashboardBI: React.FC = () => {
 
   const handleDragEnd = () => {
     if (dragItem.current !== null && dragOverItem.current !== null) {
-      const copyListItems = [...dashboardWidgets];
+      const copyListItems = [...widgetList];
       const dragItemContent = copyListItems[dragItem.current];
       copyListItems.splice(dragItem.current, 1);
       copyListItems.splice(dragOverItem.current, 0, dragItemContent);
@@ -103,7 +107,7 @@ export const DashboardBI: React.FC = () => {
   };
 
   const handleRename = (id: string, newTitle: string) => {
-    const widget = dashboardWidgets.find(w => w.id === id);
+    const widget = widgetList.find(w => w.id === id);
     if (widget) {
       updateWidget({ ...widget, title: newTitle });
     }
@@ -266,7 +270,7 @@ export const DashboardBI: React.FC = () => {
       </div>
 
       <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 ${isEditMode ? 'border-2 border-dashed border-slate-300 p-4 rounded-xl min-h-[500px]' : ''}`}>
-         {dashboardWidgets.map((widget, index) => (
+         {widgetList.map((widget, index) => (
             <div 
               key={widget.id}
               draggable={isEditMode}

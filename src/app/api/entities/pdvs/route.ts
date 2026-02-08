@@ -62,7 +62,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, regionId, type, address, city, state } = body;
+    const { name, regionId, type, location, address, city, state } = body;
+    const resolvedLocation = location ?? [address, city, state].filter(Boolean).join(' - ');
 
     if (!name) {
       return NextResponse.json({ success: false, message: 'Nome é obrigatório' }, { status: 400 });
@@ -71,11 +72,9 @@ export async function POST(request: NextRequest) {
     const pdv = createPdv(
       payload.tenantId, 
       name, 
+      type || 'PHYSICAL_STORE',
       regionId || null, 
-      type || 'LOJA', 
-      address || '', 
-      city || '', 
-      state || ''
+      resolvedLocation || ''
     );
     return NextResponse.json({ success: true, pdv });
   } catch (error) {
@@ -103,7 +102,8 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, name, regionId, type, address, city, state } = body;
+    const { id, name, regionId, type, location, address, city, state } = body;
+    const resolvedLocation = location ?? [address, city, state].filter(Boolean).join(' - ');
 
     if (!id || !name) {
       return NextResponse.json({ success: false, message: 'ID e nome são obrigatórios' }, { status: 400 });
@@ -114,7 +114,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'PDV não encontrado' }, { status: 404 });
     }
 
-    const pdv = updatePdv(id, name, regionId || null, type || 'LOJA', address || '', city || '', state || '');
+    const pdv = updatePdv(id, name, regionId || null, type || 'PHYSICAL_STORE', resolvedLocation || '');
     return NextResponse.json({ success: true, pdv });
   } catch (error) {
     console.error('Update pdv error:', error);

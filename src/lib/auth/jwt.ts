@@ -2,9 +2,11 @@ import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'crm-next-jwt-secret-key-change-in-production';
+const JWT_SECRET: jwt.Secret = process.env.JWT_SECRET || 'crm-next-jwt-secret-key-change-in-production';
 const ACCESS_TOKEN_EXPIRES_IN = process.env.ACCESS_TOKEN_EXPIRES_IN || '15m'; // 15 minutos
 const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d'; // 7 dias
+const ACCESS_TOKEN_EXPIRY: jwt.SignOptions['expiresIn'] = ACCESS_TOKEN_EXPIRES_IN as jwt.SignOptions['expiresIn'];
+const REFRESH_TOKEN_EXPIRY: jwt.SignOptions['expiresIn'] = REFRESH_TOKEN_EXPIRES_IN as jwt.SignOptions['expiresIn'];
 
 export interface JWTPayload {
   userId: string;
@@ -26,11 +28,11 @@ export interface AuthUser {
 
 // Funções para manipulação de tokens
 export function generateAccessToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY });
 }
 
 export function generateRefreshToken(userId: string): string {
-  return jwt.sign({ userId, type: 'refresh' }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
+  return jwt.sign({ userId, type: 'refresh' }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRY });
 }
 
 export function verifyAccessToken(token: string): JWTPayload | null {

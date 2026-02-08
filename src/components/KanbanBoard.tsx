@@ -28,7 +28,23 @@ const STAGE_COLORS = [
 ];
 
 export const KanbanBoard: React.FC = () => {
-  const { deals, stages, updateDeal, addStage, updateStage, removeStage, reorderStages, getEmployeeName, getPDVName, getProductName, employees, pdvs, tags, currentUser, products } = useCRM();
+  const {
+    deals = [],
+    stages = [],
+    updateDeal,
+    addStage,
+    updateStage,
+    removeStage,
+    reorderStages,
+    getEmployeeName,
+    getPDVName,
+    getProductName,
+    employees = [],
+    pdvs = [],
+    tags = [],
+    currentUser,
+    products = []
+  } = useCRM();
   
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
   const [stageToEdit, setStageToEdit] = useState<PipelineStage | null>(null);
@@ -47,11 +63,13 @@ export const KanbanBoard: React.FC = () => {
   const [draggedStageIndex, setDraggedStageIndex] = useState<number | null>(null);
 
   const availablePdvs = useMemo(() => {
+     if (!currentUser) return pdvs;
      if (currentUser.role === 'ADMIN') return pdvs;
      return pdvs.filter(p => p.id === currentUser.pdvId);
   }, [pdvs, currentUser]);
 
   const availableEmployees = useMemo(() => {
+     if (!currentUser) return employees;
      if (currentUser.role === 'ADMIN') return employees;
      if (currentUser.role === 'MANAGER' && currentUser.pdvId) {
         return employees.filter(e => e.pdvId === currentUser.pdvId);
@@ -367,12 +385,12 @@ if (!mounted) {
                   onClick={() => setEditingDeal({ 
                       id: generateStableId('deal'),
                       title: '', 
-                      pdvId: currentUser.pdvId || '',
+                      pdvId: currentUser?.pdvId || '',
                       customerId: '',
                       customerName: '', 
                       value: 0, 
                       stageId: stage.id, 
-                      assignedEmployeeIds: [currentUser.id], 
+                      assignedEmployeeIds: currentUser?.id ? [currentUser.id] : [], 
                       productIds: [], 
                       tags: [], 
                       notes: '', 

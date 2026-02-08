@@ -335,15 +335,13 @@ export function updatePDV(
   name: string,
   regionId: string | null,
   type: string,
-  address: string,
-  city: string,
-  state: string
+  location: string
 ): PDV | null {
   const now = new Date().toISOString();
 
   runQuery(`
-    UPDATE pdvs SET name = ?, region_id = ?, type = ?, address = ?, city = ?, state = ?, updated_at = ? WHERE id = ?
-  `, [name, regionId, type, address, city, state, now, id]);
+    UPDATE pdvs SET name = ?, region_id = ?, type = ?, location = ?, updated_at = ? WHERE id = ?
+  `, [name, regionId, type, location, now, id]);
 
   const row = getOneQuery<PDV>('SELECT * FROM pdvs WHERE id = ?', [id]);
   return row;
@@ -910,6 +908,34 @@ export function countEntitiesByTenant(tenantId: string): { regions: number; pdvs
   const pdvs = getOneQuery<{ 'COUNT(*)': number }>('SELECT COUNT(*) FROM pdvs WHERE tenant_id = ?', [tenantId])?.['COUNT(*)'] ?? 0;
   const stages = getOneQuery<{ 'COUNT(*)': number }>('SELECT COUNT(*) FROM pipeline_stages WHERE tenant_id = ?', [tenantId])?.['COUNT(*)'] ?? 0;
   return { regions, pdvs, stages };
+}
+
+export function getRegionsByTenantId(tenantId: string): Promise<Region[]> {
+  return getRegionsByTenant(tenantId);
+}
+
+export function getPdvsByTenantId(tenantId: string): PDV[] {
+  return getPDVsByTenant(tenantId);
+}
+
+export function getCustomersByTenantId(tenantId: string): Customer[] {
+  return getCustomersByTenant(tenantId);
+}
+
+export function getProductsByTenantId(tenantId: string): Product[] {
+  return getProductsByTenant(tenantId);
+}
+
+export function getPipelineStagesByTenantId(tenantId: string): PipelineStage[] {
+  return getPipelineStagesByTenant(tenantId);
+}
+
+export function getTagsByTenantId(tenantId: string): Tag[] {
+  return getTagsByTenant(tenantId);
+}
+
+export function getDealsByTenantId(tenantId: string): Deal[] {
+  return getDealsByTenant(tenantId);
 }
 
 export function getCustomFieldDefinitionsByTenantId(tenantId: string): CustomFieldDefinition[] {

@@ -63,7 +63,7 @@ const inputClass = "w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 r
 const selectClass = "w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none appearance-none cursor-pointer hover:border-slate-300";
 
 const OrganizationView: React.FC = () => {
-  const { pdvs, addPDV, updatePDV, removePDV, regions, getRegionName } = useCRM();
+  const { pdvs = [], addPDV, updatePDV, removePDV, regions = [], getRegionName } = useCRM();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<PDV>>({ name: '', type: 'PHYSICAL_STORE', regionId: '', location: '', isActive: true });
@@ -86,8 +86,7 @@ const OrganizationView: React.FC = () => {
     if (editingId) {
        updatePDV({ ...formData, id: editingId } as PDV);
     } else {
-addPDV({ 
-         id: generateStableId('pdv'), 
+       addPDV({ 
          name: formData.name!, 
          type: formData.type as PDVType, 
          regionId: formData.regionId!, 
@@ -174,7 +173,7 @@ addPDV({
 };
 
 const IntegrationsView: React.FC = () => {
-  const { integrations, updateIntegrationStatus } = useCRM();
+  const { integrations = [], updateIntegrationStatus } = useCRM();
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -261,7 +260,7 @@ const IntegrationsView: React.FC = () => {
 };
 
 const ProductsView: React.FC = () => {
-  const { products, addProduct, updateProduct, removeProduct } = useCRM();
+  const { products = [], addProduct, updateProduct, removeProduct } = useCRM();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Product>>({ name: '', category: '', basePrice: 0, description: '', active: true, attributes: [], automationSteps: [], defaultFollowUpDays: 3 });
@@ -401,7 +400,7 @@ const ProductsView: React.FC = () => {
 };
 
 const EmployeesView: React.FC = () => {
-  const { employees, addEmployee, updateEmployee, removeEmployee, pdvs, getPDVName } = useCRM();
+  const { employees = [], addEmployee, updateEmployee, removeEmployee, pdvs = [], getPDVName } = useCRM();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Employee>>({ name: '', email: '', role: 'SALES_REP', pdvId: '', active: true });
@@ -513,7 +512,18 @@ const EmployeesView: React.FC = () => {
 };
 
 const CustomersView: React.FC = () => {
-  const { customers, addCustomer, updateCustomer, pdvs, getPDVName, currentUser, customFieldDefs, addCustomFieldDef, removeCustomFieldDef, updateCustomFieldDef } = useCRM();
+  const {
+    customers = [],
+    addCustomer,
+    updateCustomer,
+    pdvs = [],
+    getPDVName,
+    currentUser,
+    customFieldDefs = [],
+    addCustomFieldDef,
+    removeCustomFieldDef,
+    updateCustomFieldDef
+  } = useCRM();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Customer>>({ 
@@ -582,7 +592,7 @@ const CustomersView: React.FC = () => {
         <div className="flex justify-between items-start">
            <Header title="Carteira de Clientes" subtitle="Gestão de relacionamento PF e PJ." icon={Briefcase} />
            <div className="flex gap-2">
-               {currentUser.role === 'ADMIN' && (
+               {currentUser?.role === 'ADMIN' && (
                   <button onClick={() => setIsFieldsModalOpen(true)} className="px-4 py-3 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 flex items-center gap-2 shadow-sm transition-all">
                      <Sliders size={18}/> Campos Extras
                   </button>
@@ -748,7 +758,7 @@ const CustomersView: React.FC = () => {
                        </div>
 
                        <div className="border-t border-slate-100 pt-4 mt-2">
-                           {currentUser.role === 'ADMIN' && (
+                           {currentUser?.role === 'ADMIN' && (
                               <div className="mb-6">
                                  <label className="text-xs font-bold text-slate-500 uppercase mb-2 block ml-1">Vincular Unidades (Filiais)</label>
                                  <div className="flex flex-wrap gap-2">

@@ -66,21 +66,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Sem permissão para criar produtos' }, { status: 403 });
     }
 
-    const body = await request.json();
-    const { name, sku, price, attributes, pdvId } = body;
+    const data = await request.json();
+    const { name } = data;
 
     if (!name) {
       return NextResponse.json({ success: false, message: 'Nome é obrigatório' }, { status: 400 });
     }
 
-    const product = createProduct(
-      payload.tenantId,
+    const product = createProduct(payload.tenantId, {
       name,
-      sku || '',
-      price || 0,
-      attributes ? JSON.stringify(attributes) : '[]',
-      pdvId || null
-    );
+      description: data.description || '',
+      category: data.category || '',
+      base_price: data.basePrice || data.base_price || data.price || 0,
+      attributes: data.attributes || [],
+      form_schema: data.formSchema || data.form_schema || [],
+      automation_steps: data.automationSteps || data.automation_steps || [],
+      default_follow_up_days: data.defaultFollowUpDays || data.default_follow_up_days || null,
+      active: data.active !== false,
+    });
     return NextResponse.json({ success: true, product });
   } catch (error) {
     console.error('Create product error:', error);

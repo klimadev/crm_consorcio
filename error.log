@@ -1,0 +1,24 @@
+[2026-01-24T21:41:28.065627800+00:00] startup: base_url=https://chatgpt.com/backend-api path_style=wham
+[2026-01-24T21:41:28.500432600+00:00] auth: mode=ChatGPT account_id=d7df54cf-e308-4eb8-b35a-d540a2a9bf13
+[2026-01-24T21:41:28.501055+00:00] auth: set ChatGPT-Account-Id header: d7df54cf-e308-4eb8-b35a-d540a2a9bf13
+[2026-01-24T21:41:28.521270600+00:00] startup: wham_force_internal=false ua=codex_cli_rs/0.89.0 (Windows 10.0.26100; x86_64) WindowsTerminal (codex_cloud_tasks_tui)
+[2026-01-24T21:41:29.100271700+00:00] env: git origins: []
+[2026-01-24T21:41:29.101109200+00:00] env: GET https://chatgpt.com/backend-api/wham/environments
+[2026-01-24T21:41:30.789455+00:00] env: status=200 OK content-type=application/json
+[2026-01-24T21:41:30.792959700+00:00] env: status=200 OK content-type=application/json
+[2026-01-24T21:41:30.800615700+00:00] env: /environments JSON (pretty):
+[]
+[2026-01-24T21:41:30.802788500+00:00] http.list_tasks: env=<all> limit=20 cursor_in=<none> cursor_out=<none> items=0
+[2026-01-24T21:41:30.855851100+00:00] refresh.apply: env=<all> count=0
+[2026-01-24T21:47:26.015108600+00:00] startup: base_url=https://chatgpt.com/backend-api path_style=wham
+[2026-01-24T21:47:26.295737+00:00] auth: mode=ChatGPT account_id=d7df54cf-e308-4eb8-b35a-d540a2a9bf13
+[2026-01-24T21:47:26.296201500+00:00] auth: set ChatGPT-Account-Id header: d7df54cf-e308-4eb8-b35a-d540a2a9bf13
+[2026-01-24T21:47:26.303365900+00:00] startup: wham_force_internal=false ua=codex_cli_rs/0.89.0 (Windows 10.0.26100; x86_64) WindowsTerminal (codex_cloud_tasks_tui)
+[2026-01-24T21:47:26.799676600+00:00] env: git origins: []
+[2026-01-24T21:47:26.800855800+00:00] env: GET https://chatgpt.com/backend-api/wham/environments
+[2026-01-24T21:47:27.456481100+00:00] env: status=200 OK content-type=application/json
+[2026-01-24T21:47:27.457188+00:00] env: /environments JSON (pretty):
+[]
+[2026-01-24T21:47:27.458559700+00:00] env: status=200 OK content-type=application/json
+[2026-01-24T21:47:27.461899800+00:00] http.list_tasks: env=<all> limit=20 cursor_in=<none> cursor_out=<none> items=0
+[2026-01-24T21:47:27.470993600+00:00] refresh.apply: env=<all> count=0

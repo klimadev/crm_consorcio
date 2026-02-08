@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { hashPassword } from '@/lib/auth/jwt';
 import { getTenantBySlug, createTenant, createUser, getUserByEmail, deleteAllUserSessions } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
@@ -14,7 +13,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const existingTenant = getTenantBySlug(tenantSlug);
+    const existingTenant = await getTenantBySlug(tenantSlug);
 
     if (existingTenant) {
       return NextResponse.json(
@@ -25,9 +24,14 @@ export async function POST(request: NextRequest) {
 
     const tenant = createTenant(tenantName, tenantSlug);
 
-    const passwordHash = await hashPassword(adminPassword);
-
-    const admin = createUser(adminEmail, passwordHash, adminName || 'Administrador', 'ADMIN', tenant.id);
+    const admin = createUser(
+      tenant.id,
+      adminEmail,
+      adminPassword,
+      adminName || 'Administrador',
+      'ADMIN',
+      null
+    );
 
     deleteAllUserSessions(admin.id);
 

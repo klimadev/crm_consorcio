@@ -1,7 +1,9 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'crm-next-jwt-secret-key-change-in-production';
+const JWT_SECRET: jwt.Secret = process.env.JWT_SECRET || 'crm-next-jwt-secret-key-change-in-production';
 const ACCESS_TOKEN_EXPIRES_IN = process.env.ACCESS_TOKEN_EXPIRES_IN || '15m'; // 15 minutos
+const ACCESS_TOKEN_EXPIRY: jwt.SignOptions['expiresIn'] = ACCESS_TOKEN_EXPIRES_IN as jwt.SignOptions['expiresIn'];
+const REFRESH_TOKEN_EXPIRY: jwt.SignOptions['expiresIn'] = '7d';
 
 export interface JWTPayload {
   userId: string;
@@ -14,11 +16,11 @@ export interface JWTPayload {
 
 // Funções para manipulação de tokens (sem dependência de banco de dados)
 export function generateAccessToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY });
 }
 
 export function generateRefreshToken(userId: string): string {
-  return jwt.sign({ userId, type: 'refresh' }, JWT_SECRET, { expiresIn: '7d' }); // 7 dias
+  return jwt.sign({ userId, type: 'refresh' }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRY }); // 7 dias
 }
 
 export function verifyAccessToken(token: string): JWTPayload | null {

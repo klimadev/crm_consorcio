@@ -31,7 +31,16 @@ const inputClass = "w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 r
 const selectClass = "w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none appearance-none cursor-pointer hover:border-slate-300";
 
 export const SalesEngine: React.FC = () => {
-  const { deals, currentUser, pdvs, products, customFieldDefs, addCustomFieldDef, updateCustomFieldDef, removeCustomFieldDef } = useCRM();
+  const {
+    deals = [],
+    currentUser,
+    pdvs = [],
+    products = [],
+    customFieldDefs = [],
+    addCustomFieldDef,
+    updateCustomFieldDef,
+    removeCustomFieldDef
+  } = useCRM();
   const [filter, setFilter] = useState('');
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [isFieldsModalOpen, setIsFieldsModalOpen] = useState(false);
@@ -41,21 +50,22 @@ export const SalesEngine: React.FC = () => {
     d.customerName.toLowerCase().includes(filter.toLowerCase())
   );
 
-const createNewDeal = () => {
+  const createNewDeal = () => {
+    if (!currentUser) return;
     setSelectedDeal({
-        id: generateStableId('deal'),
-        title: '', 
-        pdvId: currentUser.pdvId, 
-        customerId: '',
-        customerName: '', 
-        value: 0, 
-        stageId: 'stage-lead',
-        assignedEmployeeIds: [currentUser.id], 
-        productIds: [], 
-        tags: [], 
-        notes: '', 
-        visibility: 'PUBLIC',
-        createdAt: getCurrentDateISO()
+      id: generateStableId('deal'),
+      title: '',
+      pdvId: currentUser.pdvId,
+      customerId: '',
+      customerName: '',
+      value: 0,
+      stageId: 'stage-lead',
+      assignedEmployeeIds: [currentUser.id],
+      productIds: [],
+      tags: [],
+      notes: '',
+      visibility: 'PUBLIC',
+      createdAt: getCurrentDateISO()
     } as Deal);
   };
 
@@ -91,7 +101,7 @@ const createNewDeal = () => {
             <p className="text-slate-500 text-sm mt-1">Gestão de pedidos e propostas de consórcio e varejo.</p>
           </div>
           <div className="flex gap-2">
-             {currentUser.role === 'ADMIN' && (
+             {currentUser?.role === 'ADMIN' && (
                 <button onClick={() => setIsFieldsModalOpen(true)} className="px-4 py-3 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 flex items-center gap-2 shadow-sm transition-all">
                    <Sliders size={18}/> Campos Extras
                 </button>

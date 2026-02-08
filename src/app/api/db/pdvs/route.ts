@@ -69,14 +69,13 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'PDV not found' }, { status: 404 });
     }
 
+    const resolvedLocation = data.location ?? [data.address, data.city, data.state].filter(Boolean).join(' - ');
     const pdv = updatePDV(
       data.id,
       data.name,
-      data.region_id || data.regionId,
+      data.region_id || data.regionId || null,
       data.type,
-      data.address || '',
-      data.city || '',
-      data.state || ''
+      resolvedLocation || ''
     );
     if (!pdv) {
       return NextResponse.json({ error: 'PDV not found' }, { status: 404 });

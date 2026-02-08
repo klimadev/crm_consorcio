@@ -11,7 +11,7 @@ function transformUserToEmployee(user: User): Employee {
     email: user.email,
     role: user.role,
     pdvId: user.pdv_id,
-    active: Boolean(user.is_active),
+    active: Boolean(user.active),
   };
 }
 
