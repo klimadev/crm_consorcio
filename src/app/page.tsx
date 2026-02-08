@@ -1,18 +1,44 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CRMProvider, useCRM } from '@/context';
-import { KanbanBoard, DashboardBI, SalesEngine, OrganizationView, EmployeesView, ProductsView, CustomersView, IntegrationsView, NoSSR } from '@/components';
-import { 
-  LayoutDashboard, Users, Package, Bell, Briefcase, Map, ChevronDown, PieChart, Plug, FileText 
-} from 'lucide-react';
+import { DashboardBI, KanbanBoard, CustomersView, ProductsView, TeamPlacesView, NoSSR } from '@/components';
+import { LayoutDashboard, PieChart, Package, Users, Briefcase, ChevronDown } from 'lucide-react';
 import { BRANDING } from '@/constants';
 
-type View = 'dashboard' | 'kanban' | 'sales_engine' | 'organization' | 'employees' | 'products' | 'customers' | 'integrations';
+type View = 'kanban' | 'dashboard' | 'customers' | 'team' | 'products';
 
-const NavItem = ({ view, icon: Icon, label, currentView, setCurrentView }: { view: View; icon: any; label: string; currentView: View; setCurrentView: (v: View) => void }) => (
+const NAV_ITEMS: Array<{ view: View; label: string; icon: React.ElementType }> = [
+  { view: 'kanban', label: 'Kanban', icon: LayoutDashboard },
+  { view: 'dashboard', label: 'Dashboard', icon: PieChart },
+  { view: 'customers', label: 'Consorciados', icon: Briefcase },
+  { view: 'team', label: 'Equipe & Pracas', icon: Users },
+  { view: 'products', label: 'Planos', icon: Package },
+];
+
+const VIEW_TITLES: Record<View, string> = {
+  kanban: 'Kanban',
+  dashboard: 'Dashboard',
+  customers: 'Consorciados',
+  team: 'Equipe & Pracas',
+  products: 'Planos',
+};
+
+const NavItem = ({
+  view,
+  icon: Icon,
+  label,
+  currentView,
+  setCurrentView,
+}: {
+  view: View;
+  icon: React.ElementType;
+  label: string;
+  currentView: View;
+  setCurrentView: (v: View) => void;
+}) => (
   <button
     onClick={() => setCurrentView(view)}
     className={`flex items-center gap-3 w-full px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 group ${
@@ -44,6 +70,16 @@ const InnerApp: React.FC = () => {
     }
   }, [mounted, isAuthResolved, currentUser, router]);
 
+  const overdueDealsCount = useMemo(() => {
+    return (deals || []).filter((d) => {
+      if (!d.nextFollowUpDate) return false;
+      const stage = (stages || []).find((s) => s.id === d.stageId);
+      const isClosed = stage?.type === 'WON' || stage?.type === 'LOST';
+      if (isClosed) return false;
+      return new Date(d.nextFollowUpDate) < new Date();
+    }).length;
+  }, [deals, stages]);
+
   if (!mounted || !isAuthResolved || !currentUser) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50">
@@ -51,15 +87,6 @@ const InnerApp: React.FC = () => {
       </div>
     );
   }
-
-  const overdueDeals = (deals || []).filter(d => {
-    if (!d.nextFollowUpDate) return false;
-    const stage = (stages || []).find(s => s.id === d.stageId);
-    const isClosed = stage?.type === 'WON' || stage?.type === 'LOST';
-    const dealDate = new Date(d.nextFollowUpDate);
-    const now = new Date();
-    return dealDate < now && !isClosed;
-  });
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans">
@@ -72,23 +99,16 @@ const InnerApp: React.FC = () => {
         </div>
         
         <nav className="flex-1 px-3 space-y-1 overflow-y-auto custom-scrollbar">
-          <div className="px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-widest">Gestão</div>
-          <NavItem view="dashboard" icon={PieChart} label="Dashboard" currentView={currentView} setCurrentView={setCurrentView} />
-          
-          <div className="px-4 py-2 mt-6 text-xs font-bold text-slate-500 uppercase tracking-widest">Vendas & Operação</div>
-          <NavItem view="kanban" icon={LayoutDashboard} label="Funil (Kanban)" currentView={currentView} setCurrentView={setCurrentView} />
-          <NavItem view="sales_engine" icon={FileText} label="Motor de Propostas" currentView={currentView} setCurrentView={setCurrentView} />
-          <NavItem view="customers" icon={Briefcase} label="Clientes" currentView={currentView} setCurrentView={setCurrentView} />
-          
-          <div className="px-4 py-2 mt-6 text-xs font-bold text-slate-500 uppercase tracking-widest">Configuração</div>
-          {currentUser.role === 'ADMIN' && (
-             <>
-               <NavItem view="organization" icon={Map} label="Organização" currentView={currentView} setCurrentView={setCurrentView} />
-               <NavItem view="employees" icon={Users} label="Equipe" currentView={currentView} setCurrentView={setCurrentView} />
-               <NavItem view="products" icon={Package} label="Produtos" currentView={currentView} setCurrentView={setCurrentView} />
-               <NavItem view="integrations" icon={Plug} label="Integrações" currentView={currentView} setCurrentView={setCurrentView} />
-             </>
-          )}
+          {NAV_ITEMS.map((item) => (
+            <NavItem
+              key={item.view}
+              view={item.view}
+              icon={item.icon}
+              label={item.label}
+              currentView={currentView}
+              setCurrentView={setCurrentView}
+            />
+          ))}
         </nav>
 
         <div className="p-4 border-t border-slate-800 relative">
@@ -119,25 +139,22 @@ const InnerApp: React.FC = () => {
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         <header className="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-8 flex-shrink-0 z-10 shadow-sm">
-           <h2 className="text-xl font-bold text-slate-800 capitalize">{currentView.replace('_', ' ')}</h2>
-           <div className="flex items-center gap-5">
-              <button className="relative p-2 rounded-full text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
-                 <Bell size={20} />
-                 {overdueDeals.length > 0 && <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full border-2 border-white">{overdueDeals.length}</span>}
-              </button>
-           </div>
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-bold text-slate-800">{VIEW_TITLES[currentView]}</h2>
+            {overdueDealsCount > 0 && (
+              <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700 border border-red-100">
+                {overdueDealsCount} pendencias
+              </span>
+            )}
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto relative bg-slate-50">
-          {currentView === 'dashboard' && <DashboardBI />}
           {currentView === 'kanban' && <KanbanBoard />}
-          {currentView === 'sales_engine' && <SalesEngine />}
-          
-          {currentView === 'organization' && <OrganizationView />}
-          {currentView === 'employees' && <EmployeesView />}
-          {currentView === 'products' && <ProductsView />}
+          {currentView === 'dashboard' && <DashboardBI />}
           {currentView === 'customers' && <CustomersView />}
-          {currentView === 'integrations' && <IntegrationsView />}
+          {currentView === 'team' && <TeamPlacesView />}
+          {currentView === 'products' && <ProductsView />}
         </div>
       </main>
     </div>
