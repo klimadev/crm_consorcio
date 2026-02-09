@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseCookies, verifyToken } from '@/lib/auth/jwt';
 import { 
-  getPdvsByTenantId, createPdv, updatePdv, deletePdv, getPdvById, getPdvsByRegionId 
+  getPdvsByTenantId, createPdv, updatePdv, deletePdv, getPdvById 
 } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
@@ -20,7 +20,6 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    const regionId = searchParams.get('regionId');
 
     if (id) {
       const pdv = getPdvById(id);
@@ -28,11 +27,6 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ success: false, message: 'PDV não encontrado' }, { status: 404 });
       }
       return NextResponse.json({ success: true, pdv });
-    }
-
-    if (regionId) {
-      const pdvs = getPdvsByRegionId(payload.tenantId, regionId);
-      return NextResponse.json({ success: true, pdvs });
     }
 
     const pdvs = getPdvsByTenantId(payload.tenantId);
@@ -62,7 +56,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, regionId, type, location, address, city, state } = body;
+    const { name, type, location, address, city, state } = body;
     const resolvedLocation = location ?? [address, city, state].filter(Boolean).join(' - ');
 
     if (!name) {
@@ -73,7 +67,6 @@ export async function POST(request: NextRequest) {
       payload.tenantId, 
       name, 
       type || 'PHYSICAL_STORE',
-      regionId || null, 
       resolvedLocation || ''
     );
     return NextResponse.json({ success: true, pdv });
@@ -102,7 +95,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, name, regionId, type, location, address, city, state } = body;
+    const { id, name, type, location, address, city, state } = body;
     const resolvedLocation = location ?? [address, city, state].filter(Boolean).join(' - ');
 
     if (!id || !name) {
@@ -114,7 +107,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'PDV não encontrado' }, { status: 404 });
     }
 
-    const pdv = updatePdv(id, name, regionId || null, type || 'PHYSICAL_STORE', resolvedLocation || '');
+    const pdv = updatePdv(id, name, type || 'PHYSICAL_STORE', resolvedLocation || '');
     return NextResponse.json({ success: true, pdv });
   } catch (error) {
     console.error('Update pdv error:', error);

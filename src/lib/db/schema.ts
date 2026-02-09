@@ -1,7 +1,6 @@
 export type {
   Tenant,
   User,
-  Region,
   PDV,
   Customer,
   Product,

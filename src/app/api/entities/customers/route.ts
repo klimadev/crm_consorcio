@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, type, document, email, phone, status, regionId, pdvId } = body;
+    const { name, type, document, email, phone, status, pdvId } = body;
 
     if (!name) {
       return NextResponse.json({ success: false, message: 'Nome é obrigatório' }, { status: 400 });
@@ -78,7 +78,6 @@ export async function POST(request: NextRequest) {
       email || '',
       phone || '',
       status || 'LEAD',
-      regionId || null,
       pdvId || null
     );
     return NextResponse.json({ success: true, customer });
@@ -109,7 +108,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, name, type, document, email, phone, status, regionId, pdvId } = body;
+    const { id, name, type, document, email, phone, status, pdvId } = body;
 
     if (!id || !name) {
       return NextResponse.json({ success: false, message: 'ID e nome são obrigatórios' }, { status: 400 });
@@ -128,7 +127,6 @@ export async function PUT(request: NextRequest) {
       email || '',
       phone || '',
       status || 'LEAD',
-      regionId || null,
       pdvId || null
     );
     return NextResponse.json({ success: true, customer });

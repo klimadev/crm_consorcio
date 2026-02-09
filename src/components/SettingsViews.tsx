@@ -1,37 +1,40 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useCRM } from '@/context';
-import { 
-  PDV, PDV_TYPES, PDVType, Employee, Role, Product, ProductAttribute, AutomationStep, 
-  Customer, CustomerStatus, CUSTOMER_STATUS_COLORS, CUSTOMER_STATUS_LABELS, CustomFieldDefinition, CustomFieldType
+import {
+  CUSTOMER_STATUS_LABELS,
+  PDV_TYPES,
+  type Customer,
+  type CustomerStatus,
+  type Employee,
+  type PDV,
+  type PDVType,
+  type Product,
+  type Role,
 } from '@/types';
-import { 
-  Trash2, Map, User, ShoppingBag, Plus, Search, Mail, MapPin, Tag, Smartphone, 
-  Briefcase, Activity, Edit, QrCode, RefreshCw, 
-  SmartphoneCharging, Plug, Shield, Building, Globe, Store, Save, FileText,
-  Sliders, Database, XCircle, MessageSquare, Users, ArrowUpRight, ArrowDownRight
+import {
+  Briefcase,
+  Building2,
+  Edit,
+  Globe,
+  Mail,
+  MapPin,
+  Package,
+  Plus,
+  Save,
+  Search,
+  Shield,
+  Store,
+  Trash2,
+  User,
+  Users,
 } from 'lucide-react';
 import { Modal } from './Modal';
-import { AutomationBuilder } from './AutomationBuilder';
 import { generateStableId, getCurrentDateISO } from '@/utils/idUtils';
 
-const Header = ({ title, subtitle, icon: Icon }: { title: string, subtitle: string, icon: any }) => (
-  <div className="flex items-center gap-5 mb-8 pb-6 border-b border-slate-200">
-    <div className="p-4 bg-white border border-slate-200 shadow-md rounded-2xl text-blue-600">
-      <Icon size={32} strokeWidth={1.5} />
-    </div>
-    <div>
-      <h2 className="text-3xl font-bold text-slate-900 tracking-tight">{title}</h2>
-      <p className="text-base text-slate-500 mt-1">{subtitle}</p>
-    </div>
-  </div>
-);
-
 export const Card: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-  <div className={`bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg transition-all duration-300 ${className}`}>
-    {children}
-  </div>
+  <div className={`bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden ${className}`}>{children}</div>
 );
 
 interface KPIWidgetProps {
@@ -43,14 +46,13 @@ interface KPIWidgetProps {
 }
 
 export const KPIWidget: React.FC<KPIWidgetProps> = ({ title, value, icon: Icon, color, trend }) => {
-  const colorClass = {
-    blue: 'bg-blue-50 text-blue-600',
-    slate: 'bg-slate-100 text-slate-700',
-    emerald: 'bg-emerald-50 text-emerald-600',
-    amber: 'bg-amber-50 text-amber-600',
-  }[color];
-
-  const hasPositiveTrend = trend ? Number(trend.replace('%', '')) >= 0 : false;
+  const colorClass =
+    {
+      blue: 'bg-blue-50 text-blue-600',
+      slate: 'bg-slate-100 text-slate-700',
+      emerald: 'bg-emerald-50 text-emerald-600',
+      amber: 'bg-amber-50 text-amber-600',
+    }[color] ?? 'bg-slate-100 text-slate-700';
 
   return (
     <div className="flex h-full flex-col justify-between">
@@ -58,12 +60,7 @@ export const KPIWidget: React.FC<KPIWidgetProps> = ({ title, value, icon: Icon, 
         <div className={`rounded-xl p-3 ${colorClass}`}>
           <Icon size={20} />
         </div>
-        {trend && (
-          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-bold ${hasPositiveTrend ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-            {hasPositiveTrend ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-            {trend}
-          </span>
-        )}
+        {trend && <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">{trend}</span>}
       </div>
       <div>
         <p className="mb-1 truncate text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</p>
@@ -73,836 +70,860 @@ export const KPIWidget: React.FC<KPIWidgetProps> = ({ title, value, icon: Icon, 
   );
 };
 
-const Badge: React.FC<{ children: React.ReactNode; color?: string }> = ({ children, color = 'bg-slate-100 text-slate-600' }) => (
-  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${color}`}>
-    {children}
-  </span>
-);
+const inputClass =
+  'w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none placeholder:text-slate-400';
+const selectClass =
+  'w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none appearance-none cursor-pointer';
 
-interface InputGroupProps {
-  label: string;
-  icon?: any;
-  children?: React.ReactNode;
-  required?: boolean;
-}
-
-const InputGroup: React.FC<InputGroupProps> = ({ label, icon: Icon, children, required }) => (
-  <div className="space-y-1.5">
-    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 ml-1">
-      {label} {required && <span className="text-red-500">*</span>}
-    </label>
-    <div className="relative group">
-      {Icon && <Icon className="absolute left-3.5 top-3.5 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={16} />}
-      {children}
+const Header: React.FC<{ title: string; subtitle: string; icon: React.ElementType; right?: React.ReactNode }> = ({
+  title,
+  subtitle,
+  icon: Icon,
+  right,
+}) => (
+  <div className="mb-6 flex flex-col gap-4 border-b border-slate-200 pb-5 md:flex-row md:items-end md:justify-between">
+    <div className="flex items-center gap-4">
+      <div className="rounded-2xl border border-slate-200 bg-white p-3 text-blue-600 shadow-sm">
+        <Icon size={26} strokeWidth={1.75} />
+      </div>
+      <div>
+        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{title}</h2>
+        <p className="text-sm text-slate-500">{subtitle}</p>
+      </div>
     </div>
+    {right}
   </div>
 );
 
-const inputClass = "w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none placeholder:text-slate-400 hover:border-slate-300";
-const selectClass = "w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none appearance-none cursor-pointer hover:border-slate-300";
-
-const OrganizationView: React.FC = () => {
-  const { pdvs = [], addPDV, updatePDV, removePDV, regions = [], getRegionName } = useCRM();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Partial<PDV>>({ name: '', type: 'PHYSICAL_STORE', regionId: '', location: '', isActive: true });
-
-  const handleEdit = (pdv: PDV) => {
-    setEditingId(pdv.id);
-    setFormData(pdv);
-    setIsModalOpen(true);
-  };
-
-  const handleCreate = () => {
-    setEditingId(null);
-    setFormData({ name: '', type: 'PHYSICAL_STORE', regionId: '', location: '', isActive: true });
-    setIsModalOpen(true);
-  };
-
-  const handleSave = () => {
-    if(!formData.name || !formData.regionId) return alert('Nome e Regional são obrigatórios');
-    
-    if (editingId) {
-       updatePDV({ ...formData, id: editingId } as PDV);
-    } else {
-       addPDV({ 
-         name: formData.name!, 
-         type: formData.type as PDVType, 
-         regionId: formData.regionId!, 
-         location: formData.location || '', 
-         isActive: true 
-       });
-    }
-    setIsModalOpen(false);
-  };
-
-  return (
-    <div className="p-8 max-w-7xl mx-auto animate-fade-in">
-      <div className="flex justify-between items-start">
-         <Header title="Estrutura Organizacional" subtitle="Gerencie Praças e Pontos de Venda." icon={Map} />
-         <button onClick={handleCreate} className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 flex items-center gap-2 transition-all transform hover:-translate-y-0.5">
-           <Plus size={20}/> Novo PDV
-         </button>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {pdvs.map(pdv => (
-          <Card key={pdv.id} className="p-6 group relative border-l-[6px] border-l-blue-500">
-             <div className="flex justify-between items-start mb-4">
-                <Badge color="bg-blue-50 text-blue-700 border border-blue-100">
-                  {PDV_TYPES[pdv.type]}
-                </Badge>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => handleEdit(pdv)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                    <Edit size={16}/>
-                  </button>
-                  <button onClick={() => removePDV(pdv.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                    <Trash2 size={16}/>
-                  </button>
-                </div>
-             </div>
-             <h3 className="text-xl font-bold text-slate-800 mb-2">{pdv.name}</h3>
-             <div className="space-y-2 mt-4">
-               <p className="text-sm text-slate-500 flex items-center gap-2">
-                 <MapPin size={16} className="text-slate-400"/> {pdv.location || 'Local não definido'}
-               </p>
-               <p className="text-sm text-slate-500 flex items-center gap-2">
-                 <Globe size={16} className="text-slate-400"/> {getRegionName(pdv.regionId)}
-               </p>
-             </div>
-          </Card>
-        ))}
-      </div>
-
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? 'Editar Ponto de Venda' : 'Novo Ponto de Venda'} size="lg">
-         <div className="flex flex-col">
-            <div className="flex justify-end items-center bg-white mb-6">
-               <button onClick={handleSave} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 active:bg-blue-800 transition-all shadow-lg shadow-blue-500/20">
-                 <Save size={18} /> <span>Salvar Unidade</span>
-               </button>
-            </div>
-
-            <div className="space-y-6">
-               <InputGroup label="Nome da Unidade" icon={Store} required>
-                  <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Ex: Matriz Berrini" className={inputClass} autoFocus />
-               </InputGroup>
-
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <InputGroup label="Tipo de Canal" icon={Briefcase}>
-                     <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value as PDVType})} className={selectClass}>
-                        {Object.entries(PDV_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                     </select>
-                  </InputGroup>
-                  <InputGroup label="Regional" icon={Globe} required>
-                     <select value={formData.regionId} onChange={e => setFormData({...formData, regionId: e.target.value})} className={selectClass}>
-                        <option value="">Selecione...</option>
-                        {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                     </select>
-                  </InputGroup>
-               </div>
-
-               <InputGroup label="Localização (Cidade/Estado)" icon={MapPin}>
-                  <input value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} placeholder="Ex: São Paulo, SP" className={inputClass} />
-               </InputGroup>
-            </div>
-         </div>
-      </Modal>
-    </div>
-  );
+const RoleLabels: Record<Role, string> = {
+  ADMIN: 'Admin',
+  MANAGER: 'Gerente',
+  SALES_REP: 'Consultor',
+  SUPPORT: 'Suporte',
 };
 
-const IntegrationsView: React.FC = () => {
-  const { integrations = [], updateIntegrationStatus } = useCRM();
-  const [qrModalOpen, setQrModalOpen] = useState(false);
-  const [scanning, setScanning] = useState(false);
-  const [activeId, setActiveId] = useState<string | null>(null);
+export const CustomersView: React.FC = () => {
+  const { customers = [], pdvs = [], addCustomer, updateCustomer, currentUser, getPDVName } = useCRM();
+  const canEdit = currentUser?.role === 'ADMIN';
 
-  const handleConnect = (id: string) => {
-     setActiveId(id);
-     setQrModalOpen(true);
-     setScanning(true);
-     setTimeout(() => setScanning(false), 3000); 
-  };
-
-  const finalizeConnection = () => {
-    if(activeId) {
-      updateIntegrationStatus(activeId, 'CONNECTED');
-      setQrModalOpen(false);
-      setActiveId(null);
-    }
-  };
-
-  const handleDisconnect = (id: string) => {
-    if(confirm('Desconectar integração? As automações irão parar.')) {
-       updateIntegrationStatus(id, 'DISCONNECTED');
-    }
-  };
-
-  return (
-    <div className="p-8 max-w-7xl mx-auto animate-fade-in">
-       <Header title="Central de Integrações" subtitle="Conecte seus canais de comunicação." icon={Plug} />
-       
-       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {integrations.map(int => (
-             <Card key={int.id} className={`p-6 border-l-[6px] ${int.status === 'CONNECTED' ? 'border-l-green-500' : 'border-l-slate-300'}`}>
-                <div className="flex justify-between items-start mb-6">
-                   <div className="p-3 bg-green-50 rounded-xl">
-                      <MessageSquare size={24} className="text-green-600" />
-                   </div>
-                   <Badge color={int.status === 'CONNECTED' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}>
-                      {int.status === 'CONNECTED' ? 'ONLINE' : 'DESCONECTADO'}
-                   </Badge>
-                </div>
-                <h3 className="text-xl font-bold text-slate-800 mb-2">{int.name}</h3>
-                <p className="text-sm text-slate-500 mb-6">Envie mensagens automáticas e lembretes de follow-up diretamente pelo WhatsApp Web.</p>
-                {int.status === 'CONNECTED' ? (
-                   <button onClick={() => handleDisconnect(int.id)} className="w-full py-3 bg-red-50 text-red-600 font-bold rounded-xl hover:bg-red-100 transition-colors border border-red-100">
-                      Desconectar
-                   </button>
-                ) : (
-                   <button onClick={() => handleConnect(int.id)} className="w-full py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors shadow-md shadow-green-500/20 flex items-center justify-center gap-2">
-                      <QrCode size={18}/> Ler QR Code
-                   </button>
-                )}
-             </Card>
-          ))}
-       </div>
-
-       <Modal isOpen={qrModalOpen} onClose={() => setQrModalOpen(false)} title="Conectar WhatsApp" size="md">
-          <div className="flex flex-col items-center py-6">
-             {scanning ? (
-                <div className="w-64 h-64 bg-slate-50 rounded-2xl flex flex-col items-center justify-center animate-pulse border-2 border-slate-100">
-                   <RefreshCw size={32} className="text-blue-500 animate-spin mb-4"/>
-                   <p className="text-sm font-bold text-slate-500">Gerando sessão segura...</p>
-                </div>
-             ) : (
-                <div className="flex flex-col items-center animate-fade-in">
-                   <div className="w-64 h-64 bg-white border-4 border-slate-800 rounded-2xl p-2 mb-6 shadow-2xl relative group cursor-pointer overflow-hidden" onClick={finalizeConnection}>
-                      <div className="w-full h-full bg-[url('https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=ConnectCRM')] bg-contain bg-center opacity-90 group-hover:opacity-20 transition-all duration-300"></div>
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-95 group-hover:scale-100">
-                         <div className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-xl">
-                            Simular Conexão
-                         </div>
-                      </div>
-                   </div>
-                   <ol className="text-sm text-slate-600 list-decimal pl-5 space-y-2 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                      <li>Abra o WhatsApp no seu celular</li>
-                      <li>Toque em <b>Aparelhos conectados</b> {'>'} <b>Conectar aparelho</b></li>
-                      <li>Aponte a câmera para esta tela</li>
-                   </ol>
-                </div>
-             )}
-          </div>
-       </Modal>
-    </div>
-  );
-};
-
-const ProductsView: React.FC = () => {
-  const { products = [], addProduct, updateProduct, removeProduct } = useCRM();
+  const [query, setQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Partial<Product>>({ name: '', category: '', basePrice: 0, description: '', active: true, attributes: [], automationSteps: [], defaultFollowUpDays: 3 });
-  
-  const [newAttr, setNewAttr] = useState<ProductAttribute>({ key: '', label: '', value: '' });
-  const [activeTab, setActiveTab] = useState<'info'|'automation'>('info');
-
-  const handleEdit = (p: Product) => { setEditingId(p.id); setFormData(p); setIsModalOpen(true); };
-  
-  const handleSave = () => {
-      const payload = { ...formData, id: editingId || generateStableId('prod') } as Product;
-      if (editingId) updateProduct(payload); else addProduct(payload);
-      setIsModalOpen(false);
-  };
-
-  const addAttribute = () => {
-    if (!newAttr.label || !newAttr.value) return;
-    const key = newAttr.key || newAttr.label.toLowerCase().replace(/\s+/g, '_');
-    setFormData(prev => ({ ...prev, attributes: [...(prev.attributes || []), { ...newAttr, key }] }));
-    setNewAttr({ key: '', label: '', value: '' });
-  };
-  const removeAttribute = (i: number) => setFormData(prev => ({ ...prev, attributes: prev.attributes?.filter((_, idx) => idx !== i) }));
-
-  const updateAutomationSteps = (steps: AutomationStep[]) => {
-     setFormData(prev => ({ ...prev, automationSteps: steps }));
-  };
-
-  return (
-     <div className="p-8 max-w-7xl mx-auto animate-fade-in">
-        <div className="flex justify-between items-start">
-           <Header title="Catálogo & Automação" subtitle="Produtos com atributos dinâmicos." icon={ShoppingBag} />
-           <button onClick={() => { setEditingId(null); setFormData({}); setIsModalOpen(true); }} className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 flex items-center gap-2 transition-all transform hover:-translate-y-0.5">
-             <Plus size={20}/> Novo Produto
-           </button>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-           {products.map(p => (
-              <Card key={p.id} className="flex flex-col h-full group">
-                 <div className="p-6 flex-1 relative">
-                    <div className="flex justify-between items-start mb-4">
-                       <Badge>{p.category}</Badge>
-                       <span className="text-lg font-bold text-slate-800">R$ {p.basePrice.toLocaleString('pt-BR')}</span>
-                    </div>
-                    <h3 className="text-xl font-bold text-slate-900 mb-2">{p.name}</h3>
-                    <p className="text-sm text-slate-500 line-clamp-2 mb-4">{p.description}</p>
-                    
-                    <div className="flex flex-wrap gap-1 mb-4">
-                       {p.attributes.slice(0,3).map((attr,i) => (
-                          <span key={i} className="text-[10px] px-2 py-1 bg-slate-50 border border-slate-100 rounded text-slate-500 font-medium">{attr.label}: {attr.value}</span>
-                       ))}
-                    </div>
-
-                    <div className="absolute inset-0 bg-white/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                       <button onClick={() => handleEdit(p)} className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm shadow-xl transform scale-95 group-hover:scale-100 transition-transform">Editar</button>
-                    </div>
-                 </div>
-                 <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
-                    <span className="text-xs text-slate-400 font-medium flex items-center gap-1">
-                       <Activity size={12}/> {p.automationSteps?.length || 0} automações
-                    </span>
-                    <button onClick={() => removeProduct(p.id)} className="text-slate-300 hover:text-red-500"><Trash2 size={16}/></button>
-                 </div>
-              </Card>
-           ))}
-        </div>
-        
-        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? "Editar Produto" : "Novo Produto"} size="lg">
-           <div className="flex flex-col h-[80vh] md:h-auto">
-             <div className="flex justify-end items-center bg-white mb-4">
-                <button onClick={handleSave} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 active:bg-blue-800 transition-all shadow-lg shadow-blue-500/20">
-                   <Save size={18} /> <span>Salvar Produto</span>
-                </button>
-             </div>
-
-             <div className="flex p-1.5 bg-slate-100 rounded-xl mb-6 gap-1">
-               <button onClick={() => setActiveTab('info')} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold rounded-lg transition-all ${activeTab === 'info' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                  <FileText size={16} /> Informações
-               </button>
-               <button onClick={() => setActiveTab('automation')} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold rounded-lg transition-all ${activeTab === 'automation' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                  <SmartphoneCharging size={16} /> Régua de Pós-Venda
-               </button>
-             </div>
-             
-             <div className="overflow-y-auto custom-scrollbar px-1 pb-2 flex-1">
-               {activeTab === 'info' && (
-                  <div className="space-y-6">
-                    <InputGroup label="Nome do Produto" icon={ShoppingBag} required>
-                       <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className={inputClass} autoFocus />
-                    </InputGroup>
-                    
-                    <div className="grid grid-cols-2 gap-6">
-                      <InputGroup label="Preço Base (R$)" icon={Smartphone}>
-                         <input type="number" value={formData.basePrice} onChange={e => setFormData({...formData, basePrice: parseFloat(e.target.value)})} className={inputClass} />
-                      </InputGroup>
-                      <InputGroup label="Categoria" icon={Tag}>
-                         <input value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className={inputClass} />
-                      </InputGroup>
-                    </div>
-                    
-                    <InputGroup label="Descrição">
-                       <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500" rows={3} />
-                    </InputGroup>
-                    
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                       <p className="text-xs font-bold text-slate-500 mb-3 uppercase">Atributos Personalizados</p>
-                       <div className="flex gap-3 mb-3">
-                          <input value={newAttr.label} onChange={e => setNewAttr({...newAttr, label: e.target.value})} placeholder="Nome (Ex: Voltagem)" className="flex-1 px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-500" />
-                          <input value={newAttr.value} onChange={e => setNewAttr({...newAttr, value: e.target.value})} placeholder="Valor (Ex: 220v)" className="flex-1 px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-500" />
-                          <button onClick={addAttribute} className="bg-blue-600 text-white px-4 rounded-lg font-bold hover:bg-blue-700 transition-colors">+</button>
-                       </div>
-                       <div className="flex flex-wrap gap-2">
-                          {formData.attributes?.map((a, i) => (
-                             <div key={i} className="text-xs bg-white border border-slate-200 pl-3 pr-2 py-1.5 rounded-lg flex items-center gap-2 shadow-sm">
-                                <span className="font-bold text-slate-700">{a.label}:</span> <span className="text-slate-500">{a.value}</span>
-                                <button onClick={() => removeAttribute(i)} className="text-red-400 hover:text-red-600"><XCircle size={14}/></button>
-                             </div>
-                          ))}
-                       </div>
-                    </div>
-                  </div>
-               )}
-
-               {activeTab === 'automation' && (
-                  <AutomationBuilder 
-                    steps={formData.automationSteps || []}
-                    onUpdate={updateAutomationSteps}
-                    triggerLabel="Venda Realizada (Ganho)"
-                    triggerDescription="Esta régua inicia quando o negócio é marcado como 'Ganho'."
-                  />
-               )}
-             </div>
-           </div>
-        </Modal>
-     </div>
-  );
-};
-
-const EmployeesView: React.FC = () => {
-  const { employees = [], addEmployee, updateEmployee, removeEmployee, pdvs = [], getPDVName } = useCRM();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Partial<Employee>>({ name: '', email: '', role: 'SALES_REP', pdvId: '', active: true });
-
-  const handleEdit = (emp: Employee) => {
-    setEditingId(emp.id);
-    setFormData(emp);
-    setIsModalOpen(true);
-  };
-
-  const handleCreate = () => {
-    setEditingId(null);
-    setFormData({ name: '', email: '', role: 'SALES_REP', pdvId: '', active: true });
-    setIsModalOpen(true);
-  };
-
-  const handleSave = () => {
-     if(!formData.name || !formData.email) return alert('Nome e Email obrigatórios');
-     
-     const payload = { 
-        id: editingId || generateStableId('emp'),
-        name: formData.name!,
-        email: formData.email!,
-        role: formData.role as Role,
-        pdvId: formData.pdvId || null,
-        active: formData.active ?? true
-     };
-
-     if (editingId) updateEmployee(payload);
-     else addEmployee(payload);
-
-     setIsModalOpen(false);
-  };
-
-  const ROLES_LABEL: Record<Role, string> = {
-     'ADMIN': 'Administrador',
-     'MANAGER': 'Gerente Regional',
-     'SALES_REP': 'Consultor Comercial',
-     'SUPPORT': 'Suporte / Backoffice'
-  };
-
-  return (
-     <div className="p-8 max-w-7xl mx-auto animate-fade-in">
-        <div className="flex justify-between items-start">
-           <Header title="Gestão de Equipe" subtitle="Controle de acessos e funções." icon={Users} />
-           <button onClick={handleCreate} className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 flex items-center gap-2 transition-all transform hover:-translate-y-0.5">
-             <Plus size={20}/> Novo Colaborador
-           </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-           {employees.map(e => (
-              <Card key={e.id} className="p-5 flex items-start gap-4 group">
-                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center font-bold text-2xl text-slate-500 shadow-inner flex-shrink-0">
-                    {e.name.charAt(0)}
-                 </div>
-                 <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start">
-                       <h3 className="font-bold text-slate-800 truncate text-lg">{e.name}</h3>
-                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                         <button onClick={() => handleEdit(e)} className="text-slate-300 hover:text-blue-500"><Edit size={16}/></button>
-                         <button onClick={() => removeEmployee(e.id)} className="text-slate-300 hover:text-red-500"><Trash2 size={16}/></button>
-                       </div>
-                    </div>
-                    <p className="text-sm text-slate-500 mb-3 truncate">{e.email}</p>
-                    <div className="flex flex-col gap-2">
-                       <Badge color="bg-indigo-50 text-indigo-700 border border-indigo-100 w-fit">{ROLES_LABEL[e.role]}</Badge>
-                       <p className="text-xs text-slate-400 flex items-center gap-1.5"><Building size={12}/> {getPDVName(e.pdvId)}</p>
-                    </div>
-                 </div>
-              </Card>
-           ))}
-        </div>
-
-        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? 'Editar Colaborador' : 'Adicionar Colaborador'} size="lg">
-           <div className="flex flex-col">
-              <div className="flex justify-end items-center bg-white mb-6">
-                 <button onClick={handleSave} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 active:bg-blue-800 transition-all shadow-lg shadow-blue-500/20">
-                   <Save size={18} /> <span>Salvar Acesso</span>
-                 </button>
-              </div>
-
-              <div className="space-y-6">
-                 <InputGroup label="Nome Completo" icon={User} required>
-                    <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className={inputClass} autoFocus />
-                 </InputGroup>
-                 <InputGroup label="E-mail Corporativo" icon={Mail} required>
-                    <input value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className={inputClass} />
-                 </InputGroup>
-                 
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <InputGroup label="Função (Cargo)" icon={Shield} required>
-                       <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value as Role})} className={selectClass}>
-                          {Object.entries(ROLES_LABEL).map(([k,v]) => <option key={k} value={k}>{v}</option>)}
-                       </select>
-                    </InputGroup>
-                    <InputGroup label="Alocação (PDV)" icon={Building}>
-                       <select value={formData.pdvId || ''} onChange={e => setFormData({...formData, pdvId: e.target.value})} className={selectClass}>
-                          <option value="">Matriz / Corporativo</option>
-                          {pdvs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                       </select>
-                    </InputGroup>
-                 </div>
-              </div>
-           </div>
-        </Modal>
-     </div>
-  );
-};
-
-const CustomersView: React.FC = () => {
-  const {
-    customers = [],
-    addCustomer,
-    updateCustomer,
-    pdvs = [],
-    getPDVName,
-    currentUser,
-    customFieldDefs = [],
-    addCustomFieldDef,
-    removeCustomFieldDef,
-    updateCustomFieldDef
-  } = useCRM();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Partial<Customer>>({ 
-    type: 'PJ', name: '', document: '', email: '', phone: '', zipCode: '', status: 'LEAD', pdvIds: [], assignedEmployeeIds: [], customValues: {}
+  const [formData, setFormData] = useState<Partial<Customer>>({
+    type: 'PJ',
+    name: '',
+    document: '',
+    email: '',
+    phone: '',
+    zipCode: '',
+    status: 'LEAD',
+    pdvIds: [],
+    assignedEmployeeIds: [],
+    customValues: {},
   });
-  const [activeTab, setActiveTab] = useState<'info'|'contact'>('info');
-  const [isFieldsModalOpen, setIsFieldsModalOpen] = useState(false);
-  const [filter, setFilter] = useState('');
 
-  const globalCustomerFields = useMemo(() => customFieldDefs.filter(f => f.scope === 'CUSTOMER' && f.active), [customFieldDefs]);
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return customers;
+    return customers.filter((c) => c.name.toLowerCase().includes(q) || c.document.toLowerCase().includes(q));
+  }, [customers, query]);
 
-  const filteredCustomers = customers.filter(c => 
-     c.name.toLowerCase().includes(filter.toLowerCase()) || 
-     c.document.includes(filter)
-  );
+  const openNew = () => {
+    setEditingId(null);
+    setFormData({
+      type: 'PJ',
+      name: '',
+      document: '',
+      email: '',
+      phone: '',
+      zipCode: '',
+      status: 'LEAD',
+      pdvIds: [],
+      assignedEmployeeIds: [],
+      customValues: {},
+    });
+    setIsModalOpen(true);
+  };
 
-  const handleEdit = (c: Customer) => { setEditingId(c.id); setFormData(c); setIsModalOpen(true); };
+  const openEdit = (customer: Customer) => {
+    setEditingId(customer.id);
+    setFormData(customer);
+    setIsModalOpen(true);
+  };
 
-  const handleSave = () => {
-    if(!formData.name || !formData.document) return alert("Nome e Documento são obrigatórios");
-    
-    const pdvIds = formData.pdvIds || [];
-    const assignedEmployeeIds = formData.assignedEmployeeIds || [];
+  const save = () => {
+    if (!formData.name?.trim() || !formData.document?.trim()) {
+      alert('Nome e Documento sao obrigatorios.');
+      return;
+    }
 
-    const payload = { ...formData, id: editingId || generateStableId('cust'), pdvIds, assignedEmployeeIds, createdAt: editingId ? formData.createdAt : getCurrentDateISO() } as Customer;
-    
-    if(editingId) updateCustomer(payload);
+    const payload: Customer = {
+      id: editingId || generateStableId('cust'),
+      type: formData.type || 'PJ',
+      name: formData.name.trim(),
+      document: formData.document.trim(),
+      email: formData.email || '',
+      phone: formData.phone || '',
+      zipCode: formData.zipCode || '',
+      status: (formData.status || 'LEAD') as CustomerStatus,
+      pdvIds: Array.isArray(formData.pdvIds) ? formData.pdvIds : [],
+      assignedEmployeeIds: [],
+      customValues: {},
+      createdAt: editingId ? (formData.createdAt || getCurrentDateISO()) : getCurrentDateISO(),
+    };
+
+    if (editingId) updateCustomer(payload);
     else addCustomer(payload);
 
     setIsModalOpen(false);
   };
 
-  const toggleSelection = (field: 'pdvIds' | 'assignedEmployeeIds', id: string) => {
-    const current = formData[field] || [];
-    const updated = current.includes(id) ? current.filter(item => item !== id) : [...current, id];
-    setFormData(prev => ({ ...prev, [field]: updated }));
-  };
-
-  const handleCustomFieldChange = (key: string, value: any) => {
-    setFormData(prev => ({ ...prev, customValues: { ...prev.customValues, [key]: value } }));
-  };
-
-  const [fieldData, setFieldData] = useState<Partial<CustomFieldDefinition>>({ label: '', key: '', type: 'text', scope: 'CUSTOMER', required: false, active: true, options: [] });
-  const [fieldEditingId, setFieldEditingId] = useState<string | null>(null);
-  const [optionInput, setOptionInput] = useState('');
-
-  const saveField = () => {
-      if (!fieldData.label) return;
-      const key = fieldData.key || fieldData.label.toLowerCase().replace(/\s+/g, '_');
-      const payload = { ...fieldData, key, scope: 'CUSTOMER', id: fieldEditingId || generateStableId('cf') } as CustomFieldDefinition;
-      
-      if (fieldEditingId) updateCustomFieldDef(payload); else addCustomFieldDef(payload);
-      
-      setFieldData({ label: '', key: '', type: 'text', scope: 'CUSTOMER', required: false, active: true, options: [] });
-      setFieldEditingId(null);
-  };
-
-  const addOption = () => {
-      if (!optionInput.trim()) return;
-      setFieldData(prev => ({ ...prev, options: [...(prev.options || []), optionInput.trim()] }));
-      setOptionInput('');
-  };
+  const selectedPdvId = (formData.pdvIds || [])[0] || '';
 
   return (
-     <div className="p-8 max-w-7xl mx-auto animate-fade-in">
-        <div className="flex justify-between items-start">
-           <Header title="Carteira de Clientes" subtitle="Gestão de relacionamento PF e PJ." icon={Briefcase} />
-           <div className="flex gap-2">
-               {currentUser?.role === 'ADMIN' && (
-                  <button onClick={() => setIsFieldsModalOpen(true)} className="px-4 py-3 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 flex items-center gap-2 shadow-sm transition-all">
-                     <Sliders size={18}/> Campos Extras
-                  </button>
-               )}
-               <button onClick={() => { setEditingId(null); setFormData({type: 'PJ', status: 'LEAD', pdvIds: [], assignedEmployeeIds: [], customValues: {}}); setIsModalOpen(true); }} className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 flex items-center gap-2 transition-all transform hover:-translate-y-0.5">
-                 <Plus size={20}/> Novo Cliente
-               </button>
-           </div>
+    <div className="mx-auto max-w-[1600px] space-y-6 p-6 md:p-8">
+      <Header
+        title="Consorciados"
+        subtitle="Cadastro e consulta rapida."
+        icon={Briefcase}
+        right={
+          <button
+            onClick={openNew}
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700"
+          >
+            <Plus size={18} /> Novo
+          </button>
+        }
+      />
+
+      <Card>
+        <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/60 p-4 md:flex-row md:items-center md:justify-between">
+          <div className="relative w-full max-w-md">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar por nome ou documento..."
+              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-500"
+            />
+          </div>
+          <div className="text-xs font-bold uppercase tracking-wider text-slate-500">{filtered.length} registros</div>
         </div>
 
-        <Card>
-           <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center gap-4">
-              <div className="relative flex-1 max-w-md group">
-                 <Search className="absolute left-3.5 top-3 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={18}/>
-                 <input 
-                    value={filter} 
-                    onChange={e => setFilter(e.target.value)} 
-                    placeholder="Buscar por nome ou documento..." 
-                    className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:border-blue-500 outline-none transition-all shadow-sm"
-                 />
-              </div>
-              <div className="text-xs text-slate-500 font-bold uppercase tracking-wider">
-                 {filteredCustomers.length} registros
-              </div>
-           </div>
-
-           <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                 <thead className="bg-slate-50 text-xs font-bold text-slate-500 uppercase border-b border-slate-100 tracking-wider">
-                    <tr>
-                       <th className="px-6 py-4">Cliente / Razão</th>
-                       <th className="px-6 py-4">Documento</th>
-                       <th className="px-6 py-4">Contato</th>
-                       <th className="px-6 py-4">Status</th>
-                       <th className="px-6 py-4 text-right">Ações</th>
-                    </tr>
-                 </thead>
-                 <tbody className="divide-y divide-slate-50 text-sm">
-                    {filteredCustomers.map(c => {
-                       const pdvNames = c.pdvIds.map(pid => getPDVName(pid));
-                       const pdvDisplay = pdvNames.length > 0 ? (pdvNames.length > 1 ? `${pdvNames[0]} +${pdvNames.length - 1}` : pdvNames[0]) : 'Sem vínculo';
-
-                       return (
-                       <tr key={c.id} className="hover:bg-blue-50/30 transition-colors group">
-                          <td className="px-6 py-4">
-                             <div className="flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shadow-sm ${c.type === 'PJ' ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                                   {c.type}
-                                </div>
-                                <div>
-                                   <p className="font-bold text-slate-900">{c.name}</p>
-                                   <p className="text-xs text-slate-500 flex items-center gap-1" title={pdvNames.join(', ')}>
-                                      <MapPin size={10}/> {pdvDisplay}
-                                   </p>
-                                </div>
-                             </div>
-                          </td>
-                          <td className="px-6 py-4 font-mono text-slate-600 text-xs">{c.document}</td>
-                          <td className="px-6 py-4 text-slate-600">
-                             <div className="flex flex-col gap-1">
-                                <span className="flex items-center gap-2"><Mail size={12} className="text-slate-400"/> {c.email || '-'}</span>
-                                <span className="flex items-center gap-2"><Smartphone size={12} className="text-slate-400"/> {c.phone || '-'}</span>
-                             </div>
-                          </td>
-                          <td className="px-6 py-4">
-                             <Badge color={CUSTOMER_STATUS_COLORS[c.status]}>{CUSTOMER_STATUS_LABELS[c.status]}</Badge>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                             <button onClick={() => handleEdit(c)} className="text-slate-300 hover:text-blue-600 p-2 rounded-lg hover:bg-blue-50 transition-all">
-                                <Edit size={18}/>
-                             </button>
-                          </td>
-                       </tr>
-                    )})}
-                 </tbody>
-              </table>
-           </div>
-        </Card>
-
-        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? "Editar Cliente" : "Novo Cliente"} size="lg">
-           <div className="flex flex-col">
-              <div className="flex justify-end items-center bg-white mb-4">
-                 <button onClick={handleSave} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 active:bg-blue-800 transition-all shadow-lg shadow-blue-500/20">
-                   <Save size={18} /> <span>Salvar Cliente</span>
-                 </button>
-              </div>
-
-              <div className="flex p-1.5 bg-slate-100 rounded-xl mb-6 gap-1">
-                  <button onClick={() => setActiveTab('info')} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold rounded-lg transition-all ${activeTab === 'info' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                     <User size={16} /> Dados Cadastrais
-                  </button>
-                  <button onClick={() => setActiveTab('contact')} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold rounded-lg transition-all ${activeTab === 'contact' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                     <MapPin size={16} /> Contato & Acesso
-                  </button>
-              </div>
-
-              <div className="space-y-6">
-                 {activeTab === 'info' && (
-                    <>
-                       <div className="flex bg-slate-100 p-1.5 rounded-xl">
-                          <button onClick={() => setFormData({...formData, type: 'PJ'})} className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${formData.type === 'PJ' ? 'bg-white shadow text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>Pessoa Jurídica</button>
-                          <button onClick={() => setFormData({...formData, type: 'PF'})} className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${formData.type === 'PF' ? 'bg-white shadow text-emerald-600' : 'text-slate-500 hover:text-slate-700'}`}>Pessoa Física</button>
-                       </div>
-
-                       <InputGroup label={formData.type === 'PJ' ? "Razão Social" : "Nome Completo"} icon={User} required>
-                          <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className={inputClass} autoFocus />
-                       </InputGroup>
-                       
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <InputGroup label={formData.type === 'PJ' ? "CNPJ" : "CPF"} icon={Shield} required>
-                             <input value={formData.document} onChange={e => setFormData({...formData, document: e.target.value})} className={inputClass} />
-                          </InputGroup>
-                          <InputGroup label="Status da Carteira" icon={Activity}>
-                             <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as CustomerStatus})} className={selectClass}>
-                                {Object.entries(CUSTOMER_STATUS_LABELS).map(([k,v]) => <option key={k} value={k}>{v}</option>)}
-                             </select>
-                          </InputGroup>
-                       </div>
-
-                       {globalCustomerFields.length > 0 && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-slate-50 rounded-xl border border-slate-100 mt-2">
-                             {globalCustomerFields.map(field => (
-                                <InputGroup key={field.id} label={field.label} required={field.required} icon={Sliders}>
-                                    {field.type === 'select' ? (
-                                       <select 
-                                          value={formData.customValues?.[field.key] || ''}
-                                          onChange={e => handleCustomFieldChange(field.key, e.target.value)}
-                                          className={`${inputClass} appearance-none`}
-                                       >
-                                          <option value="">Selecione...</option>
-                                          {field.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                       </select>
-                                    ) : (
-                                       <input 
-                                          type={field.type}
-                                          value={formData.customValues?.[field.key] || ''}
-                                          onChange={e => handleCustomFieldChange(field.key, e.target.value)}
-                                          className={inputClass}
-                                       />
-                                    )}
-                                </InputGroup>
-                             ))}
-                          </div>
-                       )}
-                    </>
-                 )}
-                 
-                 {activeTab === 'contact' && (
-                    <>
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <InputGroup label="Email" icon={Mail}>
-                             <input value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className={inputClass} />
-                          </InputGroup>
-                          <InputGroup label="Telefone" icon={Smartphone}>
-                             <input value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className={inputClass} />
-                          </InputGroup>
-                       </div>
-                       
-                       <div className="grid grid-cols-1 gap-6">
-                          <InputGroup label="CEP" icon={MapPin}>
-                             <input value={formData.zipCode} onChange={e => setFormData({...formData, zipCode: e.target.value})} className={inputClass} />
-                          </InputGroup>
-                       </div>
-
-                       <div className="border-t border-slate-100 pt-4 mt-2">
-                           {currentUser?.role === 'ADMIN' && (
-                              <div className="mb-6">
-                                 <label className="text-xs font-bold text-slate-500 uppercase mb-2 block ml-1">Vincular Unidades (Filiais)</label>
-                                 <div className="flex flex-wrap gap-2">
-                                    {pdvs.map(p => {
-                                       const isSelected = formData.pdvIds?.includes(p.id);
-                                       return (
-                                          <button 
-                                             key={p.id}
-                                             onClick={() => toggleSelection('pdvIds', p.id)}
-                                             className={`px-3 py-2 rounded-xl border text-xs font-bold transition-all ${isSelected ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}
-                                          >
-                                             {p.name}
-                                          </button>
-                                       );
-                                    })}
-                                 </div>
-                              </div>
-                           )}
-
-                           <div>
-                              <label className="text-xs font-bold text-slate-500 uppercase mb-2 block ml-1">Equipe de Atendimento (Account Team)</label>
-                              <div className="flex flex-wrap gap-2">
-                                 {customers.map(() => null)}
-                              </div>
-                           </div>
-                       </div>
-                    </>
-                 )}
-              </div>
-           </div>
-        </Modal>
-        
-        <Modal isOpen={isFieldsModalOpen} onClose={() => setIsFieldsModalOpen(false)} title="Personalizar Campos de Cliente" size="lg">
-           <div className="flex flex-col md:flex-row gap-6 h-[60vh] md:h-auto">
-              <div className="flex-1 border-r border-slate-100 pr-4 overflow-y-auto custom-scrollbar">
-                 <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">Campos Existentes</h4>
-                 <div className="space-y-2">
-                    {globalCustomerFields.length === 0 && <p className="text-sm text-slate-400 italic">Nenhum campo personalizado.</p>}
-                    {globalCustomerFields.map(f => (
-                       <div key={f.id} onClick={() => { setFieldData(f); setFieldEditingId(f.id); }} className={`p-3 rounded-lg border cursor-pointer transition-all ${fieldEditingId === f.id ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500' : 'bg-white border-slate-200 hover:border-blue-300'}`}>
-                          <div className="flex justify-between items-start">
-                             <span className="font-bold text-sm text-slate-800">{f.label}</span>
-                             <button onClick={(e) => { e.stopPropagation(); if(confirm('Excluir?')) removeCustomFieldDef(f.id); }} className="text-slate-300 hover:text-red-500"><Trash2 size={14}/></button>
-                          </div>
-                          <div className="flex gap-2 mt-1">
-                             <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 rounded text-slate-500">{f.type}</span>
-                             {f.required && <span className="text-[10px] px-1.5 py-0.5 bg-red-50 text-red-600 rounded">Obrigatório</span>}
-                          </div>
-                       </div>
-                    ))}
-                    <button onClick={() => { setFieldEditingId(null); setFieldData({ label: '', key: '', type: 'text', scope: 'CUSTOMER', required: false, active: true, options: [] }); }} className="w-full py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors mt-2">
-                       + Novo Campo
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-slate-100 bg-white text-xs font-bold uppercase tracking-wider text-slate-500">
+              <tr>
+                <th className="px-6 py-4">Consorciado</th>
+                <th className="px-6 py-4">Documento</th>
+                <th className="px-6 py-4">PDV</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4 text-right">Acao</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {filtered.map((c) => (
+                <tr key={c.id} className="group hover:bg-blue-50/30">
+                  <td className="px-6 py-4">
+                    <div className="font-bold text-slate-900">{c.name}</div>
+                    <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
+                      <Mail size={12} className="text-slate-400" /> {c.email || '-'}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 font-mono text-xs text-slate-600">{c.document}</td>
+                  <td className="px-6 py-4 text-slate-600">
+                    {c.pdvIds?.length ? getPDVName(c.pdvIds[0]) : 'Sem vinculo'}
+                  </td>
+                  <td className="px-6 py-4 text-slate-600">{CUSTOMER_STATUS_LABELS[c.status]}</td>
+                  <td className="px-6 py-4 text-right">
+                    <button
+                      onClick={() => openEdit(c)}
+                      className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold text-slate-500 hover:bg-white hover:text-blue-600"
+                    >
+                      <Edit size={16} /> Editar
                     </button>
-                 </div>
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-400">
+                    Nenhum consorciado encontrado.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingId ? 'Editar Consorciado' : 'Novo Consorciado'}
+        size="lg"
+      >
+        <div className="flex flex-col gap-6">
+          <div className="flex justify-end">
+            <button
+              onClick={save}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700"
+            >
+              <Save size={18} /> Salvar
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Tipo</label>
+              <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1.5">
+                <button
+                  type="button"
+                  onClick={() => setFormData((p) => ({ ...p, type: 'PJ' }))}
+                  className={`rounded-lg px-4 py-2 text-xs font-bold transition-all ${
+                    formData.type === 'PJ' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  Pessoa Juridica
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData((p) => ({ ...p, type: 'PF' }))}
+                  className={`rounded-lg px-4 py-2 text-xs font-bold transition-all ${
+                    formData.type === 'PF' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  Pessoa Fisica
+                </button>
               </div>
+            </div>
 
-              <div className="flex-1 pl-2">
-                 <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">{fieldEditingId ? 'Editar Campo' : 'Novo Campo'}</h4>
-                 <div className="space-y-4">
-                     <InputGroup label="Rótulo" required>
-                        <input value={fieldData.label} onChange={e => setFieldData({...fieldData, label: e.target.value})} className={inputClass} placeholder="Ex: Data de Fundação" />
-                     </InputGroup>
-                     
-                     <div className="grid grid-cols-2 gap-2">
-                        <InputGroup label="Tipo">
-                           <select value={fieldData.type} onChange={e => setFieldData({...fieldData, type: e.target.value as CustomFieldType})} className={selectClass}>
-                              <option value="text">Texto</option>
-                              <option value="number">Número</option>
-                              <option value="date">Data</option>
-                              <option value="select">Lista</option>
-                              <option value="boolean">Sim/Não</option>
-                           </select>
-                        </InputGroup>
-                        <div className="flex items-center mt-6">
-                           <input type="checkbox" id="req" checked={fieldData.required} onChange={e => setFieldData({...fieldData, required: e.target.checked})} className="mr-2" />
-                           <label htmlFor="req" className="text-sm">Obrigatório</label>
-                        </div>
-                     </div>
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Nome</label>
+              <input
+                value={formData.name || ''}
+                onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
+                className={inputClass}
+                placeholder="Ex: Joao da Silva"
+                autoFocus
+              />
+            </div>
 
-                     {fieldData.type === 'select' && (
-                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                           <label className="text-xs font-bold text-slate-500 uppercase block mb-2">Opções</label>
-                           <div className="flex gap-2 mb-2">
-                              <input value={optionInput} onChange={e => setOptionInput(e.target.value)} className="flex-1 px-2 py-1 text-sm border rounded" placeholder="Opção..." />
-                              <button onClick={addOption} className="bg-blue-600 text-white px-2 rounded font-bold text-xs">+</button>
-                           </div>
-                           <div className="flex flex-wrap gap-1">
-                              {fieldData.options?.map((o, i) => (
-                                 <span key={i} className="text-[10px] bg-white border px-1.5 py-0.5 rounded flex items-center gap-1">
-                                    {o} <button onClick={() => setFieldData(prev => ({...prev, options: prev.options?.filter((_, idx) => idx !== i)}))}><XCircle size={10} className="text-red-400"/></button>
-                                 </span>
-                              ))}
-                           </div>
-                        </div>
-                     )}
+            <div>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Documento</label>
+              <input
+                value={formData.document || ''}
+                onChange={(e) => setFormData((p) => ({ ...p, document: e.target.value }))}
+                className={inputClass}
+                placeholder={formData.type === 'PJ' ? 'CNPJ' : 'CPF'}
+              />
+            </div>
 
-                     <button onClick={saveField} className="w-full py-2 bg-blue-600 text-white font-bold rounded-lg shadow-sm hover:bg-blue-700">
-                        {fieldEditingId ? 'Salvar Alterações' : 'Criar Campo'}
-                     </button>
-                 </div>
-              </div>
-           </div>
-        </Modal>
-     </div>
+            <div>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Status</label>
+              <select
+                value={(formData.status as string) || 'LEAD'}
+                onChange={(e) => setFormData((p) => ({ ...p, status: e.target.value as CustomerStatus }))}
+                className={selectClass}
+              >
+                {Object.entries(CUSTOMER_STATUS_LABELS).map(([key, label]) => (
+                  <option key={key} value={key}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Email</label>
+              <input
+                value={formData.email || ''}
+                onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
+                className={inputClass}
+                placeholder="email@dominio.com"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Telefone</label>
+              <input
+                value={formData.phone || ''}
+                onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))}
+                className={inputClass}
+                placeholder="(11) 99999-9999"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">PDV</label>
+              <select
+                value={selectedPdvId}
+                onChange={(e) => setFormData((p) => ({ ...p, pdvIds: e.target.value ? [e.target.value] : [] }))}
+                className={selectClass}
+                disabled={!canEdit}
+              >
+                <option value="">Sem vinculo</option>
+                {pdvs.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              {!canEdit && <p className="mt-2 text-xs text-slate-400">Apenas ADMIN pode alterar o PDV.</p>}
+            </div>
+          </div>
+        </div>
+      </Modal>
+    </div>
   );
 };
 
-export { OrganizationView, IntegrationsView, ProductsView, EmployeesView, CustomersView };
+export const ProductsView: React.FC = () => {
+  const { products = [], addProduct, updateProduct, removeProduct, currentUser } = useCRM();
+  const canEdit = currentUser?.role === 'ADMIN';
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formData, setFormData] = useState<Partial<Product>>({
+    name: '',
+    category: '',
+    basePrice: 0,
+    description: '',
+    active: true,
+  });
+
+  const openNew = () => {
+    setEditingId(null);
+    setFormData({ name: '', category: '', basePrice: 0, description: '', active: true });
+    setIsModalOpen(true);
+  };
+
+  const openEdit = (p: Product) => {
+    setEditingId(p.id);
+    setFormData(p);
+    setIsModalOpen(true);
+  };
+
+  const save = () => {
+    if (!formData.name?.trim()) {
+      alert('Nome do plano e obrigatorio.');
+      return;
+    }
+
+    const payload: Product = {
+      id: editingId || generateStableId('prod'),
+      name: formData.name.trim(),
+      description: formData.description || '',
+      category: formData.category || '',
+      basePrice: Number(formData.basePrice || 0),
+      attributes: Array.isArray(formData.attributes) ? formData.attributes : [],
+      active: formData.active ?? true,
+    };
+
+    if (editingId) updateProduct(payload);
+    else addProduct(payload);
+
+    setIsModalOpen(false);
+  };
+
+  return (
+    <div className="mx-auto max-w-[1600px] space-y-6 p-6 md:p-8">
+      <Header
+        title="Planos"
+        subtitle="Catalogo simples de produtos/planos."
+        icon={Package}
+        right={
+          <button
+            onClick={openNew}
+            disabled={!canEdit}
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            <Plus size={18} /> Novo
+          </button>
+        }
+      />
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {products.map((p) => (
+          <Card key={p.id} className="p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="truncate text-lg font-bold text-slate-900">{p.name}</div>
+                <div className="mt-1 text-xs font-semibold uppercase tracking-wider text-slate-500">{p.category || 'Sem categoria'}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm font-bold text-slate-900">
+                  R$ {Number(p.basePrice || 0).toLocaleString('pt-BR')}
+                </div>
+                <div className={`mt-1 text-xs font-bold ${p.active ? 'text-emerald-600' : 'text-slate-400'}`}>
+                  {p.active ? 'Ativo' : 'Inativo'}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between">
+              <button
+                onClick={() => openEdit(p)}
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
+              >
+                <Edit size={14} /> Editar
+              </button>
+              <button
+                onClick={() => {
+                  if (!canEdit) return;
+                  if (confirm('Excluir este plano?')) removeProduct(p.id);
+                }}
+                disabled={!canEdit}
+                className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed"
+              >
+                <Trash2 size={14} /> Excluir
+              </button>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? 'Editar Plano' : 'Novo Plano'} size="lg">
+        <div className="flex flex-col gap-6">
+          <div className="flex justify-end">
+            <button
+              onClick={save}
+              disabled={!canEdit}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            >
+              <Save size={18} /> Salvar
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Nome</label>
+              <input
+                value={formData.name || ''}
+                onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
+                className={inputClass}
+                placeholder="Ex: Carta Imovel 500k"
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Categoria</label>
+              <input
+                value={formData.category || ''}
+                onChange={(e) => setFormData((p) => ({ ...p, category: e.target.value }))}
+                className={inputClass}
+                placeholder="Imovel / Auto / Agro"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Credito (R$)</label>
+              <input
+                type="number"
+                value={Number(formData.basePrice || 0)}
+                onChange={(e) => setFormData((p) => ({ ...p, basePrice: Number(e.target.value) }))}
+                className={inputClass}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Descricao</label>
+              <textarea
+                value={formData.description || ''}
+                onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
+                className={`${inputClass} h-28 resize-none`}
+                placeholder="Resumo do plano..."
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Ativo</label>
+              <select
+                value={formData.active ? '1' : '0'}
+                onChange={(e) => setFormData((p) => ({ ...p, active: e.target.value === '1' }))}
+                className={selectClass}
+              >
+                <option value="1">Ativo</option>
+                <option value="0">Inativo</option>
+              </select>
+            </div>
+          </div>
+          {!canEdit && <p className="text-xs text-slate-400">Apenas ADMIN pode editar planos.</p>}
+        </div>
+      </Modal>
+    </div>
+  );
+};
+
+export const TeamPlacesView: React.FC = () => {
+  const {
+    currentUser,
+    pdvs = [],
+    employees = [],
+    addPDV,
+    updatePDV,
+    removePDV,
+    addEmployee,
+    updateEmployee,
+    removeEmployee,
+    getPDVName,
+  } = useCRM();
+
+  const canEdit = currentUser?.role === 'ADMIN';
+  const [tab, setTab] = useState<'pdvs' | 'team'>('pdvs');
+
+  // PDV modal
+  const [pdvModalOpen, setPdvModalOpen] = useState(false);
+  const [pdvEditingId, setPdvEditingId] = useState<string | null>(null);
+  const [pdvForm, setPdvForm] = useState<Partial<PDV>>({ name: '', type: 'PHYSICAL_STORE', location: '', isActive: true });
+
+  const openNewPdv = () => {
+    setPdvEditingId(null);
+    setPdvForm({ name: '', type: 'PHYSICAL_STORE', location: '', isActive: true });
+    setPdvModalOpen(true);
+  };
+
+  const openEditPdv = (pdv: PDV) => {
+    setPdvEditingId(pdv.id);
+    setPdvForm(pdv);
+    setPdvModalOpen(true);
+  };
+
+  const savePdv = () => {
+    if (!pdvForm.name?.trim()) {
+      alert('Nome do PDV e obrigatorio.');
+      return;
+    }
+    const payload: PDV = {
+      id: pdvEditingId || generateStableId('pdv'),
+      name: pdvForm.name.trim(),
+      type: (pdvForm.type as PDVType) || 'PHYSICAL_STORE',
+      location: pdvForm.location || '',
+      isActive: pdvForm.isActive ?? true,
+    };
+
+    if (pdvEditingId) updatePDV(payload);
+    else addPDV(payload);
+
+    setPdvModalOpen(false);
+  };
+
+  // Employee modal
+  const [empModalOpen, setEmpModalOpen] = useState(false);
+  const [empEditingId, setEmpEditingId] = useState<string | null>(null);
+  const [empForm, setEmpForm] = useState<Partial<Employee>>({ name: '', email: '', role: 'SALES_REP', pdvId: null, active: true });
+
+  const openNewEmployee = () => {
+    setEmpEditingId(null);
+    setEmpForm({ name: '', email: '', role: 'SALES_REP', pdvId: null, active: true });
+    setEmpModalOpen(true);
+  };
+
+  const openEditEmployee = (emp: Employee) => {
+    setEmpEditingId(emp.id);
+    setEmpForm(emp);
+    setEmpModalOpen(true);
+  };
+
+  const saveEmployee = () => {
+    if (!empForm.name?.trim() || !empForm.email?.trim()) {
+      alert('Nome e Email sao obrigatorios.');
+      return;
+    }
+
+    const payload: Employee = {
+      id: empEditingId || generateStableId('emp'),
+      name: empForm.name.trim(),
+      email: empForm.email.trim(),
+      role: (empForm.role as Role) || 'SALES_REP',
+      pdvId: empForm.pdvId ?? null,
+      active: empForm.active ?? true,
+    };
+
+    if (empEditingId) updateEmployee(payload);
+    else addEmployee(payload);
+    setEmpModalOpen(false);
+  };
+
+  return (
+    <div className="mx-auto max-w-[1600px] space-y-6 p-6 md:p-8">
+      <Header title="Equipe & PDVs" subtitle="Tudo de organizacao em um lugar." icon={Building2} />
+
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
+        <div className="flex flex-wrap gap-2">
+          <button
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+              tab === 'pdvs' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-100'
+            }`}
+            onClick={() => setTab('pdvs')}
+          >
+            PDVs
+          </button>
+          <button
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+              tab === 'team' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-100'
+            }`}
+            onClick={() => setTab('team')}
+          >
+            Equipe
+          </button>
+        </div>
+      </div>
+
+      {tab === 'pdvs' && (
+        <Card className="p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Store size={18} className="text-blue-600" />
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700">PDVs</h3>
+            </div>
+            <button
+              onClick={openNewPdv}
+              disabled={!canEdit}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            >
+              <Plus size={16} /> Novo PDV
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-100 text-xs font-bold uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">PDV</th>
+                  <th className="px-4 py-3">Tipo</th>
+                  <th className="px-4 py-3">Local</th>
+                  <th className="px-4 py-3 text-right">Acao</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {pdvs.map((p: PDV) => (
+                  <tr key={p.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3">
+                      <div className="font-bold text-slate-900">{p.name}</div>
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">{PDV_TYPES[p.type] || p.type}</td>
+                    <td className="px-4 py-3 text-slate-600">
+                      <span className="inline-flex items-center gap-2">
+                        <MapPin size={14} className="text-slate-400" /> {p.location || '-'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => openEditPdv(p)}
+                        disabled={!canEdit}
+                        className="rounded-lg px-3 py-2 text-xs font-bold text-slate-500 hover:bg-white hover:text-blue-600 disabled:cursor-not-allowed"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!canEdit) return;
+                          if (confirm('Excluir este PDV?')) removePDV(p.id);
+                        }}
+                        disabled={!canEdit}
+                        className="ml-2 rounded-lg px-3 py-2 text-xs font-bold text-slate-300 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed"
+                      >
+                        Excluir
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {pdvs.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-10 text-center text-sm text-slate-400">
+                      Nenhum PDV cadastrado.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {tab === 'team' && (
+        <Card>
+          <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/60 p-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-2">
+              <Users size={18} className="text-blue-600" />
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700">Equipe</h3>
+            </div>
+            <button
+              onClick={openNewEmployee}
+              disabled={!canEdit}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            >
+              <Plus size={16} /> Novo colaborador
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-100 text-xs font-bold uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="px-6 py-4">Pessoa</th>
+                  <th className="px-6 py-4">Funcao</th>
+                  <th className="px-6 py-4">PDV</th>
+                  <th className="px-6 py-4 text-right">Acao</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {employees.map((e: Employee) => (
+                  <tr key={e.id} className="hover:bg-slate-50">
+                    <td className="px-6 py-4">
+                      <div className="font-bold text-slate-900">{e.name}</div>
+                      <div className="mt-0.5 text-xs text-slate-500">{e.email}</div>
+                    </td>
+                    <td className="px-6 py-4 text-slate-600">{RoleLabels[e.role]}</td>
+                    <td className="px-6 py-4 text-slate-600">{getPDVName(e.pdvId)}</td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        onClick={() => openEditEmployee(e)}
+                        disabled={!canEdit}
+                        className="rounded-lg px-3 py-2 text-xs font-bold text-slate-500 hover:bg-white hover:text-blue-600 disabled:cursor-not-allowed"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!canEdit) return;
+                          if (confirm('Excluir este colaborador?')) removeEmployee(e.id);
+                        }}
+                        disabled={!canEdit}
+                        className="ml-2 rounded-lg px-3 py-2 text-xs font-bold text-slate-300 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed"
+                      >
+                        Excluir
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {!canEdit && <div className="px-6 py-4 text-xs text-slate-400">Apenas ADMIN pode editar equipe.</div>}
+        </Card>
+      )}
+
+      <Modal isOpen={pdvModalOpen} onClose={() => setPdvModalOpen(false)} title={pdvEditingId ? 'Editar PDV' : 'Novo PDV'} size="lg">
+        <div className="flex flex-col gap-6">
+          <div className="flex justify-end">
+            <button
+              onClick={savePdv}
+              disabled={!canEdit}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            >
+              <Save size={18} /> Salvar
+            </button>
+          </div>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Nome</label>
+              <input
+                value={pdvForm.name || ''}
+                onChange={(e) => setPdvForm((p) => ({ ...p, name: e.target.value }))}
+                className={inputClass}
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Tipo</label>
+              <select
+                value={(pdvForm.type as string) || 'PHYSICAL_STORE'}
+                onChange={(e) => setPdvForm((p) => ({ ...p, type: e.target.value as PDVType }))}
+                className={selectClass}
+              >
+                {Object.entries(PDV_TYPES).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Local</label>
+              <input
+                value={pdvForm.location || ''}
+                onChange={(e) => setPdvForm((p) => ({ ...p, location: e.target.value }))}
+                className={inputClass}
+                placeholder="Cidade/UF"
+              />
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={empModalOpen} onClose={() => setEmpModalOpen(false)} title={empEditingId ? 'Editar Colaborador' : 'Novo Colaborador'} size="lg">
+        <div className="flex flex-col gap-6">
+          <div className="flex justify-end">
+            <button
+              onClick={saveEmployee}
+              disabled={!canEdit}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            >
+              <Save size={18} /> Salvar
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Nome</label>
+              <input
+                value={empForm.name || ''}
+                onChange={(e) => setEmpForm((p) => ({ ...p, name: e.target.value }))}
+                className={inputClass}
+                autoFocus
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Email</label>
+              <input
+                value={empForm.email || ''}
+                onChange={(e) => setEmpForm((p) => ({ ...p, email: e.target.value }))}
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Funcao</label>
+              <select
+                value={(empForm.role as string) || 'SALES_REP'}
+                onChange={(e) => setEmpForm((p) => ({ ...p, role: e.target.value as Role }))}
+                className={selectClass}
+              >
+                {Object.entries(RoleLabels).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">PDV</label>
+              <select
+                value={empForm.pdvId || ''}
+                onChange={(e) => setEmpForm((p) => ({ ...p, pdvId: e.target.value ? e.target.value : null }))}
+                className={selectClass}
+              >
+                <option value="">Sem vinculo</option>
+                {pdvs.map((p: PDV) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Ativo</label>
+              <select
+                value={empForm.active ? '1' : '0'}
+                onChange={(e) => setEmpForm((p) => ({ ...p, active: e.target.value === '1' }))}
+                className={selectClass}
+              >
+                <option value="1">Ativo</option>
+                <option value="0">Inativo</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+};

@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, value, stageId, customerId, pdvId, productId, productIds, tags, notes } = body;
+    const { title, value, stageId, customerId, pdvId, productId, productIds, notes } = body;
 
     if (!title || !stageId) {
       return NextResponse.json({ success: false, message: 'Título e estágio são obrigatórios' }, { status: 400 });
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       pdvId || null,
       productId || null,
       productIds ? JSON.stringify(productIds) : '[]',
-      tags ? JSON.stringify(tags) : '[]',
+      '[]',
       notes || ''
     );
     return NextResponse.json({ success: true, deal });
@@ -123,7 +123,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, title, value, stageId, customerId, pdvId, productId, productIds, tags, notes } = body;
+    const { id, title, value, stageId, customerId, pdvId, productId, productIds, notes } = body;
 
     if (!id || !title || !stageId) {
       return NextResponse.json({ success: false, message: 'ID, título e estágio são obrigatórios' }, { status: 400 });
@@ -143,7 +143,7 @@ export async function PUT(request: NextRequest) {
       pdvId || null,
       productId || null,
       productIds ? JSON.stringify(productIds) : '[]',
-      tags ? JSON.stringify(tags) : '[]',
+      '[]',
       notes || ''
     );
     return NextResponse.json({ success: true, deal });

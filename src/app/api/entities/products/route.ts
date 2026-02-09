@@ -79,9 +79,9 @@ export async function POST(request: NextRequest) {
       category: data.category || '',
       base_price: data.basePrice || data.base_price || data.price || 0,
       attributes: data.attributes || [],
-      form_schema: data.formSchema || data.form_schema || [],
-      automation_steps: data.automationSteps || data.automation_steps || [],
-      default_follow_up_days: data.defaultFollowUpDays || data.default_follow_up_days || null,
+      form_schema: data.form_schema || [],
+      automation_steps: data.automation_steps || [],
+      default_follow_up_days: data.default_follow_up_days || null,
       active: data.active !== false,
     });
     return NextResponse.json({ success: true, product });

@@ -10,16 +10,10 @@ export const PDV_TYPES: Record<PDVType, string> = {
   PARTNER: 'Parceiro Externo'
 };
 
-export interface Region {
-  id: Id;
-  name: string;
-}
-
 export interface PDV {
   id: Id;
   name: string;
   type: PDVType;
-  regionId: Id;
   location: string;
   isActive: boolean;
 }
@@ -71,50 +65,10 @@ export interface Customer {
   createdAt: string;
 }
 
-export type CustomFieldScope = 'DEAL' | 'CUSTOMER';
-export type CustomFieldType = 'text' | 'number' | 'date' | 'select' | 'boolean';
-
-export interface CustomFieldDefinition {
-  id: Id;
-  key: string;
-  label: string;
-  type: CustomFieldType;
-  scope: CustomFieldScope;
-  options?: string[];
-  required: boolean;
-  active: boolean;
-}
-
 export interface ProductAttribute {
   key: string;
   label: string;
   value: string | number;
-}
-
-export interface FormFieldConfig {
-  key: string;
-  label: string;
-  type: 'text' | 'number' | 'date' | 'select';
-  options?: string[];
-  required: boolean;
-}
-
-export type TimeUnit = 'MINUTES' | 'HOURS' | 'DAYS' | 'WEEKS' | 'MONTHS';
-
-export const TIME_UNIT_LABELS: Record<TimeUnit, string> = {
-  MINUTES: 'Minutos',
-  HOURS: 'Horas',
-  DAYS: 'Dias',
-  WEEKS: 'Semanas',
-  MONTHS: 'Meses'
-};
-
-export interface AutomationStep {
-  id: Id;
-  name: string;
-  delayValue: number;
-  delayUnit: TimeUnit;
-  messageTemplate: string;
 }
 
 export interface Product {
@@ -124,26 +78,7 @@ export interface Product {
   category: string;
   basePrice: number;
   attributes: ProductAttribute[];
-  formSchema?: FormFieldConfig[];
-  automationSteps?: AutomationStep[];
-  defaultFollowUpDays?: number;
   active: boolean;
-}
-
-export type IntegrationStatus = 'CONNECTED' | 'DISCONNECTED';
-
-export interface Integration {
-  id: Id;
-  name: string;
-  status: IntegrationStatus;
-  type?: string;
-  config?: Record<string, any>;
-}
-
-export interface Tag {
-  id: Id;
-  label: string;
-  color: string;
 }
 
 export type PipelineStageType = 'OPEN' | 'WON' | 'LOST';
@@ -153,7 +88,6 @@ export interface PipelineStage {
   name: string;
   color: string;
   type: PipelineStageType;
-  automationSteps?: AutomationStep[];
 }
 
 export type DealVisibility = 'PUBLIC' | 'RESTRICTED';
@@ -170,27 +104,9 @@ export interface Deal {
   assignedEmployeeIds: Id[];
   productIds: Id[];
   customValues?: Record<string, any>;
-  tags: Tag[];
   notes: string;
   nextFollowUpDate?: string;
   createdAt: string;
-}
-
-export type WidgetType = 
-  | 'KPI_TOTAL_SALES' 
-  | 'KPI_ACTIVE_DEALS' 
-  | 'KPI_CONVERSION' 
-  | 'KPI_AVG_TICKET'
-  | 'CHART_FUNNEL' 
-  | 'CHART_SALES_BY_REP' 
-  | 'LIST_RECENT_DEALS'
-  | 'GOAL_PROGRESS';
-
-export interface DashboardWidget {
-  id: string;
-  type: WidgetType;
-  title: string;
-  colSpan: 1 | 2 | 3 | 4;
 }
 
 export type CommercialPeriod = 'month' | 'year' | 'last_30_days' | 'last_90_days';
@@ -199,7 +115,6 @@ export interface CommercialDashboardFilters {
   year?: number;
   month?: number | null;
   period?: CommercialPeriod;
-  regionId?: string;
   pdvId?: string;
   managerId?: string;
   sellerId?: string;

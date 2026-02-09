@@ -10,7 +10,6 @@ function transformPDVToComponent(pdv: PDVDB): PDV {
     id: pdv.id,
     name: pdv.name,
     type: pdv.type,
-    regionId: pdv.region_id,
     location: pdv.location,
     isActive: Boolean(pdv.is_active),
   };
@@ -40,11 +39,11 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json();
-    if (!data.name || !data.type || !data.regionId) {
-      return NextResponse.json({ error: 'Name, type, and regionId are required' }, { status: 400 });
+    if (!data.name || !data.type) {
+      return NextResponse.json({ error: 'Name and type are required' }, { status: 400 });
     }
 
-    const pdv = createPDV(session.user.tenantId, data.name, data.type, data.regionId, data.location || '');
+    const pdv = createPDV(session.user.tenantId, data.name, data.type, data.location || '');
     return NextResponse.json(pdv, { status: 201 });
   } catch (error) {
     console.error('Error creating PDV:', error);
@@ -69,13 +68,12 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'PDV not found' }, { status: 404 });
     }
 
-    const resolvedLocation = data.location ?? [data.address, data.city, data.state].filter(Boolean).join(' - ');
+    const resolvedLocation = data.location || [data.address, data.city, data.state].filter(Boolean).join(' - ');
     const pdv = updatePDV(
       data.id,
       data.name,
-      data.region_id || data.regionId || null,
       data.type,
-      resolvedLocation || ''
+      resolvedLocation
     );
     if (!pdv) {
       return NextResponse.json({ error: 'PDV not found' }, { status: 404 });

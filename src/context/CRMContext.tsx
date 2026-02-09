@@ -3,51 +3,30 @@
 import React, { createContext, useContext } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
-  Region, PDV, Employee, Product, Customer, Deal, Tag, PipelineStage, DashboardWidget, Integration, IntegrationStatus, CustomFieldDefinition 
+  PDV, Employee, Product, Customer, Deal, PipelineStage
 } from '@/types';
 import {
   dealsApi,
   customersApi,
   productsApi,
   employeesApi,
-  regionsApi,
   pdvsApi,
-  stagesApi,
-  tagsApi,
-  dashboardApi,
-  customFieldsApi,
-  integrationsApi
+  stagesApi
 } from '@/services/api';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 interface CRMContextData {
   currentUser: Employee | null;
   setCurrentUser: (employee: Employee | null) => void;
-  regions: Region[] | undefined;
   pdvs: PDV[] | undefined;
   employees: Employee[] | undefined;
   products: Product[] | undefined;
   customers: Customer[] | undefined;
   deals: Deal[] | undefined;
-  tags: Tag[] | undefined;
   stages: PipelineStage[] | undefined;
-  integrations: Integration[] | undefined;
-  customFieldDefs: CustomFieldDefinition[] | undefined;
-  dashboardWidgets: DashboardWidget[] | undefined;
   isAuthLoading: boolean;
   isAuthResolved: boolean;
   isLoading: boolean;
-  
-  // Dashboard operations
-  addWidget: (widget: DashboardWidget) => void;
-  updateWidget: (widget: DashboardWidget) => void;
-  removeWidget: (id: string) => void;
-  reorderWidgets: (newOrder: DashboardWidget[]) => void;
-  resetDashboard: () => void;
-  
-  // Region operations
-  addRegion: (region: Omit<Region, 'id'>) => void;
-  removeRegion: (id: string) => void;
   
   // PDV operations
   addPDV: (pdv: Omit<PDV, 'id'>) => void;
@@ -79,20 +58,8 @@ interface CRMContextData {
   removeStage: (id: string) => void;
   reorderStages: (newOrder: PipelineStage[]) => void;
   
-  // Tag operations
-  addTag: (tag: Omit<Tag, 'id'>) => void;
-  
-  // Custom field operations
-  addCustomFieldDef: (field: Omit<CustomFieldDefinition, 'id'>) => void;
-  updateCustomFieldDef: (field: CustomFieldDefinition) => void;
-  removeCustomFieldDef: (id: string) => void;
-  
-  // Integration operations
-  updateIntegrationStatus: (id: string, status: IntegrationStatus) => void;
-  
   // Helper functions
   getPDVName: (id: string | null) => string;
-  getRegionName: (id: string) => string;
   getEmployeeName: (id: string) => string;
   getProductName: (id: string) => string;
 }
@@ -107,7 +74,6 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isAuthResolved, setIsAuthResolved] = React.useState(false);
   const [currentUserState, setCurrentUser] = React.useState<Employee | null>(null);
 
-  // Update local state when API data changes
   React.useEffect(() => {
     if (currentUserQuery.status === 'pending') {
       setIsAuthResolved(false);
@@ -129,13 +95,6 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentUser(null);
     setIsAuthResolved(true);
   }, [currentUser, currentUserQuery.status]);
-
-  // Base queries
-  const regionsQuery = useQuery({
-    queryKey: ['regions'],
-    queryFn: () => regionsApi.getAll(),
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
 
   const pdvsQuery = useQuery({
     queryKey: ['pdvs'],
@@ -167,55 +126,27 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     staleTime: 1000 * 60 * 2,
   });
 
-  const tagsQuery = useQuery({
-    queryKey: ['tags'],
-    queryFn: () => tagsApi.getAll(),
-    staleTime: 1000 * 60 * 5,
-  });
-
   const stagesQuery = useQuery({
     queryKey: ['stages'],
     queryFn: () => stagesApi.getAll(),
     staleTime: 1000 * 60 * 5,
   });
 
-  const integrationsQuery = useQuery({
-    queryKey: ['integrations'],
-    queryFn: () => integrationsApi.getAll(),
-    staleTime: 1000 * 60 * 5,
-  });
-
-  const customFieldsQuery = useQuery({
-    queryKey: ['customFields'],
-    queryFn: () => customFieldsApi.getAll(),
-    staleTime: 1000 * 60 * 5,
-  });
-
-  const dashboardWidgetsQuery = useQuery({
-    queryKey: ['dashboardWidgets'],
-    queryFn: () => dashboardApi.getAll(),
-    staleTime: 1000 * 60 * 5,
-  });
-
-  const regionsData = Array.isArray(regionsQuery.data) ? regionsQuery.data : [];
   const pdvsData = Array.isArray(pdvsQuery.data) ? pdvsQuery.data : [];
   const employeesData = Array.isArray(employeesQuery.data) ? employeesQuery.data : [];
   const productsData = Array.isArray(productsQuery.data) ? productsQuery.data : [];
   const customersData = Array.isArray(customersQuery.data) ? customersQuery.data : [];
   const dealsData = Array.isArray(dealsQuery.data) ? dealsQuery.data : [];
-  const tagsData = Array.isArray(tagsQuery.data) ? tagsQuery.data : [];
   const stagesData = Array.isArray(stagesQuery.data) ? stagesQuery.data : [];
-  const integrationsData = Array.isArray(integrationsQuery.data) ? integrationsQuery.data : [];
-  const customFieldsData = Array.isArray(customFieldsQuery.data) ? customFieldsQuery.data : [];
-  const dashboardWidgetsData = Array.isArray(dashboardWidgetsQuery.data) ? dashboardWidgetsQuery.data : [];
-
-  // Calculate overall loading state
-  const isLoading = regionsQuery.isLoading || pdvsQuery.isLoading || employeesQuery.isLoading || 
-                   productsQuery.isLoading || customersQuery.isLoading || dealsQuery.isLoading ||
-                   tagsQuery.isLoading || stagesQuery.isLoading || integrationsQuery.isLoading ||
-                   customFieldsQuery.isLoading || dashboardWidgetsQuery.isLoading;
-
-  // Filtered data based on user permissions
+ 
+  const isLoading =
+    pdvsQuery.isLoading ||
+    employeesQuery.isLoading ||
+    productsQuery.isLoading ||
+    customersQuery.isLoading ||
+    dealsQuery.isLoading ||
+    stagesQuery.isLoading;
+ 
   const filteredDeals = React.useMemo(() => {
     if (!currentUser) return dealsData;
     return dealsData.filter(deal => {
@@ -236,71 +167,6 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return customersData;
   }, [customersData, currentUser]);
 
-  // Dashboard mutations
-  const addWidgetMutation = useMutation({
-    mutationFn: (widget: DashboardWidget) => {
-      const currentWidgets = dashboardWidgetsData;
-      return dashboardApi.update([...currentWidgets, widget]);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dashboardWidgets'] });
-    },
-  });
-
-  const updateWidgetMutation = useMutation({
-    mutationFn: (widget: DashboardWidget) => {
-      const currentWidgets = dashboardWidgetsData;
-      const updated = currentWidgets.map(w => w.id === widget.id ? widget : w);
-      return dashboardApi.update(updated);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dashboardWidgets'] });
-    },
-  });
-
-  const removeWidgetMutation = useMutation({
-    mutationFn: (id: string) => {
-      const currentWidgets = dashboardWidgetsData;
-      const filtered = currentWidgets.filter(w => w.id !== id);
-      return dashboardApi.update(filtered);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dashboardWidgets'] });
-    },
-  });
-
-  const reorderWidgetsMutation = useMutation({
-    mutationFn: (widgets: DashboardWidget[]) => dashboardApi.update(widgets),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dashboardWidgets'] });
-    },
-  });
-
-  const resetDashboardMutation = useMutation({
-    mutationFn: () => {
-      return dashboardApi.reset();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dashboardWidgets'] });
-    },
-  });
-
-  // Region mutations
-  const addRegionMutation = useMutation({
-    mutationFn: (region: Omit<Region, 'id'>) => regionsApi.create(region),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['regions'] });
-    },
-  });
-
-  const removeRegionMutation = useMutation({
-    mutationFn: (id: string) => regionsApi.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['regions'] });
-    },
-  });
-
-  // PDV mutations
   const addPDVMutation = useMutation({
     mutationFn: (pdv: Omit<PDV, 'id'>) => pdvsApi.create(pdv),
     onSuccess: () => {
@@ -322,7 +188,6 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     },
   });
 
-  // Employee mutations
   const addEmployeeMutation = useMutation({
     mutationFn: (employee: Omit<Employee, 'id'>) => employeesApi.create(employee),
     onSuccess: () => {
@@ -344,7 +209,6 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     },
   });
 
-  // Customer mutations
   const addCustomerMutation = useMutation({
     mutationFn: (customer: Omit<Customer, 'id'>) => customersApi.create(customer),
     onSuccess: () => {
@@ -359,7 +223,6 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     },
   });
 
-  // Product mutations
   const addProductMutation = useMutation({
     mutationFn: (product: Omit<Product, 'id'>) => productsApi.create(product),
     onSuccess: () => {
@@ -381,7 +244,6 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     },
   });
 
-  // Deal mutations
   const addDealMutation = useMutation({
     mutationFn: (deal: Omit<Deal, 'id'>) => dealsApi.create(deal),
     onSuccess: () => {
@@ -403,7 +265,6 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     },
   });
 
-  // Stage mutations
   const addStageMutation = useMutation({
     mutationFn: (stage: Omit<PipelineStage, 'id'>) => stagesApi.create(stage),
     onSuccess: () => {
@@ -427,7 +288,6 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const reorderStagesMutation = useMutation({
     mutationFn: (stages: PipelineStage[]) => {
-      // This would need a specific API endpoint for reordering
       return Promise.all(stages.map((stage, index) => 
         stagesApi.update(stage.id, stage)
       ));
@@ -437,55 +297,10 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     },
   });
 
-  // Tag mutations
-  const addTagMutation = useMutation({
-    mutationFn: (tag: Omit<Tag, 'id'>) => tagsApi.create(tag),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tags'] });
-    },
-  });
-
-  // Custom field mutations
-  const addCustomFieldMutation = useMutation({
-    mutationFn: (field: Omit<CustomFieldDefinition, 'id'>) => customFieldsApi.create(field),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customFields'] });
-    },
-  });
-
-  const updateCustomFieldMutation = useMutation({
-    mutationFn: (field: CustomFieldDefinition) => customFieldsApi.update(field.id, field),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customFields'] });
-    },
-  });
-
-  const removeCustomFieldMutation = useMutation({
-    mutationFn: (id: string) => customFieldsApi.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customFields'] });
-    },
-  });
-
-  // Integration mutations
-  const updateIntegrationMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: IntegrationStatus }) => 
-      integrationsApi.update(id, { status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['integrations'] });
-    },
-  });
-
-  // Helper functions
   const getPDVName = React.useCallback((id: string | null) => {
-    if (!id) return 'Matriz / Corporativo';
-    return pdvsData.find(p => p.id === id)?.name || 'Matriz / Corporativo';
+    if (!id) return 'Sem vínculo';
+    return pdvsData.find(p => p.id === id)?.name || 'PDV removido';
   }, [pdvsData]);
-
-  const getRegionName = React.useCallback((id: string) => {
-    if (!id) return 'Região Indefinida';
-    return regionsData.find(r => r.id === id)?.name || 'Região Indefinida';
-  }, [regionsData]);
 
   const getEmployeeName = React.useCallback((id: string) => {
     if (!id) return 'Desconhecido';
@@ -496,16 +311,6 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!id) return 'Item Removido';
     return productsData.find(p => p.id === id)?.name || 'Item Removido';
   }, [productsData]);
-
-  // Wrapper functions for mutations
-  const addWidget = (widget: DashboardWidget) => addWidgetMutation.mutate(widget);
-  const updateWidget = (widget: DashboardWidget) => updateWidgetMutation.mutate(widget);
-  const removeWidget = (id: string) => removeWidgetMutation.mutate(id);
-  const reorderWidgets = (newOrder: DashboardWidget[]) => reorderWidgetsMutation.mutate(newOrder);
-  const resetDashboard = () => resetDashboardMutation.mutate();
-
-  const addRegion = (region: Omit<Region, 'id'>) => addRegionMutation.mutate(region);
-  const removeRegion = (id: string) => removeRegionMutation.mutate(id);
 
   const addPDV = (pdv: Omit<PDV, 'id'>) => addPDVMutation.mutate(pdv);
   const updatePDV = (pdv: PDV) => updatePDVMutation.mutate(pdv);
@@ -531,45 +336,25 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const removeStage = (id: string) => removeStageMutation.mutate(id);
   const reorderStages = (newOrder: PipelineStage[]) => reorderStagesMutation.mutate(newOrder);
 
-  const addTag = (tag: Omit<Tag, 'id'>) => addTagMutation.mutate(tag);
-
-  const addCustomFieldDef = (field: Omit<CustomFieldDefinition, 'id'>) => addCustomFieldMutation.mutate(field);
-  const updateCustomFieldDef = (field: CustomFieldDefinition) => updateCustomFieldMutation.mutate(field);
-  const removeCustomFieldDef = (id: string) => removeCustomFieldMutation.mutate(id);
-
-  const updateIntegrationStatus = (id: string, status: IntegrationStatus) => 
-    updateIntegrationMutation.mutate({ id, status });
-
   return (
     <CRMContext.Provider value={{
       currentUser: currentUserState, setCurrentUser,
-      regions: regionsData,
       pdvs: pdvsData,
       employees: employeesData,
       products: productsData,
       customers: filteredCustomers,
       deals: filteredDeals,
-      tags: tagsData,
       stages: stagesData,
-      integrations: integrationsData,
-      customFieldDefs: customFieldsData,
-      dashboardWidgets: dashboardWidgetsData,
       isAuthLoading,
       isAuthResolved,
       isLoading,
-      
-      addWidget, updateWidget, removeWidget, reorderWidgets, resetDashboard,
-      addRegion, removeRegion,
       addPDV, updatePDV, removePDV,
       addEmployee, updateEmployee, removeEmployee,
       addCustomer, updateCustomer,
       addProduct, updateProduct, removeProduct,
       addDeal, updateDeal, removeDeal,
       addStage, updateStage, removeStage, reorderStages,
-      addTag,
-      addCustomFieldDef, updateCustomFieldDef, removeCustomFieldDef,
-      updateIntegrationStatus,
-      getPDVName, getRegionName, getEmployeeName, getProductName
+      getPDVName, getEmployeeName, getProductName
     }}>
       {children}
     </CRMContext.Provider>

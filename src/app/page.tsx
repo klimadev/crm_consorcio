@@ -14,7 +14,7 @@ const NAV_ITEMS: Array<{ view: View; label: string; icon: React.ElementType }> =
   { view: 'kanban', label: 'Kanban', icon: LayoutDashboard },
   { view: 'dashboard', label: 'Dashboard', icon: PieChart },
   { view: 'customers', label: 'Consorciados', icon: Briefcase },
-  { view: 'team', label: 'Equipe & Pracas', icon: Users },
+  { view: 'team', label: 'Equipe & PDVs', icon: Users },
   { view: 'products', label: 'Planos', icon: Package },
 ];
 
@@ -22,7 +22,7 @@ const VIEW_TITLES: Record<View, string> = {
   kanban: 'Kanban',
   dashboard: 'Dashboard',
   customers: 'Consorciados',
-  team: 'Equipe & Pracas',
+  team: 'Equipe & PDVs',
   products: 'Planos',
 };
 

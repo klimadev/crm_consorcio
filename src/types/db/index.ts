@@ -28,20 +28,11 @@ export interface Session {
   created_at: string;
 }
 
-export interface Region {
-  id: string;
-  tenant_id: string;
-  name: string;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface PDV {
   id: string;
   tenant_id: string;
   name: string;
   type: 'PHYSICAL_STORE' | 'KIOSK' | 'CALL_CENTER' | 'ONLINE' | 'PARTNER';
-  region_id: string;
   location: string;
   is_active: boolean;
   created_at: string;
@@ -51,7 +42,6 @@ export interface PDV {
 export interface Customer {
   id: string;
   tenant_id: string;
-  region_id: string | null;
   pdv_id: string | null;
   name: string;
   type: 'PF' | 'PJ';

@@ -188,7 +188,6 @@ export function useDealSync(initialData: any[]) {
       visibility: item.visibility || 'PUBLIC',
       assignedEmployeeIds: item.assigned_employee_ids || [],
       productIds: item.product_ids || [],
-      tags: item.tags || [],
       notes: item.notes || '',
       nextFollowUpDate: item.next_follow_up_date,
       createdAt: item.created_at,

@@ -3,13 +3,8 @@ import {
   Customer,
   Product,
   Employee,
-  Region,
   PDV,
   PipelineStage,
-  Tag,
-  DashboardWidget,
-  CustomFieldDefinition,
-  Integration,
   CommercialDashboardFilters,
   CommercialDashboardMetrics,
 } from '@/types';
@@ -124,16 +119,7 @@ export const employeesApi = {
   delete: (id: string) => deleteById('/db/employees', id),
 };
 
-// Regions API
-export const regionsApi = {
-  getAll: () => api.get<Region[]>('/db/regions'),
-  getById: (id: string) => getById<Region>('/db/regions', id),
-  create: (region: Omit<Region, 'id'>) => api.post<Region>('/db/regions', region),
-  update: (id: string, region: Partial<Region>) => updateById<Region>('/db/regions', id, region),
-  delete: (id: string) => deleteById('/db/regions', id),
-};
-
-// PDVs API
+  // PDVs API
 export const pdvsApi = {
   getAll: () => api.get<PDV[]>('/db/pdvs'),
   getById: (id: string) => getById<PDV>('/db/pdvs', id),
@@ -151,47 +137,12 @@ export const stagesApi = {
   delete: (id: string) => deleteById('/db/stages', id),
 };
 
-// Tags API
-export const tagsApi = {
-  getAll: () => api.get<Tag[]>('/db/tags'),
-  getById: (id: string) => getById<Tag>('/db/tags', id),
-  create: (tag: Omit<Tag, 'id'>) => api.post<Tag>('/db/tags', tag),
-  update: (id: string, tag: Partial<Tag>) => updateById<Tag>('/db/tags', id, tag),
-  delete: (id: string) => deleteById('/db/tags', id),
-};
-
-// Dashboard API
-export const dashboardApi = {
-  getAll: () => api.get<DashboardWidget[]>('/db/widgets'),
-  update: (widgets: DashboardWidget[]) => api.put<DashboardWidget[]>('/db/widgets', { widgets }),
-  reset: () => api.post<DashboardWidget[]>('/db/widgets', { reset: true }),
-};
-
-// Custom Fields API
-export const customFieldsApi = {
-  getAll: () => api.get<CustomFieldDefinition[]>('/db/custom-fields'),
-  getById: (id: string) => getById<CustomFieldDefinition>('/db/custom-fields', id),
-  create: (field: Omit<CustomFieldDefinition, 'id'>) => api.post<CustomFieldDefinition>('/db/custom-fields', field),
-  update: (id: string, field: Partial<CustomFieldDefinition>) => updateById<CustomFieldDefinition>('/db/custom-fields', id, field),
-  delete: (id: string) => deleteById('/db/custom-fields', id),
-};
-
-// Integrations API
-export const integrationsApi = {
-  getAll: () => api.get<Integration[]>('/db/integrations'),
-  getById: (id: string) => getById<Integration>('/db/integrations', id),
-  create: (integration: Omit<Integration, 'id'>) => api.post<Integration>('/db/integrations', integration),
-  update: (id: string, integration: Partial<Integration>) => updateById<Integration>('/db/integrations', id, integration),
-  delete: (id: string) => deleteById('/db/integrations', id),
-};
-
 export const commercialDashboardApi = {
   getMetrics: (filters: CommercialDashboardFilters = {}) => {
     const params = new URLSearchParams();
     if (filters.year) params.set('year', String(filters.year));
     if (typeof filters.month === 'number') params.set('month', String(filters.month));
     if (filters.period) params.set('period', filters.period);
-    if (filters.regionId) params.set('regionId', filters.regionId);
     if (filters.pdvId) params.set('pdvId', filters.pdvId);
     if (filters.managerId) params.set('managerId', filters.managerId);
     if (filters.sellerId) params.set('sellerId', filters.sellerId);

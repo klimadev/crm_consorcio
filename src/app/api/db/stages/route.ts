@@ -11,7 +11,6 @@ function transformStageToComponent(stage: PipelineStageDB): PipelineStage {
     name: stage.name,
     color: stage.color || '',
     type: stage.type,
-    automationSteps: typeof stage.automation_steps === 'string' ? JSON.parse(stage.automation_steps || '[]') : (stage.automation_steps || []),
   };
 }
 
@@ -53,7 +52,7 @@ export async function POST(request: NextRequest) {
       name: data.name,
       color: data.color || '',
       type: data.type,
-      automation_steps: data.automationSteps || data.automation_steps || [],
+      automation_steps: data.automation_steps || [],
     });
 
     return NextResponse.json(stage, { status: 201 });

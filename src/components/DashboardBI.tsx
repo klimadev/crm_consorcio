@@ -103,7 +103,7 @@ const HorizontalBars: React.FC<{ data: Array<{ label: string; value: number; cou
           <div key={item.label}>
             <div className="mb-1 flex items-center justify-between text-sm">
               <span className="font-semibold text-slate-700">{item.label}</span>
-              <span className="text-xs font-bold text-slate-500">{numberFormatter.format(item.count)} vendas</span>
+              <span className="text-xs font-bold text-slate-500">{numberFormatter.format(item.count)} adesões</span>
             </div>
             <div className="relative h-5 rounded-full bg-slate-100">
               <div className="absolute inset-y-0 left-0 rounded-full bg-indigo-500" style={{ width: `${Math.max(width, 4)}%` }} />
@@ -117,7 +117,7 @@ const HorizontalBars: React.FC<{ data: Array<{ label: string; value: number; cou
 };
 
 export const DashboardBI: React.FC = () => {
-  const { deals = [], pdvs = [], regions = [], employees = [] } = useCRM();
+  const { deals = [], pdvs = [], employees = [] } = useCRM();
   const now = new Date();
   const [activeTab, setActiveTab] = React.useState<CommercialTab>('overview');
   const [rankingScope, setRankingScope] = React.useState<RankingScope>('sellers');
@@ -157,7 +157,6 @@ export const DashboardBI: React.FC = () => {
         filters={filters}
         years={availableYears}
         pdvs={pdvs}
-        regions={regions}
         managers={managers}
         sellers={sellers}
         onFilterChange={setFilters}
@@ -165,7 +164,7 @@ export const DashboardBI: React.FC = () => {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Card className="p-5">
-          <KPIWidget title="Total Vendas" value={numberFormatter.format(metrics?.totalSalesCount ?? 0)} icon={BarChart3} color="blue" />
+          <KPIWidget title="Total Adesões" value={numberFormatter.format(metrics?.totalSalesCount ?? 0)} icon={BarChart3} color="blue" />
         </Card>
         <Card className="p-5">
           <KPIWidget title="Valor Total" value={currencyFormatter.format(metrics?.totalSalesValue ?? 0)} icon={CircleDollarSign} color="emerald" />
@@ -256,9 +255,9 @@ export const DashboardBI: React.FC = () => {
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h3 className="text-lg font-bold text-slate-800">Ranking Comercial</h3>
             <div className="flex gap-2 rounded-lg border border-slate-200 bg-white p-1">
-              <button className={tabButtonClass(rankingScope === 'sellers')} onClick={() => setRankingScope('sellers')}>
-                Vendedores
-              </button>
+               <button className={tabButtonClass(rankingScope === 'sellers')} onClick={() => setRankingScope('sellers')}>
+                 Consultores
+               </button>
               <button className={tabButtonClass(rankingScope === 'managers')} onClick={() => setRankingScope('managers')}>
                 Gerentes
               </button>
@@ -272,7 +271,7 @@ export const DashboardBI: React.FC = () => {
                   <th className="py-2">Avatar</th>
                   <th className="py-2">Nome</th>
                   <th className="py-2">Faturamento</th>
-                  <th className="py-2">Qtd Vendas</th>
+                  <th className="py-2">Qtd Adesões</th>
                   <th className="py-2">Ticket Médio</th>
                 </tr>
               </thead>
@@ -338,10 +337,10 @@ export const DashboardBI: React.FC = () => {
           </Card>
           <Card className="p-6">
             <h3 className="mb-4 text-lg font-bold text-slate-800">Participação</h3>
-            <div className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-600">
-              <span>Negócios com seguro</span>
-              <span>{formatPercent(insuranceShare)}</span>
-            </div>
+             <div className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-600">
+               <span>Propostas com seguro</span>
+               <span>{formatPercent(insuranceShare)}</span>
+             </div>
             <div className="h-5 rounded-full bg-slate-100">
               <div className="h-5 rounded-full bg-emerald-500" style={{ width: `${Math.max(insuranceShare, 4)}%` }} />
             </div>

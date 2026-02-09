@@ -1,6 +1,6 @@
 import { executeQuery as runQuery, getQuery, getOneQuery, generateId, getDatabase } from './client';
 import bcrypt from 'bcryptjs';
-import type { Tenant, User, Region, PDV, Customer, Product, PipelineStage, Tag, Deal, Integration, CustomFieldDefinition, DashboardWidget, Preference, Session } from './schema';
+import type { Tenant, User, PDV, Customer, Product, PipelineStage, Tag, Deal, Integration, CustomFieldDefinition, DashboardWidget, Preference, Session } from './schema';
 
 export function createDefaultTenantIfNotExists() {
   const existing = getOneQuery<any>('SELECT id FROM tenants WHERE slug = ?', ['default']);
@@ -230,7 +230,7 @@ const ALLOWED_DEAL_FIELDS = ['title', 'pdv_id', 'customer_id', 'customer_name', 
 const ALLOWED_PRODUCT_FIELDS = ['name', 'description', 'category', 'base_price', 'attributes', 'form_schema', 'automation_steps', 'default_follow_up_days', 'active'];
 const ALLOWED_STAGE_FIELDS = ['name', 'color', 'type', 'automation_steps', 'order_index'];
 const ALLOWED_REGION_FIELDS = ['name'];
-const ALLOWED_PDV_FIELDS = ['name', 'type', 'region_id', 'location', 'is_active'];
+const ALLOWED_PDV_FIELDS = ['name', 'type', 'location', 'is_active'];
 const ALLOWED_TAG_FIELDS = ['label', 'color'];
 const ALLOWED_INTEGRATION_FIELDS = ['name', 'type', 'status', 'config'];
 const ALLOWED_CUSTOM_FIELD_FIELDS = ['key', 'label', 'type', 'scope', 'options', 'required', 'active'];
@@ -288,42 +288,21 @@ export function deleteUser(id: string): void {
   runQuery('DELETE FROM users WHERE id = ?', [id]);
 }
 
-export function createRegion(tenantId: string, name: string): Region {
-  const id = generateId();
-  const now = new Date().toISOString();
-  
-  runQuery(`
-    INSERT INTO regions (id, tenant_id, name, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?)
-  `, [id, tenantId, name, now, now]);
-  
-  return { id, tenant_id: tenantId, name, created_at: now, updated_at: now };
-}
-
-export async function getRegionsByTenant(tenantId: string): Promise<Region[]> {
-  return await getQuery<Region>('SELECT * FROM regions WHERE tenant_id = ? ORDER BY name', [tenantId]);
-}
-
-export function deleteRegion(id: string): void {
-  runQuery('DELETE FROM regions WHERE id = ?', [id]);
-}
-
 export function createPDV(
   tenantId: string,
   name: string,
   type: PDV['type'],
-  regionId: string,
   location: string
 ): PDV {
   const id = generateId();
   const now = new Date().toISOString();
   
   runQuery(`
-    INSERT INTO pdvs (id, tenant_id, name, type, region_id, location, is_active, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
-  `, [id, tenantId, name, type, regionId, location, now, now]);
+    INSERT INTO pdvs (id, tenant_id, name, type, location, is_active, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, 1, ?, ?)
+  `, [id, tenantId, name, type, location, now, now]);
   
-  return { id, tenant_id: tenantId, name, type, region_id: regionId, location, is_active: true, created_at: now, updated_at: now };
+  return { id, tenant_id: tenantId, name, type, location, is_active: true, created_at: now, updated_at: now };
 }
 
 export function getPDVsByTenant(tenantId: string): PDV[] {
@@ -333,15 +312,14 @@ export function getPDVsByTenant(tenantId: string): PDV[] {
 export function updatePDV(
   id: string,
   name: string,
-  regionId: string | null,
   type: string,
   location: string
 ): PDV | null {
   const now = new Date().toISOString();
 
   runQuery(`
-    UPDATE pdvs SET name = ?, region_id = ?, type = ?, location = ?, updated_at = ? WHERE id = ?
-  `, [name, regionId, type, location, now, id]);
+    UPDATE pdvs SET name = ?, type = ?, location = ?, updated_at = ? WHERE id = ?
+  `, [name, type, location, now, id]);
 
   const row = getOneQuery<PDV>('SELECT * FROM pdvs WHERE id = ?', [id]);
   return row;
@@ -359,23 +337,21 @@ export function createCustomer(
   email: string,
   phone: string,
   status: string,
-  regionId?: string | null,
   pdvId?: string | null
 ): Customer {
   const id = generateId();
   const now = new Date().toISOString();
 
   runQuery(`
-    INSERT INTO customers (id, tenant_id, region_id, pdv_id, name, type, document, email, phone, status, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO customers (id, tenant_id, pdv_id, name, type, document, email, phone, status, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
-    id, tenantId, regionId, pdvId, name, type, document, email, phone, status, now, now
+    id, tenantId, pdvId, name, type, document, email, phone, status, now, now
   ]);
 
   return {
     id,
     tenant_id: tenantId,
-    region_id: regionId ?? null,
     pdv_id: pdvId ?? null,
     name,
     type: type as 'PF' | 'PJ',
@@ -410,14 +386,13 @@ export function updateCustomer(
   email: string,
   phone: string,
   status: string,
-  regionId?: string | null,
   pdvId?: string | null
 ): Customer | null {
   const now = new Date().toISOString();
 
   runQuery(`
-    UPDATE customers SET name = ?, type = ?, document = ?, email = ?, phone = ?, status = ?, region_id = ?, pdv_id = ?, updated_at = ? WHERE id = ?
-  `, [name, type, document, email, phone, status, regionId, pdvId, now, id]);
+    UPDATE customers SET name = ?, type = ?, document = ?, email = ?, phone = ?, status = ?, pdv_id = ?, updated_at = ? WHERE id = ?
+  `, [name, type, document, email, phone, status, pdvId, now, id]);
 
   const row = getOneQuery<Customer>('SELECT * FROM customers WHERE id = ?', [id]);
   return row;
@@ -784,6 +759,9 @@ function buildWonDealsWhere(
   } else if (managerPdvId) {
     clauses.push('d.pdv_id = ?');
     params.push(managerPdvId);
+  } else {
+    // Quando não há filtro de PDV e nem manager com PDV específico, incluir todos os PDVs
+    clauses.push('d.pdv_id IS NOT NULL');
   }
 
   if (filters.sellerId) {
@@ -1282,15 +1260,10 @@ export function deleteDashboardWidget(id: string): void {
 }
 
 // Missing functions for API routes
-export function countEntitiesByTenant(tenantId: string): { regions: number; pdvs: number; stages: number } {
-  const regions = getOneQuery<{ 'COUNT(*)': number }>('SELECT COUNT(*) FROM regions WHERE tenant_id = ?', [tenantId])?.['COUNT(*)'] ?? 0;
+export function countEntitiesByTenant(tenantId: string): { pdvs: number; stages: number } {
   const pdvs = getOneQuery<{ 'COUNT(*)': number }>('SELECT COUNT(*) FROM pdvs WHERE tenant_id = ?', [tenantId])?.['COUNT(*)'] ?? 0;
   const stages = getOneQuery<{ 'COUNT(*)': number }>('SELECT COUNT(*) FROM pipeline_stages WHERE tenant_id = ?', [tenantId])?.['COUNT(*)'] ?? 0;
-  return { regions, pdvs, stages };
-}
-
-export function getRegionsByTenantId(tenantId: string): Promise<Region[]> {
-  return getRegionsByTenant(tenantId);
+  return { pdvs, stages };
 }
 
 export function getPdvsByTenantId(tenantId: string): PDV[] {
@@ -1381,10 +1354,6 @@ export function getDealsByCustomerId(tenantId: string, customerId: string): Deal
   }));
 }
 
-export function getPdvsByRegionId(tenantId: string, regionId: string): PDV[] {
-  return getQuery<PDV>('SELECT * FROM pdvs WHERE tenant_id = ? AND region_id = ? ORDER BY name', [tenantId, regionId]);
-}
-
 export function getPipelineStageById(id: string): PipelineStage | null {
   const row = getOneQuery<any>('SELECT * FROM pipeline_stages WHERE id = ?', [id]);
   if (!row) return null;
@@ -1392,10 +1361,6 @@ export function getPipelineStageById(id: string): PipelineStage | null {
     ...row,
     automation_steps: JSON.parse(row.automation_steps || '[]')
   };
-}
-
-export function getRegionById(id: string): Region | null {
-  return getOneQuery<Region>('SELECT * FROM regions WHERE id = ?', [id]);
 }
 
 export function getTagById(id: string): Tag | null {
@@ -1595,29 +1560,6 @@ export function updateUserPermissions(userId: string, permissions: any): void {
   console.log('Updating permissions for user', userId, permissions);
 }
 
-export function updateRegion(id: string, data: Partial<Region>): Region | null {
-  const now = new Date().toISOString();
-  const fields: string[] = [];
-  const values: any[] = [];
-
-  Object.entries(data).forEach(([key, value]) => {
-    if (key !== 'id' && key !== 'tenant_id' && key !== 'created_at') {
-      fields.push(`${key} = ?`);
-      values.push(value);
-    }
-  });
-
-  if (fields.length === 0) return getRegionById(id);
-
-  fields.push('updated_at = ?');
-  values.push(now);
-  values.push(id);
-
-  runQuery(`UPDATE regions SET ${fields.join(', ')} WHERE id = ?`, values);
-
-  return getRegionById(id);
-}
-
 export function updateTag(id: string, label: string, color: string): Tag | null {
   const now = new Date().toISOString();
 
@@ -1636,10 +1578,9 @@ export function seedTenantData(tenantId: string) {
   try {
     // Importar exatamente os dados do constants/index.ts
     const { 
-      INITIAL_REGIONS, INITIAL_PDVS, INITIAL_EMPLOYEES, 
+      INITIAL_PDVS, INITIAL_EMPLOYEES, 
       INITIAL_PRODUCTS, INITIAL_CUSTOMERS, INITIAL_DEALS, 
-      AVAILABLE_TAGS, INITIAL_STAGES, DEFAULT_DASHBOARD_WIDGETS, 
-      INITIAL_CUSTOM_FIELDS 
+      INITIAL_STAGES
     } = require('@/constants');
     
     // Seed Users/Employees
@@ -1651,20 +1592,12 @@ export function seedTenantData(tenantId: string) {
       `, [u.id, tenantId, u.email, passwordHash, u.name, u.role, u.pdvId, now, now]);
     });
     
-    // Seed Regions
-    INITIAL_REGIONS.forEach((r: any) => {
-      runQuery(`
-        INSERT INTO regions (id, tenant_id, name, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?)
-      `, [r.id, tenantId, r.name, now, now]);
-    });
-    
     // Seed PDVs
     INITIAL_PDVS.forEach((p: any) => {
       runQuery(`
-        INSERT INTO pdvs (id, tenant_id, name, type, region_id, location, is_active, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
-      `, [p.id, tenantId, p.name, p.type, p.regionId, p.location, now, now]);
+        INSERT INTO pdvs (id, tenant_id, name, type, location, is_active, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, 1, ?, ?)
+      `, [p.id, tenantId, p.name, p.type, p.location, now, now]);
     });
     
     // Seed Pipeline Stages
@@ -1673,22 +1606,6 @@ export function seedTenantData(tenantId: string) {
         INSERT INTO pipeline_stages (id, tenant_id, name, color, type, automation_steps, order_index, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, '[]', ?, ?, ?)
       `, [s.id, tenantId, s.name, s.color, s.type, i, now, now]);
-    });
-    
-    // Seed Tags
-    AVAILABLE_TAGS.forEach((t: any) => {
-      runQuery(`
-        INSERT INTO tags (id, tenant_id, label, color, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `, [t.id, tenantId, t.label, t.color, now, now]);
-    });
-    
-    // Seed Custom Field Definitions
-    INITIAL_CUSTOM_FIELDS.forEach((cf: any) => {
-      runQuery(`
-        INSERT INTO custom_field_definitions (id, tenant_id, key, label, type, scope, options, required, active, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
-      `, [cf.id, tenantId, cf.key, cf.label, cf.type, cf.scope, JSON.stringify(cf.options || []), cf.required ? 1 : 0, now, now]);
     });
     
     // Seed Products
@@ -1723,16 +1640,8 @@ export function seedTenantData(tenantId: string) {
       `, [
         d.id, tenantId, d.title, d.pdvId, d.customerId, d.customerName, d.value, d.stageId, d.visibility,
         JSON.stringify(d.assignedEmployeeIds), JSON.stringify(d.productIds), JSON.stringify(d.customValues), 
-        JSON.stringify(d.tags), d.notes, now, now
+        JSON.stringify([]), d.notes, now, now
       ]);
-    });
-    
-    // Seed Dashboard Widgets
-    DEFAULT_DASHBOARD_WIDGETS.forEach((w: any) => {
-      runQuery(`
-        INSERT INTO dashboard_widgets (id, tenant_id, user_id, type, title, col_span, config, created_at, updated_at)
-        VALUES (?, ?, NULL, ?, ?, ?, '{}', ?, ?)
-      `, [w.id, tenantId, w.type, w.title, w.colSpan, now, now]);
     });
     
     // Seed default integration

@@ -18,7 +18,6 @@ function transformDealToComponent(deal: DealDB): Deal {
     assignedEmployeeIds: typeof deal.assigned_employee_ids === 'string' ? JSON.parse(deal.assigned_employee_ids || '[]') : (deal.assigned_employee_ids || []),
     productIds: typeof deal.product_ids === 'string' ? JSON.parse(deal.product_ids || '[]') : (deal.product_ids || []),
     customValues: typeof deal.custom_values === 'string' ? JSON.parse(deal.custom_values || '{}') : (deal.custom_values || {}),
-    tags: typeof deal.tags === 'string' ? JSON.parse(deal.tags || '[]') : (deal.tags || []),
     notes: deal.notes || '',
     nextFollowUpDate: deal.next_follow_up_date || undefined,
     createdAt: deal.created_at,
@@ -62,7 +61,7 @@ export async function POST(request: NextRequest) {
       data.pdvId || null,
       null, // productId
       JSON.stringify(data.productIds || []),
-      JSON.stringify(data.tags || []),
+      JSON.stringify([]),
       data.notes || ''
     );
 
@@ -99,7 +98,7 @@ export async function PUT(request: NextRequest) {
       data.pdv_id || data.pdvId,
       data.product_id || null,
       JSON.stringify(data.product_ids || data.productIds || []),
-      JSON.stringify(data.tags || []),
+      JSON.stringify([]),
       data.notes || ''
     );
     if (!deal) {

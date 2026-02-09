@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       name,
       color: body.color || '',
       type: type || 'OPEN',
-      automation_steps: body.automationSteps || body.automation_steps || [],
+      automation_steps: body.automation_steps || [],
     });
     return NextResponse.json({ success: true, stage });
   } catch (error) {

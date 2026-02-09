@@ -58,7 +58,6 @@ export async function POST(request: NextRequest) {
       data.email || '',
       data.phone || '',
       data.status || 'LEAD',
-      null, // regionId
       null  // pdvId
     );
 
@@ -94,7 +93,6 @@ export async function PUT(request: NextRequest) {
       data.email || '',
       data.phone || '',
       data.status || 'LEAD',
-      null, // regionId
       null  // pdvId
     );
     if (!customer) {

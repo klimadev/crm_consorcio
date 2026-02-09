@@ -1,13 +1,12 @@
 'use client';
 
 import React from 'react';
-import type { CommercialDashboardFilters, Employee, PDV, Region } from '@/types';
+import type { CommercialDashboardFilters, Employee, PDV } from '@/types';
 
 interface CommercialFiltersProps {
   filters: CommercialDashboardFilters;
   years: number[];
   pdvs: PDV[];
-  regions: Region[];
   managers: Employee[];
   sellers: Employee[];
   onFilterChange: (next: CommercialDashboardFilters) => void;
@@ -43,14 +42,13 @@ export const CommercialFilters: React.FC<CommercialFiltersProps> = ({
   filters,
   years,
   pdvs,
-  regions,
   managers,
   sellers,
   onFilterChange,
 }) => {
   return (
     <div className="sticky top-0 z-20 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
         <select
           className={selectClass}
           value={filters.year ?? ''}
@@ -116,20 +114,6 @@ export const CommercialFilters: React.FC<CommercialFiltersProps> = ({
 
         <select
           className={selectClass}
-          value={filters.regionId ?? ''}
-          onChange={(event) => onFilterChange({ ...filters, regionId: event.target.value || undefined })}
-          aria-label="Filtro por praça"
-        >
-          <option value="">Todas as praças</option>
-          {regions.map((region) => (
-            <option key={region.id} value={region.id}>
-              {region.name}
-            </option>
-          ))}
-        </select>
-
-        <select
-          className={selectClass}
           value={filters.managerId ?? ''}
           onChange={(event) => onFilterChange({ ...filters, managerId: event.target.value || undefined })}
           aria-label="Filtro por gerente"
@@ -142,19 +126,19 @@ export const CommercialFilters: React.FC<CommercialFiltersProps> = ({
           ))}
         </select>
 
-        <select
-          className={selectClass}
-          value={filters.sellerId ?? ''}
-          onChange={(event) => onFilterChange({ ...filters, sellerId: event.target.value || undefined })}
-          aria-label="Filtro por vendedor"
-        >
-          <option value="">Todos os vendedores</option>
+         <select
+           className={selectClass}
+           value={filters.sellerId ?? ''}
+           onChange={(event) => onFilterChange({ ...filters, sellerId: event.target.value || undefined })}
+           aria-label="Filtro por consultor"
+         >
+           <option value="">Todos os consultores</option>
           {sellers.map((seller) => (
             <option key={seller.id} value={seller.id}>
               {seller.name}
             </option>
           ))}
-        </select>
+         </select>
       </div>
     </div>
   );

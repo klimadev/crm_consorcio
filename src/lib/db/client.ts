@@ -83,21 +83,10 @@ export function initDb(): Database.Database {
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
       );
 
-      -- Regions table
-      CREATE TABLE IF NOT EXISTS regions (
-        id TEXT PRIMARY KEY,
-        tenant_id TEXT NOT NULL,
-        name TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
-      );
-
       -- PDVs table
       CREATE TABLE IF NOT EXISTS pdvs (
         id TEXT PRIMARY KEY,
         tenant_id TEXT NOT NULL,
-        region_id TEXT,
         name TEXT NOT NULL,
         type TEXT DEFAULT 'PHYSICAL_STORE',
         location TEXT,
@@ -107,15 +96,13 @@ export function initDb(): Database.Database {
         is_active BOOLEAN DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
-        FOREIGN KEY (region_id) REFERENCES regions(id) ON DELETE SET NULL
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
       );
 
       -- Customers table
       CREATE TABLE IF NOT EXISTS customers (
         id TEXT PRIMARY KEY,
         tenant_id TEXT NOT NULL,
-        region_id TEXT,
         pdv_id TEXT,
         name TEXT NOT NULL,
         type TEXT DEFAULT 'PJ',
@@ -130,7 +117,6 @@ export function initDb(): Database.Database {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
-        FOREIGN KEY (region_id) REFERENCES regions(id) ON DELETE SET NULL,
         FOREIGN KEY (pdv_id) REFERENCES pdvs(id) ON DELETE SET NULL
       );
 
