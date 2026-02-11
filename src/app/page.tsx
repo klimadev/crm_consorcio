@@ -4,11 +4,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CRMProvider, useCRM } from '@/context';
-import { DashboardBI, KanbanBoard, CustomersView, ProductsView, TeamPlacesView, NoSSR } from '@/components';
-import { LayoutDashboard, PieChart, Package, Users, Briefcase, ChevronDown } from 'lucide-react';
+import { DashboardBI, KanbanBoard, CustomersView, ProductsView, TeamPlacesView, NoSSR, ValidatorDashboard } from '@/components';
+import { LayoutDashboard, PieChart, Package, Users, Briefcase, ChevronDown, ShieldCheck } from 'lucide-react';
 import { BRANDING } from '@/constants';
 
-type View = 'kanban' | 'dashboard' | 'customers' | 'team' | 'products';
+type View = 'kanban' | 'dashboard' | 'customers' | 'team' | 'products' | 'sales_validation';
 
 const NAV_ITEMS: Array<{ view: View; label: string; icon: React.ElementType }> = [
   { view: 'kanban', label: 'Kanban', icon: LayoutDashboard },
@@ -16,6 +16,7 @@ const NAV_ITEMS: Array<{ view: View; label: string; icon: React.ElementType }> =
   { view: 'customers', label: 'Consorciados', icon: Briefcase },
   { view: 'team', label: 'Equipe & PDVs', icon: Users },
   { view: 'products', label: 'Planos', icon: Package },
+  { view: 'sales_validation', label: 'Validação', icon: ShieldCheck },
 ];
 
 const VIEW_TITLES: Record<View, string> = {
@@ -24,6 +25,7 @@ const VIEW_TITLES: Record<View, string> = {
   customers: 'Consorciados',
   team: 'Equipe & PDVs',
   products: 'Planos',
+  sales_validation: 'Validação de Vendas',
 };
 
 const NavItem = ({
@@ -32,12 +34,14 @@ const NavItem = ({
   label,
   currentView,
   setCurrentView,
+  badge,
 }: {
   view: View;
   icon: React.ElementType;
   label: string;
   currentView: View;
   setCurrentView: (v: View) => void;
+  badge?: number;
 }) => (
   <button
     onClick={() => setCurrentView(view)}
@@ -49,13 +53,18 @@ const NavItem = ({
   >
     <Icon size={20} className={currentView === view ? 'text-white' : 'text-slate-500 group-hover:text-white'} />
     {label}
+    {typeof badge === 'number' && badge > 0 && (
+      <span className="ml-auto bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+        {badge}
+      </span>
+    )}
   </button>
 );
 
 const InnerApp: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('kanban');
   const [mounted, setMounted] = useState(false);
-  const { currentUser, employees, setCurrentUser, deals, stages, isAuthResolved } = useCRM();
+  const { currentUser, employees, setCurrentUser, deals, stages, isAuthResolved, salesCounts } = useCRM();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const router = useRouter();
 
@@ -79,6 +88,10 @@ const InnerApp: React.FC = () => {
       return new Date(d.nextFollowUpDate) < new Date();
     }).length;
   }, [deals, stages]);
+
+  const pendingSalesCount = useMemo(() => {
+    return salesCounts?.AWAITING_CONSISTENCY || 0;
+  }, [salesCounts]);
 
   if (!mounted || !isAuthResolved || !currentUser) {
     return (
@@ -107,6 +120,7 @@ const InnerApp: React.FC = () => {
               label={item.label}
               currentView={currentView}
               setCurrentView={setCurrentView}
+              badge={item.view === 'sales_validation' ? pendingSalesCount : undefined}
             />
           ))}
         </nav>
@@ -155,6 +169,7 @@ const InnerApp: React.FC = () => {
           {currentView === 'customers' && <CustomersView />}
           {currentView === 'team' && <TeamPlacesView />}
           {currentView === 'products' && <ProductsView />}
+          {currentView === 'sales_validation' && <ValidatorDashboard />}
         </div>
       </main>
     </div>

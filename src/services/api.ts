@@ -7,6 +7,8 @@ import {
   PipelineStage,
   CommercialDashboardFilters,
   CommercialDashboardMetrics,
+  Sale,
+  SaleConsistencyStatus,
 } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
@@ -90,6 +92,44 @@ export const dealsApi = {
   create: (deal: Omit<Deal, 'id'>) => api.post<Deal>('/db/deals', deal),
   update: (id: string, deal: Partial<Deal>) => updateById<Deal>('/db/deals', id, deal),
   delete: (id: string) => deleteById('/db/deals', id),
+};
+
+// Sales Validation API
+export const salesApi = {
+  getAll: (filters?: { status?: SaleConsistencyStatus; sellerId?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.status) params.set('status', filters.status);
+    if (filters?.sellerId) params.set('sellerId', filters.sellerId);
+    const query = params.toString();
+    return api.get<Sale[]>(query ? `/db/sales?${query}` : '/db/sales');
+  },
+
+  getCounts: () => api.get<Record<SaleConsistencyStatus, number>>('/db/sales?counts=true'),
+
+  getById: (id: string) => getById<Sale>('/db/sales', id),
+
+  create: (sale: Partial<Sale> & { customerName: string; totalValue: number }) =>
+    api.post<Sale>('/db/sales', sale),
+
+  update: (id: string, sale: Partial<Sale>) => updateById<Sale>('/db/sales', id, sale),
+
+  delete: (id: string) => deleteById('/db/sales', id),
+
+  validate: (saleId: string, status: 'CONSISTENT' | 'INCONSISTENT', notes?: string) =>
+    api.post<{ success: boolean; sale: Sale }>('/db/sales/validate', { saleId, status, notes }),
+
+  updateInstallment: (
+    saleId: string,
+    installmentNumber: 1 | 2 | 3 | 4,
+    status: 'PENDING' | 'RECEIVED' | 'OVERDUE',
+    receivedDate?: string
+  ) =>
+    api.put<{ success: boolean; sale: Sale }>('/db/sales/installments', {
+      saleId,
+      installmentNumber,
+      status,
+      receivedDate,
+    }),
 };
 
 // Customers API

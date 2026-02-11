@@ -9,7 +9,8 @@ export type {
   Deal,
   Integration,
   CustomFieldDefinition,
-  DashboardWidget
+  DashboardWidget,
+  Sale
 } from '@/types/db';
 
 export interface Session {

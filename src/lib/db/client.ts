@@ -194,6 +194,78 @@ export function initDb(): Database.Database {
         FOREIGN KEY (stage_id) REFERENCES pipeline_stages(id) ON DELETE CASCADE
       );
 
+      -- Sales Consistency & Installment Tracking table
+      CREATE TABLE IF NOT EXISTS sales (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+
+        -- Sale core data
+        deal_id TEXT,
+        customer_id TEXT,
+        customer_name TEXT NOT NULL,
+        seller_id TEXT NOT NULL,
+        seller_name TEXT NOT NULL,
+        pdv_id TEXT,
+        product_id TEXT,
+        product_name TEXT,
+
+        -- Financial summary
+        total_value REAL NOT NULL DEFAULT 0,
+        credit_value REAL DEFAULT 0,
+        plan_months INTEGER,
+
+        -- Consistency validation
+        consistency_status TEXT NOT NULL DEFAULT 'AWAITING_CONSISTENCY',
+        validated_by TEXT,
+        validated_at DATETIME,
+        validation_notes TEXT,
+
+        -- Installment 1
+        installment_1_status TEXT DEFAULT 'PENDING',
+        installment_1_due_date DATETIME,
+        installment_1_received_date DATETIME,
+        installment_1_value REAL DEFAULT 0,
+
+        -- Installment 2
+        installment_2_status TEXT DEFAULT 'PENDING',
+        installment_2_due_date DATETIME,
+        installment_2_received_date DATETIME,
+        installment_2_value REAL DEFAULT 0,
+
+        -- Installment 3
+        installment_3_status TEXT DEFAULT 'PENDING',
+        installment_3_due_date DATETIME,
+        installment_3_received_date DATETIME,
+        installment_3_value REAL DEFAULT 0,
+
+        -- Installment 4
+        installment_4_status TEXT DEFAULT 'PENDING',
+        installment_4_due_date DATETIME,
+        installment_4_received_date DATETIME,
+        installment_4_value REAL DEFAULT 0,
+
+        -- Metadata
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+        FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE SET NULL,
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL,
+        FOREIGN KEY (seller_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (validated_by) REFERENCES users(id) ON DELETE SET NULL,
+        FOREIGN KEY (pdv_id) REFERENCES pdvs(id) ON DELETE SET NULL,
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL
+      );
+
+      -- Indexes for sales
+      CREATE INDEX IF NOT EXISTS idx_sales_tenant_status
+        ON sales(tenant_id, consistency_status);
+      CREATE INDEX IF NOT EXISTS idx_sales_seller
+        ON sales(tenant_id, seller_id);
+      CREATE INDEX IF NOT EXISTS idx_sales_deal
+        ON sales(deal_id);
+
       -- Custom Field Definitions table
       CREATE TABLE IF NOT EXISTS custom_field_definitions (
         id TEXT PRIMARY KEY,

@@ -3,7 +3,8 @@
 import React, { createContext, useContext } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
-  PDV, Employee, Product, Customer, Deal, PipelineStage
+  PDV, Employee, Product, Customer, Deal, PipelineStage,
+  Sale, SaleConsistencyStatus
 } from '@/types';
 import {
   dealsApi,
@@ -11,7 +12,8 @@ import {
   productsApi,
   employeesApi,
   pdvsApi,
-  stagesApi
+  stagesApi,
+  salesApi
 } from '@/services/api';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
@@ -24,6 +26,9 @@ interface CRMContextData {
   customers: Customer[] | undefined;
   deals: Deal[] | undefined;
   stages: PipelineStage[] | undefined;
+  sales: Sale[] | undefined;
+  salesLoading: boolean;
+  salesCounts: Record<SaleConsistencyStatus, number> | undefined;
   isAuthLoading: boolean;
   isAuthResolved: boolean;
   isLoading: boolean;
@@ -51,6 +56,19 @@ interface CRMContextData {
   addDeal: (deal: Omit<Deal, 'id'>) => void;
   updateDeal: (deal: Deal) => void;
   removeDeal: (id: string) => void;
+
+  // Sales Validation
+  addSale: (sale: Partial<Sale> & { customerName: string; totalValue: number }) => void;
+  updateSale: (sale: Partial<Sale> & { id: string }) => void;
+  removeSale: (id: string) => void;
+  validateSale: (saleId: string, status: 'CONSISTENT' | 'INCONSISTENT', notes?: string) => void;
+  updateInstallment: (
+    saleId: string,
+    installmentNumber: 1 | 2 | 3 | 4,
+    status: 'PENDING' | 'RECEIVED' | 'OVERDUE',
+    receivedDate?: string
+  ) => void;
+  refreshSales: () => void;
   
   // Stage operations
   addStage: (stage: Omit<PipelineStage, 'id'>) => void;
@@ -132,12 +150,30 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     staleTime: 1000 * 60 * 5,
   });
 
+  const salesQuery = useQuery({
+    queryKey: ['sales'],
+    queryFn: () => salesApi.getAll(),
+    enabled: !!currentUserState?.id,
+    staleTime: 1000 * 30,
+  });
+
+  const salesCountsQuery = useQuery({
+    queryKey: ['sales-counts'],
+    queryFn: () => salesApi.getCounts(),
+    enabled: !!currentUserState?.id,
+    refetchInterval: 30000,
+  });
+
   const pdvsData = Array.isArray(pdvsQuery.data) ? pdvsQuery.data : [];
   const employeesData = Array.isArray(employeesQuery.data) ? employeesQuery.data : [];
   const productsData = Array.isArray(productsQuery.data) ? productsQuery.data : [];
   const customersData = Array.isArray(customersQuery.data) ? customersQuery.data : [];
   const dealsData = Array.isArray(dealsQuery.data) ? dealsQuery.data : [];
   const stagesData = Array.isArray(stagesQuery.data) ? stagesQuery.data : [];
+  const salesData = Array.isArray(salesQuery.data) ? salesQuery.data : [];
+  const salesCounts = (salesCountsQuery.data && typeof salesCountsQuery.data === 'object')
+    ? (salesCountsQuery.data as Record<SaleConsistencyStatus, number>)
+    : undefined;
  
   const isLoading =
     pdvsQuery.isLoading ||
@@ -146,6 +182,8 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     customersQuery.isLoading ||
     dealsQuery.isLoading ||
     stagesQuery.isLoading;
+
+  const salesLoading = salesQuery.isLoading;
  
   const filteredDeals = React.useMemo(() => {
     if (!currentUser) return dealsData;
@@ -336,6 +374,56 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const removeStage = (id: string) => removeStageMutation.mutate(id);
   const reorderStages = (newOrder: PipelineStage[]) => reorderStagesMutation.mutate(newOrder);
 
+  const addSaleMutation = useMutation({
+    mutationFn: (sale: Partial<Sale> & { customerName: string; totalValue: number }) => salesApi.create(sale),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-counts'] });
+    },
+  });
+
+  const updateSaleMutation = useMutation({
+    mutationFn: ({ id, ...data }: Partial<Sale> & { id: string }) => salesApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-counts'] });
+    },
+  });
+
+  const removeSaleMutation = useMutation({
+    mutationFn: (id: string) => salesApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-counts'] });
+    },
+  });
+
+  const validateSaleMutation = useMutation({
+    mutationFn: ({ saleId, status, notes }: { saleId: string; status: 'CONSISTENT' | 'INCONSISTENT'; notes?: string }) =>
+      salesApi.validate(saleId, status, notes),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-counts'] });
+    },
+  });
+
+  const updateInstallmentMutation = useMutation({
+    mutationFn: ({ saleId, installmentNumber, status, receivedDate }: {
+      saleId: string;
+      installmentNumber: 1 | 2 | 3 | 4;
+      status: 'PENDING' | 'RECEIVED' | 'OVERDUE';
+      receivedDate?: string;
+    }) => salesApi.updateInstallment(saleId, installmentNumber, status, receivedDate),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+    },
+  });
+
+  const refreshSales = () => {
+    queryClient.invalidateQueries({ queryKey: ['sales'] });
+    queryClient.invalidateQueries({ queryKey: ['sales-counts'] });
+  };
+
   return (
     <CRMContext.Provider value={{
       currentUser: currentUserState, setCurrentUser,
@@ -345,6 +433,9 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       customers: filteredCustomers,
       deals: filteredDeals,
       stages: stagesData,
+      sales: salesData,
+      salesLoading,
+      salesCounts,
       isAuthLoading,
       isAuthResolved,
       isLoading,
@@ -354,6 +445,13 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addProduct, updateProduct, removeProduct,
       addDeal, updateDeal, removeDeal,
       addStage, updateStage, removeStage, reorderStages,
+      addSale: (sale) => addSaleMutation.mutate(sale),
+      updateSale: (sale) => updateSaleMutation.mutate(sale),
+      removeSale: (id) => removeSaleMutation.mutate(id),
+      validateSale: (saleId, status, notes) => validateSaleMutation.mutate({ saleId, status, notes }),
+      updateInstallment: (saleId, installmentNumber, status, receivedDate) =>
+        updateInstallmentMutation.mutate({ saleId, installmentNumber, status, receivedDate }),
+      refreshSales,
       getPDVName, getEmployeeName, getProductName
     }}>
       {children}

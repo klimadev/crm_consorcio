@@ -150,3 +150,50 @@ export interface DashboardWidget {
   created_at: string;
   updated_at: string;
 }
+
+export interface Sale {
+  id: string;
+  tenant_id: string;
+
+  deal_id: string | null;
+  customer_id: string | null;
+  customer_name: string;
+  seller_id: string;
+  seller_name: string;
+  pdv_id: string | null;
+  product_id: string | null;
+  product_name: string | null;
+
+  total_value: number;
+  credit_value: number;
+  plan_months: number | null;
+
+  consistency_status: 'AWAITING_CONSISTENCY' | 'CONSISTENT' | 'INCONSISTENT';
+  validated_by: string | null;
+  validated_at: string | null;
+  validation_notes: string | null;
+
+  installment_1_status: 'PENDING' | 'RECEIVED' | 'OVERDUE';
+  installment_1_due_date: string | null;
+  installment_1_received_date: string | null;
+  installment_1_value: number;
+
+  installment_2_status: 'PENDING' | 'RECEIVED' | 'OVERDUE';
+  installment_2_due_date: string | null;
+  installment_2_received_date: string | null;
+  installment_2_value: number;
+
+  installment_3_status: 'PENDING' | 'RECEIVED' | 'OVERDUE';
+  installment_3_due_date: string | null;
+  installment_3_received_date: string | null;
+  installment_3_value: number;
+
+  installment_4_status: 'PENDING' | 'RECEIVED' | 'OVERDUE';
+  installment_4_due_date: string | null;
+  installment_4_received_date: string | null;
+  installment_4_value: number;
+
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
