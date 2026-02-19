@@ -37,7 +37,7 @@ export function buildLeadVisibilityScope(ctx: RequestContext, managerScopes: Man
     };
   }
 
-  // TODO(rbac): Role-to-scope mapping here can deny ADMIN/MEMBER visibility if they are not explicitly handled.
+  // MANAGER role uses resolved scopes from manager_scopes table
   const resolved = resolveManagerScope(managerScopes);
   return {
     kind: 'manager',
@@ -93,7 +93,8 @@ export function assertCanCreateLead(ctx: RequestContext, input: { ownerMembershi
     return;
   }
 
-  // TODO(rbac): Add explicit deny for unhandled roles to avoid allow-by-fallthrough.
+  // Explicit deny for unhandled roles
+  throw new AppError('FORBIDDEN', 'Role not authorized to create leads.', 403);
 }
 
 export function assertCanMoveLeadStage(ctx: RequestContext, lead: Lead, nextStage: LeadStage): void {

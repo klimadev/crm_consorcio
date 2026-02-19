@@ -1,85 +1,39 @@
 'use client';
 
 import React, { createContext, useContext } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  PDV, Employee, Product, Customer, Deal, PipelineStage,
-  Sale, SaleConsistencyStatus
-} from '@/types';
-import {
-  dealsApi,
-  customersApi,
-  productsApi,
-  employeesApi,
-  pdvsApi,
-  stagesApi,
-  salesApi
-} from '@/services/api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { customersApi, dealsApi, employeesApi, pdvsApi, stagesApi } from '@/services/api';
+import type { Customer, Deal, Employee, PDV, PipelineStage } from '@/types';
+import type { SessionUser } from '@/types/auth';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 interface CRMContextData {
-  currentUser: Employee | null;
-  setCurrentUser: (employee: Employee | null) => void;
+  currentUser: SessionUser | null;
   pdvs: PDV[] | undefined;
   employees: Employee[] | undefined;
-  products: Product[] | undefined;
   customers: Customer[] | undefined;
   deals: Deal[] | undefined;
   stages: PipelineStage[] | undefined;
-  sales: Sale[] | undefined;
-  salesLoading: boolean;
-  salesCounts: Record<SaleConsistencyStatus, number> | undefined;
   isAuthLoading: boolean;
   isAuthResolved: boolean;
   isLoading: boolean;
-  
-  // PDV operations
-  addPDV: (pdv: Omit<PDV, 'id'>) => void;
-  updatePDV: (pdv: PDV) => void;
-  removePDV: (id: string) => void;
-  
-  // Employee operations
-  addEmployee: (employee: Omit<Employee, 'id'>) => void;
-  updateEmployee: (employee: Employee) => void;
-  removeEmployee: (id: string) => void;
-  
-  // Customer operations
-  addCustomer: (customer: Omit<Customer, 'id'>) => void;
-  updateCustomer: (customer: Customer) => void;
-  
-  // Product operations
-  addProduct: (product: Omit<Product, 'id'>) => void;
-  updateProduct: (product: Product) => void;
-  removeProduct: (id: string) => void;
-  
-  // Deal operations
-  addDeal: (deal: Omit<Deal, 'id'>) => void;
-  updateDeal: (deal: Deal) => void;
-  removeDeal: (id: string) => void;
-
-  // Sales Validation
-  addSale: (sale: Partial<Sale> & { customerName: string; totalValue: number }) => void;
-  updateSale: (sale: Partial<Sale> & { id: string }) => void;
-  removeSale: (id: string) => void;
-  validateSale: (saleId: string, status: 'CONSISTENT' | 'INCONSISTENT', notes?: string) => void;
-  updateInstallment: (
-    saleId: string,
-    installmentNumber: 1 | 2 | 3 | 4,
-    status: 'PENDING' | 'RECEIVED' | 'OVERDUE',
-    receivedDate?: string
-  ) => void;
-  refreshSales: () => void;
-  
-  // Stage operations
-  addStage: (stage: Omit<PipelineStage, 'id'>) => void;
-  updateStage: (stage: PipelineStage) => void;
-  removeStage: (id: string) => void;
-  reorderStages: (newOrder: PipelineStage[]) => void;
-  
-  // Helper functions
+  addPDV: (pdv: Omit<PDV, 'id'>) => Promise<void>;
+  updatePDV: (pdv: PDV) => Promise<void>;
+  removePDV: (id: string) => Promise<void>;
+  addEmployee: (employee: Omit<Employee, 'id'>) => Promise<void>;
+  updateEmployee: (employee: Employee) => Promise<void>;
+  removeEmployee: (id: string) => Promise<void>;
+  addCustomer: (customer: Omit<Customer, 'id'>) => Promise<void>;
+  updateCustomer: (customer: Customer) => Promise<void>;
+  addDeal: (deal: Omit<Deal, 'id'>) => Promise<void>;
+  updateDeal: (deal: Deal) => Promise<void>;
+  removeDeal: (id: string) => Promise<void>;
+  addStage: (stage: Omit<PipelineStage, 'id'>) => Promise<void>;
+  updateStage: (stage: PipelineStage) => Promise<void>;
+  removeStage: (id: string) => Promise<void>;
+  reorderStages: (newOrder: PipelineStage[]) => Promise<void>;
   getPDVName: (id: string | null) => string;
   getEmployeeName: (id: string) => string;
-  getProductName: (id: string) => string;
 }
 
 const CRMContext = createContext<CRMContextData>({} as CRMContextData);
@@ -87,123 +41,132 @@ const CRMContext = createContext<CRMContextData>({} as CRMContextData);
 export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const queryClient = useQueryClient();
   const currentUserQuery = useCurrentUser();
-  const { data: currentUser } = currentUserQuery;
   const isAuthLoading = currentUserQuery.isLoading;
   const [isAuthResolved, setIsAuthResolved] = React.useState(false);
-  const [currentUserState, setCurrentUser] = React.useState<Employee | null>(null);
+  const [currentUserState, setCurrentUser] = React.useState<SessionUser | null>(null);
 
+  // Log do estado da query
   React.useEffect(() => {
+    console.log('[CRMContext] Query state changed:', {
+      status: currentUserQuery.status,
+      isLoading: currentUserQuery.isLoading,
+      isFetching: currentUserQuery.isFetching,
+      data: currentUserQuery.data,
+      error: currentUserQuery.error,
+    });
+  }, [currentUserQuery.status, currentUserQuery.isLoading, currentUserQuery.isFetching, currentUserQuery.data, currentUserQuery.error]);
+
+  // Efeito para resolver autenticação
+  React.useEffect(() => {
+    console.log('[CRMContext] Auth effect triggered');
+    console.log('[CRMContext] - status:', currentUserQuery.status);
+    console.log('[CRMContext] - data:', currentUserQuery.data);
+    
+    // Se ainda está carregando, não resolver ainda
     if (currentUserQuery.status === 'pending') {
+      console.log('[CRMContext] - Still pending, waiting...');
       setIsAuthResolved(false);
       return;
     }
 
-    const isValidUser = (value: unknown): value is Employee => {
-      if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-      const candidate = value as Employee;
-      return typeof candidate.name === 'string' && candidate.name.trim().length > 0;
-    };
-
-    if (isValidUser(currentUser)) {
-      setCurrentUser(currentUser);
+    // Se houve erro, considerar não autenticado
+    if (currentUserQuery.status === 'error') {
+      console.log('[CRMContext] - Query error:', currentUserQuery.error);
+      setCurrentUser(null);
       setIsAuthResolved(true);
       return;
     }
 
-    setCurrentUser(null);
-    setIsAuthResolved(true);
-  }, [currentUser, currentUserQuery.status]);
+    // Verificar se temos um usuário válido
+    const userData = currentUserQuery.data;
+    
+    if (userData && typeof userData === 'object' && 'userId' in userData) {
+      console.log('[CRMContext] - Valid user found:', userData);
+      setCurrentUser(userData as SessionUser);
+      setIsAuthResolved(true);
+    } else {
+      console.log('[CRMContext] - No valid user, data was:', userData);
+      setCurrentUser(null);
+      setIsAuthResolved(true);
+    }
+  }, [currentUserQuery.status, currentUserQuery.data, currentUserQuery.error]);
 
   const pdvsQuery = useQuery({
     queryKey: ['pdvs'],
     queryFn: () => pdvsApi.getAll(),
     staleTime: 1000 * 60 * 5,
+    enabled: !!currentUserState, // Só buscar dados quando tiver usuário
   });
 
   const employeesQuery = useQuery({
     queryKey: ['employees'],
     queryFn: () => employeesApi.getAll(),
     staleTime: 1000 * 60 * 5,
-  });
-
-  const productsQuery = useQuery({
-    queryKey: ['products'],
-    queryFn: () => productsApi.getAll(),
-    staleTime: 1000 * 60 * 5,
+    enabled: !!currentUserState,
   });
 
   const customersQuery = useQuery({
     queryKey: ['customers'],
     queryFn: () => customersApi.getAll(),
     staleTime: 1000 * 60 * 5,
+    enabled: !!currentUserState,
   });
 
   const dealsQuery = useQuery({
     queryKey: ['deals'],
     queryFn: () => dealsApi.getAll(),
     staleTime: 1000 * 60 * 2,
+    enabled: !!currentUserState,
   });
 
   const stagesQuery = useQuery({
     queryKey: ['stages'],
     queryFn: () => stagesApi.getAll(),
     staleTime: 1000 * 60 * 5,
+    enabled: !!currentUserState,
   });
 
-  const salesQuery = useQuery({
-    queryKey: ['sales'],
-    queryFn: () => salesApi.getAll(),
-    enabled: !!currentUserState?.id,
-    staleTime: 1000 * 30,
-  });
+  const pdvsData = React.useMemo(
+    () => (Array.isArray(pdvsQuery.data) ? pdvsQuery.data : []),
+    [pdvsQuery.data]
+  );
+  const employeesData = React.useMemo(
+    () => (Array.isArray(employeesQuery.data) ? employeesQuery.data : []),
+    [employeesQuery.data]
+  );
+  const customersData = React.useMemo(
+    () => (Array.isArray(customersQuery.data) ? customersQuery.data : []),
+    [customersQuery.data]
+  );
+  const dealsData = React.useMemo(
+    () => (Array.isArray(dealsQuery.data) ? dealsQuery.data : []),
+    [dealsQuery.data]
+  );
+  const stagesData = React.useMemo(
+    () => (Array.isArray(stagesQuery.data) ? stagesQuery.data : []),
+    [stagesQuery.data]
+  );
 
-  const salesCountsQuery = useQuery({
-    queryKey: ['sales-counts'],
-    queryFn: () => salesApi.getCounts(),
-    enabled: !!currentUserState?.id,
-    refetchInterval: 30000,
-  });
-
-  const pdvsData = Array.isArray(pdvsQuery.data) ? pdvsQuery.data : [];
-  const employeesData = Array.isArray(employeesQuery.data) ? employeesQuery.data : [];
-  const productsData = Array.isArray(productsQuery.data) ? productsQuery.data : [];
-  const customersData = Array.isArray(customersQuery.data) ? customersQuery.data : [];
-  const dealsData = Array.isArray(dealsQuery.data) ? dealsQuery.data : [];
-  const stagesData = Array.isArray(stagesQuery.data) ? stagesQuery.data : [];
-  const salesData = Array.isArray(salesQuery.data) ? salesQuery.data : [];
-  const salesCounts = (salesCountsQuery.data && typeof salesCountsQuery.data === 'object')
-    ? (salesCountsQuery.data as Record<SaleConsistencyStatus, number>)
-    : undefined;
- 
   const isLoading =
     pdvsQuery.isLoading ||
     employeesQuery.isLoading ||
-    productsQuery.isLoading ||
     customersQuery.isLoading ||
     dealsQuery.isLoading ||
     stagesQuery.isLoading;
 
-  const salesLoading = salesQuery.isLoading;
- 
   const filteredDeals = React.useMemo(() => {
-    if (!currentUser) return dealsData;
-    return dealsData.filter(deal => {
-       if (currentUser.role === 'ADMIN') return true;
-       if (currentUser.role === 'MANAGER' && deal.pdvId === currentUser.pdvId) return true;
-       const isSameScope = deal.pdvId === currentUser.pdvId;
-       if (isSameScope && deal.visibility === 'PUBLIC') return true;
-       return deal.assignedEmployeeIds?.includes(currentUser.id);
+    if (!currentUserState) return dealsData;
+    return dealsData.filter((deal) => {
+      if (currentUserState.role === 'OWNER') return true;
+      return true;
     });
-  }, [dealsData, currentUser]);
+  }, [dealsData, currentUserState]);
 
   const filteredCustomers = React.useMemo(() => {
-    if (!currentUser) return customersData;
-    if (currentUser.role === 'ADMIN') return customersData;
-    if (currentUser.pdvId) {
-      return customersData.filter(c => c.pdvIds?.includes(currentUser.pdvId!));
-    }
+    if (!currentUserState) return customersData;
+    if (currentUserState.role === 'OWNER') return customersData;
     return customersData;
-  }, [customersData, currentUser]);
+  }, [customersData, currentUserState]);
 
   const addPDVMutation = useMutation({
     mutationFn: (pdv: Omit<PDV, 'id'>) => pdvsApi.create(pdv),
@@ -261,27 +224,6 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     },
   });
 
-  const addProductMutation = useMutation({
-    mutationFn: (product: Omit<Product, 'id'>) => productsApi.create(product),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-    },
-  });
-
-  const updateProductMutation = useMutation({
-    mutationFn: (product: Product) => productsApi.update(product.id, product),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-    },
-  });
-
-  const removeProductMutation = useMutation({
-    mutationFn: (id: string) => productsApi.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-    },
-  });
-
   const addDealMutation = useMutation({
     mutationFn: (deal: Omit<Deal, 'id'>) => dealsApi.create(deal),
     onSuccess: () => {
@@ -325,135 +267,65 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const reorderStagesMutation = useMutation({
-    mutationFn: (stages: PipelineStage[]) => {
-      return Promise.all(stages.map((stage, index) => 
-        stagesApi.update(stage.id, stage)
-      ));
-    },
+    mutationFn: (stages: PipelineStage[]) => Promise.all(stages.map((stage) => stagesApi.update(stage.id, stage))),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stages'] });
     },
   });
 
-  const getPDVName = React.useCallback((id: string | null) => {
-    if (!id) return 'Sem vínculo';
-    return pdvsData.find(p => p.id === id)?.name || 'PDV removido';
-  }, [pdvsData]);
-
-  const getEmployeeName = React.useCallback((id: string) => {
-    if (!id) return 'Desconhecido';
-    return employeesData.find(e => e.id === id)?.name || 'Desconhecido';
-  }, [employeesData]);
-
-  const getProductName = React.useCallback((id: string) => {
-    if (!id) return 'Item Removido';
-    return productsData.find(p => p.id === id)?.name || 'Item Removido';
-  }, [productsData]);
-
-  const addPDV = (pdv: Omit<PDV, 'id'>) => addPDVMutation.mutate(pdv);
-  const updatePDV = (pdv: PDV) => updatePDVMutation.mutate(pdv);
-  const removePDV = (id: string) => removePDVMutation.mutate(id);
-
-  const addEmployee = (employee: Omit<Employee, 'id'>) => addEmployeeMutation.mutate(employee);
-  const updateEmployee = (employee: Employee) => updateEmployeeMutation.mutate(employee);
-  const removeEmployee = (id: string) => removeEmployeeMutation.mutate(id);
-
-  const addCustomer = (customer: Omit<Customer, 'id'>) => addCustomerMutation.mutate(customer);
-  const updateCustomer = (customer: Customer) => updateCustomerMutation.mutate(customer);
-
-  const addProduct = (product: Omit<Product, 'id'>) => addProductMutation.mutate(product);
-  const updateProduct = (product: Product) => updateProductMutation.mutate(product);
-  const removeProduct = (id: string) => removeProductMutation.mutate(id);
-
-  const addDeal = (deal: Omit<Deal, 'id'>) => addDealMutation.mutate(deal);
-  const updateDeal = (deal: Deal) => updateDealMutation.mutate(deal);
-  const removeDeal = (id: string) => removeDealMutation.mutate(id);
-
-  const addStage = (stage: Omit<PipelineStage, 'id'>) => addStageMutation.mutate(stage);
-  const updateStage = (stage: PipelineStage) => updateStageMutation.mutate(stage);
-  const removeStage = (id: string) => removeStageMutation.mutate(id);
-  const reorderStages = (newOrder: PipelineStage[]) => reorderStagesMutation.mutate(newOrder);
-
-  const addSaleMutation = useMutation({
-    mutationFn: (sale: Partial<Sale> & { customerName: string; totalValue: number }) => salesApi.create(sale),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sales'] });
-      queryClient.invalidateQueries({ queryKey: ['sales-counts'] });
+  const getPDVName = React.useCallback(
+    (id: string | null) => {
+      if (!id) return 'Sem vínculo';
+      return pdvsData.find((pdv) => pdv.id === id)?.name || 'PDV removido';
     },
-  });
+    [pdvsData]
+  );
 
-  const updateSaleMutation = useMutation({
-    mutationFn: ({ id, ...data }: Partial<Sale> & { id: string }) => salesApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sales'] });
-      queryClient.invalidateQueries({ queryKey: ['sales-counts'] });
+  const getEmployeeName = React.useCallback(
+    (id: string) => {
+      if (!id) return 'Desconhecido';
+      return employeesData.find((employee) => employee.id === id)?.name || 'Desconhecido';
     },
-  });
+    [employeesData]
+  );
 
-  const removeSaleMutation = useMutation({
-    mutationFn: (id: string) => salesApi.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sales'] });
-      queryClient.invalidateQueries({ queryKey: ['sales-counts'] });
-    },
+  console.log('[CRMContext] Rendering with:', {
+    isAuthResolved,
+    currentUserState: currentUserState ? 'present' : 'null',
+    isAuthLoading,
   });
-
-  const validateSaleMutation = useMutation({
-    mutationFn: ({ saleId, status, notes }: { saleId: string; status: 'CONSISTENT' | 'INCONSISTENT'; notes?: string }) =>
-      salesApi.validate(saleId, status, notes),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sales'] });
-      queryClient.invalidateQueries({ queryKey: ['sales-counts'] });
-    },
-  });
-
-  const updateInstallmentMutation = useMutation({
-    mutationFn: ({ saleId, installmentNumber, status, receivedDate }: {
-      saleId: string;
-      installmentNumber: 1 | 2 | 3 | 4;
-      status: 'PENDING' | 'RECEIVED' | 'OVERDUE';
-      receivedDate?: string;
-    }) => salesApi.updateInstallment(saleId, installmentNumber, status, receivedDate),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sales'] });
-    },
-  });
-
-  const refreshSales = () => {
-    queryClient.invalidateQueries({ queryKey: ['sales'] });
-    queryClient.invalidateQueries({ queryKey: ['sales-counts'] });
-  };
 
   return (
-    <CRMContext.Provider value={{
-      currentUser: currentUserState, setCurrentUser,
-      pdvs: pdvsData,
-      employees: employeesData,
-      products: productsData,
-      customers: filteredCustomers,
-      deals: filteredDeals,
-      stages: stagesData,
-      sales: salesData,
-      salesLoading,
-      salesCounts,
-      isAuthLoading,
-      isAuthResolved,
-      isLoading,
-      addPDV, updatePDV, removePDV,
-      addEmployee, updateEmployee, removeEmployee,
-      addCustomer, updateCustomer,
-      addProduct, updateProduct, removeProduct,
-      addDeal, updateDeal, removeDeal,
-      addStage, updateStage, removeStage, reorderStages,
-      addSale: (sale) => addSaleMutation.mutate(sale),
-      updateSale: (sale) => updateSaleMutation.mutate(sale),
-      removeSale: (id) => removeSaleMutation.mutate(id),
-      validateSale: (saleId, status, notes) => validateSaleMutation.mutate({ saleId, status, notes }),
-      updateInstallment: (saleId, installmentNumber, status, receivedDate) =>
-        updateInstallmentMutation.mutate({ saleId, installmentNumber, status, receivedDate }),
-      refreshSales,
-      getPDVName, getEmployeeName, getProductName
-    }}>
+    <CRMContext.Provider
+      value={{
+        currentUser: currentUserState,
+        pdvs: pdvsData,
+        employees: employeesData,
+        customers: filteredCustomers,
+        deals: filteredDeals,
+        stages: stagesData,
+        isAuthLoading,
+        isAuthResolved,
+        isLoading,
+        addPDV: async (pdv) => { await addPDVMutation.mutateAsync(pdv); },
+        updatePDV: async (pdv) => { await updatePDVMutation.mutateAsync(pdv); },
+        removePDV: async (id) => { await removePDVMutation.mutateAsync(id); },
+        addEmployee: async (employee) => { await addEmployeeMutation.mutateAsync(employee); },
+        updateEmployee: async (employee) => { await updateEmployeeMutation.mutateAsync(employee); },
+        removeEmployee: async (id) => { await removeEmployeeMutation.mutateAsync(id); },
+        addCustomer: async (customer) => { await addCustomerMutation.mutateAsync(customer); },
+        updateCustomer: async (customer) => { await updateCustomerMutation.mutateAsync(customer); },
+        addDeal: async (deal) => { await addDealMutation.mutateAsync(deal); },
+        updateDeal: async (deal) => { await updateDealMutation.mutateAsync(deal); },
+        removeDeal: async (id) => { await removeDealMutation.mutateAsync(id); },
+        addStage: async (stage) => { await addStageMutation.mutateAsync(stage); },
+        updateStage: async (stage) => { await updateStageMutation.mutateAsync(stage); },
+        removeStage: async (id) => { await removeStageMutation.mutateAsync(id); },
+        reorderStages: async (newOrder) => { await reorderStagesMutation.mutateAsync(newOrder); },
+        getPDVName,
+        getEmployeeName,
+      }}
+    >
       {children}
     </CRMContext.Provider>
   );

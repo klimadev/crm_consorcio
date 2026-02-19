@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { parseCookies, verifyToken } from '@/lib/auth/jwt';
+import { NextRequest } from 'next/server';
+import { requireCompanySession } from '@/lib/auth/session';
+import { fail, ok } from '@/lib/http/response';
+import { AppError } from '@/lib/http/errors';
 import { 
   getPipelineStagesByTenantId, createPipelineStage, updatePipelineStage, 
   deletePipelineStage, getPipelineStageById, reorderPipelineStages 
@@ -7,109 +9,82 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
-    
-    if (!accessToken) {
-      return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
-    }
-
-    const payload = await verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
-    }
+    const ctx = await requireCompanySession();
+    const tenantId = ctx.companyId;
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
     if (id) {
       const stage = getPipelineStageById(id);
-      if (!stage || stage.tenant_id !== payload.tenantId) {
-        return NextResponse.json({ success: false, message: 'Estágio não encontrado' }, { status: 404 });
+      if (!stage || stage.tenant_id !== tenantId) {
+        throw new AppError('NOT_FOUND', 'Estágio não encontrado', 404);
       }
-      return NextResponse.json({ success: true, stage });
+      return ok(stage);
     }
 
-    const stages = getPipelineStagesByTenantId(payload.tenantId);
-    return NextResponse.json({ success: true, stages });
+    const stages = getPipelineStagesByTenantId(tenantId);
+    return ok(stages);
   } catch (error) {
-    console.error('Get stages error:', error);
-    return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+    return fail(error);
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
-    
-    if (!accessToken) {
-      return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
-    }
+    const ctx = await requireCompanySession();
+    const tenantId = ctx.companyId;
 
-    const payload = await verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
-    }
-
-    if (payload.role !== 'ADMIN' && payload.role !== 'MANAGER') {
-      return NextResponse.json({ success: false, message: 'Sem permissão' }, { status: 403 });
+    // Only OWNER and MANAGER can create
+    if (ctx.role !== 'OWNER' && ctx.role !== 'MANAGER') {
+      throw new AppError('FORBIDDEN', 'Sem permissão para criar estágios', 403);
     }
 
     const body = await request.json();
     const { name, type } = body;
 
     if (!name) {
-      return NextResponse.json({ success: false, message: 'Nome é obrigatório' }, { status: 400 });
+      throw new AppError('VALIDATION_ERROR', 'Nome é obrigatório', 400);
     }
 
-    const stage = createPipelineStage(payload.tenantId, {
+    const stage = createPipelineStage(tenantId, {
       name,
       color: body.color || '',
       type: type || 'OPEN',
       automation_steps: body.automation_steps || [],
     });
-    return NextResponse.json({ success: true, stage });
+    return ok(stage, 201);
   } catch (error) {
-    console.error('Create stage error:', error);
-    return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+    return fail(error);
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
-    
-    if (!accessToken) {
-      return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
-    }
+    const ctx = await requireCompanySession();
+    const tenantId = ctx.companyId;
 
-    const payload = await verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
-    }
-
-    if (payload.role !== 'ADMIN' && payload.role !== 'MANAGER') {
-      return NextResponse.json({ success: false, message: 'Sem permissão' }, { status: 403 });
+    // Only OWNER and MANAGER can update
+    if (ctx.role !== 'OWNER' && ctx.role !== 'MANAGER') {
+      throw new AppError('FORBIDDEN', 'Sem permissão para editar estágios', 403);
     }
 
     const body = await request.json();
     const { id, name, type, orderVal, reorder } = body;
 
     if (reorder && Array.isArray(reorder)) {
-      reorderPipelineStages(payload.tenantId, reorder);
-      const stages = getPipelineStagesByTenantId(payload.tenantId);
-      return NextResponse.json({ success: true, stages });
+      reorderPipelineStages(tenantId, reorder);
+      const stages = getPipelineStagesByTenantId(tenantId);
+      return ok(stages);
     }
 
     if (!id || !name) {
-      return NextResponse.json({ success: false, message: 'ID e nome são obrigatórios' }, { status: 400 });
+      throw new AppError('VALIDATION_ERROR', 'ID e nome são obrigatórios', 400);
     }
 
     const existing = getPipelineStageById(id);
-    if (!existing || existing.tenant_id !== payload.tenantId) {
-      return NextResponse.json({ success: false, message: 'Estágio não encontrado' }, { status: 404 });
+    if (!existing || existing.tenant_id !== tenantId) {
+      throw new AppError('NOT_FOUND', 'Estágio não encontrado', 404);
     }
 
     const stage = updatePipelineStage(
@@ -118,47 +93,37 @@ export async function PUT(request: NextRequest) {
       type || 'OPEN',
       orderVal || 0
     );
-    return NextResponse.json({ success: true, stage });
+    return ok(stage);
   } catch (error) {
-    console.error('Update stage error:', error);
-    return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+    return fail(error);
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
-    
-    if (!accessToken) {
-      return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
-    }
+    const ctx = await requireCompanySession();
+    const tenantId = ctx.companyId;
 
-    const payload = await verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
-    }
-
-    if (payload.role !== 'ADMIN' && payload.role !== 'MANAGER') {
-      return NextResponse.json({ success: false, message: 'Sem permissão' }, { status: 403 });
+    // Only OWNER and MANAGER can delete
+    if (ctx.role !== 'OWNER' && ctx.role !== 'MANAGER') {
+      throw new AppError('FORBIDDEN', 'Sem permissão para deletar estágios', 403);
     }
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
     if (!id) {
-      return NextResponse.json({ success: false, message: 'ID é obrigatório' }, { status: 400 });
+      throw new AppError('VALIDATION_ERROR', 'ID é obrigatório', 400);
     }
 
     const existing = getPipelineStageById(id);
-    if (!existing || existing.tenant_id !== payload.tenantId) {
-      return NextResponse.json({ success: false, message: 'Estágio não encontrado' }, { status: 404 });
+    if (!existing || existing.tenant_id !== tenantId) {
+      throw new AppError('NOT_FOUND', 'Estágio não encontrado', 404);
     }
 
     deletePipelineStage(id);
-    return NextResponse.json({ success: true, message: 'Estágio deletado' });
+    return ok({ success: true, message: 'Estágio deletado' });
   } catch (error) {
-    console.error('Delete stage error:', error);
-    return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+    return fail(error);
   }
 }

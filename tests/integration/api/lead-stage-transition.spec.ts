@@ -5,7 +5,7 @@ import type { RequestContext } from '@/types';
 
 function seedBase(db: ReturnType<typeof createInMemoryDb>, companyId: string, userId: string, membershipId: string): void {
   db.prepare('INSERT INTO companies (id, name, slug) VALUES (?, ?, ?)').run(companyId, 'Acme', 'acme');
-  db.prepare('INSERT INTO users (id, email, password_hash, full_name) VALUES (?, ?, ?, ?)').run(userId, 'owner@acme.com', 'hash', 'Owner');
+  db.prepare('INSERT INTO users (id, email, password_hash, name) VALUES (?, ?, ?, ?)').run(userId, 'owner@acme.com', 'hash', 'Owner');
   db.prepare('INSERT INTO memberships (id, company_id, user_id, role) VALUES (?, ?, ?, ?)').run(
     membershipId,
     companyId,

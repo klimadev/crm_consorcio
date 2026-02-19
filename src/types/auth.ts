@@ -1,4 +1,4 @@
-export type Role = 'OWNER' | 'ADMIN' | 'MANAGER' | 'MEMBER' | 'COLLABORATOR' | 'SALES_REP' | 'SUPPORT';
+export type Role = 'OWNER' | 'MANAGER' | 'COLLABORATOR';
 
 export interface SessionUser {
   userId: string;

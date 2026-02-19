@@ -1,26 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { parseCookies, verifyToken } from '@/lib/auth/jwt';
+import { NextRequest } from 'next/server';
+import { requireCompanySession } from '@/lib/auth/session';
+import { fail, ok } from '@/lib/http/response';
+import { AppError } from '@/lib/http/errors';
 import { getDatabase, makeId } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
-    
-    if (!accessToken) {
-      return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
-    }
-
-    const payload = verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
-    }
+    const ctx = await requireCompanySession();
 
     const body = await request.json();
     const { localStorageData } = body;
 
     if (!localStorageData) {
-      return NextResponse.json({ success: false, message: 'Dados do localStorage são obrigatórios' }, { status: 400 });
+      throw new AppError('VALIDATION_ERROR', 'Dados do localStorage são obrigatórios', 400);
     }
 
     const db = getDatabase();
@@ -40,7 +32,7 @@ export async function POST(request: NextRequest) {
             INSERT INTO preferences (id, user_id, key, value, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(user_id, key) DO UPDATE SET value = ?, updated_at = ?
-          `).run(prefId, payload.userId, key, prefValue, now, now, prefValue, now);
+          `).run(prefId, ctx.userId, key, prefValue, now, now, prefValue, now);
           results.preferences++;
         } catch (err) {
           results.errors.push(`Erro ao migrar preferência ${key}: ${err}`);
@@ -60,7 +52,7 @@ export async function POST(request: NextRequest) {
           db.prepare(`
             INSERT INTO dashboard_widgets (id, user_id, widget_type, data, position, size, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          `).run(widgetId, payload.userId, widget.type || widget.widgetType || 'unknown', JSON.stringify(widget.data || {}), widget.position ?? i, widget.size || 'normal', now, now);
+          `).run(widgetId, ctx.userId, widget.type || widget.widgetType || 'unknown', JSON.stringify(widget.data || {}), widget.position ?? i, widget.size || 'normal', now, now);
           results.widgets++;
         } catch (err) {
           results.errors.push(`Erro ao migrar widget ${i}: ${err}`);
@@ -68,13 +60,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      success: true,
+    return ok({
       message: 'Migração concluída',
       results,
     });
   } catch (error) {
-    console.error('Migration error:', error);
-    return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+    return fail(error);
   }
 }

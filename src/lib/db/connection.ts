@@ -6,7 +6,6 @@ const schemaPath = path.join(process.cwd(), 'src/lib/db/schema.sql');
 const defaultDbPath = process.env.DATABASE_PATH ?? path.join(process.cwd(), 'data', 'saas.db');
 
 declare global {
-  // eslint-disable-next-line no-var
   var __crmSaasDb: Database.Database | undefined;
 }
 
@@ -47,4 +46,25 @@ export function createInMemoryDb(): Database.Database {
   applyPragmas(db);
   applySchema(db);
   return db;
+}
+
+// Aliases for backward compatibility
+export const getDatabase = getDb;
+export const closeDatabase = closeDb;
+
+/**
+ * Close the database connection.
+ */
+export function closeDb(): void {
+  if (global.__crmSaasDb) {
+    global.__crmSaasDb.close();
+    global.__crmSaasDb = undefined;
+  }
+}
+
+/**
+ * Initialize database (alias for getDb for backward compatibility)
+ */
+export function initDb(): Database.Database {
+  return getDb();
 }

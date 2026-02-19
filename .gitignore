@@ -3,3 +3,14 @@ node_modules
 .env.local
 .DS_Store
 dist
+
+# Database files
+*.db-shm
+*.db-wal
+
+# Test results
+playwright-report/
+test-results/
+
+# Temp files
+.tmp/

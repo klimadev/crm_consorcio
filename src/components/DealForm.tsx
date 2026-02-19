@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useCRM } from '@/context';
 import type { Deal } from '@/types';
 import { Modal } from './Modal';
-import { Building2, CalendarClock, Save, Trash2, User, Wallet } from 'lucide-react';
+import { Building2, Save, Trash2, User } from 'lucide-react';
 
 interface DealFormProps {
   deal: Deal;
@@ -24,7 +24,6 @@ export const DealForm: React.FC<DealFormProps> = ({ deal: initialDeal, isOpen, o
     updateDeal,
     removeDeal,
     customers = [],
-    products = [],
     employees = [],
     pdvs = [],
     stages = [],
@@ -41,32 +40,19 @@ export const DealForm: React.FC<DealFormProps> = ({ deal: initialDeal, isOpen, o
   useEffect(() => {
     if (!isNew || !currentUser) return;
     setForm((prev) => {
-      const assignedEmployeeIds = prev.assignedEmployeeIds?.length ? prev.assignedEmployeeIds : [currentUser.id];
-      const pdvId = prev.pdvId !== undefined ? prev.pdvId : currentUser.pdvId;
+      const assignedEmployeeIds = prev.assignedEmployeeIds?.length ? prev.assignedEmployeeIds : [currentUser.userId];
+      // SessionUser doesn't have pdvId, use null as default
+      const pdvId = prev.pdvId !== undefined ? prev.pdvId : null;
       return {
         ...prev,
         visibility: prev.visibility || 'PUBLIC',
         assignedEmployeeIds,
-        pdvId: pdvId ?? null,
+        pdvId,
       };
     });
   }, [isNew, currentUser]);
 
-  const selectedProduct = useMemo(() => {
-    const id = form.productIds?.[0];
-    if (!id) return null;
-    return products.find((p) => p.id === id) ?? null;
-  }, [form.productIds, products]);
-
-  useEffect(() => {
-    if (!selectedProduct) return;
-    if (Number(form.value || 0) === Number(selectedProduct.basePrice || 0)) return;
-    // only auto-fill when value is empty/zero on new deals
-    if (!isNew && Number(form.value || 0) > 0) return;
-    setForm((prev) => ({ ...prev, value: Number(selectedProduct.basePrice || 0) }));
-  }, [selectedProduct, isNew, form.value]);
-
-  const canEditPdv = currentUser?.role === 'ADMIN';
+  const canEditPdv = currentUser?.role === 'OWNER' || currentUser?.role === 'MANAGER';
 
   const save = () => {
     if (!form.title?.trim()) return alert('Titulo e obrigatorio.');
@@ -78,7 +64,6 @@ export const DealForm: React.FC<DealFormProps> = ({ deal: initialDeal, isOpen, o
       title: form.title.trim(),
       visibility: 'PUBLIC',
       assignedEmployeeIds: Array.isArray(form.assignedEmployeeIds) ? form.assignedEmployeeIds : [],
-      productIds: Array.isArray(form.productIds) ? form.productIds : [],
       customValues: form.customValues ?? {},
       notes: form.notes ?? '',
     };
@@ -96,7 +81,6 @@ export const DealForm: React.FC<DealFormProps> = ({ deal: initialDeal, isOpen, o
   };
 
   const selectedCustomerId = form.customerId || '';
-  const selectedProductId = form.productIds?.[0] || '';
   const selectedOwnerId = form.assignedEmployeeIds?.[0] || '';
 
   return (
@@ -174,24 +158,6 @@ export const DealForm: React.FC<DealFormProps> = ({ deal: initialDeal, isOpen, o
 
           <div>
             <label className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-              <Wallet size={14} className="text-slate-400" /> Plano
-            </label>
-            <select
-              value={selectedProductId}
-              onChange={(e) => setForm((p) => ({ ...p, productIds: e.target.value ? [e.target.value] : [] }))}
-              className={selectClass}
-            >
-              <option value="">Sem plano</option>
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
               <Building2 size={14} className="text-slate-400" /> PDV
             </label>
             <select
@@ -207,7 +173,7 @@ export const DealForm: React.FC<DealFormProps> = ({ deal: initialDeal, isOpen, o
                 </option>
               ))}
             </select>
-            {!canEditPdv && <p className="mt-2 text-xs text-slate-400">Apenas ADMIN pode alterar o PDV.</p>}
+            {!canEditPdv && <p className="mt-2 text-xs text-slate-400">Apenas OWNER ou MANAGER pode alterar o PDV.</p>}
           </div>
 
           <div>
@@ -232,26 +198,6 @@ export const DealForm: React.FC<DealFormProps> = ({ deal: initialDeal, isOpen, o
               type="number"
               value={Number(form.value || 0)}
               onChange={(e) => setForm((p) => ({ ...p, value: Number(e.target.value) }))}
-              className={inputClass}
-            />
-            {selectedProduct && (
-              <p className="mt-2 text-xs text-slate-400">
-                Sugestao do plano: R$ {Number(selectedProduct.basePrice || 0).toLocaleString('pt-BR')}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-              <CalendarClock size={14} className="text-slate-400" /> Proximo contato
-            </label>
-            <input
-              type="date"
-              value={form.nextFollowUpDate ? form.nextFollowUpDate.slice(0, 10) : ''}
-              onChange={(e) => {
-                const iso = e.target.value ? new Date(e.target.value + 'T12:00:00Z').toISOString() : undefined;
-                setForm((p) => ({ ...p, nextFollowUpDate: iso }));
-              }}
               className={inputClass}
             />
           </div>

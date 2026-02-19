@@ -1,22 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { parseCookies, verifyToken } from '@/lib/auth/jwt';
+import { NextRequest } from 'next/server';
+import { requireCompanySession } from '@/lib/auth/session';
+import { fail, ok } from '@/lib/http/response';
+import { AppError } from '@/lib/http/errors';
 import { 
-  getCustomersByTenantId, createCustomer, updateCustomer, deleteCustomer, getCustomerById, getCustomersByPdvId 
+  getCustomersByTenantId, createCustomer, updateCustomer, deleteCustomer, 
+  getCustomerById, getCustomersByPdvId 
 } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
-    
-    if (!accessToken) {
-      return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
-    }
-
-    const payload = await verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
-    }
+    const ctx = await requireCompanySession();
+    const tenantId = ctx.companyId;
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -24,54 +18,38 @@ export async function GET(request: NextRequest) {
 
     if (id) {
       const customer = getCustomerById(id);
-      if (!customer || customer.tenant_id !== payload.tenantId) {
-        return NextResponse.json({ success: false, message: 'Cliente não encontrado' }, { status: 404 });
+      if (!customer || customer.tenant_id !== tenantId) {
+        throw new AppError('NOT_FOUND', 'Cliente não encontrado', 404);
       }
-      return NextResponse.json({ success: true, customer });
+      return ok(customer);
     }
 
     if (pdvId) {
-      const customers = getCustomersByPdvId(payload.tenantId, pdvId);
-      return NextResponse.json({ success: true, customers });
+      const customers = getCustomersByPdvId(tenantId, pdvId);
+      return ok(customers);
     }
 
-    const customers = getCustomersByTenantId(payload.tenantId);
-    return NextResponse.json({ success: true, customers });
+    const customers = getCustomersByTenantId(tenantId);
+    return ok(customers);
   } catch (error) {
-    console.error('Get customers error:', error);
-    return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+    return fail(error);
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
-    
-    if (!accessToken) {
-      return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
-    }
-
-    const payload = await verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
-    }
-
-    const canCreate = payload.role === 'ADMIN' || payload.role === 'MANAGER' || payload.role === 'SALES_REP';
-
-    if (!canCreate) {
-      return NextResponse.json({ success: false, message: 'Sem permissão para criar clientes' }, { status: 403 });
-    }
+    const ctx = await requireCompanySession();
+    const tenantId = ctx.companyId;
 
     const body = await request.json();
     const { name, type, document, email, phone, status, pdvId } = body;
 
     if (!name) {
-      return NextResponse.json({ success: false, message: 'Nome é obrigatório' }, { status: 400 });
+      throw new AppError('VALIDATION_ERROR', 'Nome é obrigatório', 400);
     }
 
     const customer = createCustomer(
-      payload.tenantId,
+      tenantId,
       name,
       type || 'PJ',
       document || '',
@@ -80,43 +58,27 @@ export async function POST(request: NextRequest) {
       status || 'LEAD',
       pdvId || null
     );
-    return NextResponse.json({ success: true, customer });
+    return ok(customer, 201);
   } catch (error) {
-    console.error('Create customer error:', error);
-    return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+    return fail(error);
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
-    
-    if (!accessToken) {
-      return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
-    }
-
-    const payload = await verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
-    }
-
-    const canEdit = payload.role === 'ADMIN' || payload.role === 'MANAGER' || payload.role === 'SALES_REP';
-
-    if (!canEdit) {
-      return NextResponse.json({ success: false, message: 'Sem permissão para editar clientes' }, { status: 403 });
-    }
+    const ctx = await requireCompanySession();
+    const tenantId = ctx.companyId;
 
     const body = await request.json();
     const { id, name, type, document, email, phone, status, pdvId } = body;
 
     if (!id || !name) {
-      return NextResponse.json({ success: false, message: 'ID e nome são obrigatórios' }, { status: 400 });
+      throw new AppError('VALIDATION_ERROR', 'ID e nome são obrigatórios', 400);
     }
 
     const existing = getCustomerById(id);
-    if (!existing || existing.tenant_id !== payload.tenantId) {
-      return NextResponse.json({ success: false, message: 'Cliente não encontrado' }, { status: 404 });
+    if (!existing || existing.tenant_id !== tenantId) {
+      throw new AppError('NOT_FOUND', 'Cliente não encontrado', 404);
     }
 
     const customer = updateCustomer(
@@ -129,47 +91,37 @@ export async function PUT(request: NextRequest) {
       status || 'LEAD',
       pdvId || null
     );
-    return NextResponse.json({ success: true, customer });
+    return ok(customer);
   } catch (error) {
-    console.error('Update customer error:', error);
-    return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+    return fail(error);
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
-    
-    if (!accessToken) {
-      return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
-    }
+    const ctx = await requireCompanySession();
+    const tenantId = ctx.companyId;
 
-    const payload = await verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
-    }
-
-    if (payload.role !== 'ADMIN' && payload.role !== 'MANAGER') {
-      return NextResponse.json({ success: false, message: 'Sem permissão' }, { status: 403 });
+    // Only OWNER and MANAGER can delete
+    if (ctx.role !== 'OWNER' && ctx.role !== 'MANAGER') {
+      throw new AppError('FORBIDDEN', 'Sem permissão para deletar clientes', 403);
     }
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
     if (!id) {
-      return NextResponse.json({ success: false, message: 'ID é obrigatório' }, { status: 400 });
+      throw new AppError('VALIDATION_ERROR', 'ID é obrigatório', 400);
     }
 
     const existing = getCustomerById(id);
-    if (!existing || existing.tenant_id !== payload.tenantId) {
-      return NextResponse.json({ success: false, message: 'Cliente não encontrado' }, { status: 404 });
+    if (!existing || existing.tenant_id !== tenantId) {
+      throw new AppError('NOT_FOUND', 'Cliente não encontrado', 404);
     }
 
     deleteCustomer(id);
-    return NextResponse.json({ success: true, message: 'Cliente deletado' });
+    return ok({ success: true, message: 'Cliente deletado' });
   } catch (error) {
-    console.error('Delete customer error:', error);
-    return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+    return fail(error);
   }
 }

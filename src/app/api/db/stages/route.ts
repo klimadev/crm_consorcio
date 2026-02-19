@@ -8,9 +8,10 @@ import type { PipelineStage } from '@/types';
 function transformStageToComponent(stage: PipelineStageDB): PipelineStage {
   return {
     id: stage.id,
-    name: stage.name,
+    name: stage.display_name || stage.name,
     color: stage.color || '',
     type: stage.type,
+    orderIndex: stage.order_index,
   };
 }
 
@@ -33,8 +34,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth(request);
-    if (!session?.user || session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
+    if (!session?.user || session.user.role !== 'OWNER') {
+      return NextResponse.json({ error: 'Unauthorized - Owner access required' }, { status: 401 });
     }
 
     const data = await request.json();
@@ -52,7 +53,6 @@ export async function POST(request: NextRequest) {
       name: data.name,
       color: data.color || '',
       type: data.type,
-      automation_steps: data.automation_steps || [],
     });
 
     return NextResponse.json(stage, { status: 201 });
@@ -65,8 +65,8 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const session = await auth(request);
-    if (!session?.user || session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
+    if (!session?.user || session.user.role !== 'OWNER') {
+      return NextResponse.json({ error: 'Unauthorized - Owner access required' }, { status: 401 });
     }
 
     const data = await request.json();
@@ -74,8 +74,8 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'ID is required' }, { status: 400 });
     }
 
-    const existing = getOneQuery<any>('SELECT tenant_id FROM pipeline_stages WHERE id = ?', [data.id]);
-    if (!existing || existing.tenant_id !== session.user.tenantId) {
+    const existing = getOneQuery<any>('SELECT company_id FROM pipeline_stages WHERE id = ?', [data.id]);
+    if (!existing || existing.company_id !== session.user.tenantId) {
       return NextResponse.json({ error: 'Stage not found' }, { status: 404 });
     }
 
@@ -99,8 +99,8 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const session = await auth(request);
-    if (!session?.user || session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
+    if (!session?.user || session.user.role !== 'OWNER') {
+      return NextResponse.json({ error: 'Unauthorized - Owner access required' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -109,8 +109,8 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'ID is required' }, { status: 400 });
     }
 
-    const existing = getOneQuery<any>('SELECT tenant_id FROM pipeline_stages WHERE id = ?', [id]);
-    if (!existing || existing.tenant_id !== session.user.tenantId) {
+    const existing = getOneQuery<any>('SELECT company_id FROM pipeline_stages WHERE id = ?', [id]);
+    if (!existing || existing.company_id !== session.user.tenantId) {
       return NextResponse.json({ error: 'Stage not found' }, { status: 404 });
     }
 

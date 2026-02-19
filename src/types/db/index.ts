@@ -9,10 +9,11 @@ export interface Tenant {
 export interface User {
   id: string;
   tenant_id: string;
+  company_id?: string;
   email: string;
   password_hash: string;
   name: string;
-  role: 'ADMIN' | 'MANAGER' | 'SALES_REP' | 'SUPPORT';
+  role: 'OWNER' | 'MANAGER' | 'COLLABORATOR';
   pdv_id: string | null;
   active: boolean;
   created_at: string;
@@ -75,11 +76,13 @@ export interface Product {
 
 export interface PipelineStage {
   id: string;
-  tenant_id: string;
+  company_id: string;
+  tenant_id?: string; // Backward compatibility
   name: string;
+  display_name?: string;
   color: string;
   type: 'OPEN' | 'WON' | 'LOST';
-  automation_steps: string;
+  automation_steps?: string;
   order_index?: number;
   created_at: string;
   updated_at: string;

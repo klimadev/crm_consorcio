@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { useCRM } from '@/context';
 import { Deal, PipelineStage, PipelineStageType } from '@/types';
 import { 
   GripVertical, Plus, Trash2, CheckCircle2, 
   Filter, X, Search, User, Building2,
   RefreshCcw, Settings, Check, XOctagon, ArrowRightCircle,
-  MapPin, Package, Clock
+  MapPin, Clock
 } from 'lucide-react';
 import { DealForm } from './DealForm';
 import { Modal } from './Modal';
@@ -37,7 +37,6 @@ export const KanbanBoard: React.FC = () => {
     reorderStages,
     getEmployeeName,
     getPDVName,
-    getProductName,
     employees = [],
     pdvs = [],
     currentUser,
@@ -58,18 +57,21 @@ export const KanbanBoard: React.FC = () => {
 
   const availablePdvs = useMemo(() => {
      if (!currentUser) return pdvs;
-     if (currentUser.role === 'ADMIN') return pdvs;
-     return pdvs.filter(p => p.id === currentUser.pdvId);
+     if (currentUser.role === 'OWNER') return pdvs;
+     // SessionUser doesn't have pdvId, return all pdvs for now
+     return pdvs;
   }, [pdvs, currentUser]);
 
   const availableEmployees = useMemo(() => {
      if (!currentUser) return employees;
-     if (currentUser.role === 'ADMIN') return employees;
-     if (currentUser.role === 'MANAGER' && currentUser.pdvId) {
-        return employees.filter(e => e.pdvId === currentUser.pdvId);
-     }
-     return employees.filter(e => e.id === currentUser.id);
+     if (currentUser.role === 'OWNER') return employees;
+     // SessionUser doesn't have pdvId, return all employees for now
+     return employees;
   }, [employees, currentUser]);
+
+  const sortedStages = useMemo(() => {
+    return [...stages].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+  }, [stages]);
 
   const filteredDeals = useMemo(() => {
     return deals.filter(deal => {
@@ -152,10 +154,11 @@ export const KanbanBoard: React.FC = () => {
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(val);
 
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
   const getDaysSince = (dateString: string) => {
     if (!mounted) return '--';
@@ -242,7 +245,7 @@ if (!mounted) {
        </div>
 
       <div className="flex-1 overflow-x-auto p-6 flex gap-6 custom-scrollbar items-start">
-        {stages.map((stage, index) => {
+        {sortedStages.map((stage, index) => {
           const stageDeals = filteredDeals.filter(d => d.stageId === stage.id);
           const stageTotal = stageDeals.reduce((sum, d) => sum + d.value, 0);
 
@@ -287,7 +290,6 @@ if (!mounted) {
               >
                 {stageDeals.map((deal) => {
                   const dealPdvName = getPDVName(deal.pdvId);
-                  const productName = deal.productIds.length > 0 ? getProductName(deal.productIds[0]) : 'Produto não def.';
 
                   return (
                     <div
@@ -319,11 +321,6 @@ if (!mounted) {
                               <span className="truncate">{deal.customerName}</span>
                            </div>
                            
-                          <div className="mb-4 flex items-center gap-1.5 text-sm text-slate-700 bg-slate-100 p-2 rounded-lg border border-slate-200">
-                             <Package size={14} className="text-blue-700"/>
-                             <span className="truncate">{productName}</span>
-                          </div>
-
                           <div className="flex items-center justify-between pt-1">
                              <span className="font-bold text-slate-800 text-base">{formatCurrency(deal.value)}</span>
                              
@@ -355,16 +352,15 @@ if (!mounted) {
                     onClick={() => setEditingDeal({ 
                         id: generateStableId('deal'),
                         title: '', 
-                        pdvId: currentUser?.pdvId ?? null,
+                        pdvId: null,
                         customerId: '',
                         customerName: '', 
-                        value: 0, 
-                        stageId: stage.id, 
-                        assignedEmployeeIds: currentUser?.id ? [currentUser.id] : [], 
-                        productIds: [], 
-                        notes: '', 
-                        visibility: 'PUBLIC',
-                        createdAt: getCurrentDateISO()
+                         value: 0, 
+                         stageId: stage.id, 
+                         assignedEmployeeIds: currentUser?.userId ? [currentUser.userId] : [], 
+                         notes: '', 
+                         visibility: 'PUBLIC',
+                         createdAt: getCurrentDateISO()
                     })}
                   className="w-full py-3 flex items-center justify-center gap-2 text-sm font-bold text-slate-700 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
                  >

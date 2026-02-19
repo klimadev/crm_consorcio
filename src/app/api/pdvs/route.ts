@@ -3,6 +3,13 @@ import { pdvRepository } from '@/lib/db/repositories/pdv.repository';
 import { requireCompanySession } from '@/lib/auth/session';
 import { parseJsonBody, requireString } from '@/lib/http/parse';
 import { fail, ok } from '@/lib/http/response';
+import { AppError } from '@/lib/http/errors';
+
+function assertCanManagePdv(ctx: { role: string }) {
+  if (ctx.role !== 'OWNER' && ctx.role !== 'MANAGER') {
+    throw new AppError('FORBIDDEN', 'Only OWNER or MANAGER can manage PDVs.', 403);
+  }
+}
 
 export async function GET() {
   try {
@@ -16,7 +23,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const ctx = await requireCompanySession();
-    // TODO(rbac): Enforce role guard for mutations (expected: OWNER/ADMIN/MANAGER only).
+    assertCanManagePdv(ctx);
     const body = await parseJsonBody<{ name: string; code?: string }>(request);
     const pdv = pdvRepository.create(getDb(), {
       id: crypto.randomUUID(),
@@ -33,7 +40,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const ctx = await requireCompanySession();
-    // TODO(rbac): Enforce role guard for mutations (expected: OWNER/ADMIN/MANAGER only).
+    assertCanManagePdv(ctx);
     const body = await parseJsonBody<{ id: string; name?: string; code?: string | null; isActive?: boolean }>(request);
     pdvRepository.update(getDb(), {
       companyId: ctx.companyId,

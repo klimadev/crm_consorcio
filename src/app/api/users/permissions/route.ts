@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { parseCookies, verifyToken } from '@/lib/auth/jwt';
+import { NextRequest } from 'next/server';
+import { requireCompanySession } from '@/lib/auth/session';
+import { fail, ok } from '@/lib/http/response';
+import { AppError } from '@/lib/http/errors';
 import { getUserById, updateUserPermissions, getUserPermissions } from '@/lib/db';
 
 const DEFAULT_PERMISSIONS = {
@@ -8,7 +10,6 @@ const DEFAULT_PERMISSIONS = {
     kanban: { access: true },
     customers: { view: true, create: true, edit: true, delete: false },
     deals: { view: true, create: true, edit: true, delete: false },
-    products: { view: true, create: false, edit: false, delete: false },
     reports: { view: true, export: false },
     settings: { access: false }
   },
@@ -18,90 +19,69 @@ const DEFAULT_PERMISSIONS = {
 
 export async function GET(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
-    
-    if (!accessToken) {
-      return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
-    }
-
-    const payload = await verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
-    }
+    const ctx = await requireCompanySession();
 
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
 
-    const targetUserId = userId || payload.userId;
+    const targetUserId = userId || ctx.userId;
 
-    if (userId && userId !== payload.userId && payload.role !== 'ADMIN' && payload.role !== 'MANAGER') {
-      return NextResponse.json({ success: false, message: 'Sem permissão para ver permissões de outros usuários' }, { status: 403 });
+    // Only OWNER and MANAGER can view other users' permissions
+    if (userId && userId !== ctx.userId && ctx.role !== 'OWNER' && ctx.role !== 'MANAGER') {
+      throw new AppError('FORBIDDEN', 'Sem permissão para ver permissões de outros usuários', 403);
     }
 
     let permissions = getUserPermissions(targetUserId);
     
     if (!permissions) {
-      permissions = getDefaultPermissionsForRole(getUserById(targetUserId)?.role || 'SALES_REP');
+      permissions = getDefaultPermissionsForRole(getUserById(targetUserId)?.role || 'COLLABORATOR');
     }
 
-    return NextResponse.json({ success: true, permissions });
+    return ok({ permissions });
   } catch (error) {
-    console.error('Get permissions error:', error);
-    return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+    return fail(error);
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
-    
-    if (!accessToken) {
-      return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
-    }
+    const ctx = await requireCompanySession();
 
-    const payload = await verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
-    }
-
-    if (payload.role !== 'ADMIN' && payload.role !== 'MANAGER') {
-      return NextResponse.json({ success: false, message: 'Apenas administradores e gerentes podem alterar permissões' }, { status: 403 });
+    // Only OWNER and MANAGER can update permissions
+    if (ctx.role !== 'OWNER' && ctx.role !== 'MANAGER') {
+      throw new AppError('FORBIDDEN', 'Apenas proprietários e gerentes podem alterar permissões', 403);
     }
 
     const body = await request.json();
     const { userId, permissions } = body;
 
     if (!userId || !permissions) {
-      return NextResponse.json({ success: false, message: 'userId e permissions são obrigatórios' }, { status: 400 });
+      throw new AppError('VALIDATION_ERROR', 'userId e permissions são obrigatórios', 400);
     }
 
     const targetUser = getUserById(userId);
-    if (!targetUser || targetUser.tenant_id !== payload.tenantId) {
-      return NextResponse.json({ success: false, message: 'Usuário não encontrado' }, { status: 404 });
+    if (!targetUser || targetUser.tenant_id !== ctx.companyId) {
+      throw new AppError('NOT_FOUND', 'Usuário não encontrado', 404);
     }
 
     updateUserPermissions(userId, JSON.stringify(permissions));
     
-    return NextResponse.json({ success: true, message: 'Permissões atualizadas' });
+    return ok({ message: 'Permissões atualizadas' });
   } catch (error) {
-    console.error('Update permissions error:', error);
-    return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+    return fail(error);
   }
 }
 
-function getDefaultPermissionsForRole(role: string): Record<string, any> {
+function getDefaultPermissionsForRole(role: string): Record<string, unknown> {
   const base = { ...DEFAULT_PERMISSIONS };
   
   switch (role) {
-    case 'ADMIN':
+    case 'OWNER':
       base.modules = {
         dashboard: { access: true },
         kanban: { access: true },
         customers: { view: true, create: true, edit: true, delete: true },
         deals: { view: true, create: true, edit: true, delete: true },
-        products: { view: true, create: true, edit: true, delete: true },
         reports: { view: true, export: true },
         settings: { access: true }
       };
@@ -113,36 +93,22 @@ function getDefaultPermissionsForRole(role: string): Record<string, any> {
         kanban: { access: true },
         customers: { view: true, create: true, edit: true, delete: true },
         deals: { view: true, create: true, edit: true, delete: true },
-        products: { view: true, create: true, edit: true, delete: false },
         reports: { view: true, export: true },
         settings: { access: false }
       };
       base.customer_scope = 'all';
       break;
-    case 'SALES_REP':
+    case 'COLLABORATOR':
       base.modules = {
         dashboard: { access: true },
         kanban: { access: true },
         customers: { view: true, create: true, edit: true, delete: false },
         deals: { view: true, create: true, edit: true, delete: false },
-        products: { view: true, create: false, edit: false, delete: false },
         reports: { view: true, export: false },
         settings: { access: false }
       };
       base.customer_scope = 'assigned';
       base.pdv_restricted = true;
-      break;
-    case 'SUPPORT':
-      base.modules = {
-        dashboard: { access: true },
-        kanban: { access: false },
-        customers: { view: true, create: false, edit: false, delete: false },
-        deals: { view: true, create: false, edit: false, delete: false },
-        products: { view: true, create: false, edit: false, delete: false },
-        reports: { view: false, export: false },
-        settings: { access: false }
-      };
-      base.customer_scope = 'assigned';
       break;
   }
   

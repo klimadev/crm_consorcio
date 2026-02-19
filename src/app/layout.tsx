@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { AuthProvider } from '@/hooks/useAuth';
+import { Providers } from '@/components/providers';
 
 export const metadata: Metadata = {
   title: "MC I CRM",
@@ -15,9 +15,9 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning={true}>
       <body className="font-sans antialiased">
-        <AuthProvider>
+        <Providers>
           {children}
-        </AuthProvider>
+        </Providers>
       </body>
     </html>
   );

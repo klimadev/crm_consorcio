@@ -187,9 +187,7 @@ export function useDealSync(initialData: any[]) {
       stageId: item.stage_id,
       visibility: item.visibility || 'PUBLIC',
       assignedEmployeeIds: item.assigned_employee_ids || [],
-      productIds: item.product_ids || [],
       notes: item.notes || '',
-      nextFollowUpDate: item.next_follow_up_date,
       createdAt: item.created_at,
     }),
   });

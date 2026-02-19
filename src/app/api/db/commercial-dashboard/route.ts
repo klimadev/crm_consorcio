@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
+import { membershipRepository } from '@/lib/db/repositories/membership.repository';
+import { getDb } from '@/lib/db/connection';
 import { getCommercialDashboardSnapshot, type CommercialDashboardFilters } from '@/lib/db/operations';
 
 function parseIntegerParam(value: string | null): number | undefined {
@@ -26,7 +28,28 @@ export async function GET(request: NextRequest) {
       sellerId: searchParams.get('sellerId') || undefined,
     };
 
-    const metrics = getCommercialDashboardSnapshot(session.user.tenantId, filters);
+    // Fetch manager scopes if user is a MANAGER
+    let pdvId: string | null = null;
+    let membershipId: string | undefined;
+    
+    if (session.user.role === 'MANAGER') {
+      const db = getDb();
+      // For now, use userId as membershipId since JWT payload doesn't have membershipId
+      // In a full implementation, we'd need to look up the membership from the database
+      membershipId = session.user.userId;
+      const scopes = membershipRepository.listManagerScopes(db, session.user.tenantId, membershipId);
+      const pdvScope = scopes.find(s => s.scopeType === 'PDV');
+      pdvId = pdvScope?.pdvId || null;
+    }
+
+    const rbacContext = {
+      userId: session.user.userId,
+      role: session.user.role,
+      membershipId: membershipId || session.user.userId,
+      pdvId,
+    };
+
+    const metrics = getCommercialDashboardSnapshot(session.user.tenantId, filters, rbacContext);
     return NextResponse.json(metrics);
   } catch (error) {
     console.error('Error fetching commercial dashboard metrics:', error);

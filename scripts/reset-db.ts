@@ -2,9 +2,8 @@ import fs from 'fs';
 import path from 'path';
 
 import { closeDatabase, initDb } from '../src/lib/db/client';
-import { seedDefaultTenantData } from '../src/lib/db/operations';
 
-const dbPath = path.join(process.cwd(), 'data', 'database.db');
+const dbPath = path.join(process.cwd(), 'data', 'saas.db');
 const walPath = `${dbPath}-wal`;
 const shmPath = `${dbPath}-shm`;
 
@@ -26,9 +25,8 @@ removeIfExists(dbPath);
 
 try {
   initDb();
-  seedDefaultTenantData();
 } finally {
   closeDatabase();
 }
 
-console.log('Database reset completed.');
+console.log('Database reset completed. Use signup to create a new company.');

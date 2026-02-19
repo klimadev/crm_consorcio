@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { parseCookies, verifyToken } from '@/lib/auth/jwt';
+import { NextRequest } from 'next/server';
+import { requireCompanySession } from '@/lib/auth/session';
+import { fail, ok } from '@/lib/http/response';
+import { AppError } from '@/lib/http/errors';
 import { 
   getDealsByTenantId, createDeal, updateDeal, deleteDeal, getDealById, 
   getDealsByPdvId, getDealsByStageId, getDealsByCustomerId 
@@ -7,17 +9,8 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
-    
-    if (!accessToken) {
-      return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
-    }
-
-    const payload = await verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
-    }
+    const ctx = await requireCompanySession();
+    const tenantId = ctx.companyId;
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -27,111 +20,79 @@ export async function GET(request: NextRequest) {
 
     if (id) {
       const deal = getDealById(id);
-      if (!deal || deal.tenant_id !== payload.tenantId) {
-        return NextResponse.json({ success: false, message: 'Negociação não encontrada' }, { status: 404 });
+      if (!deal || deal.tenant_id !== tenantId) {
+        throw new AppError('NOT_FOUND', 'Negociação não encontrada', 404);
       }
-      return NextResponse.json({ success: true, deal });
+      return ok(deal);
     }
 
     if (pdvId) {
-      const deals = getDealsByPdvId(payload.tenantId, pdvId);
-      return NextResponse.json({ success: true, deals });
+      const deals = getDealsByPdvId(tenantId, pdvId);
+      return ok(deals);
     }
 
     if (stageId) {
-      const deals = getDealsByStageId(payload.tenantId, stageId);
-      return NextResponse.json({ success: true, deals });
+      const deals = getDealsByStageId(tenantId, stageId);
+      return ok(deals);
     }
 
     if (customerId) {
-      const deals = getDealsByCustomerId(payload.tenantId, customerId);
-      return NextResponse.json({ success: true, deals });
+      const deals = getDealsByCustomerId(tenantId, customerId);
+      return ok(deals);
     }
 
-    const deals = getDealsByTenantId(payload.tenantId);
-    return NextResponse.json({ success: true, deals });
+    const deals = getDealsByTenantId(tenantId);
+    return ok(deals);
   } catch (error) {
-    console.error('Get deals error:', error);
-    return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+    return fail(error);
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
-    
-    if (!accessToken) {
-      return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
-    }
-
-    const payload = await verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
-    }
-
-    const canCreate = payload.role === 'ADMIN' || payload.role === 'MANAGER' || payload.role === 'SALES_REP';
-
-    if (!canCreate) {
-      return NextResponse.json({ success: false, message: 'Sem permissão para criar negociações' }, { status: 403 });
-    }
+    const ctx = await requireCompanySession();
+    const tenantId = ctx.companyId;
 
     const body = await request.json();
-    const { title, value, stageId, customerId, pdvId, productId, productIds, notes } = body;
+    const { title, value, stageId, customerId, pdvId, notes } = body;
 
     if (!title || !stageId) {
-      return NextResponse.json({ success: false, message: 'Título e estágio são obrigatórios' }, { status: 400 });
+      throw new AppError('VALIDATION_ERROR', 'Título e estágio são obrigatórios', 400);
     }
 
     const deal = createDeal(
-      payload.tenantId,
+      tenantId,
       title,
       value || 0,
       stageId,
       customerId || null,
       pdvId || null,
-      productId || null,
-      productIds ? JSON.stringify(productIds) : '[]',
+      null,
+      '[]',
       '[]',
       notes || ''
     );
-    return NextResponse.json({ success: true, deal });
+    return ok(deal, 201);
   } catch (error) {
-    console.error('Create deal error:', error);
-    return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+    return fail(error);
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
-    
-    if (!accessToken) {
-      return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
-    }
-
-    const payload = await verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
-    }
-
-    const canEdit = payload.role === 'ADMIN' || payload.role === 'MANAGER' || payload.role === 'SALES_REP';
-
-    if (!canEdit) {
-      return NextResponse.json({ success: false, message: 'Sem permissão para editar negociações' }, { status: 403 });
-    }
+    const ctx = await requireCompanySession();
+    const tenantId = ctx.companyId;
 
     const body = await request.json();
-    const { id, title, value, stageId, customerId, pdvId, productId, productIds, notes } = body;
+    const { id, title, value, stageId, customerId, pdvId, notes } = body;
 
     if (!id || !title || !stageId) {
-      return NextResponse.json({ success: false, message: 'ID, título e estágio são obrigatórios' }, { status: 400 });
+      throw new AppError('VALIDATION_ERROR', 'ID, título e estágio são obrigatórios', 400);
     }
 
     const existing = getDealById(id);
-    if (!existing || existing.tenant_id !== payload.tenantId) {
-      return NextResponse.json({ success: false, message: 'Negociação não encontrada' }, { status: 404 });
+    if (!existing || existing.tenant_id !== tenantId) {
+      throw new AppError('NOT_FOUND', 'Negociação não encontrada', 404);
     }
 
     const deal = updateDeal(
@@ -141,52 +102,42 @@ export async function PUT(request: NextRequest) {
       stageId,
       customerId || null,
       pdvId || null,
-      productId || null,
-      productIds ? JSON.stringify(productIds) : '[]',
+      null,
+      '[]',
       '[]',
       notes || ''
     );
-    return NextResponse.json({ success: true, deal });
+    return ok(deal);
   } catch (error) {
-    console.error('Update deal error:', error);
-    return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+    return fail(error);
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
-    
-    if (!accessToken) {
-      return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
-    }
+    const ctx = await requireCompanySession();
+    const tenantId = ctx.companyId;
 
-    const payload = await verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
-    }
-
-    if (payload.role !== 'ADMIN' && payload.role !== 'MANAGER') {
-      return NextResponse.json({ success: false, message: 'Sem permissão' }, { status: 403 });
+    // Only OWNER and MANAGER can delete
+    if (ctx.role !== 'OWNER' && ctx.role !== 'MANAGER') {
+      throw new AppError('FORBIDDEN', 'Sem permissão para deletar negociações', 403);
     }
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
     if (!id) {
-      return NextResponse.json({ success: false, message: 'ID é obrigatório' }, { status: 400 });
+      throw new AppError('VALIDATION_ERROR', 'ID é obrigatório', 400);
     }
 
     const existing = getDealById(id);
-    if (!existing || existing.tenant_id !== payload.tenantId) {
-      return NextResponse.json({ success: false, message: 'Negociação não encontrada' }, { status: 404 });
+    if (!existing || existing.tenant_id !== tenantId) {
+      throw new AppError('NOT_FOUND', 'Negociação não encontrada', 404);
     }
 
     deleteDeal(id);
-    return NextResponse.json({ success: true, message: 'Negociação deletada' });
+    return ok({ success: true, message: 'Negociação deletada' });
   } catch (error) {
-    console.error('Delete deal error:', error);
-    return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+    return fail(error);
   }
 }

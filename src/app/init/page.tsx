@@ -53,7 +53,7 @@ export default function InitPage() {
         )}
         
         <div className="mt-6 text-sm text-slate-500">
-          <p>After initialization, you'll be redirected to login.</p>
+          <p>After initialization, you&apos;ll be redirected to login.</p>
           <p>Default credentials will be created for demo purposes.</p>
         </div>
       </div>

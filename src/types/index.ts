@@ -18,7 +18,7 @@ export interface PDV {
   isActive: boolean;
 }
 
-export type Role = 'ADMIN' | 'MANAGER' | 'SALES_REP' | 'SUPPORT';
+export type Role = 'OWNER' | 'MANAGER' | 'COLLABORATOR';
 
 export interface Employee {
   id: Id;
@@ -65,22 +65,6 @@ export interface Customer {
   createdAt: string;
 }
 
-export interface ProductAttribute {
-  key: string;
-  label: string;
-  value: string | number;
-}
-
-export interface Product {
-  id: Id;
-  name: string;
-  description: string;
-  category: string;
-  basePrice: number;
-  attributes: ProductAttribute[];
-  active: boolean;
-}
-
 export type PipelineStageType = 'OPEN' | 'WON' | 'LOST';
 
 export interface PipelineStage {
@@ -88,6 +72,7 @@ export interface PipelineStage {
   name: string;
   color: string;
   type: PipelineStageType;
+  orderIndex?: number;
 }
 
 export type DealVisibility = 'PUBLIC' | 'RESTRICTED';
@@ -102,10 +87,8 @@ export interface Deal {
   stageId: Id;
   visibility: DealVisibility;
   assignedEmployeeIds: Id[];
-  productIds: Id[];
   customValues?: Record<string, any>;
   notes: string;
-  nextFollowUpDate?: string;
   createdAt: string;
 }
 
@@ -156,63 +139,27 @@ export interface CommercialDashboardMetrics {
   };
 }
 
-// ─── Sale Consistency Types ─────────────────────────────────────
-
-export type SaleConsistencyStatus = 'AWAITING_CONSISTENCY' | 'CONSISTENT' | 'INCONSISTENT';
-
-export const SALE_CONSISTENCY_STATUS_LABELS: Record<SaleConsistencyStatus, string> = {
-  AWAITING_CONSISTENCY: 'Aguardando Consistência',
-  CONSISTENT: 'Consistente',
-  INCONSISTENT: 'Inconsistente',
-};
-
-export const SALE_CONSISTENCY_STATUS_COLORS: Record<SaleConsistencyStatus, string> = {
-  AWAITING_CONSISTENCY: 'bg-amber-100 text-amber-700',
-  CONSISTENT: 'bg-emerald-100 text-emerald-700',
-  INCONSISTENT: 'bg-red-100 text-red-700',
-};
-
-export type InstallmentStatus = 'PENDING' | 'RECEIVED' | 'OVERDUE';
-
-export const INSTALLMENT_STATUS_LABELS: Record<InstallmentStatus, string> = {
-  PENDING: 'Pendente',
-  RECEIVED: 'Recebida',
-  OVERDUE: 'Atrasada',
-};
-
-export const INSTALLMENT_STATUS_COLORS: Record<InstallmentStatus, string> = {
-  PENDING: 'bg-slate-100 text-slate-600',
-  RECEIVED: 'bg-green-100 text-green-600',
-  OVERDUE: 'bg-red-100 text-red-600',
-};
-
-export interface Installment {
-  number: 1 | 2 | 3 | 4;
-  status: InstallmentStatus;
-  dueDate: string | null;
-  receivedDate: string | null;
-  value: number;
-}
-
-export interface Sale {
-  id: Id;
-  dealId: Id | null;
-  customerId: Id | null;
-  customerName: string;
-  sellerId: Id;
-  sellerName: string;
-  pdvId: Id | null;
-  productId: Id | null;
-  productName: string | null;
-  totalValue: number;
-  creditValue: number;
-  planMonths: number | null;
-  consistencyStatus: SaleConsistencyStatus;
-  validatedBy: Id | null;
-  validatedAt: string | null;
-  validationNotes: string | null;
-  installments: Installment[];
-  notes: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
+export type {
+  DocumentType,
+  LeadStage,
+  ManagerScope,
+  LeadVisibilityScope,
+  RequestContext,
+  SessionUser,
+  SignupInput,
+  Lead,
+  LeadDetails,
+  LeadDocument,
+  ConsistencyStatus,
+  Company,
+  Pdv,
+  Team,
+  Installment,
+  ConsistencyCheckResult,
+  LeadConsistencyCheck,
+  LeadStageEvent,
+  SignupResult,
+  ApiError,
+  ApiSuccess,
+  ApiFailure,
+} from './domain';

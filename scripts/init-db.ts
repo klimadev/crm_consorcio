@@ -1,7 +1,7 @@
 import path from 'path';
 import { initDb, closeDatabase } from '../src/lib/db/client';
 
-const dbPath = path.join(process.cwd(), 'data', 'database.db');
+const dbPath = path.join(process.cwd(), 'data', 'saas.db');
 
 console.log('Initializing database at:', dbPath);
 

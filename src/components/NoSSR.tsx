@@ -1,18 +1,20 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useSyncExternalStore } from 'react';
 
 interface NoSSRProps {
   children: React.ReactNode;
   fallback?: React.ReactNode;
 }
 
-export const NoSSR: React.FC<NoSSRProps> = ({ children, fallback = null }) => {
-  const [isClient, setIsClient] = useState(false);
+const emptySubscribe = () => () => {};
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+export const NoSSR: React.FC<NoSSRProps> = ({ children, fallback = null }) => {
+  const isClient = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
   if (!isClient) {
     return <>{fallback}</>;

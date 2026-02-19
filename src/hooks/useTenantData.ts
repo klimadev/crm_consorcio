@@ -26,7 +26,6 @@ function getDataFromResponse<T>(result: any, endpoint: string): T[] {
   if (result.stages) return result.stages as T[];
   if (result.tags) return result.tags as T[];
   if (result.customers) return result.customers as T[];
-  if (result.products) return result.products as T[];
   if (result.pdvs) return result.pdvs as T[];
   if (result.regions) return result.regions as T[];
   if (result.fields) return result.fields as T[];
@@ -41,7 +40,7 @@ function getItemFromResponse<T>(result: any, endpoint: string): T | null {
   const singularKey = key?.replace(/s$/, '') || key;
   
   return result[singularKey || ''] || result.region || result.pdv || result.customer || 
-         result.deal || result.product || result.stage || result.tag || result.field || null;
+         result.deal || result.stage || result.tag || result.field || null;
 }
 
 export function useTenantData<T>(options: UseTenantDataOptions<T>): UseTenantDataResult<T> {

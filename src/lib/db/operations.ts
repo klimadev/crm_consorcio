@@ -19,23 +19,6 @@ export function createDefaultTenantIfNotExists() {
   return id;
 }
 
-function hasTenantData(tenantId: string): boolean {
-  const count = getOneQuery<any>('SELECT COUNT(*) as cnt FROM users WHERE tenant_id = ?', [tenantId]);
-  return (count?.cnt ?? 0) > 0;
-}
-
-export function seedDefaultTenantData() {
-  const tenantId = createDefaultTenantIfNotExists();
-  
-  if (hasTenantData(tenantId)) {
-    console.log('Tenant data already exists, skipping seed');
-    return tenantId;
-  }
-  
-  seedTenantData(tenantId);
-  return tenantId;
-}
-
 export function createTenant(name: string, slug: string): Tenant {
   const id = generateId();
   const now = new Date().toISOString();
@@ -61,11 +44,11 @@ export async function getTenant(id: string): Promise<Tenant | null> {
 }
 
 export function createUser(
-  tenantId: string,
+  companyId: string,
   email: string,
   password: string,
   name: string,
-  role: User['role'] = 'SALES_REP',
+  role: User['role'] = 'COLLABORATOR',
   pdvId: string | null = null
 ): User {
   const id = generateId();
@@ -73,13 +56,14 @@ export function createUser(
   const now = new Date().toISOString();
   
   runQuery(`
-    INSERT INTO users (id, tenant_id, email, password_hash, name, role, pdv_id, is_active, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
-  `, [id, tenantId, email, passwordHash, name, role, pdvId, now, now]);
+    INSERT INTO users (id, company_id, tenant_id, email, password_hash, name, role, pdv_id, is_active, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+  `, [id, companyId, companyId, email, passwordHash, name, role, pdvId, now, now]);
   
   return {
     id,
-    tenant_id: tenantId,
+    tenant_id: companyId,
+    company_id: companyId,
     email,
     password_hash: passwordHash,
     name,
@@ -471,45 +455,50 @@ export function deleteProduct(id: string): void {
 }
 
 export function createPipelineStage(
-  tenantId: string,
-  data: Omit<PipelineStage, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>
+  companyId: string,
+  data: Omit<PipelineStage, 'id' | 'company_id' | 'tenant_id' | 'created_at' | 'updated_at'>
 ): PipelineStage {
   const id = generateId();
   const now = new Date().toISOString();
   
   const maxOrderResult = getOneQuery<{ 'COALESCE(MAX(order_index), -1)': number }>(
-    'SELECT COALESCE(MAX(order_index), -1) FROM pipeline_stages WHERE tenant_id = ?', 
-    [tenantId]
+    'SELECT COALESCE(MAX(order_index), -1) FROM pipeline_stages WHERE company_id = ?', 
+    [companyId]
   );
   const maxOrder = maxOrderResult?.['COALESCE(MAX(order_index), -1)'] ?? -1;
   
   runQuery(`
-    INSERT INTO pipeline_stages (id, tenant_id, name, color, type, automation_steps, order_index, created_at, updated_at)
+    INSERT INTO pipeline_stages (id, company_id, name, display_name, color, type, order_index, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
-    id, tenantId, data.name, data.color, data.type,
-    JSON.stringify(data.automation_steps || []), maxOrder + 1,
-    now, now
+    id, companyId, data.name, data.name, data.color || '#3b82f6', data.type,
+    maxOrder + 1, now, now
   ]);
   
   return {
     id,
-    tenant_id: tenantId,
+    company_id: companyId,
+    tenant_id: companyId, // Backward compatibility
+    display_name: data.name,
     ...data,
-    automation_steps: JSON.stringify(data.automation_steps || []),
+    automation_steps: '[]',
     order_index: maxOrder + 1,
     created_at: now,
     updated_at: now
   };
 }
 
-export function getPipelineStagesByTenant(tenantId: string): PipelineStage[] {
-  const rows = getQuery<any>('SELECT * FROM pipeline_stages WHERE tenant_id = ? ORDER BY order_index', [tenantId]);
+export function getPipelineStagesByTenant(companyId: string): PipelineStage[] {
+  const rows = getQuery<any>('SELECT * FROM pipeline_stages WHERE company_id = ? ORDER BY order_index', [companyId]);
   return rows.map(row => ({
     ...row,
+    tenant_id: row.company_id, // Backward compatibility
     automation_steps: JSON.parse(row.automation_steps || '[]')
   }));
 }
+
+// Alias for clarity
+export const getPipelineStagesByCompany = getPipelineStagesByTenant;
 
 export function updatePipelineStage(
   id: string,
@@ -536,10 +525,10 @@ export function deletePipelineStage(id: string): void {
   runQuery('DELETE FROM pipeline_stages WHERE id = ?', [id]);
 }
 
-export function reorderPipelineStages(tenantId: string, stageIds: string[]): void {
+export function reorderPipelineStages(companyId: string, stageIds: string[]): void {
   const now = new Date().toISOString();
   stageIds.forEach((id, index) => {
-    runQuery('UPDATE pipeline_stages SET order_index = ?, updated_at = ? WHERE id = ?', [index, now, id]);
+    runQuery('UPDATE pipeline_stages SET order_index = ?, updated_at = ? WHERE id = ? AND company_id = ?', [index, now, id, companyId]);
   });
 }
 
@@ -742,11 +731,26 @@ function resolveManagerPdvId(tenantId: string, managerId?: string): string | nul
 function buildWonDealsWhere(
   tenantId: string,
   filters: CommercialDashboardFilters,
-  extra: { year?: number; month?: number; window?: DateWindow } = {}
+  extra: { year?: number; month?: number; window?: DateWindow } = {},
+  rbacContext?: RBACContext
 ): { sql: string; params: Array<string | number> } {
   const managerPdvId = resolveManagerPdvId(tenantId, filters.managerId);
   const clauses = ['d.tenant_id = ?', `s.type = 'WON'`];
   const params: Array<string | number> = [tenantId];
+
+  // RBAC filtering based on user role
+  if (rbacContext) {
+    if (rbacContext.role === 'COLLABORATOR') {
+      // Collaborator sees only deals assigned to them
+      clauses.push('d.assigned_employee_ids LIKE ?');
+      params.push(`%"${rbacContext.userId}"%`);
+    } else if (rbacContext.role === 'MANAGER' && rbacContext.pdvId) {
+      // Manager sees only deals in their PDV
+      clauses.push('d.pdv_id = ?');
+      params.push(rbacContext.pdvId);
+    }
+    // OWNER sees all deals (no additional filtering)
+  }
 
   if (filters.regionId) {
     clauses.push('p.region_id = ?');
@@ -759,8 +763,9 @@ function buildWonDealsWhere(
   } else if (managerPdvId) {
     clauses.push('d.pdv_id = ?');
     params.push(managerPdvId);
-  } else {
+  } else if (!rbacContext || rbacContext.role === 'OWNER') {
     // Quando não há filtro de PDV e nem manager com PDV específico, incluir todos os PDVs
+    // Apenas para OWNER
     clauses.push('d.pdv_id IS NOT NULL');
   }
 
@@ -787,8 +792,8 @@ function buildWonDealsWhere(
   return { sql: clauses.join(' AND '), params };
 }
 
-function getSalesTotals(tenantId: string, filters: CommercialDashboardFilters, extra: { year?: number; month?: number; window?: DateWindow } = {}) {
-  const base = buildWonDealsWhere(tenantId, filters, extra);
+function getSalesTotals(tenantId: string, filters: CommercialDashboardFilters, extra: { year?: number; month?: number; window?: DateWindow } = {}, rbacContext?: RBACContext) {
+  const base = buildWonDealsWhere(tenantId, filters, extra, rbacContext);
   return getOneQuery<{ totalValue: number | null; totalCount: number | null }>(
     `
       SELECT COALESCE(SUM(d.value), 0) AS totalValue, COUNT(*) AS totalCount
@@ -801,23 +806,31 @@ function getSalesTotals(tenantId: string, filters: CommercialDashboardFilters, e
   ) ?? { totalValue: 0, totalCount: 0 };
 }
 
+interface RBACContext {
+  userId: string;
+  role: string;
+  membershipId?: string;
+  pdvId?: string | null;
+}
+
 export function getCommercialDashboardSnapshot(
   tenantId: string,
-  filters: CommercialDashboardFilters = {}
+  filters: CommercialDashboardFilters = {},
+  rbacContext?: RBACContext
 ): CommercialDashboardSnapshot {
   const now = new Date();
   const selectedYear = filters.year ?? now.getFullYear();
   const selectedMonth = filters.month ?? now.getMonth() + 1;
   const selectedWindow = resolveDateWindow(filters, selectedYear, selectedMonth);
 
-  const currentMonthTotals = getSalesTotals(tenantId, filters, { year: selectedYear, month: selectedMonth });
+  const currentMonthTotals = getSalesTotals(tenantId, filters, { year: selectedYear, month: selectedMonth }, rbacContext);
   const prevMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
   const prevMonthYear = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
-  const previousMonthTotals = getSalesTotals(tenantId, filters, { year: prevMonthYear, month: prevMonth });
+  const previousMonthTotals = getSalesTotals(tenantId, filters, { year: prevMonthYear, month: prevMonth }, rbacContext);
 
-  const yearlyTotals = getSalesTotals(tenantId, filters, { year: selectedYear });
-  const previousYearTotals = getSalesTotals(tenantId, filters, { year: selectedYear - 1 });
-  const selectedWindowTotals = getSalesTotals(tenantId, filters, { window: selectedWindow });
+  const yearlyTotals = getSalesTotals(tenantId, filters, { year: selectedYear }, rbacContext);
+  const previousYearTotals = getSalesTotals(tenantId, filters, { year: selectedYear - 1 }, rbacContext);
+  const selectedWindowTotals = getSalesTotals(tenantId, filters, { window: selectedWindow }, rbacContext);
 
   const monthlyComparisonPct = (previousMonthTotals.totalValue ?? 0) > 0
     ? (((currentMonthTotals.totalValue ?? 0) - (previousMonthTotals.totalValue ?? 0)) / (previousMonthTotals.totalValue ?? 0)) * 100
@@ -826,14 +839,14 @@ export function getCommercialDashboardSnapshot(
     ? (((yearlyTotals.totalValue ?? 0) - (previousYearTotals.totalValue ?? 0)) / (previousYearTotals.totalValue ?? 0)) * 100
     : 0;
 
-  const baseWhere = buildWonDealsWhere(tenantId, filters, { window: selectedWindow });
+  const baseWhere = buildWonDealsWhere(tenantId, filters, { window: selectedWindow }, rbacContext);
   const evolutionSeries = getQuery<{ label: string; value: number; count: number }>(
     `
       SELECT strftime('%Y-%m-%d', d.created_at) AS label,
              COALESCE(SUM(d.value), 0) AS value,
              COUNT(*) AS count
       FROM deals d
-      JOIN pipeline_stages s ON s.id = d.stage_id AND s.tenant_id = d.tenant_id
+      JOIN pipeline_stages s ON s.id = d.stage_id
       LEFT JOIN pdvs p ON p.id = d.pdv_id AND p.tenant_id = d.tenant_id
       WHERE ${baseWhere.sql}
       GROUP BY strftime('%Y-%m-%d', d.created_at)
@@ -848,7 +861,7 @@ export function getCommercialDashboardSnapshot(
              COALESCE(SUM(d.value), 0) AS value,
              COUNT(*) AS count
       FROM deals d
-      JOIN pipeline_stages s ON s.id = d.stage_id AND s.tenant_id = d.tenant_id
+      JOIN pipeline_stages s ON s.id = d.stage_id
       LEFT JOIN pdvs p ON p.id = d.pdv_id AND p.tenant_id = d.tenant_id
       WHERE ${baseWhere.sql}
       GROUP BY CAST(strftime('%w', d.created_at) AS INTEGER)
@@ -875,7 +888,7 @@ export function getCommercialDashboardSnapshot(
              COALESCE(SUM(d.value), 0) AS value,
              COUNT(*) AS count
       FROM deals d
-      JOIN pipeline_stages s ON s.id = d.stage_id AND s.tenant_id = d.tenant_id
+      JOIN pipeline_stages s ON s.id = d.stage_id
       LEFT JOIN pdvs p ON p.id = d.pdv_id AND p.tenant_id = d.tenant_id
       WHERE ${baseWhere.sql}
       GROUP BY d.pdv_id, p.name
@@ -888,16 +901,33 @@ export function getCommercialDashboardSnapshot(
     `
       SELECT d.value, d.assigned_employee_ids, d.custom_values, d.pdv_id
       FROM deals d
-      JOIN pipeline_stages s ON s.id = d.stage_id AND s.tenant_id = d.tenant_id
+      JOIN pipeline_stages s ON s.id = d.stage_id
       LEFT JOIN pdvs p ON p.id = d.pdv_id AND p.tenant_id = d.tenant_id
       WHERE ${baseWhere.sql}
     `,
     baseWhere.params
   );
 
+  // Build employee query with RBAC filtering
+  let employeeQuery = 'SELECT id, name, role, pdv_id FROM users WHERE tenant_id = ? AND is_active = 1';
+  const employeeParams: (string | number)[] = [tenantId];
+  
+  if (rbacContext) {
+    if (rbacContext.role === 'COLLABORATOR') {
+      // Collaborator sees only themselves
+      employeeQuery += ' AND id = ?';
+      employeeParams.push(rbacContext.userId);
+    } else if (rbacContext.role === 'MANAGER' && rbacContext.pdvId) {
+      // Manager sees only employees in their PDV
+      employeeQuery += ' AND pdv_id = ?';
+      employeeParams.push(rbacContext.pdvId);
+    }
+    // OWNER sees all employees
+  }
+  
   const employees = getQuery<{ id: string; name: string; role: User['role']; pdv_id: string | null }>(
-    'SELECT id, name, role, pdv_id FROM users WHERE tenant_id = ? AND is_active = 1',
-    [tenantId]
+    employeeQuery,
+    employeeParams
   );
   const employeeMap = new Map(employees.map((employee) => [employee.id, employee]));
   const sellerAgg = new Map<string, { value: number; count: number }>();
@@ -922,7 +952,7 @@ export function getCommercialDashboardSnapshot(
 
     employeeIds.forEach((employeeId) => {
       const employee = employeeMap.get(employeeId);
-      if (!employee || employee.role !== 'SALES_REP' || countedSellers.has(employeeId)) return;
+      if (!employee || employee.role !== 'COLLABORATOR' || countedSellers.has(employeeId)) return;
       const current = sellerAgg.get(employeeId) ?? { value: 0, count: 0 };
       sellerAgg.set(employeeId, { value: current.value + value, count: current.count + 1 });
       countedSellers.add(employeeId);
@@ -962,7 +992,7 @@ export function getCommercialDashboardSnapshot(
   };
 
   const sellers = Array.from(sellerAgg.entries())
-    .map(([employeeId, aggregate]) => toRankingEntry(employeeId, 'SALES_REP', aggregate))
+    .map(([employeeId, aggregate]) => toRankingEntry(employeeId, 'COLLABORATOR', aggregate))
     .filter((item): item is CommercialRankingEntry => Boolean(item))
     .sort((a, b) => b.totalValue - a.totalValue);
 
@@ -1260,9 +1290,9 @@ export function deleteDashboardWidget(id: string): void {
 }
 
 // Missing functions for API routes
-export function countEntitiesByTenant(tenantId: string): { pdvs: number; stages: number } {
-  const pdvs = getOneQuery<{ 'COUNT(*)': number }>('SELECT COUNT(*) FROM pdvs WHERE tenant_id = ?', [tenantId])?.['COUNT(*)'] ?? 0;
-  const stages = getOneQuery<{ 'COUNT(*)': number }>('SELECT COUNT(*) FROM pipeline_stages WHERE tenant_id = ?', [tenantId])?.['COUNT(*)'] ?? 0;
+export function countEntitiesByTenant(companyId: string): { pdvs: number; stages: number } {
+  const pdvs = getOneQuery<{ 'COUNT(*)': number }>('SELECT COUNT(*) FROM pdvs WHERE tenant_id = ?', [companyId])?.['COUNT(*)'] ?? 0;
+  const stages = getOneQuery<{ 'COUNT(*)': number }>('SELECT COUNT(*) FROM pipeline_stages WHERE company_id = ?', [companyId])?.['COUNT(*)'] ?? 0;
   return { pdvs, stages };
 }
 
@@ -1568,92 +1598,6 @@ export function updateTag(id: string, label: string, color: string): Tag | null 
   `, [label, color, now, id]);
 
   return getTagById(id);
-}
-
-export function seedTenantData(tenantId: string) {
-  const now = new Date().toISOString();
-  const db = getDatabase();
-  db.pragma('foreign_keys = OFF');
-  
-  try {
-    // Importar exatamente os dados do constants/index.ts
-    const { 
-      INITIAL_PDVS, INITIAL_EMPLOYEES, 
-      INITIAL_PRODUCTS, INITIAL_CUSTOMERS, INITIAL_DEALS, 
-      INITIAL_STAGES
-    } = require('@/constants');
-    
-    // Seed Users/Employees
-    INITIAL_EMPLOYEES.forEach((u: any) => {
-      const passwordHash = bcrypt.hashSync('demo123', 10);
-      runQuery(`
-        INSERT INTO users (id, tenant_id, email, password_hash, name, role, pdv_id, is_active, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
-      `, [u.id, tenantId, u.email, passwordHash, u.name, u.role, u.pdvId, now, now]);
-    });
-    
-    // Seed PDVs
-    INITIAL_PDVS.forEach((p: any) => {
-      runQuery(`
-        INSERT INTO pdvs (id, tenant_id, name, type, location, is_active, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, 1, ?, ?)
-      `, [p.id, tenantId, p.name, p.type, p.location, now, now]);
-    });
-    
-    // Seed Pipeline Stages
-    INITIAL_STAGES.forEach((s: any, i: number) => {
-      runQuery(`
-        INSERT INTO pipeline_stages (id, tenant_id, name, color, type, automation_steps, order_index, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, '[]', ?, ?, ?)
-      `, [s.id, tenantId, s.name, s.color, s.type, i, now, now]);
-    });
-    
-    // Seed Products
-    INITIAL_PRODUCTS.forEach((p: any) => {
-      runQuery(`
-        INSERT INTO products (id, tenant_id, name, description, category, base_price, attributes, form_schema, automation_steps, default_follow_up_days, active, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
-      `, [
-        p.id, tenantId, p.name, p.description, p.category, p.basePrice || 0,
-        JSON.stringify(p.attributes || []), JSON.stringify(p.formSchema || []), JSON.stringify(p.automationSteps || []),
-        p.defaultFollowUpDays || null, now, now
-      ]);
-    });
-    
-    // Seed Customers
-    INITIAL_CUSTOMERS.forEach((c: any) => {
-      runQuery(`
-        INSERT INTO customers (id, tenant_id, type, name, document, email, phone, zip_code, status, pdv_ids, assigned_employee_ids, custom_values, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [
-        c.id, tenantId, c.type, c.name, c.document, c.email, c.phone, c.zipCode, c.status,
-        JSON.stringify(c.pdvIds), JSON.stringify(c.assignedEmployeeIds), JSON.stringify(c.customValues),
-        now, now
-      ]);
-    });
-    
-    // Seed Deals
-    INITIAL_DEALS.forEach((d: any) => {
-      runQuery(`
-        INSERT INTO deals (id, tenant_id, title, pdv_id, customer_id, customer_name, value, stage_id, visibility, assigned_employee_ids, product_ids, custom_values, tags, notes, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [
-        d.id, tenantId, d.title, d.pdvId, d.customerId, d.customerName, d.value, d.stageId, d.visibility,
-        JSON.stringify(d.assignedEmployeeIds), JSON.stringify(d.productIds), JSON.stringify(d.customValues), 
-        JSON.stringify([]), d.notes, now, now
-      ]);
-    });
-    
-    // Seed default integration
-    runQuery(`
-      INSERT INTO integrations (id, tenant_id, name, type, status, config, created_at, updated_at)
-      VALUES (?, ?, ?, ?, 'DISCONNECTED', '{}', ?, ?)
-    `, ['whatsapp-1', tenantId, 'WhatsApp Business', 'WHATSAPP', now, now]);
-    
-    console.log(`Tenant ${tenantId} seeded successfully with demo data from constants`);
-  } finally {
-    db.pragma('foreign_keys = ON');
-  }
 }
 
 // ─────────────────────────────────────────────────────────────

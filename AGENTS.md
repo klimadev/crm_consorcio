@@ -77,7 +77,7 @@ import type { CommercialDashboardFilters } from '@/types';
 ```typescript
 interface Props { title: string; onClose: () => void; }
 type View = 'dashboard' | 'kanban' | 'sales_engine';
-type Role = 'ADMIN' | 'MANAGER' | 'SALES_REP' | 'SUPPORT';
+type Role = 'OWNER' | 'MANAGER' | 'COLLABORATOR';
 ```
 
 ### Naming Conventions
@@ -343,7 +343,10 @@ if (status === DealStatus.PENDING) { ... }
 - TypeScript strict mode enabled (min 5.1)
 - Path aliases configured (`@/*` → `./src/*`)
 - LocalStorage persistence in CRMContext
-- RBAC with ADMIN, MANAGER, SALES_REP, SUPPORT roles
+- RBAC with OWNER, MANAGER, COLLABORATOR roles:
+  - **OWNER**: Full access to all features and data
+  - **MANAGER**: Access to their PDV's data and team management
+  - **COLLABORATOR**: Access to assigned leads, can create new leads
 - Google Gemini AI integration for deal analysis
 - Authentication uses JWT with jose library (Edge Runtime compatible)
 - Database uses SQLite with better-sqlite3

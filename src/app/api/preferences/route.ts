@@ -1,91 +1,60 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { parseCookies, verifyToken } from '@/lib/auth/jwt';
+import { NextRequest } from 'next/server';
+import { requireCompanySession } from '@/lib/auth/session';
+import { fail, ok } from '@/lib/http/response';
+import { AppError } from '@/lib/http/errors';
 import { getPreferencesByUserId, upsertPreference, deletePreference } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
-    
-    if (!accessToken) {
-      return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
-    }
+    const ctx = await requireCompanySession();
 
-    const payload = verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
-    }
-
-    const preferences = getPreferencesByUserId(payload.userId);
+    const preferences = getPreferencesByUserId(ctx.userId);
 
     const prefsMap: Record<string, string> = {};
     for (const pref of preferences) {
       prefsMap[pref.key] = pref.value;
     }
 
-    return NextResponse.json({ success: true, preferences: prefsMap });
+    return ok({ preferences: prefsMap });
   } catch (error) {
-    console.error('Get preferences error:', error);
-    return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+    return fail(error);
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
-    
-    if (!accessToken) {
-      return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
-    }
-
-    const payload = verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
-    }
+    const ctx = await requireCompanySession();
 
     const body = await request.json();
     const { key, value } = body;
 
     if (!key || value === undefined) {
-      return NextResponse.json({ success: false, message: 'Key e value são obrigatórios' }, { status: 400 });
+      throw new AppError('VALIDATION_ERROR', 'Key e value são obrigatórios', 400);
     }
 
-    upsertPreference(payload.userId, key, JSON.stringify(value));
+    upsertPreference(ctx.userId, key, JSON.stringify(value));
 
-    return NextResponse.json({ success: true, message: 'Preferência salva' });
+    return ok({ message: 'Preferência salva' });
   } catch (error) {
-    console.error('Save preference error:', error);
-    return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+    return fail(error);
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
-    
-    if (!accessToken) {
-      return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
-    }
-
-    const payload = verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
-    }
+    const ctx = await requireCompanySession();
 
     const { searchParams } = new URL(request.url);
     const key = searchParams.get('key');
 
     if (!key) {
-      return NextResponse.json({ success: false, message: 'Key é obrigatória' }, { status: 400 });
+      throw new AppError('VALIDATION_ERROR', 'Key é obrigatória', 400);
     }
 
-    deletePreference(payload.userId, key);
+    deletePreference(ctx.userId, key);
 
-    return NextResponse.json({ success: true, message: 'Preferência deletada' });
+    return ok({ message: 'Preferência deletada' });
   } catch (error) {
-    console.error('Delete preference error:', error);
-    return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+    return fail(error);
   }
 }

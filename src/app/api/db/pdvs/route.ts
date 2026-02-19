@@ -34,8 +34,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth(request);
-    if (!session?.user || session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
+    if (!session?.user || session.user.role !== 'OWNER') {
+      return NextResponse.json({ error: 'Unauthorized - Owner access required' }, { status: 401 });
     }
 
     const data = await request.json();
@@ -54,8 +54,8 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const session = await auth(request);
-    if (!session?.user || session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
+    if (!session?.user || session.user.role !== 'OWNER') {
+      return NextResponse.json({ error: 'Unauthorized - Owner access required' }, { status: 401 });
     }
 
     const data = await request.json();
@@ -89,8 +89,8 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const session = await auth(request);
-    if (!session?.user || session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
+    if (!session?.user || session.user.role !== 'OWNER') {
+      return NextResponse.json({ error: 'Unauthorized - Owner access required' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);

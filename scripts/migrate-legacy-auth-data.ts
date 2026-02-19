@@ -75,12 +75,12 @@ function run(): void {
     `);
 
     const upsertUser = targetDb.prepare(`
-      INSERT INTO users (id, email, password_hash, full_name, is_active, created_at, updated_at)
+      INSERT INTO users (id, email, password_hash, name, is_active, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
       ON CONFLICT(id) DO UPDATE SET
         email = excluded.email,
         password_hash = excluded.password_hash,
-        full_name = excluded.full_name,
+        name = excluded.name,
         is_active = excluded.is_active,
         updated_at = datetime('now')
     `);

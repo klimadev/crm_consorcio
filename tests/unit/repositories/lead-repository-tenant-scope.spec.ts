@@ -4,7 +4,7 @@ import { leadRepository } from '@/lib/db/repositories/lead.repository';
 
 function seedCompany(db: ReturnType<typeof createInMemoryDb>, companyId: string, userId: string, membershipId: string): void {
   db.prepare('INSERT INTO companies (id, name, slug) VALUES (?, ?, ?)').run(companyId, 'Acme', `${companyId}-slug`);
-  db.prepare('INSERT INTO users (id, email, password_hash, full_name) VALUES (?, ?, ?, ?)').run(
+  db.prepare('INSERT INTO users (id, email, password_hash, name) VALUES (?, ?, ?, ?)').run(
     userId,
     `${userId}@test.com`,
     'hash',

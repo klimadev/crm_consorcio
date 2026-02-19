@@ -1,58 +1,42 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { parseCookies, verifyToken } from '@/lib/auth/jwt';
+import { NextRequest } from 'next/server';
+import { requireCompanySession } from '@/lib/auth/session';
+import { fail, ok } from '@/lib/http/response';
+import { AppError } from '@/lib/http/errors';
 import { 
   getPdvsByTenantId, createPdv, updatePdv, deletePdv, getPdvById 
 } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
-    
-    if (!accessToken) {
-      return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
-    }
-
-    const payload = await verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
-    }
+    const ctx = await requireCompanySession();
+    const tenantId = ctx.companyId;
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
     if (id) {
       const pdv = getPdvById(id);
-      if (!pdv || pdv.tenant_id !== payload.tenantId) {
-        return NextResponse.json({ success: false, message: 'PDV não encontrado' }, { status: 404 });
+      if (!pdv || pdv.tenant_id !== tenantId) {
+        throw new AppError('NOT_FOUND', 'PDV não encontrado', 404);
       }
-      return NextResponse.json({ success: true, pdv });
+      return ok(pdv);
     }
 
-    const pdvs = getPdvsByTenantId(payload.tenantId);
-    return NextResponse.json({ success: true, pdvs });
+    const pdvs = getPdvsByTenantId(tenantId);
+    return ok(pdvs);
   } catch (error) {
-    console.error('Get pdvs error:', error);
-    return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+    return fail(error);
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
-    
-    if (!accessToken) {
-      return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
-    }
+    const ctx = await requireCompanySession();
+    const tenantId = ctx.companyId;
 
-    const payload = await verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
-    }
-
-    if (payload.role !== 'ADMIN' && payload.role !== 'MANAGER') {
-      return NextResponse.json({ success: false, message: 'Sem permissão' }, { status: 403 });
+    // Only OWNER and MANAGER can create
+    if (ctx.role !== 'OWNER' && ctx.role !== 'MANAGER') {
+      throw new AppError('FORBIDDEN', 'Sem permissão para criar PDVs', 403);
     }
 
     const body = await request.json();
@@ -60,38 +44,29 @@ export async function POST(request: NextRequest) {
     const resolvedLocation = location ?? [address, city, state].filter(Boolean).join(' - ');
 
     if (!name) {
-      return NextResponse.json({ success: false, message: 'Nome é obrigatório' }, { status: 400 });
+      throw new AppError('VALIDATION_ERROR', 'Nome é obrigatório', 400);
     }
 
     const pdv = createPdv(
-      payload.tenantId, 
+      tenantId, 
       name, 
       type || 'PHYSICAL_STORE',
       resolvedLocation || ''
     );
-    return NextResponse.json({ success: true, pdv });
+    return ok(pdv, 201);
   } catch (error) {
-    console.error('Create pdv error:', error);
-    return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+    return fail(error);
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
-    
-    if (!accessToken) {
-      return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
-    }
+    const ctx = await requireCompanySession();
+    const tenantId = ctx.companyId;
 
-    const payload = await verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
-    }
-
-    if (payload.role !== 'ADMIN' && payload.role !== 'MANAGER') {
-      return NextResponse.json({ success: false, message: 'Sem permissão' }, { status: 403 });
+    // Only OWNER and MANAGER can update
+    if (ctx.role !== 'OWNER' && ctx.role !== 'MANAGER') {
+      throw new AppError('FORBIDDEN', 'Sem permissão para editar PDVs', 403);
     }
 
     const body = await request.json();
@@ -99,56 +74,46 @@ export async function PUT(request: NextRequest) {
     const resolvedLocation = location ?? [address, city, state].filter(Boolean).join(' - ');
 
     if (!id || !name) {
-      return NextResponse.json({ success: false, message: 'ID e nome são obrigatórios' }, { status: 400 });
+      throw new AppError('VALIDATION_ERROR', 'ID e nome são obrigatórios', 400);
     }
 
     const existing = getPdvById(id);
-    if (!existing || existing.tenant_id !== payload.tenantId) {
-      return NextResponse.json({ success: false, message: 'PDV não encontrado' }, { status: 404 });
+    if (!existing || existing.tenant_id !== tenantId) {
+      throw new AppError('NOT_FOUND', 'PDV não encontrado', 404);
     }
 
     const pdv = updatePdv(id, name, type || 'PHYSICAL_STORE', resolvedLocation || '');
-    return NextResponse.json({ success: true, pdv });
+    return ok(pdv);
   } catch (error) {
-    console.error('Update pdv error:', error);
-    return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+    return fail(error);
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
-    const cookies = parseCookies(request.headers.get('cookie'));
-    const accessToken = cookies.access_token;
-    
-    if (!accessToken) {
-      return NextResponse.json({ success: false, message: 'Não autorizado' }, { status: 401 });
-    }
+    const ctx = await requireCompanySession();
+    const tenantId = ctx.companyId;
 
-    const payload = await verifyToken(accessToken);
-    if (!payload) {
-      return NextResponse.json({ success: false, message: 'Token inválido' }, { status: 401 });
-    }
-
-    if (payload.role !== 'ADMIN' && payload.role !== 'MANAGER') {
-      return NextResponse.json({ success: false, message: 'Sem permissão' }, { status: 403 });
+    // Only OWNER and MANAGER can delete
+    if (ctx.role !== 'OWNER' && ctx.role !== 'MANAGER') {
+      throw new AppError('FORBIDDEN', 'Sem permissão para deletar PDVs', 403);
     }
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
     if (!id) {
-      return NextResponse.json({ success: false, message: 'ID é obrigatório' }, { status: 400 });
+      throw new AppError('VALIDATION_ERROR', 'ID é obrigatório', 400);
     }
 
     const existing = getPdvById(id);
-    if (!existing || existing.tenant_id !== payload.tenantId) {
-      return NextResponse.json({ success: false, message: 'PDV não encontrado' }, { status: 404 });
+    if (!existing || existing.tenant_id !== tenantId) {
+      throw new AppError('NOT_FOUND', 'PDV não encontrado', 404);
     }
 
     deletePdv(id);
-    return NextResponse.json({ success: true, message: 'PDV deletado' });
+    return ok({ success: true, message: 'PDV deletado' });
   } catch (error) {
-    console.error('Delete pdv error:', error);
-    return NextResponse.json({ success: false, message: 'Erro interno' }, { status: 500 });
+    return fail(error);
   }
 }

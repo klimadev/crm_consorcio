@@ -10,7 +10,6 @@ import {
   type Employee,
   type PDV,
   type PDVType,
-  type Product,
   type Role,
 } from '@/types';
 import {
@@ -20,7 +19,6 @@ import {
   Globe,
   Mail,
   MapPin,
-  Package,
   Plus,
   Save,
   Search,
@@ -96,15 +94,14 @@ const Header: React.FC<{ title: string; subtitle: string; icon: React.ElementTyp
 );
 
 const RoleLabels: Record<Role, string> = {
-  ADMIN: 'Admin',
+  OWNER: 'Proprietário',
   MANAGER: 'Gerente',
-  SALES_REP: 'Consultor',
-  SUPPORT: 'Suporte',
+  COLLABORATOR: 'Colaborador',
 };
 
 export const CustomersView: React.FC = () => {
   const { customers = [], pdvs = [], addCustomer, updateCustomer, currentUser, getPDVName } = useCRM();
-  const canEdit = currentUser?.role === 'ADMIN';
+  const canEdit = currentUser?.role === 'OWNER' || currentUser?.role === 'MANAGER';
 
   const [query, setQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -369,183 +366,9 @@ export const CustomersView: React.FC = () => {
                   </option>
                 ))}
               </select>
-              {!canEdit && <p className="mt-2 text-xs text-slate-400">Apenas ADMIN pode alterar o PDV.</p>}
+              {!canEdit && <p className="mt-2 text-xs text-slate-400">Apenas OWNER ou MANAGER pode alterar o PDV.</p>}
             </div>
           </div>
-        </div>
-      </Modal>
-    </div>
-  );
-};
-
-export const ProductsView: React.FC = () => {
-  const { products = [], addProduct, updateProduct, removeProduct, currentUser } = useCRM();
-  const canEdit = currentUser?.role === 'ADMIN';
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Partial<Product>>({
-    name: '',
-    category: '',
-    basePrice: 0,
-    description: '',
-    active: true,
-  });
-
-  const openNew = () => {
-    setEditingId(null);
-    setFormData({ name: '', category: '', basePrice: 0, description: '', active: true });
-    setIsModalOpen(true);
-  };
-
-  const openEdit = (p: Product) => {
-    setEditingId(p.id);
-    setFormData(p);
-    setIsModalOpen(true);
-  };
-
-  const save = () => {
-    if (!formData.name?.trim()) {
-      alert('Nome do plano e obrigatorio.');
-      return;
-    }
-
-    const payload: Product = {
-      id: editingId || generateStableId('prod'),
-      name: formData.name.trim(),
-      description: formData.description || '',
-      category: formData.category || '',
-      basePrice: Number(formData.basePrice || 0),
-      attributes: Array.isArray(formData.attributes) ? formData.attributes : [],
-      active: formData.active ?? true,
-    };
-
-    if (editingId) updateProduct(payload);
-    else addProduct(payload);
-
-    setIsModalOpen(false);
-  };
-
-  return (
-    <div className="mx-auto max-w-[1600px] space-y-6 p-6 md:p-8">
-      <Header
-        title="Planos"
-        subtitle="Catalogo simples de produtos/planos."
-        icon={Package}
-        right={
-          <button
-            onClick={openNew}
-            disabled={!canEdit}
-            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-          >
-            <Plus size={18} /> Novo
-          </button>
-        }
-      />
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {products.map((p) => (
-          <Card key={p.id} className="p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="truncate text-lg font-bold text-slate-900">{p.name}</div>
-                <div className="mt-1 text-xs font-semibold uppercase tracking-wider text-slate-500">{p.category || 'Sem categoria'}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-sm font-bold text-slate-900">
-                  R$ {Number(p.basePrice || 0).toLocaleString('pt-BR')}
-                </div>
-                <div className={`mt-1 text-xs font-bold ${p.active ? 'text-emerald-600' : 'text-slate-400'}`}>
-                  {p.active ? 'Ativo' : 'Inativo'}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 flex items-center justify-between">
-              <button
-                onClick={() => openEdit(p)}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
-              >
-                <Edit size={14} /> Editar
-              </button>
-              <button
-                onClick={() => {
-                  if (!canEdit) return;
-                  if (confirm('Excluir este plano?')) removeProduct(p.id);
-                }}
-                disabled={!canEdit}
-                className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed"
-              >
-                <Trash2 size={14} /> Excluir
-              </button>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? 'Editar Plano' : 'Novo Plano'} size="lg">
-        <div className="flex flex-col gap-6">
-          <div className="flex justify-end">
-            <button
-              onClick={save}
-              disabled={!canEdit}
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-            >
-              <Save size={18} /> Salvar
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <div className="md:col-span-2">
-              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Nome</label>
-              <input
-                value={formData.name || ''}
-                onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
-                className={inputClass}
-                placeholder="Ex: Carta Imovel 500k"
-                autoFocus
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Categoria</label>
-              <input
-                value={formData.category || ''}
-                onChange={(e) => setFormData((p) => ({ ...p, category: e.target.value }))}
-                className={inputClass}
-                placeholder="Imovel / Auto / Agro"
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Credito (R$)</label>
-              <input
-                type="number"
-                value={Number(formData.basePrice || 0)}
-                onChange={(e) => setFormData((p) => ({ ...p, basePrice: Number(e.target.value) }))}
-                className={inputClass}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Descricao</label>
-              <textarea
-                value={formData.description || ''}
-                onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
-                className={`${inputClass} h-28 resize-none`}
-                placeholder="Resumo do plano..."
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Ativo</label>
-              <select
-                value={formData.active ? '1' : '0'}
-                onChange={(e) => setFormData((p) => ({ ...p, active: e.target.value === '1' }))}
-                className={selectClass}
-              >
-                <option value="1">Ativo</option>
-                <option value="0">Inativo</option>
-              </select>
-            </div>
-          </div>
-          {!canEdit && <p className="text-xs text-slate-400">Apenas ADMIN pode editar planos.</p>}
         </div>
       </Modal>
     </div>
@@ -566,7 +389,7 @@ export const TeamPlacesView: React.FC = () => {
     getPDVName,
   } = useCRM();
 
-  const canEdit = currentUser?.role === 'ADMIN';
+  const canEdit = currentUser?.role === 'OWNER';
   const [tab, setTab] = useState<'pdvs' | 'team'>('pdvs');
 
   // PDV modal
@@ -586,7 +409,7 @@ export const TeamPlacesView: React.FC = () => {
     setPdvModalOpen(true);
   };
 
-  const savePdv = () => {
+  const savePdv = async () => {
     if (!pdvForm.name?.trim()) {
       alert('Nome do PDV e obrigatorio.');
       return;
@@ -599,47 +422,67 @@ export const TeamPlacesView: React.FC = () => {
       isActive: pdvForm.isActive ?? true,
     };
 
-    if (pdvEditingId) updatePDV(payload);
-    else addPDV(payload);
-
-    setPdvModalOpen(false);
+    try {
+      if (pdvEditingId) await updatePDV(payload);
+      else await addPDV(payload);
+      setPdvModalOpen(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao salvar PDV';
+      alert(`Erro ao salvar PDV: ${message}`);
+    }
   };
 
   // Employee modal
   const [empModalOpen, setEmpModalOpen] = useState(false);
   const [empEditingId, setEmpEditingId] = useState<string | null>(null);
-  const [empForm, setEmpForm] = useState<Partial<Employee>>({ name: '', email: '', role: 'SALES_REP', pdvId: null, active: true });
+  const [empForm, setEmpForm] = useState<Partial<Employee> & { password?: string }>({ name: '', email: '', role: 'COLLABORATOR', pdvId: null, active: true, password: '' });
 
   const openNewEmployee = () => {
     setEmpEditingId(null);
-    setEmpForm({ name: '', email: '', role: 'SALES_REP', pdvId: null, active: true });
+    setEmpForm({ name: '', email: '', role: 'COLLABORATOR', pdvId: null, active: true, password: '' });
     setEmpModalOpen(true);
   };
 
   const openEditEmployee = (emp: Employee) => {
     setEmpEditingId(emp.id);
-    setEmpForm(emp);
+    setEmpForm({ ...emp, password: '' });
     setEmpModalOpen(true);
   };
 
-  const saveEmployee = () => {
+  const saveEmployee = async () => {
     if (!empForm.name?.trim() || !empForm.email?.trim()) {
       alert('Nome e Email sao obrigatorios.');
       return;
     }
 
-    const payload: Employee = {
+    // Password is required for new employees
+    if (!empEditingId && !empForm.password?.trim()) {
+      alert('Senha e obrigatoria para novos colaboradores.');
+      return;
+    }
+
+    const payload: Employee & { password?: string } = {
       id: empEditingId || generateStableId('emp'),
       name: empForm.name.trim(),
       email: empForm.email.trim(),
-      role: (empForm.role as Role) || 'SALES_REP',
+      role: (empForm.role as Role) || 'COLLABORATOR',
       pdvId: empForm.pdvId ?? null,
       active: empForm.active ?? true,
     };
 
-    if (empEditingId) updateEmployee(payload);
-    else addEmployee(payload);
-    setEmpModalOpen(false);
+    // Include password only for new employees
+    if (!empEditingId && empForm.password) {
+      payload.password = empForm.password;
+    }
+
+    try {
+      if (empEditingId) await updateEmployee(payload);
+      else await addEmployee(payload);
+      setEmpModalOpen(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao salvar colaborador';
+      alert(`Erro ao salvar colaborador: ${message}`);
+    }
   };
 
   return (
@@ -798,7 +641,7 @@ export const TeamPlacesView: React.FC = () => {
               </tbody>
             </table>
           </div>
-          {!canEdit && <div className="px-6 py-4 text-xs text-slate-400">Apenas ADMIN pode editar equipe.</div>}
+          {!canEdit && <div className="px-6 py-4 text-xs text-slate-400">Apenas OWNER pode editar equipe.</div>}
         </Card>
       )}
 
@@ -880,11 +723,23 @@ export const TeamPlacesView: React.FC = () => {
                 className={inputClass}
               />
             </div>
+            {!empEditingId && (
+              <div className="md:col-span-2">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Senha</label>
+                <input
+                  type="password"
+                  value={empForm.password || ''}
+                  onChange={(e) => setEmpForm((p) => ({ ...p, password: e.target.value }))}
+                  className={inputClass}
+                  placeholder="Senha para o novo colaborador"
+                />
+              </div>
+            )}
 
             <div>
               <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Funcao</label>
               <select
-                value={(empForm.role as string) || 'SALES_REP'}
+                value={(empForm.role as string) || 'COLLABORATOR'}
                 onChange={(e) => setEmpForm((p) => ({ ...p, role: e.target.value as Role }))}
                 className={selectClass}
               >

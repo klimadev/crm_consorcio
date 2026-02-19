@@ -4,19 +4,17 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CRMProvider, useCRM } from '@/context';
-import { DashboardBI, KanbanBoard, CustomersView, ProductsView, TeamPlacesView, NoSSR, ValidatorDashboard } from '@/components';
-import { LayoutDashboard, PieChart, Package, Users, Briefcase, ChevronDown, ShieldCheck } from 'lucide-react';
+import { DashboardBI, KanbanBoard, CustomersView, TeamPlacesView, NoSSR } from '@/components';
+import { LayoutDashboard, PieChart, Users, Briefcase } from 'lucide-react';
 import { BRANDING } from '@/constants';
 
-type View = 'kanban' | 'dashboard' | 'customers' | 'team' | 'products' | 'sales_validation';
+type View = 'kanban' | 'dashboard' | 'customers' | 'team';
 
 const NAV_ITEMS: Array<{ view: View; label: string; icon: React.ElementType }> = [
   { view: 'kanban', label: 'Kanban', icon: LayoutDashboard },
   { view: 'dashboard', label: 'Dashboard', icon: PieChart },
   { view: 'customers', label: 'Consorciados', icon: Briefcase },
   { view: 'team', label: 'Equipe & PDVs', icon: Users },
-  { view: 'products', label: 'Planos', icon: Package },
-  { view: 'sales_validation', label: 'Validação', icon: ShieldCheck },
 ];
 
 const VIEW_TITLES: Record<View, string> = {
@@ -24,8 +22,6 @@ const VIEW_TITLES: Record<View, string> = {
   dashboard: 'Dashboard',
   customers: 'Consorciados',
   team: 'Equipe & PDVs',
-  products: 'Planos',
-  sales_validation: 'Validação de Vendas',
 };
 
 const NavItem = ({
@@ -34,14 +30,12 @@ const NavItem = ({
   label,
   currentView,
   setCurrentView,
-  badge,
 }: {
   view: View;
   icon: React.ElementType;
   label: string;
   currentView: View;
   setCurrentView: (v: View) => void;
-  badge?: number;
 }) => (
   <button
     onClick={() => setCurrentView(view)}
@@ -53,47 +47,28 @@ const NavItem = ({
   >
     <Icon size={20} className={currentView === view ? 'text-white' : 'text-slate-500 group-hover:text-white'} />
     {label}
-    {typeof badge === 'number' && badge > 0 && (
-      <span className="ml-auto bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-        {badge}
-      </span>
-    )}
   </button>
 );
 
 const InnerApp: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('kanban');
-  const [mounted, setMounted] = useState(false);
-  const { currentUser, employees, setCurrentUser, deals, stages, isAuthResolved, salesCounts } = useCRM();
-  const [showUserMenu, setShowUserMenu] = useState(false);
+  const { currentUser, isAuthResolved } = useCRM();
   const router = useRouter();
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  console.log('[InnerApp] Render - isAuthResolved:', isAuthResolved);
+  console.log('[InnerApp] Render - currentUser:', currentUser);
 
   useEffect(() => {
-    if (!mounted) return;
+    console.log('[InnerApp] Auth check effect - isAuthResolved:', isAuthResolved, 'currentUser:', !!currentUser);
     if (isAuthResolved && !currentUser) {
+      console.log('[InnerApp] No user after auth resolved, redirecting to /login');
       router.replace('/login');
     }
-  }, [mounted, isAuthResolved, currentUser, router]);
+  }, [isAuthResolved, currentUser, router]);
 
-  const overdueDealsCount = useMemo(() => {
-    return (deals || []).filter((d) => {
-      if (!d.nextFollowUpDate) return false;
-      const stage = (stages || []).find((s) => s.id === d.stageId);
-      const isClosed = stage?.type === 'WON' || stage?.type === 'LOST';
-      if (isClosed) return false;
-      return new Date(d.nextFollowUpDate) < new Date();
-    }).length;
-  }, [deals, stages]);
+  const viewTitle = useMemo(() => VIEW_TITLES[currentView], [currentView]);
 
-  const pendingSalesCount = useMemo(() => {
-    return salesCounts?.AWAITING_CONSISTENCY || 0;
-  }, [salesCounts]);
-
-  if (!mounted || !isAuthResolved || !currentUser) {
+  if (!isAuthResolved || !currentUser) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50">
         <div className="text-slate-400">Carregando...</div>
@@ -120,46 +95,27 @@ const InnerApp: React.FC = () => {
               label={item.label}
               currentView={currentView}
               setCurrentView={setCurrentView}
-              badge={item.view === 'sales_validation' ? pendingSalesCount : undefined}
             />
           ))}
         </nav>
 
-        <div className="p-4 border-t border-slate-800 relative">
-           <button 
-             onClick={() => setShowUserMenu(!showUserMenu)}
-             className="w-full bg-slate-800/50 hover:bg-slate-800 rounded-xl p-3 border border-slate-700/50 flex items-center justify-between transition-colors"
-           >
-             <div className="flex items-center gap-3 overflow-hidden">
-                <div className="w-8 h-8 rounded-full bg-blue-500 flex flex-shrink-0 items-center justify-center text-xs font-bold text-white">
-                  {currentUser?.name?.charAt(0) ?? '?'}
-                </div>
-                <div className="overflow-hidden text-left">
-                  <p className="text-sm font-medium text-white truncate">{currentUser?.name ?? 'Usuario'}</p>
-                  <p className="text-[10px] text-slate-400 truncate uppercase font-bold">{currentUser.role}</p>
-                </div>
+        <div className="p-4 border-t border-slate-800">
+           <div className="w-full bg-slate-800/50 rounded-xl p-3 border border-slate-700/50 flex items-center gap-3">
+             <div className="w-8 h-8 rounded-full bg-blue-500 flex flex-shrink-0 items-center justify-center text-xs font-bold text-white">
+               {currentUser?.fullName?.charAt(0) ?? currentUser?.name?.charAt(0) ?? '?'}
              </div>
-             <ChevronDown size={14} className="text-slate-500" />
-           </button>
-            {showUserMenu && (
-              <div className="absolute bottom-full left-4 right-4 mb-2 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden py-1 z-50">
-                {(employees || []).map(e => (
-                    <button key={e.id} onClick={() => { setCurrentUser(e); setShowUserMenu(false); }} className={`w-full text-left px-4 py-2 text-sm hover:bg-blue-50 ${currentUser.id === e.id ? 'font-bold text-blue-600 bg-blue-50' : 'text-slate-600'}`}>{e.name}</button>
-                ))}
-              </div>
-            )}
+             <div className="overflow-hidden">
+               <p className="text-sm font-medium text-white truncate">{currentUser?.fullName ?? currentUser?.name ?? 'Usuario'}</p>
+               <p className="text-[10px] text-slate-400 truncate uppercase font-bold">{currentUser.role}</p>
+             </div>
+           </div>
         </div>
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         <header className="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-8 flex-shrink-0 z-10 shadow-sm">
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-slate-800">{VIEW_TITLES[currentView]}</h2>
-            {overdueDealsCount > 0 && (
-              <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700 border border-red-100">
-                {overdueDealsCount} pendencias
-              </span>
-            )}
+            <h2 className="text-xl font-bold text-slate-800">{viewTitle}</h2>
           </div>
         </header>
 
@@ -168,8 +124,6 @@ const InnerApp: React.FC = () => {
           {currentView === 'dashboard' && <DashboardBI />}
           {currentView === 'customers' && <CustomersView />}
           {currentView === 'team' && <TeamPlacesView />}
-          {currentView === 'products' && <ProductsView />}
-          {currentView === 'sales_validation' && <ValidatorDashboard />}
         </div>
       </main>
     </div>

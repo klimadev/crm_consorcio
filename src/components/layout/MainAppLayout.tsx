@@ -9,7 +9,6 @@ interface MainAppLayoutProps {
   children: React.ReactNode;
   currentView: View;
   onViewChange: (view: View) => void;
-  badge?: number;
   userName?: string;
   userRole?: string;
 }
@@ -18,7 +17,6 @@ export function MainAppLayout({
   children,
   currentView,
   onViewChange,
-  badge,
   userName,
   userRole,
 }: MainAppLayoutProps) {
@@ -27,12 +25,11 @@ export function MainAppLayout({
       <MainSidebar
         currentView={currentView}
         onViewChange={onViewChange}
-        badge={badge}
         userName={userName}
         userRole={userRole}
       />
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        <MainHeader title={currentView} badge={badge} />
+        <MainHeader title={currentView} />
         <div className="flex-1 overflow-y-auto relative bg-slate-50">
           {children}
         </div>

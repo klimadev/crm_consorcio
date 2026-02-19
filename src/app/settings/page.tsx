@@ -2,12 +2,16 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSession } from 'next-auth/react';
 import { MainAppLayout } from '@/components/layout/MainAppLayout';
 import { Card } from '@/components/ui/Card';
 import { pdvApi, teamApi } from '@/services/api';
 
 export default function SettingsPage() {
   const queryClient = useQueryClient();
+  const { data: session } = useSession();
+  const userName = session?.user?.fullName ?? session?.user?.name ?? 'User';
+  const userRole = session?.user?.role ?? '-';
   const [pdvName, setPdvName] = useState('');
   const [teamName, setTeamName] = useState('');
   const [teamPdvId, setTeamPdvId] = useState('');
@@ -36,7 +40,7 @@ export default function SettingsPage() {
 
   // TODO(nav): Wire onViewChange to router/state; noop callback breaks sidebar items without href.
   return (
-    <MainAppLayout currentView="settings" onViewChange={() => {}}>
+    <MainAppLayout currentView="settings" onViewChange={() => {}} userName={userName} userRole={userRole}>
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="PDVs">
           <form

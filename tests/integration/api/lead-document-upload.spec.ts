@@ -9,8 +9,8 @@ describe('lead document upload and manager scope', () => {
     const db = createInMemoryDb();
 
     db.prepare('INSERT INTO companies (id, name, slug) VALUES (?, ?, ?)').run('company-1', 'Acme', 'acme');
-    db.prepare('INSERT INTO users (id, email, password_hash, full_name) VALUES (?, ?, ?, ?)').run('owner', 'owner@acme.com', 'hash', 'Owner');
-    db.prepare('INSERT INTO users (id, email, password_hash, full_name) VALUES (?, ?, ?, ?)').run(
+    db.prepare('INSERT INTO users (id, email, password_hash, name) VALUES (?, ?, ?, ?)').run('owner', 'owner@acme.com', 'hash', 'Owner');
+    db.prepare('INSERT INTO users (id, email, password_hash, name) VALUES (?, ?, ?, ?)').run(
       'manager',
       'manager@acme.com',
       'hash',

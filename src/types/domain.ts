@@ -133,6 +133,7 @@ export interface SignupInput {
   companyName: string;
   email: string;
   password: string;
+  fullName?: string;
 }
 
 export interface SignupResult {

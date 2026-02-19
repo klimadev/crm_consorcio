@@ -1,28 +1,21 @@
 'use client';
 
 import { signOut } from 'next-auth/react';
-import { ChevronDown } from 'lucide-react';
 import { BRANDING } from '@/constants';
 import { NAV_ITEMS, type View } from './navigation';
 
 interface MainSidebarProps {
   currentView: View;
   onViewChange: (view: View) => void;
-  badge?: number;
   userName?: string;
   userRole?: string;
-  employees?: Array<{ id: string; name: string }>;
-  onEmployeeSelect?: (employeeId: string) => void;
 }
 
 export function MainSidebar({
   currentView,
   onViewChange,
-  badge,
   userName = 'Usuario',
   userRole = '-',
-  employees = [],
-  onEmployeeSelect,
 }: MainSidebarProps) {
   return (
     <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col flex-shrink-0 z-20 text-white shadow-xl">
@@ -47,11 +40,6 @@ export function MainSidebar({
           >
             <item.icon size={20} className={currentView === item.view ? 'text-white' : 'text-slate-500 group-hover:text-white'} />
             {item.label}
-            {item.view === 'sales_validation' && typeof badge === 'number' && badge > 0 && (
-              <span className="ml-auto bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                {badge}
-              </span>
-            )}
           </button>
         ))}
       </nav>

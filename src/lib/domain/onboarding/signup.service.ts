@@ -19,6 +19,7 @@ interface NormalizedInput {
   companySlug: string;
   email: string;
   password: string;
+  fullName?: string;
 }
 
 function normalizeInput(input: SignupInput): NormalizedInput {
@@ -30,32 +31,35 @@ function normalizeInput(input: SignupInput): NormalizedInput {
     companySlug,
     email: requireString(input.email, 'email').toLowerCase(),
     password: requireString(input.password, 'password'),
+    fullName: input.fullName,
   };
 }
 
 function createDefaultStages(db: Database.Database, companyId: string): void {
   const stages = [
-    { name: 'PROSPECTING', displayName: 'Prospecção', orderIndex: 0 },
-    { name: 'PROPOSAL', displayName: 'Proposta', orderIndex: 1 },
-    { name: 'CONSISTENCY_CHECK', displayName: 'Conferência', orderIndex: 2 },
-    { name: 'ADESÃO', displayName: 'Adesão', orderIndex: 3 },
-    { name: 'CANCELLED', displayName: 'Cancelado', orderIndex: 4 },
+    { name: 'Prospecção', displayName: 'Prospecção', orderIndex: 0, type: 'OPEN', color: '#3b82f6' },
+    { name: 'Qualificação', displayName: 'Qualificação', orderIndex: 1, type: 'OPEN', color: '#8b5cf6' },
+    { name: 'Proposta', displayName: 'Proposta', orderIndex: 2, type: 'OPEN', color: '#f59e0b' },
+    { name: 'Fechamento', displayName: 'Fechamento', orderIndex: 3, type: 'OPEN', color: '#ec4899' },
+    { name: 'Ganho', displayName: 'Ganho', orderIndex: 4, type: 'WON', color: '#10b981' },
+    { name: 'Perdido', displayName: 'Perdido', orderIndex: 5, type: 'LOST', color: '#ef4444' },
   ];
 
   const now = new Date().toISOString();
 
   for (const stage of stages) {
     db.prepare(`
-      INSERT INTO pipeline_stages (id, company_id, name, display_name, order_index, type, color, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO pipeline_stages (id, company_id, tenant_id, name, display_name, order_index, type, color, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       crypto.randomUUID(),
+      companyId,
       companyId,
       stage.name,
       stage.displayName,
       stage.orderIndex,
-      stage.name === 'ADESÃO' ? 'WON' : stage.name === 'CANCELLED' ? 'LOST' : 'OPEN',
-      stage.name === 'ADESÃO' ? '#10b981' : stage.name === 'CANCELLED' ? '#ef4444' : '#3b82f6',
+      stage.type,
+      stage.color,
       now,
       now
     );
@@ -82,6 +86,7 @@ export async function signupCompany(db: Database.Database, rawInput: SignupInput
   const companyId = crypto.randomUUID();
   const userId = crypto.randomUUID();
   const membershipId = crypto.randomUUID();
+  const now = new Date().toISOString();
 
   runInTransaction(db, () => {
     companyRepository.create(db, {
@@ -90,11 +95,18 @@ export async function signupCompany(db: Database.Database, rawInput: SignupInput
       slug: input.companySlug,
     });
 
+    db.prepare(`
+      INSERT INTO tenants (id, name, slug, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(companyId, input.companyName, input.companySlug, now, now);
+
     membershipRepository.createUser(db, {
       id: userId,
       email: input.email,
       passwordHash,
-      fullName: input.email.split('@')[0],
+      fullName: input.fullName || input.email.split('@')[0],
+      companyId,
+      role: 'OWNER',
     });
 
     membershipRepository.createMembership(db, {
@@ -104,7 +116,6 @@ export async function signupCompany(db: Database.Database, rawInput: SignupInput
       role: 'OWNER',
     });
 
-    // Create default pipeline stages - only default data
     createDefaultStages(db, companyId);
   });
 

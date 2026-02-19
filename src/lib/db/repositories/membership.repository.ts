@@ -6,7 +6,7 @@ interface UserRow {
   id: string;
   email: string;
   password_hash: string;
-  full_name: string;
+  name: string;
   is_active: number;
 }
 
@@ -21,24 +21,33 @@ interface MembershipRow {
 export const membershipRepository = {
   findUserByEmail(db: Database.Database, email: string): UserRow | null {
     const row = db
-      .prepare('SELECT id, email, password_hash, full_name, is_active FROM users WHERE email = ? LIMIT 1')
+      .prepare('SELECT id, email, password_hash, name, is_active FROM users WHERE email = ? LIMIT 1')
       .get(email) as UserRow | undefined;
     return row ?? null;
   },
 
   findUserById(db: Database.Database, userId: string): UserRow | null {
     const row = db
-      .prepare('SELECT id, email, password_hash, full_name, is_active FROM users WHERE id = ? LIMIT 1')
+      .prepare('SELECT id, email, password_hash, name, is_active FROM users WHERE id = ? LIMIT 1')
       .get(userId) as UserRow | undefined;
     return row ?? null;
   },
 
-  createUser(db: Database.Database, input: { id: string; email: string; passwordHash: string; fullName: string }): void {
-    db.prepare('INSERT INTO users (id, email, password_hash, full_name) VALUES (?, ?, ?, ?)').run(
+  createUser(db: Database.Database, input: { id: string; email: string; passwordHash: string; fullName: string; companyId?: string; role?: Role }): void {
+    const now = new Date().toISOString();
+    db.prepare(`
+      INSERT INTO users (id, email, password_hash, name, tenant_id, company_id, role, is_active, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+    `).run(
       input.id,
       input.email,
       input.passwordHash,
       input.fullName,
+      input.companyId || null,
+      input.companyId || null,
+      input.role || 'COLLABORATOR',
+      now,
+      now,
     );
   },
 

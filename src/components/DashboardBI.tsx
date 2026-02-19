@@ -2,14 +2,14 @@
 
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, CalendarRange, CircleDollarSign, ShieldCheck, Store, TrendingUp, UserRound } from 'lucide-react';
+import { BarChart3, CalendarRange, CircleDollarSign, Store, TrendingUp } from 'lucide-react';
 import { useCRM } from '@/context';
 import { commercialDashboardApi } from '@/services/api';
 import type { CommercialDashboardFilters } from '@/types';
 import { CommercialFilters } from './CommercialFilters';
 import { Card, KPIWidget } from './SettingsViews';
 
-type CommercialTab = 'overview' | 'ranking' | 'pdv' | 'insurance';
+type CommercialTab = 'overview' | 'ranking' | 'pdv';
 type RankingScope = 'sellers' | 'managers';
 
 const currencyFormatter = new Intl.NumberFormat('pt-BR', {
@@ -118,23 +118,26 @@ const HorizontalBars: React.FC<{ data: Array<{ label: string; value: number; cou
 
 export const DashboardBI: React.FC = () => {
   const { deals = [], pdvs = [], employees = [] } = useCRM();
-  const now = new Date();
   const [activeTab, setActiveTab] = React.useState<CommercialTab>('overview');
   const [rankingScope, setRankingScope] = React.useState<RankingScope>('sellers');
-  const [filters, setFilters] = React.useState<CommercialDashboardFilters>({
-    year: now.getFullYear(),
-    month: now.getMonth() + 1,
-    period: 'month',
+  const [filters, setFilters] = React.useState<CommercialDashboardFilters>(() => {
+    const now = new Date();
+    return {
+      year: now.getFullYear(),
+      month: now.getMonth() + 1,
+      period: 'month',
+    };
   });
 
   const availableYears = React.useMemo(() => {
+    const now = new Date();
     const years = new Set<number>([now.getFullYear()]);
     deals.forEach((deal) => years.add(new Date(deal.createdAt).getFullYear()));
     return Array.from(years).sort((a, b) => b - a);
-  }, [deals, now]);
+  }, [deals]);
 
   const managers = React.useMemo(() => employees.filter((employee) => employee.role === 'MANAGER'), [employees]);
-  const sellers = React.useMemo(() => employees.filter((employee) => employee.role === 'SALES_REP'), [employees]);
+  const sellers = React.useMemo(() => employees.filter((employee) => employee.role === 'COLLABORATOR'), [employees]);
 
   const metricsQuery = useQuery({
     queryKey: ['commercialDashboard', filters],
@@ -143,8 +146,6 @@ export const DashboardBI: React.FC = () => {
 
   const metrics = metricsQuery.data;
   const ranking = rankingScope === 'sellers' ? metrics?.ranking.sellers ?? [] : metrics?.ranking.managers ?? [];
-  const insuranceTotal = (metrics?.insuranceBreakdown.withInsurance ?? 0) + (metrics?.insuranceBreakdown.withoutInsurance ?? 0);
-  const insuranceShare = insuranceTotal > 0 ? ((metrics?.insuranceBreakdown.withInsurance ?? 0) / insuranceTotal) * 100 : 0;
 
   return (
     <div className="mx-auto min-h-full max-w-[1600px] space-y-6 p-6 md:p-8">
@@ -215,9 +216,7 @@ export const DashboardBI: React.FC = () => {
           <button className={tabButtonClass(activeTab === 'pdv')} onClick={() => setActiveTab('pdv')}>
             Faturamento de PDVs
           </button>
-          <button className={tabButtonClass(activeTab === 'insurance')} onClick={() => setActiveTab('insurance')}>
-            Seguro & Produto
-          </button>
+
         </div>
       </div>
 
@@ -317,37 +316,7 @@ export const DashboardBI: React.FC = () => {
         </Card>
       )}
 
-      {!metricsQuery.isLoading && !metricsQuery.isError && activeTab === 'insurance' && metrics && (
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-          <Card className="p-6">
-            <div className="mb-3 flex items-center gap-2">
-              <ShieldCheck size={18} className="text-emerald-600" />
-              <h3 className="text-lg font-bold text-slate-800">Com Seguro</h3>
-            </div>
-            <p className="text-3xl font-bold text-slate-900">{numberFormatter.format(metrics.insuranceBreakdown.withInsurance)}</p>
-            <p className="mt-2 text-sm text-slate-500">{currencyFormatter.format(metrics.insuranceBreakdown.withInsuranceValue)}</p>
-          </Card>
-          <Card className="p-6">
-            <div className="mb-3 flex items-center gap-2">
-              <UserRound size={18} className="text-slate-600" />
-              <h3 className="text-lg font-bold text-slate-800">Sem Seguro</h3>
-            </div>
-            <p className="text-3xl font-bold text-slate-900">{numberFormatter.format(metrics.insuranceBreakdown.withoutInsurance)}</p>
-            <p className="mt-2 text-sm text-slate-500">{currencyFormatter.format(metrics.insuranceBreakdown.withoutInsuranceValue)}</p>
-          </Card>
-          <Card className="p-6">
-            <h3 className="mb-4 text-lg font-bold text-slate-800">Participação</h3>
-             <div className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-600">
-               <span>Propostas com seguro</span>
-               <span>{formatPercent(insuranceShare)}</span>
-             </div>
-            <div className="h-5 rounded-full bg-slate-100">
-              <div className="h-5 rounded-full bg-emerald-500" style={{ width: `${Math.max(insuranceShare, 4)}%` }} />
-            </div>
-            <p className="mt-3 text-xs text-slate-500">Base de cálculo: {numberFormatter.format(insuranceTotal)} vendas no período.</p>
-          </Card>
-        </div>
-      )}
+
     </div>
   );
 };
