@@ -1,8 +1,12 @@
 import { auth } from '@/lib/auth/auth';
-import { getUsersByTenant, createUser, updateUser, getUserById, deleteUser } from '@/lib/db/operations';
+import { getUsersByTenant, updateUser, getUserById, deleteUser } from '@/lib/db/operations';
+import { getDb } from '@/lib/db/connection';
+import { membershipRepository } from '@/lib/db/repositories/membership.repository';
+import { runInTransaction } from '@/lib/db/tx';
 import { NextRequest, NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 import type { User } from '@/types/db';
-import type { Employee } from '@/types';
+import type { Employee, Role } from '@/types';
 
 function transformUserToEmployee(user: User): Employee {
   return {
@@ -43,17 +47,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email, name, and password are required' }, { status: 400 });
     }
 
-    const user = createUser(
-      session.user.tenantId,
-      data.email,
-      data.password,
-      data.name,
-      data.role || 'COLLABORATOR',
-      data.pdvId || null
-    );
+    const db = getDb();
+    const userId = crypto.randomUUID();
+    const membershipId = crypto.randomUUID();
+    const passwordHash = await bcrypt.hash(data.password, 10);
+    const role = (data.role || 'COLLABORATOR') as Role;
+    const companyId = session.user.tenantId;
 
-    const { password_hash, ...userWithoutPassword } = user;
-    return NextResponse.json(userWithoutPassword, { status: 201 });
+    runInTransaction(db, () => {
+      membershipRepository.createUser(db, {
+        id: userId,
+        email: data.email.toLowerCase(),
+        passwordHash,
+        fullName: data.name,
+        companyId,
+        role,
+      });
+
+      membershipRepository.createMembership(db, {
+        id: membershipId,
+        companyId,
+        userId,
+        role,
+      });
+    });
+
+    return NextResponse.json({
+      id: userId,
+      email: data.email.toLowerCase(),
+      name: data.name,
+      role,
+      active: true,
+    }, { status: 201 });
   } catch (error) {
     console.error('Error creating employee:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
