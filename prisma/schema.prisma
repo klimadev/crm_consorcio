@@ -1,0 +1,91 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Empresa {
+  id          String         @id @default(uuid())
+  nome        String
+  email       String         @unique
+  senha_hash  String
+  criado_em   DateTime       @default(now())
+  atualizado_em DateTime     @default(now()) @updatedAt
+  pdvs        Pdv[]
+  funcionarios Funcionario[]
+  estagios    EstagioFunil[]
+  leads       Lead[]
+}
+
+model Pdv {
+  id            String        @id @default(uuid())
+  id_empresa    String
+  nome          String
+  criado_em     DateTime      @default(now())
+  atualizado_em DateTime      @default(now()) @updatedAt
+  empresa       Empresa       @relation(fields: [id_empresa], references: [id], onDelete: Restrict)
+  funcionarios  Funcionario[]
+
+  @@index([id_empresa])
+}
+
+model Funcionario {
+  id            String        @id @default(uuid())
+  id_empresa    String
+  id_pdv        String
+  nome          String
+  email         String        @unique
+  senha_hash    String
+  cargo         String
+  ativo         Boolean       @default(true)
+  criado_em     DateTime      @default(now())
+  atualizado_em DateTime      @default(now()) @updatedAt
+  empresa       Empresa       @relation(fields: [id_empresa], references: [id], onDelete: Restrict)
+  pdv           Pdv           @relation(fields: [id_pdv], references: [id], onDelete: Restrict)
+  leads         Lead[]
+
+  @@index([id_empresa])
+  @@index([id_pdv])
+}
+
+model EstagioFunil {
+  id            String        @id @default(uuid())
+  id_empresa    String
+  nome          String
+  ordem         Int
+  tipo          String
+  criado_em     DateTime      @default(now())
+  atualizado_em DateTime      @default(now()) @updatedAt
+  empresa       Empresa       @relation(fields: [id_empresa], references: [id], onDelete: Restrict)
+  leads         Lead[]
+
+  @@index([id_empresa])
+  @@unique([id_empresa, ordem])
+}
+
+model Lead {
+  id             String       @id @default(uuid())
+  id_empresa     String
+  id_funcionario String
+  id_estagio     String
+  nome           String
+  telefone       String
+  valor_consorcio Float
+  observacoes    String?
+  motivo_perda   String?
+  criado_em      DateTime     @default(now())
+  atualizado_em  DateTime     @default(now()) @updatedAt
+  empresa        Empresa      @relation(fields: [id_empresa], references: [id], onDelete: Restrict)
+  funcionario    Funcionario  @relation(fields: [id_funcionario], references: [id], onDelete: Restrict)
+  estagio        EstagioFunil @relation(fields: [id_estagio], references: [id], onDelete: Restrict)
+
+  @@index([id_empresa])
+  @@index([id_funcionario])
+  @@index([id_estagio])
+}
