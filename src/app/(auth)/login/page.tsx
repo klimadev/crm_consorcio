@@ -34,7 +34,6 @@ export default function PaginaLogin() {
     }
 
     router.push("/resumo");
-    router.refresh();
   }
 
   return (

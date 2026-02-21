@@ -35,7 +35,6 @@ export default function PaginaCadastroEmpresa() {
     }
 
     router.push("/resumo");
-    router.refresh();
   }
 
   return (

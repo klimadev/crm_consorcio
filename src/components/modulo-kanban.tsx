@@ -7,9 +7,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
+import { OptimisticSync } from "@/components/ui/optimistic-sync";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { formataMoeda, normalizaTelefoneParaWhatsapp } from "@/lib/utils";
+import {
+  aplicaMascaraMoedaBr,
+  aplicaMascaraTelefoneBr,
+  converteMoedaBrParaNumero,
+  formataMoeda,
+  normalizaTelefoneParaWhatsapp,
+} from "@/lib/utils";
 
 type Estagio = { id: string; nome: string; ordem: number; tipo: string };
 type Lead = {
@@ -34,6 +41,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
   const [leadSelecionado, setLeadSelecionado] = useState<Lead | null>(null);
+  const [dialogNovoLeadAberto, setDialogNovoLeadAberto] = useState(false);
 
   const [movimentoPendente, setMovimentoPendente] = useState<{
     id_lead: string;
@@ -43,15 +51,10 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
 
   const [cargoNovoLead, setCargoNovoLead] = useState<{ id_funcionario: string } | null>(null);
   const [estagioNovoLead, setEstagioNovoLead] = useState("");
-
-  async function carregarDados() {
-    const resposta = await fetch("/api/leads");
-    if (!resposta.ok) return;
-    const json = await resposta.json();
-    setEstagios(json.estagios ?? []);
-    setLeads(json.leads ?? []);
-    setFuncionarios(json.funcionarios ?? []);
-  }
+  const [telefoneNovoLead, setTelefoneNovoLead] = useState("");
+  const [valorNovoLead, setValorNovoLead] = useState("");
+  const [erroNovoLead, setErroNovoLead] = useState<string | null>(null);
+  const [erroDetalhesLead, setErroDetalhesLead] = useState<string | null>(null);
 
   useEffect(() => {
     let ativo = true;
@@ -86,12 +89,41 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
   }, [estagios, leads]);
 
   async function moverLead(idLead: string, idEstagio: string, motivo?: string) {
-    await fetch(`/api/leads/${idLead}/mover`, {
+    const leadAnterior = leads.find((item) => item.id === idLead);
+    if (!leadAnterior) return false;
+
+    setLeads((atual) =>
+      atual.map((item) =>
+        item.id === idLead
+          ? {
+              ...item,
+              id_estagio: idEstagio,
+              motivo_perda: motivo?.trim() ? motivo.trim() : null,
+            }
+          : item,
+      ),
+    );
+
+    const resposta = await fetch(`/api/leads/${idLead}/mover`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id_estagio: idEstagio, motivo_perda: motivo }),
     });
-    await carregarDados();
+
+    if (!resposta.ok) {
+      setLeads((atual) =>
+        atual.map((item) => (item.id === idLead ? leadAnterior : item)),
+      );
+      return false;
+    }
+
+    const json = (await resposta.json()) as { lead?: Lead };
+    if (json.lead) {
+      const leadAtualizado = json.lead;
+      setLeads((atual) => atual.map((item) => (item.id === idLead ? leadAtualizado : item)));
+    }
+
+    return true;
   }
 
   async function aoDragEnd(resultado: DropResult) {
@@ -117,42 +149,88 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
   async function confirmarPerda(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
     if (!movimentoPendente || !motivoPerda.trim()) return;
-    await moverLead(movimentoPendente.id_lead, movimentoPendente.id_estagio, motivoPerda.trim());
+    const sucesso = await moverLead(
+      movimentoPendente.id_lead,
+      movimentoPendente.id_estagio,
+      motivoPerda.trim(),
+    );
+    if (!sucesso) return;
     setMovimentoPendente(null);
     setMotivoPerda("");
   }
 
   async function criarLead(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
+    setErroNovoLead(null);
     const dados = new FormData(evento.currentTarget);
+    const nome = String(dados.get("nome") ?? "").trim();
+    const id_estagio = String(dados.get("id_estagio") ?? "");
 
     const id_funcionario =
       perfil === "COLABORADOR"
         ? idUsuario
         : cargoNovoLead?.id_funcionario ?? String(dados.get("id_funcionario") ?? "");
 
-    await fetch("/api/leads", {
+    const telefone = telefoneNovoLead;
+    const valor_consorcio = converteMoedaBrParaNumero(valorNovoLead);
+
+    const idTemporario = `temp-${Date.now()}`;
+    const leadTemporario: Lead = {
+      id: idTemporario,
+      id_estagio,
+      id_funcionario,
+      nome,
+      telefone,
+      valor_consorcio,
+      observacoes: null,
+      motivo_perda: null,
+    };
+
+    setLeads((atual) => [leadTemporario, ...atual]);
+
+    const resposta = await fetch("/api/leads", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        nome: dados.get("nome"),
-        telefone: dados.get("telefone"),
-        valor_consorcio: Number(dados.get("valor_consorcio")),
-        id_estagio: dados.get("id_estagio"),
+        nome,
+        telefone,
+        valor_consorcio,
+        id_estagio,
         id_funcionario,
       }),
     });
 
+    if (!resposta.ok) {
+      const json = await resposta.json();
+      setErroNovoLead(json.erro ?? "Erro ao criar lead.");
+      setLeads((atual) => atual.filter((item) => item.id !== idTemporario));
+      return;
+    }
+
+    const json = (await resposta.json()) as { lead?: Lead };
+
+    if (json.lead) {
+      const leadCriado = json.lead;
+      setLeads((atual) =>
+        atual.map((item) => (item.id === idTemporario ? leadCriado : item)),
+      );
+    } else {
+      setLeads((atual) => atual.filter((item) => item.id !== idTemporario));
+    }
+
     evento.currentTarget.reset();
     setEstagioNovoLead("");
     setCargoNovoLead(null);
-    await carregarDados();
+    setTelefoneNovoLead("");
+    setValorNovoLead("");
+    setDialogNovoLeadAberto(false);
   }
 
   async function salvarDetalhesLead() {
     if (!leadSelecionado) return;
+    setErroDetalhesLead(null);
 
-    await fetch(`/api/leads/${leadSelecionado.id}`, {
+    const resposta = await fetch(`/api/leads/${leadSelecionado.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -162,7 +240,18 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
       }),
     });
 
-    await carregarDados();
+    if (!resposta.ok) {
+      const json = await resposta.json();
+      setErroDetalhesLead(json.erro ?? "Erro ao salvar lead.");
+      return;
+    }
+
+    const json = (await resposta.json()) as { lead?: Lead };
+    if (json.lead) {
+      const leadAtualizado = json.lead;
+      setLeads((atual) => atual.map((item) => (item.id === leadAtualizado.id ? leadAtualizado : item)));
+      setLeadSelecionado(leadAtualizado);
+    }
   }
 
   return (
@@ -173,7 +262,15 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
           <p className="text-sm text-slate-500">Funil de vendas com arrastar e soltar.</p>
         </div>
 
-        <Dialog>
+        <Dialog
+          open={dialogNovoLeadAberto}
+          onOpenChange={(aberto) => {
+            setDialogNovoLeadAberto(aberto);
+            if (!aberto) {
+              setErroNovoLead(null);
+            }
+          }}
+        >
           <DialogTrigger asChild>
             <Button>Novo Lead</Button>
           </DialogTrigger>
@@ -184,8 +281,21 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
 
             <form className="space-y-3" onSubmit={criarLead}>
               <Input name="nome" placeholder="Nome" required />
-              <Input name="telefone" placeholder="Telefone" required />
-              <Input name="valor_consorcio" placeholder="Valor" type="number" min={1} required />
+              <Input
+                name="telefone"
+                placeholder="Telefone"
+                value={telefoneNovoLead}
+                onChange={(e) => setTelefoneNovoLead(aplicaMascaraTelefoneBr(e.target.value))}
+                required
+              />
+              <Input
+                name="valor_consorcio"
+                placeholder="Valor"
+                inputMode="numeric"
+                value={valorNovoLead}
+                onChange={(e) => setValorNovoLead(aplicaMascaraMoedaBr(e.target.value))}
+                required
+              />
 
               <input type="hidden" name="id_estagio" value={estagioNovoLead} />
 
@@ -219,6 +329,8 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
                 </Select>
               ) : null}
 
+              {erroNovoLead ? <p className="text-sm text-red-600">{erroNovoLead}</p> : null}
+
               <Button className="w-full">Salvar lead</Button>
             </form>
           </DialogContent>
@@ -241,21 +353,31 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
 
                   <div className="space-y-2">
                     {(leadsPorEstagio[estagio.id] ?? []).map((lead, index) => (
-                      <Draggable key={lead.id} draggableId={lead.id} index={index}>
+                      <Draggable
+                        key={lead.id}
+                        draggableId={lead.id}
+                        index={index}
+                        isDragDisabled={lead.id.startsWith("temp-")}
+                      >
                         {(draggableProvided) => (
-                          <Card
-                            ref={draggableProvided.innerRef}
-                            {...draggableProvided.draggableProps}
-                            {...draggableProvided.dragHandleProps}
-                            className="cursor-pointer"
-                            onClick={() => setLeadSelecionado(lead)}
-                          >
-                            <CardContent className="p-3">
-                              <p className="text-sm font-medium">{lead.nome}</p>
-                              <p className="text-xs text-slate-500">{lead.telefone}</p>
-                              <p className="mt-1 text-sm">{formataMoeda(lead.valor_consorcio)}</p>
-                            </CardContent>
-                          </Card>
+                          <OptimisticSync active={lead.id.startsWith("temp-")} className="cursor-wait">
+                            <Card
+                              ref={draggableProvided.innerRef}
+                              {...draggableProvided.draggableProps}
+                              {...draggableProvided.dragHandleProps}
+                              className={lead.id.startsWith("temp-") ? "bg-transparent" : "cursor-pointer"}
+                              onClick={() => {
+                                if (lead.id.startsWith("temp-")) return;
+                                setLeadSelecionado(lead);
+                              }}
+                            >
+                              <CardContent className="p-3">
+                                <p className="text-sm font-medium">{lead.nome}</p>
+                                <p className="text-xs text-slate-500">{lead.telefone}</p>
+                                <p className="mt-1 text-sm">{formataMoeda(lead.valor_consorcio)}</p>
+                              </CardContent>
+                            </Card>
+                          </OptimisticSync>
                         )}
                       </Draggable>
                     ))}
@@ -292,15 +414,20 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
             <div className="space-y-3 p-2 pb-6">
               <Input
                 value={leadSelecionado.telefone}
-                onChange={(e) => setLeadSelecionado({ ...leadSelecionado, telefone: e.target.value })}
-              />
-              <Input
-                type="number"
-                value={leadSelecionado.valor_consorcio}
                 onChange={(e) =>
                   setLeadSelecionado({
                     ...leadSelecionado,
-                    valor_consorcio: Number(e.target.value),
+                    telefone: aplicaMascaraTelefoneBr(e.target.value),
+                  })
+                }
+              />
+              <Input
+                inputMode="numeric"
+                value={aplicaMascaraMoedaBr(String(Math.round(leadSelecionado.valor_consorcio * 100)))}
+                onChange={(e) =>
+                  setLeadSelecionado({
+                    ...leadSelecionado,
+                    valor_consorcio: converteMoedaBrParaNumero(e.target.value),
                   })
                 }
               />
@@ -320,6 +447,8 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
                   Motivo da perda: {leadSelecionado.motivo_perda}
                 </p>
               ) : null}
+
+              {erroDetalhesLead ? <p className="text-sm text-red-600">{erroDetalhesLead}</p> : null}
 
               <div className="flex gap-2">
                 <Button onClick={salvarDetalhesLead}>Salvar</Button>

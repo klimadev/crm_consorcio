@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { criarTokenSessao, definirCookieSessao } from "@/lib/autenticacao";
+import { esquemaCadastroEmpresa, mensagemErroValidacao } from "@/lib/validacoes";
 
 type CorpoCadastroEmpresa = {
   nome?: string;
@@ -19,17 +20,14 @@ const estagiosPadrao = [
 
 export async function POST(request: Request) {
   const body = (await request.json()) as CorpoCadastroEmpresa;
-  const nome = body.nome?.trim();
-  const email = body.email?.trim().toLowerCase();
-  const senha = body.senha;
-
-  if (!nome || !email || !senha) {
-    return NextResponse.json({ erro: "Preencha nome, e-mail e senha." }, { status: 400 });
+  const validacao = esquemaCadastroEmpresa.safeParse(body);
+  if (!validacao.success) {
+    return NextResponse.json({ erro: mensagemErroValidacao(validacao.error) }, { status: 400 });
   }
 
-  if (senha.length < 6) {
-    return NextResponse.json({ erro: "Senha precisa ter ao menos 6 caracteres." }, { status: 400 });
-  }
+  const nome = validacao.data.nome.trim();
+  const email = validacao.data.email.trim().toLowerCase();
+  const senha = validacao.data.senha;
 
   const jaExiste = await prisma.empresa.findUnique({ where: { email } });
   if (jaExiste) {

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { criarTokenSessao, definirCookieSessao } from "@/lib/autenticacao";
 import { Perfil } from "@/lib/tipos";
+import { esquemaLogin, mensagemErroValidacao } from "@/lib/validacoes";
 
 type CorpoLogin = {
   email?: string;
@@ -11,12 +12,14 @@ type CorpoLogin = {
 
 export async function POST(request: Request) {
   const body = (await request.json()) as CorpoLogin;
-  const email = body.email?.trim().toLowerCase();
-  const senha = body.senha;
+  const validacao = esquemaLogin.safeParse(body);
 
-  if (!email || !senha) {
-    return NextResponse.json({ erro: "E-mail e senha sao obrigatorios." }, { status: 400 });
+  if (!validacao.success) {
+    return NextResponse.json({ erro: mensagemErroValidacao(validacao.error) }, { status: 400 });
   }
+
+  const email = validacao.data.email.trim().toLowerCase();
+  const senha = validacao.data.senha;
 
   const empresa = await prisma.empresa.findUnique({ where: { email } });
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { exigirSessao } from "@/lib/permissoes";
+import { esquemaMoverLead, mensagemErroValidacao } from "@/lib/validacoes";
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -18,9 +19,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     motivo_perda?: string;
   };
 
-  if (!body.id_estagio) {
-    return NextResponse.json({ erro: "Destino obrigatorio." }, { status: 400 });
+  const validacao = esquemaMoverLead.safeParse(body);
+  if (!validacao.success) {
+    return NextResponse.json({ erro: mensagemErroValidacao(validacao.error) }, { status: 400 });
   }
+
+  const dadosValidados = validacao.data;
 
   const lead = await prisma.lead.findFirst({
     where: {
@@ -38,7 +42,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   const estagioDestino = await prisma.estagioFunil.findFirst({
     where: {
-      id: body.id_estagio,
+      id: dadosValidados.id_estagio,
       id_empresa: auth.sessao.id_empresa,
     },
   });
@@ -47,7 +51,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ erro: "Estagio destino invalido." }, { status: 400 });
   }
 
-  if (estagioDestino.tipo === "PERDIDO" && !body.motivo_perda?.trim()) {
+  if (estagioDestino.tipo === "PERDIDO" && !dadosValidados.motivo_perda?.trim()) {
     return NextResponse.json({ erro: "Motivo de perda e obrigatorio." }, { status: 400 });
   }
 
@@ -55,7 +59,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     where: { id: lead.id },
     data: {
       id_estagio: estagioDestino.id,
-      motivo_perda: estagioDestino.tipo === "PERDIDO" ? body.motivo_perda?.trim() : null,
+      motivo_perda: estagioDestino.tipo === "PERDIDO" ? dadosValidados.motivo_perda?.trim() : null,
     },
   });
 

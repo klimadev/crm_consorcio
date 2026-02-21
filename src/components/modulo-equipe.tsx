@@ -27,23 +27,7 @@ export function ModuloEquipe({ perfil }: Props) {
   const [erro, setErro] = useState<string | null>(null);
   const [cargoSelecionado, setCargoSelecionado] = useState("COLABORADOR");
   const [pdvSelecionado, setPdvSelecionado] = useState("");
-
-  async function carregar() {
-    const [resFuncionarios, resPdvs] = await Promise.all([
-      fetch("/api/funcionarios"),
-      fetch("/api/pdvs"),
-    ]);
-
-    if (resFuncionarios.ok) {
-      const json = await resFuncionarios.json();
-      setFuncionarios(json.funcionarios ?? []);
-    }
-
-    if (resPdvs.ok) {
-      const json = await resPdvs.json();
-      setPdvs(json.pdvs ?? []);
-    }
-  }
+  const [dialogNovoFuncionarioAberto, setDialogNovoFuncionarioAberto] = useState(false);
 
   useEffect(() => {
     let ativo = true;
@@ -97,15 +81,54 @@ export function ModuloEquipe({ perfil }: Props) {
       return;
     }
 
-    await carregar();
+    const json = (await resposta.json()) as {
+      funcionario?: {
+        id: string;
+        nome: string;
+        email: string;
+        cargo: string;
+        ativo: boolean;
+        id_pdv: string;
+      };
+    };
+
+    if (json.funcionario) {
+      const funcionarioCriado = json.funcionario;
+      const pdv = pdvs.find((item) => item.id === funcionarioCriado.id_pdv);
+      setFuncionarios((atual) => [
+        {
+          id: funcionarioCriado.id,
+          nome: funcionarioCriado.nome,
+          email: funcionarioCriado.email,
+          cargo: funcionarioCriado.cargo,
+          ativo: funcionarioCriado.ativo,
+          pdv: { id: pdv?.id ?? funcionarioCriado.id_pdv, nome: pdv?.nome ?? "" },
+        },
+        ...atual,
+      ]);
+    }
+
     evento.currentTarget.reset();
     setCargoSelecionado("COLABORADOR");
     setPdvSelecionado("");
+    setDialogNovoFuncionarioAberto(false);
   }
 
   async function inativarFuncionario(id: string) {
-    await fetch(`/api/funcionarios/${id}/inativar`, { method: "PATCH" });
-    await carregar();
+    const funcionarioAnterior = funcionarios.find((item) => item.id === id);
+    if (!funcionarioAnterior) return;
+
+    setFuncionarios((atual) =>
+      atual.map((item) => (item.id === id ? { ...item, ativo: false } : item)),
+    );
+
+    const resposta = await fetch(`/api/funcionarios/${id}/inativar`, { method: "PATCH" });
+
+    if (!resposta.ok) {
+      setFuncionarios((atual) =>
+        atual.map((item) => (item.id === id ? funcionarioAnterior : item)),
+      );
+    }
   }
 
   if (perfil === "COLABORADOR") {
@@ -120,7 +143,15 @@ export function ModuloEquipe({ perfil }: Props) {
           <p className="text-sm text-slate-500">Gestao de funcionarios da empresa.</p>
         </div>
 
-        <Dialog>
+        <Dialog
+          open={dialogNovoFuncionarioAberto}
+          onOpenChange={(aberto) => {
+            setDialogNovoFuncionarioAberto(aberto);
+            if (!aberto) {
+              setErro(null);
+            }
+          }}
+        >
           <DialogTrigger asChild>
             <Button>Novo funcionario</Button>
           </DialogTrigger>
