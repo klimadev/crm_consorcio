@@ -259,7 +259,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Kanban</h1>
-          <p className="text-sm text-slate-500">Funil de vendas com arrastar e soltar.</p>
+          <p className="text-sm text-sky-500">Funil de vendas com arrastar e soltar.</p>
         </div>
 
         <Dialog
@@ -343,7 +343,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
             <Droppable key={estagio.id} droppableId={estagio.id}>
               {(provided) => (
                 <div
-                  className="rounded-lg border border-slate-200 bg-white p-3"
+                  className="rounded-lg border border-sky-200 bg-white p-3"
                   ref={provided.innerRef}
                   {...provided.droppableProps}
                 >
@@ -373,7 +373,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
                             >
                               <CardContent className="p-3">
                                 <p className="text-sm font-medium">{lead.nome}</p>
-                                <p className="text-xs text-slate-500">{lead.telefone}</p>
+                                <p className="text-xs text-sky-500">{lead.telefone}</p>
                                 <p className="mt-1 text-sm">{formataMoeda(lead.valor_consorcio)}</p>
                               </CardContent>
                             </Card>

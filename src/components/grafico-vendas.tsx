@@ -14,8 +14,8 @@ type Props = {
 
 export function GraficoVendas({ dados }: Props) {
   return (
-    <div className="h-72 w-full">
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="min-h-[280px] w-full">
+      <ResponsiveContainer width="100%" height={280}>
         <BarChart data={dados}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="mes" />

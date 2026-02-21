@@ -15,7 +15,7 @@ function DrawerContent({ className, ...props }: React.ComponentProps<typeof Draw
       <DrawerPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50" />
       <DrawerPrimitive.Content
         className={cn(
-          "fixed bottom-0 left-0 right-0 z-50 mt-24 rounded-t-[12px] border border-slate-200 bg-white p-4",
+          "fixed bottom-0 left-0 right-0 z-50 mt-24 rounded-t-[12px] border border-sky-200 bg-white p-4",
           className,
         )}
         {...props}
@@ -36,7 +36,7 @@ function DrawerDescription({
   className,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Description>) {
-  return <DrawerPrimitive.Description className={cn("text-sm text-slate-500", className)} {...props} />;
+  return <DrawerPrimitive.Description className={cn("text-sm text-sky-500", className)} {...props} />;
 }
 
 export {

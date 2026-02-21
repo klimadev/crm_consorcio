@@ -162,7 +162,7 @@ export function ModuloConfigs() {
     <section className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Configuracoes</h1>
-        <p className="text-sm text-slate-500">Gerencie PDVs e estagios do funil.</p>
+        <p className="text-sm text-sky-500">Gerencie PDVs e estagios do funil.</p>
       </div>
 
       {erro ? <p className="text-sm text-red-600">{erro}</p> : null}

@@ -132,7 +132,7 @@ export function ModuloEquipe({ perfil }: Props) {
   }
 
   if (perfil === "COLABORADOR") {
-    return <p className="text-sm text-slate-600">Sem permissao para acessar equipe.</p>;
+    return <p className="text-sm text-sky-600">Sem permissao para acessar equipe.</p>;
   }
 
   return (
@@ -140,7 +140,7 @@ export function ModuloEquipe({ perfil }: Props) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Equipe</h1>
-          <p className="text-sm text-slate-500">Gestao de funcionarios da empresa.</p>
+          <p className="text-sm text-sky-500">Gestao de funcionarios da empresa.</p>
         </div>
 
         <Dialog

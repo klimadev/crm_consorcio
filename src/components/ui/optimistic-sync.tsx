@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 const optimisticSyncVariants = cva("rounded-md border border-dashed p-2 opacity-75", {
   variants: {
     variant: {
-      warning: "border-slate-300 bg-slate-50/70",
+      warning: "border-sky-300 bg-sky-50/70",
       info: "border-sky-300 bg-sky-50/70",
       success: "border-emerald-300 bg-emerald-50/70",
     },

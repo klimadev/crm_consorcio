@@ -56,7 +56,7 @@ export default async function PaginaResumo() {
     <section className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Resumo</h1>
-        <p className="text-sm text-slate-500">Indicadores do seu funil de vendas.</p>
+        <p className="text-sm text-sky-500">Indicadores do seu funil de vendas.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
