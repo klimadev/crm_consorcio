@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,13 @@ export function ModuloEquipe({ perfil }: Props) {
   const [cargoSelecionado, setCargoSelecionado] = useState("COLABORADOR");
   const [pdvSelecionado, setPdvSelecionado] = useState("");
   const [dialogNovoFuncionarioAberto, setDialogNovoFuncionarioAberto] = useState(false);
+
+  // Auto-save states
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [dadosEdicao, setDadosEdicao] = useState<{ nome: string; email: string } | null>(null);
+  const [salvando, setSalvando] = useState(false);
+  const [salvo, setSalvo] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     let ativo = true;
@@ -58,7 +65,85 @@ export function ModuloEquipe({ perfil }: Props) {
     };
   }, []);
 
-  async function adicionarFuncionario(evento: FormEvent<HTMLFormElement>) {
+  // Função de auto-save para funcionário
+  const salvarFuncionario = useCallback(async (id: string, dados: { nome: string; email: string }) => {
+    setSalvando(true);
+    setSalvo(false);
+    setErro(null);
+
+    try {
+      const resposta = await fetch(`/api/funcionarios/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+      });
+
+      if (!resposta.ok) {
+        const json = await resposta.json();
+        setErro(json.erro ?? "Erro ao salvar.");
+        setSalvando(false);
+        return;
+      }
+
+      // Atualizar lista local
+      setFuncionarios((atual) =>
+        atual.map((item) =>
+          item.id === id ? { ...item, nome: dados.nome, email: dados.email } : item
+        )
+      );
+
+      setSalvando(false);
+      setSalvo(true);
+      setTimeout(() => setSalvo(false), 2000);
+    } catch {
+      setErro("Erro ao salvar.");
+      setSalvando(false);
+    }
+  }, []);
+
+  // Iniciar edição de funcionário
+  function iniciarEdicao(funcionario: Funcionario) {
+    setEditandoId(funcionario.id);
+    setDadosEdicao({ nome: funcionario.nome, email: funcionario.email });
+  }
+
+  // Cancelar edição
+  function cancelarEdicao() {
+    setEditandoId(null);
+    setDadosEdicao(null);
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+  }
+
+  // Mudar dados de edição - com debounce
+  function aoMudarDado(campo: "nome" | "email", valor: string) {
+    if (!dadosEdicao || !editandoId) return;
+
+    const novosDados = { ...dadosEdicao, [campo]: valor };
+    setDadosEdicao(novosDados);
+
+    // Limpar timeout anterior
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    // Auto-save após 1 segundo
+    timeoutRef.current = setTimeout(() => {
+      salvarFuncionario(editandoId, novosDados);
+    }, 1000);
+  }
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  async function adicionarFuncionario(evento: React.FormEvent<HTMLFormElement>) {
     evento.preventDefault();
     setErro(null);
     const dados = new FormData(evento.currentTarget);
@@ -140,7 +225,11 @@ export function ModuloEquipe({ perfil }: Props) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Equipe</h1>
-          <p className="text-sm text-sky-500">Gestao de funcionarios da empresa.</p>
+          <p className="text-sm text-sky-500">
+            {salvando && <span className="text-amber-600">Salvando...</span>}
+            {salvo && !salvando && <span className="text-green-600">Salvo ✓</span>}
+            {!salvando && !salvo && "Gestao de funcionarios da empresa."}
+          </p>
         </div>
 
         <Dialog
@@ -153,7 +242,7 @@ export function ModuloEquipe({ perfil }: Props) {
           }}
         >
           <DialogTrigger asChild>
-            <Button>Novo funcionario</Button>
+            <Button>+ Adicionar</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -193,7 +282,7 @@ export function ModuloEquipe({ perfil }: Props) {
 
               {erro ? <p className="text-sm text-red-600">{erro}</p> : null}
 
-              <Button className="w-full">Salvar</Button>
+              <Button className="w-full" type="submit">Criar</Button>
             </form>
           </DialogContent>
         </Dialog>
@@ -213,17 +302,80 @@ export function ModuloEquipe({ perfil }: Props) {
         <TableBody>
           {funcionarios.map((funcionario) => (
             <TableRow key={funcionario.id}>
-              <TableCell>{funcionario.nome}</TableCell>
-              <TableCell>{funcionario.email}</TableCell>
+              {/* Nome editável inline */}
+              <TableCell>
+                {editandoId === funcionario.id && dadosEdicao ? (
+                  <Input
+                    value={dadosEdicao.nome}
+                    onChange={(e) => aoMudarDado("nome", e.target.value)}
+                    className="h-8"
+                  />
+                ) : (
+                  <span
+                    className="cursor-pointer hover:text-sky-600"
+                    onClick={() => iniciarEdicao(funcionario)}
+                    title="Clique para editar"
+                  >
+                    {funcionario.nome}
+                  </span>
+                )}
+              </TableCell>
+              
+              {/* Email editável inline */}
+              <TableCell>
+                {editandoId === funcionario.id && dadosEdicao ? (
+                  <Input
+                    value={dadosEdicao.email}
+                    onChange={(e) => aoMudarDado("email", e.target.value)}
+                    className="h-8"
+                  />
+                ) : (
+                  <span
+                    className="cursor-pointer hover:text-sky-600"
+                    onClick={() => iniciarEdicao(funcionario)}
+                    title="Clique para editar"
+                  >
+                    {funcionario.email}
+                  </span>
+                )}
+              </TableCell>
+              
               <TableCell>{funcionario.cargo}</TableCell>
               <TableCell>{funcionario.pdv?.nome}</TableCell>
-              <TableCell>{funcionario.ativo ? "Ativo" : "Inativo"}</TableCell>
               <TableCell>
-                {funcionario.ativo ? (
-                  <Button variant="destructive" size="sm" onClick={() => inativarFuncionario(funcionario.id)}>
-                    Inativar
-                  </Button>
-                ) : null}
+                <span className={funcionario.ativo ? "text-green-600" : "text-red-500"}>
+                  {funcionario.ativo ? "Ativo" : "Inativo"}
+                </span>
+              </TableCell>
+              <TableCell>
+                {editandoId === funcionario.id ? (
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="outline" onClick={cancelarEdicao}>
+                      Cancelar
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="destructive" 
+                      onClick={() => {
+                        inativarFuncionario(funcionario.id);
+                        cancelarEdicao();
+                      }}
+                    >
+                      Inativar
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="outline" onClick={() => iniciarEdicao(funcionario)}>
+                      Editar
+                    </Button>
+                    {funcionario.ativo && (
+                      <Button size="sm" variant="destructive" onClick={() => inativarFuncionario(funcionario.id)}>
+                        Inativar
+                      </Button>
+                    )}
+                  </div>
+                )}
               </TableCell>
             </TableRow>
           ))}

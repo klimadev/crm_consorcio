@@ -18,6 +18,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     telefone?: string;
     valor_consorcio?: number;
     motivo_perda?: string | null;
+    documento_aprovacao_url?: string | null;
   };
 
   const lead = await prisma.lead.findFirst({
@@ -41,8 +42,38 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       telefone: body.telefone,
       valor_consorcio: body.valor_consorcio,
       motivo_perda: body.motivo_perda,
+      documento_aprovacao_url: body.documento_aprovacao_url ?? undefined,
     },
   });
 
   return NextResponse.json({ lead: atualizado });
+}
+
+export async function DELETE(request: NextRequest, { params }: Params) {
+  const auth = await exigirSessao(request);
+  if (auth.erro) {
+    return auth.erro;
+  }
+
+  const { id } = await params;
+
+  const lead = await prisma.lead.findFirst({
+    where: {
+      id,
+      id_empresa: auth.sessao.id_empresa,
+      ...(auth.sessao.perfil === "COLABORADOR"
+        ? { id_funcionario: auth.sessao.id_usuario }
+        : {}),
+    },
+  });
+
+  if (!lead) {
+    return NextResponse.json({ erro: "Lead nao encontrado." }, { status: 404 });
+  }
+
+  await prisma.lead.delete({
+    where: { id: lead.id },
+  });
+
+  return NextResponse.json({ sucesso: true });
 }

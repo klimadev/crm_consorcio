@@ -79,13 +79,32 @@ model Lead {
   valor_consorcio Float
   observacoes    String?
   motivo_perda   String?
+  documento_aprovacao_url String?  // URL do documento de aprovação (carta de crédito, etc)
   criado_em      DateTime     @default(now())
   atualizado_em  DateTime     @default(now()) @updatedAt
   empresa        Empresa      @relation(fields: [id_empresa], references: [id], onDelete: Restrict)
   funcionario    Funcionario  @relation(fields: [id_funcionario], references: [id], onDelete: Restrict)
   estagio        EstagioFunil @relation(fields: [id_estagio], references: [id], onDelete: Restrict)
+  pendencias     Pendencia[]
 
   @@index([id_empresa])
   @@index([id_funcionario])
   @@index([id_estagio])
+}
+
+model Pendencia {
+  id             String    @id @default(uuid())
+  id_empresa     String
+  id_lead        String
+  tipo           String    // ex: "SEM_RESPOSTA", "CARTA_CREDITO_PENDENTE", "DOCUMENTOS_PENDENTES", "QUEDA_RESERVA"
+  descricao      String
+  documento_url  String?   // URL do documento anexado (ex: carta de crédito aprovada)
+  resolvida      Boolean   @default(false)
+  resolvida_em   DateTime?
+  criado_em      DateTime  @default(now())
+  atualizado_em  DateTime  @default(now()) @updatedAt
+  lead           Lead      @relation(fields: [id_lead], references: [id], onDelete: Cascade)
+
+  @@index([id_empresa])
+  @@index([id_lead])
 }

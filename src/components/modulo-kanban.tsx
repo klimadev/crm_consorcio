@@ -1,7 +1,7 @@
 "use client";
 
 import { DragDropContext, Draggable, DropResult, Droppable } from "@hello-pangea/dnd";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -17,6 +17,7 @@ import {
   formataMoeda,
   normalizaTelefoneParaWhatsapp,
 } from "@/lib/utils";
+import { LABELS_PENDENCIA, TipoPendencia } from "@/lib/validacoes";
 
 type Estagio = { id: string; nome: string; ordem: number; tipo: string };
 type Lead = {
@@ -28,8 +29,18 @@ type Lead = {
   valor_consorcio: number;
   observacoes: string | null;
   motivo_perda: string | null;
+  documento_aprovacao_url: string | null;
 };
 type Funcionario = { id: string; nome: string };
+type PendenciaLead = {
+  id: string;
+  id_lead: string;
+  tipo: string;
+  descricao: string;
+  documento_url: string | null;
+  resolvida: boolean;
+  resolvida_em: string | null;
+};
 
 type Props = {
   perfil: "EMPRESA" | "GERENTE" | "COLABORADOR";
@@ -55,17 +66,44 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
   const [valorNovoLead, setValorNovoLead] = useState("");
   const [erroNovoLead, setErroNovoLead] = useState<string | null>(null);
   const [erroDetalhesLead, setErroDetalhesLead] = useState<string | null>(null);
+  const [documentoAprovacaoUrl, setDocumentoAprovacaoUrl] = useState("");
+
+  // Estados para auto-save
+  const [salvando, setSalvando] = useState(false);
+  const [salvo, setSalvo] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Estado para upload de arquivo
+  const [arquivoSelecionado, setArquivoSelecionado] = useState<File | null>(null);
+  const [uploadando, setUploadando] = useState(false);
+
+  // Pendências - carregadas automaticamente
+  const [todasPendencias, setTodasPendencias] = useState<PendenciaLead[]>([]);
+  const [pendenciasLead, setPendenciasLead] = useState<PendenciaLead[]>([]);
 
   useEffect(() => {
     let ativo = true;
 
     const carregarInicial = async () => {
-      const resposta = await fetch("/api/leads");
-      if (!resposta.ok || !ativo) return;
-      const json = await resposta.json();
-      setEstagios(json.estagios ?? []);
-      setLeads(json.leads ?? []);
-      setFuncionarios(json.funcionarios ?? []);
+      // Carregar leads e pendências em paralelo
+      const [resLeads, resPendencias] = await Promise.all([
+        fetch("/api/leads"),
+        fetch("/api/pendencias"),
+      ]);
+      
+      if (!ativo) return;
+      
+      if (resLeads.ok) {
+        const json = await resLeads.json();
+        setEstagios(json.estagios ?? []);
+        setLeads(json.leads ?? []);
+        setFuncionarios(json.funcionarios ?? []);
+      }
+      
+      if (resPendencias.ok) {
+        const json = await resPendencias.json();
+        setTodasPendencias(json.pendencias ?? []);
+      }
     };
 
     void carregarInicial();
@@ -74,6 +112,21 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
       ativo = false;
     };
   }, []);
+
+  // Contagem de pendências por lead
+  const pendenciasPorLead = useMemo(() => {
+    const mapa: Record<string, { total: number; naoResolvidas: number }> = {};
+    for (const pendencia of todasPendencias) {
+      if (!mapa[pendencia.id_lead]) {
+        mapa[pendencia.id_lead] = { total: 0, naoResolvidas: 0 };
+      }
+      mapa[pendencia.id_lead].total++;
+      if (!pendencia.resolvida) {
+        mapa[pendencia.id_lead].naoResolvidas++;
+      }
+    }
+    return mapa;
+  }, [todasPendencias]);
 
   const leadsPorEstagio = useMemo(() => {
     const mapa: Record<string, Lead[]> = {};
@@ -159,6 +212,103 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
     setMotivoPerda("");
   }
 
+  // Auto-save function com debounce
+  const salvarDetalhesLead = useCallback(async (lead: Lead, urlDocumento?: string) => {
+    setSalvando(true);
+    setSalvo(false);
+    setErroDetalhesLead(null);
+
+    try {
+      let docUrl = urlDocumento ?? documentoAprovacaoUrl.trim();
+      
+      // Se há arquivo selecionado, fazer upload primeiro
+      if (arquivoSelecionado) {
+        const urlUpload = await handleUploadArquivo();
+        if (!urlUpload) {
+          setSalvando(false);
+          return;
+        }
+        docUrl = urlUpload;
+        setArquivoSelecionado(null);
+      }
+
+      const resposta = await fetch(`/api/leads/${lead.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          observacoes: lead.observacoes,
+          telefone: lead.telefone,
+          valor_consorcio: Number(lead.valor_consorcio),
+          documento_aprovacao_url: docUrl || null,
+        }),
+      });
+
+      if (!resposta.ok) {
+        const json = await resposta.json();
+        setErroDetalhesLead(json.erro ?? "Erro ao salvar lead.");
+        setSalvando(false);
+        return;
+      }
+
+      const json = (await resposta.json()) as { lead?: Lead };
+      if (json.lead) {
+        const leadAtualizado = json.lead;
+        setLeads((atual) => atual.map((item) => (item.id === leadAtualizado.id ? leadAtualizado : item)));
+        setLeadSelecionado(leadAtualizado);
+
+        // Se documento foi adicionado, resolver a pendência automaticamente
+        if (docUrl) {
+          await resolverPendenciaDocumentoAprovacao(leadAtualizado.id);
+        }
+      }
+      
+      setSalvando(false);
+      setSalvo(true);
+      
+      // Reset salvo indicator after 2 seconds
+      setTimeout(() => setSalvo(false), 2000);
+    } catch {
+      setErroDetalhesLead("Erro ao salvar lead.");
+      setSalvando(false);
+    }
+  }, [documentoAprovacaoUrl, arquivoSelecionado]);
+
+  // Função que é chamada quando o lead é modificado - com debounce
+  const aoMudarLead = useCallback((leadAtualizado: Lead) => {
+    setLeadSelecionado(leadAtualizado);
+    
+    // Limpar timeout anterior
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    
+    // Auto-save após 1 segundo de inatividade
+    timeoutRef.current = setTimeout(() => {
+      salvarDetalhesLead(leadAtualizado);
+    }, 1000);
+  }, [salvarDetalhesLead]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Quando documento URL muda, também auto-save
+  useEffect(() => {
+    if (leadSelecionado && documentoAprovacaoUrl !== (leadSelecionado.documento_aprovacao_url ?? "")) {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      timeoutRef.current = setTimeout(() => {
+        salvarDetalhesLead(leadSelecionado, documentoAprovacaoUrl);
+      }, 1000);
+    }
+  }, [documentoAprovacaoUrl, leadSelecionado, salvarDetalhesLead]);
+
   async function criarLead(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
     setErroNovoLead(null);
@@ -184,6 +334,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
       valor_consorcio,
       observacoes: null,
       motivo_perda: null,
+      documento_aprovacao_url: null,
     };
 
     setLeads((atual) => [leadTemporario, ...atual]);
@@ -226,33 +377,122 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
     setDialogNovoLeadAberto(false);
   }
 
-  async function salvarDetalhesLead() {
-    if (!leadSelecionado) return;
-    setErroDetalhesLead(null);
+  // Função para resolver automaticamente a pendência de documento de aprovação
+  async function resolverPendenciaDocumentoAprovacao(idLead: string) {
+    try {
+      const resPendencias = await fetch(`/api/pendencias/lead/${idLead}`);
+      if (resPendencias.ok) {
+        const json = await resPendencias.json();
+        const pendencias = json.pendencias ?? [];
+        
+        // Encontrar a pendência de documento de aprovação pendente
+        const pendenciaDocAprovacao = pendencias.find(
+          (p: PendenciaLead) => p.tipo === "DOCUMENTO_APROVACAO_PENDENTE" && !p.resolvida
+        );
 
-    const resposta = await fetch(`/api/leads/${leadSelecionado.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        observacoes: leadSelecionado.observacoes,
-        telefone: leadSelecionado.telefone,
-        valor_consorcio: Number(leadSelecionado.valor_consorcio),
-      }),
-    });
-
-    if (!resposta.ok) {
-      const json = await resposta.json();
-      setErroDetalhesLead(json.erro ?? "Erro ao salvar lead.");
-      return;
-    }
-
-    const json = (await resposta.json()) as { lead?: Lead };
-    if (json.lead) {
-      const leadAtualizado = json.lead;
-      setLeads((atual) => atual.map((item) => (item.id === leadAtualizado.id ? leadAtualizado : item)));
-      setLeadSelecionado(leadAtualizado);
+        if (pendenciaDocAprovacao) {
+          await fetch(`/api/pendencias/${pendenciaDocAprovacao.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ resolvida: true }),
+          });
+          
+          // Recarregar pendências do lead e todas as pendências
+          const [resLead, resTodas] = await Promise.all([
+            fetch(`/api/pendencias/lead/${idLead}`),
+            fetch("/api/pendencias"),
+          ]);
+          
+          if (resLead.ok) {
+            const jsonP = await resLead.json();
+            setPendenciasLead(jsonP.pendencias ?? []);
+          }
+          if (resTodas.ok) {
+            const jsonTodas = await resTodas.json();
+            setTodasPendencias(jsonTodas.pendencias ?? []);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao resolver pendência automaticamente:", error);
     }
   }
+
+  async function abrirPendenciasLead() {
+    if (!leadSelecionado) return;
+    const resposta = await fetch(`/api/pendencias/lead/${leadSelecionado.id}`);
+    if (resposta.ok) {
+      const json = await resposta.json();
+      setPendenciasLead(json.pendencias ?? []);
+    }
+  }
+
+  // Atualiza o URL do documento quando o lead selecionado muda
+  useEffect(() => {
+    if (leadSelecionado) {
+      setDocumentoAprovacaoUrl(leadSelecionado.documento_aprovacao_url ?? "");
+    }
+  }, [leadSelecionado?.id]);
+
+  // Função para fazer upload do arquivo
+  async function handleUploadArquivo(): Promise<string | null> {
+    if (!arquivoSelecionado) return null;
+
+    setUploadando(true);
+    const formData = new FormData();
+    formData.append("arquivo", arquivoSelecionado);
+
+    try {
+      const resposta = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!resposta.ok) {
+        const json = await resposta.json();
+        setErroDetalhesLead(json.erro ?? "Erro ao fazer upload.");
+        return null;
+      }
+
+      const json = await resposta.json();
+      return json.url;
+    } catch {
+      setErroDetalhesLead("Erro ao fazer upload.");
+      return null;
+    } finally {
+      setUploadando(false);
+    }
+  }
+
+  async function togglePendenciaResolvida(pendencia: PendenciaLead) {
+    const resposta = await fetch(`/api/pendencias/${pendencia.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resolvida: !pendencia.resolvida }),
+    });
+
+    if (resposta.ok && leadSelecionado) {
+      // Atualiza pendências do lead específico
+      const resPendencias = await fetch(`/api/pendencias/lead/${leadSelecionado.id}`);
+      if (resPendencias.ok) {
+        const json = await resPendencias.json();
+        setPendenciasLead(json.pendencias ?? []);
+        
+        // Atualiza todas as pendências para atualizar os badges nos cards
+        const resTodas = await fetch("/api/pendencias");
+        if (resTodas.ok) {
+          const jsonTodas = await resTodas.json();
+          setTodasPendencias(jsonTodas.pendencias ?? []);
+        }
+      }
+    }
+  }
+
+  // Encontrar estágio "ABERTO" como default
+  const estagioAberto = useMemo(() => 
+    estagios.find(e => e.tipo === "ABERTO")?.id ?? estagios[0]?.id ?? "",
+    [estagios]
+  );
 
   return (
     <section className="space-y-4">
@@ -272,7 +512,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
           }}
         >
           <DialogTrigger asChild>
-            <Button>Novo Lead</Button>
+            <Button>+ Novo</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -297,9 +537,9 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
                 required
               />
 
-              <input type="hidden" name="id_estagio" value={estagioNovoLead} />
+              <input type="hidden" name="id_estagio" value={estagioNovoLead || estagioAberto} />
 
-              <Select value={estagioNovoLead} onValueChange={setEstagioNovoLead}>
+              <Select value={estagioNovoLead || estagioAberto} onValueChange={setEstagioNovoLead}>
                 <SelectTrigger>
                   <SelectValue placeholder="Estagio" />
                 </SelectTrigger>
@@ -331,7 +571,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
 
               {erroNovoLead ? <p className="text-sm text-red-600">{erroNovoLead}</p> : null}
 
-              <Button className="w-full">Salvar lead</Button>
+              <Button className="w-full" type="submit">Criar lead</Button>
             </form>
           </DialogContent>
         </Dialog>
@@ -347,9 +587,11 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
                   ref={provided.innerRef}
                   {...provided.droppableProps}
                 >
-                  <p className="mb-3 text-sm font-semibold">
-                    {estagio.nome} ({leadsPorEstagio[estagio.id]?.length ?? 0})
-                  </p>
+                  <div className="mb-3">
+                    <p className="text-sm font-semibold">
+                      {estagio.nome} ({leadsPorEstagio[estagio.id]?.length ?? 0})
+                    </p>
+                  </div>
 
                   <div className="space-y-2">
                     {(leadsPorEstagio[estagio.id] ?? []).map((lead, index) => (
@@ -369,12 +611,25 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
                               onClick={() => {
                                 if (lead.id.startsWith("temp-")) return;
                                 setLeadSelecionado(lead);
+                                // Carregar pendências do lead selecionado
+                                const pendenciasDoLead = todasPendencias.filter((p) => p.id_lead === lead.id);
+                                setPendenciasLead(pendenciasDoLead);
                               }}
                             >
                               <CardContent className="p-3">
-                                <p className="text-sm font-medium">{lead.nome}</p>
-                                <p className="text-xs text-sky-500">{lead.telefone}</p>
-                                <p className="mt-1 text-sm">{formataMoeda(lead.valor_consorcio)}</p>
+                                <div className="flex items-start justify-between">
+                                  <div>
+                                    <p className="text-sm font-medium">{lead.nome}</p>
+                                    <p className="text-xs text-sky-500">{lead.telefone}</p>
+                                    <p className="mt-1 text-sm">{formataMoeda(lead.valor_consorcio)}</p>
+                                  </div>
+                                  {/* Badge de pendências */}
+                                  {pendenciasPorLead[lead.id]?.naoResolvidas > 0 && (
+                                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                                      {pendenciasPorLead[lead.id].naoResolvidas}
+                                    </span>
+                                  )}
+                                </div>
                               </CardContent>
                             </Card>
                           </OptimisticSync>
@@ -398,16 +653,35 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
 
           <form className="space-y-3" onSubmit={confirmarPerda}>
             <Textarea value={motivoPerda} onChange={(e) => setMotivoPerda(e.target.value)} required />
-            <Button className="w-full">Confirmar</Button>
+            <Button className="w-full" type="submit">Confirmar</Button>
           </form>
         </DialogContent>
       </Dialog>
 
-      <Drawer open={Boolean(leadSelecionado)} onOpenChange={(aberto) => !aberto && setLeadSelecionado(null)}>
+      <Drawer open={Boolean(leadSelecionado)} onOpenChange={(aberto) => {
+        if (!aberto) {
+          // Salvar mudanças pendentes antes de fechar
+          if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+          }
+          if (leadSelecionado) {
+            salvarDetalhesLead(leadSelecionado, documentoAprovacaoUrl);
+          }
+          setLeadSelecionado(null);
+          setSalvo(false);
+          setSalvando(false);
+        }
+      }}>
         <DrawerContent className="mx-auto w-full max-w-xl">
           <DrawerHeader>
             <DrawerTitle>{leadSelecionado?.nome}</DrawerTitle>
-            <DrawerDescription>Detalhes do lead e observacoes.</DrawerDescription>
+            <DrawerDescription>
+              <span className="flex items-center gap-2">
+                {salvando && <span className="text-amber-600">Salvando...</span>}
+                {salvo && !salvando && <span className="text-green-600">Salvo ✓</span>}
+                {!salvando && !salvo && "Detalhes do lead"}
+              </span>
+            </DrawerDescription>
           </DrawerHeader>
 
           {leadSelecionado ? (
@@ -415,7 +689,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
               <Input
                 value={leadSelecionado.telefone}
                 onChange={(e) =>
-                  setLeadSelecionado({
+                  aoMudarLead({
                     ...leadSelecionado,
                     telefone: aplicaMascaraTelefoneBr(e.target.value),
                   })
@@ -425,22 +699,104 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
                 inputMode="numeric"
                 value={aplicaMascaraMoedaBr(String(Math.round(leadSelecionado.valor_consorcio * 100)))}
                 onChange={(e) =>
-                  setLeadSelecionado({
+                  aoMudarLead({
                     ...leadSelecionado,
                     valor_consorcio: converteMoedaBrParaNumero(e.target.value),
                   })
                 }
               />
               <Textarea
-                placeholder="Observacoes"
+                placeholder="Observações..."
                 value={leadSelecionado.observacoes ?? ""}
                 onChange={(e) =>
-                  setLeadSelecionado({
+                  aoMudarLead({
                     ...leadSelecionado,
                     observacoes: e.target.value,
                   })
                 }
               />
+
+              {/* Campo de Documento de Aprovação */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700">
+                  Documento de Aprovação (PDF)
+                </label>
+                
+                {/* Input de arquivo */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    id="documento-upload"
+                    className="block w-full text-sm text-slate-500
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-md file:border-0
+                      file:text-sm file:font-medium
+                      file:bg-sky-50 file:text-sky-700
+                      hover:file:bg-sky-100
+                    "
+                    onChange={(e) => {
+                      const arquivo = e.target.files?.[0];
+                      if (arquivo) {
+                        if (arquivo.type !== "application/pdf") {
+                          setErroDetalhesLead("Apenas arquivos PDF são permitidos.");
+                          return;
+                        }
+                        if (arquivo.size > 10 * 1024 * 1024) {
+                          setErroDetalhesLead("Arquivo muito grande. Máximo 10MB.");
+                          return;
+                        }
+                        setArquivoSelecionado(arquivo);
+                        setErroDetalhesLead(null);
+                        // Auto-save ao selecionar arquivo
+                        setTimeout(() => salvarDetalhesLead(leadSelecionado), 100);
+                      }
+                    }}
+                  />
+                </div>
+                {arquivoSelecionado && (
+                  <p className="text-sm text-sky-600">
+                    Arquivo selecionado: {arquivoSelecionado.name}
+                  </p>
+                )}
+
+                {/* Input de URL alternativa */}
+                <div className="relative">
+                  <p className="mb-1 text-xs text-slate-500">Ou cole uma URL:</p>
+                  <Input
+                    placeholder="URL do documento (Google Drive, etc)"
+                    value={documentoAprovacaoUrl}
+                    onChange={(e) => {
+                      setDocumentoAprovacaoUrl(e.target.value);
+                      if (e.target.value) setArquivoSelecionado(null);
+                    }}
+                  />
+                </div>
+                
+                {/* Link para visualizar documento atual */}
+                {leadSelecionado?.documento_aprovacao_url && (
+                  <a
+                    href={leadSelecionado.documento_aprovacao_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block text-sm text-sky-500 hover:underline"
+                  >
+                    Ver documento atual
+                  </a>
+                )}
+
+                <p className="text-xs text-slate-500">
+                  O documento de aprovação é opcional, mas sua ausência gera uma pendência.
+                </p>
+              </div>
+
+              {/* Alerta de pendência de documento */}
+              {pendenciasLead.some((p) => p.tipo === "DOCUMENTO_APROVACAO_PENDENTE" && !p.resolvida) && (
+                <div className="rounded border border-amber-200 bg-amber-50 p-2 text-sm text-amber-800">
+                  <p className="font-medium">⚠️ Pendência: Documento de Aprovação</p>
+                  <p className="text-xs">Este lead não possui documento de aprovação anexado.</p>
+                </div>
+              )}
 
               {leadSelecionado.motivo_perda ? (
                 <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
@@ -448,18 +804,69 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
                 </p>
               ) : null}
 
+              {/* Pendências do lead -可以直接resolver */}
+              {pendenciasLead.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-slate-700">Pendências</p>
+                  {pendenciasLead.map((pendencia) => (
+                    <div
+                      key={pendencia.id}
+                      className={`flex items-center justify-between rounded border p-2 ${
+                        pendencia.resolvida ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"
+                      }`}
+                    >
+                      <div>
+                        <p className="text-sm font-medium">
+                          {LABELS_PENDENCIA[pendencia.tipo as TipoPendencia] || pendencia.tipo}
+                        </p>
+                        <p className="text-xs text-slate-600">{pendencia.descricao}</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={pendencia.resolvida}
+                        onChange={() => togglePendenciaResolvida(pendencia)}
+                        className="h-4 w-4"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {erroDetalhesLead ? <p className="text-sm text-red-600">{erroDetalhesLead}</p> : null}
 
               <div className="flex gap-2">
-                <Button onClick={salvarDetalhesLead}>Salvar</Button>
-                <Button variant="outline" asChild>
+                <Button 
+                  variant="outline" 
+                  asChild
+                  className="flex-1"
+                >
                   <a
                     href={`https://wa.me/${normalizaTelefoneParaWhatsapp(leadSelecionado.telefone)}`}
                     target="_blank"
                     rel="noreferrer"
                   >
-                    Chamar no WhatsApp
+                    WhatsApp
                   </a>
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={async () => {
+                    if (!confirm("Tem certeza que deseja excluir este lead?")) return;
+                    
+                    const resposta = await fetch(`/api/leads/${leadSelecionado.id}`, {
+                      method: "DELETE",
+                    });
+
+                    if (resposta.ok) {
+                      setLeads((atual) => atual.filter((item) => item.id !== leadSelecionado.id));
+                      setLeadSelecionado(null);
+                    } else {
+                      const json = await resposta.json();
+                      setErroDetalhesLead(json.erro ?? "Erro ao excluir lead.");
+                    }
+                  }}
+                >
+                  Excluir
                 </Button>
               </div>
             </div>

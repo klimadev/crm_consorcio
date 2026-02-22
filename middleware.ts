@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { NOME_COOKIE_SESSAO } from "@/lib/autenticacao";
 
-const rotasProtegidas = ["/resumo", "/kanban", "/equipe", "/configs"];
+const rotasProtegidas = ["/resumo", "/kanban", "/equipe", "/configs", "/api/upload"];
 
 export function middleware(request: NextRequest) {
   const rotaProtegida = rotasProtegidas.some((rota) => request.nextUrl.pathname.startsWith(rota));
@@ -20,5 +20,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/resumo/:path*", "/kanban/:path*", "/equipe/:path*", "/configs/:path*"],
+  matcher: ["/resumo/:path*", "/kanban/:path*", "/equipe/:path*", "/configs/:path*", "/api/upload/:path*"],
 };

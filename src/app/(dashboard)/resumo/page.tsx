@@ -20,15 +20,30 @@ export default async function PaginaResumo() {
     where: whereLeads,
     include: {
       estagio: true,
+      pendencias: true,
     },
+  });
+
+  // Filtrar leads ganhos que têm todas as pendências resolvidas
+  const gainsWithAllPendenciesResolved = leads.filter((lead) => {
+    if (lead.estagio.tipo !== "GANHO") return false;
+    const pendenciasNaoResolvidas = lead.pendencias.filter((p) => !p.resolvida);
+    return pendenciasNaoResolvidas.length === 0;
+  });
+
+  // Filtrar leads perdidos que têm todas as pendências resolvidas
+  const lostsWithAllPendenciesResolved = leads.filter((lead) => {
+    if (lead.estagio.tipo !== "PERDIDO") return false;
+    const pendenciasNaoResolvidas = lead.pendencias.filter((p) => !p.resolvida);
+    return pendenciasNaoResolvidas.length === 0;
   });
 
   const totalAberto = leads
     .filter((lead) => lead.estagio.tipo === "ABERTO")
     .reduce((acc, lead) => acc + lead.valor_consorcio, 0);
 
-  const ganhos = leads.filter((lead) => lead.estagio.tipo === "GANHO");
-  const perdidos = leads.filter((lead) => lead.estagio.tipo === "PERDIDO");
+  const ganhos = gainsWithAllPendenciesResolved;
+  const perdidos = lostsWithAllPendenciesResolved;
   const totalGanho = ganhos.reduce((acc, lead) => acc + lead.valor_consorcio, 0);
   const taxaConversao = ganhos.length + perdidos.length > 0
     ? (ganhos.length / (ganhos.length + perdidos.length)) * 100
