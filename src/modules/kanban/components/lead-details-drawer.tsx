@@ -32,7 +32,6 @@ type LeadDetailsDrawerProps = {
   salvo: boolean;
   erroDetalhesLead: string | null;
   setErroDetalhesLead: (erro: string | null) => void;
-  onTogglePendenciaResolvida: (pendencia: PendenciaDinamica) => Promise<void>;
   onExcluirLead: (id: string) => Promise<void>;
   onSalvarDetalhesLead: (lead: Lead, urlDocumento?: string, opcoes?: { atualizarSelecionado?: boolean }) => Promise<void>;
 };
@@ -51,7 +50,6 @@ export function LeadDetailsDrawer({
   salvo,
   erroDetalhesLead,
   setErroDetalhesLead,
-  onTogglePendenciaResolvida,
   onExcluirLead,
   onSalvarDetalhesLead,
 }: LeadDetailsDrawerProps) {

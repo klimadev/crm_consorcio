@@ -74,7 +74,6 @@ export type UseKanbanModuleReturn = {
   confirmarPerda: (evento: React.FormEvent<HTMLFormElement>) => Promise<void>;
   aoDragEnd: (resultado: import("@hello-pangea/dnd").DropResult) => Promise<void>;
   aoMudarLead: (leadAtualizado: Lead) => void;
-  togglePendenciaResolvida: (pendencia: PendenciaDinamica) => Promise<void>;
   excluirLead: (id: string) => Promise<void>;
   estagioAberto: string;
   cargoNovoLead: { id_funcionario: string } | null;

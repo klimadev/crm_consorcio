@@ -76,7 +76,6 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         salvo={vm.salvo}
         erroDetalhesLead={vm.erroDetalhesLead}
         setErroDetalhesLead={vm.setErroDetalhesLead}
-        onTogglePendenciaResolvida={vm.togglePendenciaResolvida}
         onExcluirLead={vm.excluirLead}
         onSalvarDetalhesLead={vm.salvarDetalhesLead}
       />

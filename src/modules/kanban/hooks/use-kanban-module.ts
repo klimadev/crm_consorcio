@@ -421,10 +421,6 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     [perfil, idUsuario, cargoNovoLead, telefoneNovoLead, valorNovoLead],
   );
 
-  const togglePendenciaResolvida = useCallback(async (_pendencia: PendenciaDinamica) => {
-    return;
-  }, []);
-
   const excluirLead = useCallback(async (id: string) => {
     const resposta = await fetch(`/api/leads/${id}`, {
       method: "DELETE",
@@ -481,7 +477,6 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     confirmarPerda,
     aoDragEnd,
     aoMudarLead,
-    togglePendenciaResolvida,
     excluirLead,
     estagioAberto,
     cargoNovoLead,
