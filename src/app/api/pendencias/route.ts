@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { exigeSessao } from "./permissoes";
+import { detectarPendenciasDinamicas } from "@/lib/pendencias-dinamicas";
 import { prisma } from "@/lib/prisma";
-import { exigeSessao, wherePendenciasPorPerfil } from "./permissoes";
-import { detectarPendenciasAutomaticas } from "@/lib/pendencias-automaticas";
 
 export async function GET(request: NextRequest) {
   const auth = await exigeSessao(request);
@@ -9,14 +9,16 @@ export async function GET(request: NextRequest) {
     return auth.erro;
   }
 
-  const wherePendencias = wherePendenciasPorPerfil(auth.sessao);
+  const pendencias = await detectarPendenciasDinamicas(
+    auth.sessao.id_empresa,
+    auth.sessao.perfil === "COLABORADOR" ? auth.sessao.id_usuario : undefined
+  );
 
-  const pendencias = await prisma.pendencia.findMany({
-    where: wherePendencias,
-    include: {
-      lead: {
+  const pendenciasComLead = await Promise.all(
+    pendencias.map(async (p) => {
+      const lead = await prisma.lead.findUnique({
+        where: { id: p.id_lead },
         select: {
-          id: true,
           nome: true,
           telefone: true,
           valor_consorcio: true,
@@ -33,35 +35,32 @@ export async function GET(request: NextRequest) {
             },
           },
         },
-      },
-    },
-    orderBy: { criado_em: "desc" },
-  });
+      });
+      return { ...p, lead };
+    })
+  );
 
-  return NextResponse.json({ pendencias });
+  return NextResponse.json({ pendencias: pendenciasComLead });
 }
 
-// POST - Detectar pendências automaticamente (substitui criação manual)
 export async function POST(request: NextRequest) {
   const auth = await exigeSessao(request);
   if (auth.erro) {
     return auth.erro;
   }
 
-  // Apenas EMPRESA pode executar detecção automática
   if (auth.sessao.perfil !== "EMPRESA") {
     return NextResponse.json(
-      { erro: "Apenas a EMPRESA pode executar a detecção automática de pendências." },
+      { erro: "Apenas a EMPRESA pode executar a detecção de pendências." },
       { status: 403 }
     );
   }
 
-  // Detectar pendências automaticamente
-  const resultado = await detectarPendenciasAutomaticas(auth.sessao.id_empresa);
+  const pendencias = await detectarPendenciasDinamicas(auth.sessao.id_empresa);
 
   return NextResponse.json({
-    mensagem: "Detecção automática concluída.",
-    totalProcessados: resultado.totalProcessados,
-    pendenciasDetectadas: resultado.pendenciasDetectadas.length,
+    mensagem: "Detecção de pendências concluída.",
+    totalProcessados: pendencias.length,
+    pendenciasDetectadas: pendencias.filter(p => !p.resolvida).length,
   });
 }

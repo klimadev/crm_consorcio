@@ -64,6 +64,19 @@ export async function detectarPendenciasAutomaticas(idEmpresa: string) {
       }
     }
 
+    // Se o lead está fechado mas agora tem documento, resolver a pendência automaticamente
+    if (isFechado && hasDocumento && tiposPendentes.includes("DOCUMENTO_APROVACAO_PENDENTE")) {
+      const pendencia = pendenciasAtuais.find(
+        (p) => p.tipo === "DOCUMENTO_APROVACAO_PENDENTE"
+      );
+      if (pendencia) {
+        await prisma.pendencia.update({
+          where: { id: pendencia.id },
+          data: { resolvida: true },
+        });
+      }
+    }
+
     // Regra 2: Lead parado em um estágio (exceto GANHO e PERDIDO) por mais de X dias
     const isGanhoOuPerdido = 
       lead.estagio.tipo === "GANHO" || lead.estagio.tipo === "PERDIDO";
@@ -152,6 +165,19 @@ export async function detectarPendenciasParaLead(idLead: string) {
 
   // Se o lead foi reaberto, resolver a pendência de documento automaticamente
   if (!isFechado && tiposPendentes.includes("DOCUMENTO_APROVACAO_PENDENTE")) {
+    const pendencia = pendenciasAtuais.find(
+      (p) => p.tipo === "DOCUMENTO_APROVACAO_PENDENTE"
+    );
+    if (pendencia) {
+      await prisma.pendencia.update({
+        where: { id: pendencia.id },
+        data: { resolvida: true },
+      });
+    }
+  }
+
+  // Se o lead está fechado mas agora tem documento, resolver a pendência automaticamente
+  if (isFechado && hasDocumento && tiposPendentes.includes("DOCUMENTO_APROVACAO_PENDENTE")) {
     const pendencia = pendenciasAtuais.find(
       (p) => p.tipo === "DOCUMENTO_APROVACAO_PENDENTE"
     );

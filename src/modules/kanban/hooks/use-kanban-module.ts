@@ -7,7 +7,50 @@ import {
   aplicaMascaraTelefoneBr,
   converteMoedaBrParaNumero,
 } from "@/lib/utils";
-import type { Estagio, Lead, Funcionario, PendenciaLead, UseKanbanModuleReturn, Props } from "../types";
+import { DIAS_ESTAGIO_PARADO, LABELS_PENDENCIA, TipoPendencia } from "@/lib/validacoes";
+import type { Estagio, Lead, Funcionario, PendenciaDinamica, UseKanbanModuleReturn, Props } from "../types";
+
+type PendenciaCalculada = {
+  id: string;
+  id_lead: string;
+  tipo: TipoPendencia;
+  descricao: string;
+  resolvida: boolean;
+};
+
+function calcularPendenciasLead(lead: Lead, estagio: Estagio): PendenciaCalculada[] {
+  const pendencias: PendenciaCalculada[] = [];
+  const hoje = new Date();
+  const dataLimiteEstagioParado = new Date(hoje);
+  dataLimiteEstagioParado.setDate(dataLimiteEstagioParado.getDate() - DIAS_ESTAGIO_PARADO);
+
+  const isFechadoOuGanho = estagio.tipo === "FECHADO" || estagio.tipo === "GANHO";
+  const isGanhoOuPerdido = estagio.tipo === "GANHO" || estagio.tipo === "PERDIDO";
+  const hasDocumento = !!lead.documento_aprovacao_url;
+  const isEstagioParado = new Date(lead.atualizado_em || Date.now()) < dataLimiteEstagioParado;
+
+  if (isFechadoOuGanho && !hasDocumento) {
+    pendencias.push({
+      id: `${lead.id}:DOCUMENTO_APROVACAO_PENDENTE`,
+      id_lead: lead.id,
+      tipo: "DOCUMENTO_APROVACAO_PENDENTE",
+      descricao: LABELS_PENDENCIA.DOCUMENTO_APROVACAO_PENDENTE,
+      resolvida: false,
+    });
+  }
+
+  if (!isGanhoOuPerdido && isEstagioParado) {
+    pendencias.push({
+      id: `${lead.id}:ESTAGIO_PARADO`,
+      id_lead: lead.id,
+      tipo: "ESTAGIO_PARADO",
+      descricao: `Lead parado no estágio "${estagio.nome}" há mais de ${DIAS_ESTAGIO_PARADO} dias.`,
+      resolvida: false,
+    });
+  }
+
+  return pendencias;
+}
 
 export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleReturn {
   const [estagios, setEstagios] = useState<Estagio[]>([]);
@@ -37,37 +80,22 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
   const [arquivoSelecionado, setArquivoSelecionado] = useState<File | null>(null);
   const [uploadando, setUploadando] = useState(false);
 
-  const [todasPendencias, setTodasPendencias] = useState<PendenciaLead[]>([]);
-  const [pendenciasLead, setPendenciasLead] = useState<PendenciaLead[]>([]);
-
   const bootstrap = useCallback(async () => {
-    const [resLeads, resPendencias] = await Promise.all([
-      fetch("/api/leads"),
-      fetch("/api/pendencias"),
-    ]);
-
+    const resLeads = await fetch("/api/leads");
     if (resLeads.ok) {
       const json = await resLeads.json();
       setEstagios(json.estagios ?? []);
       setLeads(json.leads ?? []);
       setFuncionarios(json.funcionarios ?? []);
     }
-
-    if (resPendencias.ok) {
-      const json = await resPendencias.json();
-      setTodasPendencias(json.pendencias ?? []);
-    }
   }, []);
 
   useEffect(() => {
     let ativo = true;
-
     const carregarInicial = async () => {
       await bootstrap();
     };
-
     void carregarInicial();
-
     return () => {
       ativo = false;
     };
@@ -75,17 +103,29 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
 
   const pendenciasPorLead = useMemo(() => {
     const mapa: Record<string, { total: number; naoResolvidas: number }> = {};
-    for (const pendencia of todasPendencias) {
-      if (!mapa[pendencia.id_lead]) {
-        mapa[pendencia.id_lead] = { total: 0, naoResolvidas: 0 };
-      }
-      mapa[pendencia.id_lead].total++;
-      if (!pendencia.resolvida) {
-        mapa[pendencia.id_lead].naoResolvidas++;
+    const mapaEstagios = Object.fromEntries(estagios.map(e => [e.id, e]));
+    
+    for (const lead of leads) {
+      const estagio = mapaEstagios[lead.id_estagio];
+      if (!estagio) continue;
+      
+      const pendencias = calcularPendenciasLead(lead, estagio);
+      if (pendencias.length > 0) {
+        mapa[lead.id] = {
+          total: pendencias.length,
+          naoResolvidas: pendencias.filter(p => !p.resolvida).length,
+        };
       }
     }
     return mapa;
-  }, [todasPendencias]);
+  }, [leads, estagios]);
+
+  const pendenciasLead = useMemo(() => {
+    if (!leadSelecionado) return [];
+    const estagio = estagios.find(e => e.id === leadSelecionado.id_estagio);
+    if (!estagio) return [];
+    return calcularPendenciasLead(leadSelecionado, estagio);
+  }, [leadSelecionado, estagios]);
 
   const leadsPorEstagio = useMemo(() => {
     const mapa: Record<string, Lead[]> = {};
@@ -214,44 +254,6 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     }
   }, [arquivoSelecionado]);
 
-  const resolverPendenciaDocumentoAprovacao = useCallback(async (idLead: string) => {
-    try {
-      const resPendencias = await fetch(`/api/pendencias/lead/${idLead}`);
-      if (resPendencias.ok) {
-        const json = await resPendencias.json();
-        const pendencias = json.pendencias ?? [];
-
-        const pendenciaDocAprovacao = pendencias.find(
-          (p: PendenciaLead) => p.tipo === "DOCUMENTO_APROVACAO_PENDENTE" && !p.resolvida,
-        );
-
-        if (pendenciaDocAprovacao) {
-          await fetch(`/api/pendencias/${pendenciaDocAprovacao.id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ resolvida: true }),
-          });
-
-          const [resLead, resTodas] = await Promise.all([
-            fetch(`/api/pendencias/lead/${idLead}`),
-            fetch("/api/pendencias"),
-          ]);
-
-          if (resLead.ok) {
-            const jsonP = await resLead.json();
-            setPendenciasLead(jsonP.pendencias ?? []);
-          }
-          if (resTodas.ok) {
-            const jsonTodas = await resTodas.json();
-            setTodasPendencias(jsonTodas.pendencias ?? []);
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Erro ao resolver pendência automaticamente:", error);
-    }
-  }, []);
-
   const salvarDetalhesLead = useCallback(
     async (lead: Lead, urlDocumento?: string, opcoes?: { atualizarSelecionado?: boolean }) => {
       const atualizarSelecionado = opcoes?.atualizarSelecionado ?? true;
@@ -299,10 +301,6 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
               atual && atual.id === leadAtualizado.id ? leadAtualizado : atual,
             );
           }
-
-          if (docUrl) {
-            await resolverPendenciaDocumentoAprovacao(leadAtualizado.id);
-          }
         }
 
         setSalvando(false);
@@ -314,7 +312,7 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
         setSalvando(false);
       }
     },
-    [documentoAprovacaoUrl, arquivoSelecionado, handleUploadArquivo, resolverPendenciaDocumentoAprovacao],
+    [documentoAprovacaoUrl, arquivoSelecionado, handleUploadArquivo],
   );
 
   const aoMudarLead = useCallback(
@@ -378,6 +376,7 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
         observacoes: null,
         motivo_perda: null,
         documento_aprovacao_url: null,
+        atualizado_em: new Date().toISOString(),
       };
 
       setLeads((atual) => [leadTemporario, ...atual]);
@@ -422,27 +421,9 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     [perfil, idUsuario, cargoNovoLead, telefoneNovoLead, valorNovoLead],
   );
 
-  const togglePendenciaResolvida = useCallback(async (pendencia: PendenciaLead) => {
-    const resposta = await fetch(`/api/pendencias/${pendencia.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ resolvida: !pendencia.resolvida }),
-    });
-
-    if (resposta.ok && leadSelecionado) {
-      const resPendencias = await fetch(`/api/pendencias/lead/${leadSelecionado.id}`);
-      if (resPendencias.ok) {
-        const json = await resPendencias.json();
-        setPendenciasLead(json.pendencias ?? []);
-
-        const resTodas = await fetch("/api/pendencias");
-        if (resTodas.ok) {
-          const jsonTodas = await resTodas.json();
-          setTodasPendencias(jsonTodas.pendencias ?? []);
-        }
-      }
-    }
-  }, [leadSelecionado]);
+  const togglePendenciaResolvida = useCallback(async (_pendencia: PendenciaDinamica) => {
+    return;
+  }, []);
 
   const excluirLead = useCallback(async (id: string) => {
     const resposta = await fetch(`/api/leads/${id}`, {
@@ -470,6 +451,7 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     funcionarios,
     leadsPorEstagio,
     pendenciasPorLead,
+    todasPendencias: [],
     leadSelecionado,
     pendenciasLead,
     dialogNovoLeadAberto,
@@ -492,6 +474,8 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     salvando,
     salvo,
     erroDetalhesLead,
+    setErroDetalhesLead,
+    salvarDetalhesLead,
     setLeadSelecionado,
     criarLead,
     confirmarPerda,

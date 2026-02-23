@@ -3,6 +3,30 @@ import { obterSessaoNoServidor } from "@/lib/autenticacao";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formataMoeda } from "@/lib/utils";
 import { GraficoVendas } from "@/components/grafico-vendas";
+import { DIAS_ESTAGIO_PARADO } from "@/lib/validacoes";
+
+function leadTemPendencias(
+  lead: { atualizado_em: Date; documento_aprovacao_url: string | null; estagio: { tipo: string } }
+): boolean {
+  const hoje = new Date();
+  const dataLimiteEstagioParado = new Date(hoje);
+  dataLimiteEstagioParado.setDate(dataLimiteEstagioParado.getDate() - DIAS_ESTAGIO_PARADO);
+
+  const isFechadoOuGanho = lead.estagio.tipo === "FECHADO" || lead.estagio.tipo === "GANHO";
+  const isGanhoOuPerdido = lead.estagio.tipo === "GANHO" || lead.estagio.tipo === "PERDIDO";
+  const hasDocumento = !!lead.documento_aprovacao_url;
+  const isEstagioParado = lead.atualizado_em < dataLimiteEstagioParado;
+
+  if (isFechadoOuGanho && !hasDocumento) {
+    return true;
+  }
+
+  if (!isGanhoOuPerdido && isEstagioParado) {
+    return true;
+  }
+
+  return false;
+}
 
 export default async function PaginaResumo() {
   const sessao = await obterSessaoNoServidor();
@@ -20,22 +44,17 @@ export default async function PaginaResumo() {
     where: whereLeads,
     include: {
       estagio: true,
-      pendencias: true,
     },
   });
 
-  // Filtrar leads ganhos que têm todas as pendências resolvidas
   const gainsWithAllPendenciesResolved = leads.filter((lead) => {
     if (lead.estagio.tipo !== "GANHO") return false;
-    const pendenciasNaoResolvidas = lead.pendencias.filter((p) => !p.resolvida);
-    return pendenciasNaoResolvidas.length === 0;
+    return !leadTemPendencias(lead);
   });
 
-  // Filtrar leads perdidos que têm todas as pendências resolvidas
   const lostsWithAllPendenciesResolved = leads.filter((lead) => {
     if (lead.estagio.tipo !== "PERDIDO") return false;
-    const pendenciasNaoResolvidas = lead.pendencias.filter((p) => !p.resolvida);
-    return pendenciasNaoResolvidas.length === 0;
+    return !leadTemPendencias(lead);
   });
 
   const totalAberto = leads

@@ -66,11 +66,15 @@ export function KanbanBoard({
                                   <p className="text-xs text-slate-500">{lead.telefone}</p>
                                   <p className="mt-1 text-sm font-medium text-slate-700">{formataMoeda(lead.valor_consorcio)}</p>
                                 </div>
-                                {pendenciasPorLead[lead.id]?.naoResolvidas > 0 && (
-                                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
-                                    {pendenciasPorLead[lead.id].naoResolvidas}
-                                  </span>
-                                )}
+                                {(() => {
+                                  const pendencias = pendenciasPorLead[lead.id];
+                                  if (!pendencias) return null;
+                                  return pendencias.naoResolvidas ? (
+                                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                                      {pendencias.naoResolvidas}
+                                    </span>
+                                  ) : null;
+                                })()}
                               </div>
                             </CardContent>
                           </Card>

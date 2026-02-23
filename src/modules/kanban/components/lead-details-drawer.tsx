@@ -11,12 +11,16 @@ import {
   converteMoedaBrParaNumero,
   normalizaTelefoneParaWhatsapp,
 } from "@/lib/utils";
-import { LABELS_PENDENCIA, TipoPendencia } from "@/lib/validacoes";
-import type { Lead, PendenciaLead } from "../types";
+import type { Lead, PendenciaDinamica } from "../types";
+
+const LABELS_PENDENCIA: Record<string, string> = {
+  DOCUMENTO_APROVACAO_PENDENTE: "Documento de Aprovação (Pdf/Link) Pendente",
+  ESTAGIO_PARADO: "Lead Parado no Estágio",
+};
 
 type LeadDetailsDrawerProps = {
   leadSelecionado: Lead | null;
-  pendenciasLead: PendenciaLead[];
+  pendenciasLead: PendenciaDinamica[];
   onOpenChange: (aberto: boolean) => void;
   onMudarLead: (leadAtualizado: Lead) => void;
   documentoAprovacaoUrl: string;
@@ -28,7 +32,7 @@ type LeadDetailsDrawerProps = {
   salvo: boolean;
   erroDetalhesLead: string | null;
   setErroDetalhesLead: (erro: string | null) => void;
-  onTogglePendenciaResolvida: (pendencia: PendenciaLead) => Promise<void>;
+  onTogglePendenciaResolvida: (pendencia: PendenciaDinamica) => Promise<void>;
   onExcluirLead: (id: string) => Promise<void>;
   onSalvarDetalhesLead: (lead: Lead, urlDocumento?: string, opcoes?: { atualizarSelecionado?: boolean }) => Promise<void>;
 };
@@ -119,7 +123,7 @@ export function LeadDetailsDrawer({
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">
-                Documento de Aprovação (PDF)
+                Documento de Aprovação (Pdf)
               </label>
 
               <div className="flex items-center gap-2">
@@ -185,7 +189,7 @@ export function LeadDetailsDrawer({
               </p>
             </div>
 
-            {pendenciasLead.some((p) => p.tipo === "DOCUMENTO_APROVACAO_PENDENTE" && !p.resolvida) && (
+            {pendenciasLead.some((p) => p.tipo === "DOCUMENTO_APROVACAO_PENDENTE") && (
               <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 p-3 text-sm text-amber-800 shadow-sm">
                 <p className="font-semibold">Pendencia: Documento de Aprovacao</p>
                 <p className="mt-1 text-xs">Este lead nao possui documento de aprovacao anexado.</p>
@@ -205,22 +209,14 @@ export function LeadDetailsDrawer({
                 {pendenciasLead.map((pendencia) => (
                   <div
                     key={pendencia.id}
-                    className={`flex items-center justify-between rounded-xl border p-3 ${
-                      pendencia.resolvida ? "border-emerald-200/60 bg-emerald-50/50" : "border-rose-200/60 bg-rose-50/50"
-                    }`}
+                    className="flex items-center justify-between rounded-xl border border-rose-200/60 bg-rose-50/50 p-3"
                   >
                     <div>
                       <p className="text-sm font-semibold text-slate-700">
-                        {LABELS_PENDENCIA[pendencia.tipo as TipoPendencia] || pendencia.tipo}
+                        {LABELS_PENDENCIA[pendencia.tipo] || pendencia.tipo}
                       </p>
                       <p className="text-xs text-slate-500">{pendencia.descricao}</p>
                     </div>
-                    <input
-                      type="checkbox"
-                      checked={pendencia.resolvida}
-                      onChange={() => onTogglePendenciaResolvida(pendencia)}
-                      className="h-5 w-5 rounded border-slate-300 text-slate-600 focus:ring-slate-400 focus:ring-offset-2"
-                    />
                   </div>
                 ))}
               </div>

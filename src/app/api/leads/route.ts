@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { exigirSessao, whereLeadsPorPerfil } from "@/lib/permissoes";
 import { esquemaCriarLead, mensagemErroValidacao } from "@/lib/validacoes";
 
+
 export async function GET(request: NextRequest) {
   const auth = await exigirSessao(request);
   if (auth.erro) {

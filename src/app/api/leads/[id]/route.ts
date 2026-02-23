@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { exigirSessao } from "@/lib/permissoes";
 
+
 type Params = {
   params: Promise<{ id: string }>;
 };

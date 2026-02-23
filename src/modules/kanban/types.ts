@@ -1,3 +1,5 @@
+import { TipoPendencia } from "@/lib/validacoes";
+
 export type Estagio = {
   id: string;
   nome: string;
@@ -15,6 +17,7 @@ export type Lead = {
   observacoes: string | null;
   motivo_perda: string | null;
   documento_aprovacao_url: string | null;
+  atualizado_em: string;
 };
 
 export type Funcionario = {
@@ -22,14 +25,12 @@ export type Funcionario = {
   nome: string;
 };
 
-export type PendenciaLead = {
+export type PendenciaDinamica = {
   id: string;
   id_lead: string;
-  tipo: string;
+  tipo: TipoPendencia;
   descricao: string;
-  documento_url: string | null;
   resolvida: boolean;
-  resolvida_em: string | null;
 };
 
 export type Props = {
@@ -43,8 +44,9 @@ export type UseKanbanModuleReturn = {
   funcionarios: Funcionario[];
   leadsPorEstagio: Record<string, Lead[]>;
   pendenciasPorLead: Record<string, { total: number; naoResolvidas: number }>;
+  todasPendencias: PendenciaDinamica[];
   leadSelecionado: Lead | null;
-  pendenciasLead: PendenciaLead[];
+  pendenciasLead: PendenciaDinamica[];
   dialogNovoLeadAberto: boolean;
   setDialogNovoLeadAberto: (aberto: boolean) => void;
   movimentoPendente: { id_lead: string; id_estagio: string } | null;
@@ -65,12 +67,14 @@ export type UseKanbanModuleReturn = {
   salvando: boolean;
   salvo: boolean;
   erroDetalhesLead: string | null;
+  setErroDetalhesLead: (erro: string | null) => void;
+  salvarDetalhesLead: (lead: Lead, urlDocumento?: string, opcoes?: { atualizarSelecionado?: boolean }) => Promise<void>;
   setLeadSelecionado: (lead: Lead | null) => void;
   criarLead: (evento: React.FormEvent<HTMLFormElement>) => Promise<void>;
   confirmarPerda: (evento: React.FormEvent<HTMLFormElement>) => Promise<void>;
   aoDragEnd: (resultado: import("@hello-pangea/dnd").DropResult) => Promise<void>;
   aoMudarLead: (leadAtualizado: Lead) => void;
-  togglePendenciaResolvida: (pendencia: PendenciaLead) => Promise<void>;
+  togglePendenciaResolvida: (pendencia: PendenciaDinamica) => Promise<void>;
   excluirLead: (id: string) => Promise<void>;
   estagioAberto: string;
   cargoNovoLead: { id_funcionario: string } | null;

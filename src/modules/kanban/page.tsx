@@ -1,108 +1,24 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useRef } from "react";
 import { useKanbanModule } from "./hooks/use-kanban-module";
 import { KanbanHeader } from "./components/kanban-header";
 import { KanbanBoard } from "./components/kanban-board";
 import { PerdaDialog } from "./components/perda-dialog";
 import { LeadDetailsDrawer } from "./components/lead-details-drawer";
-import type { Lead, PendenciaLead, Props } from "./types";
+import type { Lead, Props } from "./types";
 
 export function ModuloKanban({ perfil, idUsuario }: Props) {
   const vm = useKanbanModule({ perfil, idUsuario });
-  const [todasPendencias, setTodasPendencias] = useState<PendenciaLead[]>([]);
-  const [pendenciasLead, setPendenciasLead] = useState<PendenciaLead[]>([]);
-  const [documentoAprovacaoUrl, setDocumentoAprovacaoUrl] = useState("");
-  const [arquivoSelecionado, setArquivoSelecionado] = useState<File | null>(null);
-  const [uploadando, setUploadando] = useState(false);
-  const [salvando, setSalvando] = useState(false);
-  const [salvo, setSalvo] = useState(false);
-  const [erroDetalhesLead, setErroDetalhesLead] = useState<string | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const handleUploadArquivo = useCallback(async (): Promise<string | null> => {
-    if (!arquivoSelecionado) return null;
-    setUploadando(true);
-    const formData = new FormData();
-    formData.append("arquivo", arquivoSelecionado);
-    try {
-      const resposta = await fetch("/api/upload", { method: "POST", body: formData });
-      if (!resposta.ok) {
-        const json = await resposta.json();
-        setErroDetalhesLead(json.erro ?? "Erro ao fazer upload.");
-        return null;
-      }
-      const json = await resposta.json();
-      return json.url;
-    } catch {
-      setErroDetalhesLead("Erro ao fazer upload.");
-      return null;
-    } finally {
-      setUploadando(false);
-    }
-  }, [arquivoSelecionado]);
-
-  const salvarDetalhesLead = useCallback(async (lead: Lead, urlDocumento?: string) => {
-    setSalvando(true);
-    setSalvo(false);
-    setErroDetalhesLead(null);
-    try {
-      let docUrl = urlDocumento ?? documentoAprovacaoUrl.trim();
-      if (arquivoSelecionado) {
-        const urlUpload = await handleUploadArquivo();
-        if (!urlUpload) {
-          setSalvando(false);
-          return;
-        }
-        docUrl = urlUpload;
-        setArquivoSelecionado(null);
-      }
-      const resposta = await fetch(`/api/leads/${lead.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          observacoes: lead.observacoes,
-          telefone: lead.telefone,
-          valor_consorcio: Number(lead.valor_consorcio),
-          documento_aprovacao_url: docUrl || null,
-        }),
-      });
-      if (!resposta.ok) {
-        const json = await resposta.json();
-        setErroDetalhesLead(json.erro ?? "Erro ao salvar lead.");
-        setSalvando(false);
-        return;
-      }
-      const json = await resposta.json();
-      if (json.lead) {
-        setSalvando(false);
-        setSalvo(true);
-        setTimeout(() => setSalvo(false), 2000);
-      }
-    } catch {
-      setErroDetalhesLead("Erro ao salvar lead.");
-      setSalvando(false);
-    }
-  }, [documentoAprovacaoUrl, arquivoSelecionado, handleUploadArquivo]);
-
-  const aoMudarLead = useCallback((leadAtualizado: Lead) => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => salvarDetalhesLead(leadAtualizado), 1000);
-  }, [salvarDetalhesLead]);
-
-  useEffect(() => {
-    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
-  }, []);
 
   const handleLeadClick = (lead: Lead) => {
     vm.setLeadSelecionado(lead);
-    setDocumentoAprovacaoUrl(lead.documento_aprovacao_url ?? "");
   };
 
   const handleDrawerOpenChange = (aberto: boolean) => {
-    if (!aberto && vm.leadSelecionado) {
+    if (!aberto) {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      salvarDetalhesLead(vm.leadSelecionado, documentoAprovacaoUrl);
       vm.setLeadSelecionado(null);
     }
   };
@@ -133,7 +49,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         estagios={vm.estagios}
         leadsPorEstagio={vm.leadsPorEstagio}
         pendenciasPorLead={vm.pendenciasPorLead}
-        todasPendencias={todasPendencias}
+        todasPendencias={vm.todasPendencias}
         onDragEnd={vm.aoDragEnd}
         onLeadClick={handleLeadClick}
       />
@@ -148,21 +64,21 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
 
       <LeadDetailsDrawer
         leadSelecionado={vm.leadSelecionado}
-        pendenciasLead={pendenciasLead}
+        pendenciasLead={vm.pendenciasLead}
         onOpenChange={handleDrawerOpenChange}
-        onMudarLead={aoMudarLead}
-        documentoAprovacaoUrl={documentoAprovacaoUrl}
-        setDocumentoAprovacaoUrl={setDocumentoAprovacaoUrl}
-        arquivoSelecionado={arquivoSelecionado}
-        setArquivoSelecionado={setArquivoSelecionado}
-        uploadando={uploadando}
-        salvando={salvando}
-        salvo={salvo}
-        erroDetalhesLead={erroDetalhesLead}
-        setErroDetalhesLead={setErroDetalhesLead}
+        onMudarLead={vm.aoMudarLead}
+        documentoAprovacaoUrl={vm.documentoAprovacaoUrl}
+        setDocumentoAprovacaoUrl={vm.setDocumentoAprovacaoUrl}
+        arquivoSelecionado={vm.arquivoSelecionado}
+        setArquivoSelecionado={vm.setArquivoSelecionado}
+        uploadando={vm.uploadando}
+        salvando={vm.salvando}
+        salvo={vm.salvo}
+        erroDetalhesLead={vm.erroDetalhesLead}
+        setErroDetalhesLead={vm.setErroDetalhesLead}
         onTogglePendenciaResolvida={vm.togglePendenciaResolvida}
         onExcluirLead={vm.excluirLead}
-        onSalvarDetalhesLead={salvarDetalhesLead}
+        onSalvarDetalhesLead={vm.salvarDetalhesLead}
       />
     </section>
   );
