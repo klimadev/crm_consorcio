@@ -1,7 +1,16 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import { SessaoToken } from "@/lib/tipos";
+
+export type DadosUsuarioLogado = {
+  id: string;
+  nome: string;
+  email: string;
+  cargo: string;
+  nomeEmpresa: string;
+};
 
 export const NOME_COOKIE_SESSAO = "crm_consorcio_sessao";
 
@@ -63,4 +72,29 @@ export async function obterSessaoNaRequest(request: NextRequest) {
   }
 
   return validarTokenSessao(token);
+}
+
+export async function obterDadosUsuarioLogado(
+  sessao: SessaoToken,
+): Promise<DadosUsuarioLogado | null> {
+  try {
+    const funcionario = await prisma.funcionario.findUnique({
+      where: { id: sessao.id_usuario },
+      include: { empresa: true },
+    });
+
+    if (!funcionario) {
+      return null;
+    }
+
+    return {
+      id: funcionario.id,
+      nome: funcionario.nome,
+      email: funcionario.email,
+      cargo: funcionario.cargo,
+      nomeEmpresa: funcionario.empresa.nome,
+    };
+  } catch {
+    return null;
+  }
 }

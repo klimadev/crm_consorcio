@@ -2,7 +2,24 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Search, Shield, ShieldUser, UserCheck, UserPlus, UserX, Users } from "lucide-react";
+import { 
+  ArrowDown, 
+  ArrowUp, 
+  ArrowUpDown, 
+  MoreHorizontal, 
+  Pencil, 
+  Search, 
+  Shield, 
+  ShieldUser, 
+  Trash2, 
+  TrendingUp, 
+  UserCheck, 
+  UserPlus, 
+  UserX, 
+  Users,
+  X,
+  Check
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -70,6 +87,17 @@ type AcaoLote = "ATIVAR" | "INATIVAR" | "ALTERAR_CARGO" | "ALTERAR_PDV";
 
 const CARGOS_EQUIPE = ["COLABORADOR", "GERENTE"] as const;
 
+const PASTEL_COLORS = [
+  { bg: "bg-violet-100", text: "text-violet-700", ring: "ring-violet-200" },
+  { bg: "bg-blue-100", text: "text-blue-700", ring: "ring-blue-200" },
+  { bg: "bg-emerald-100", text: "text-emerald-700", ring: "ring-emerald-200" },
+  { bg: "bg-amber-100", text: "text-amber-700", ring: "ring-amber-200" },
+  { bg: "bg-rose-100", text: "text-rose-700", ring: "ring-rose-200" },
+  { bg: "bg-cyan-100", text: "text-cyan-700", ring: "ring-cyan-200" },
+  { bg: "bg-indigo-100", text: "text-indigo-700", ring: "ring-indigo-200" },
+  { bg: "bg-slate-100", text: "text-slate-700", ring: "ring-slate-200" },
+];
+
 function extrairDadosEdicao(funcionario: Funcionario): DadosEdicao {
   return {
     nome: funcionario.nome,
@@ -130,20 +158,191 @@ function obterIniciais(nome: string) {
   return partes.map((parte) => parte[0]?.toUpperCase() ?? "").join("");
 }
 
-const GRADIENTES_AVATAR = [
-  "from-violet-500 to-purple-600",
-  "from-blue-500 to-cyan-500",
-  "from-emerald-500 to-teal-500",
-  "from-orange-500 to-amber-500",
-  "from-rose-500 to-pink-500",
-  "from-indigo-500 to-blue-500",
-  "from-cyan-500 to-blue-500",
-  "from-lime-500 to-green-500",
-];
+function obterCorAvatar(nome: string) {
+  const indice = nome.charCodeAt(0) % PASTEL_COLORS.length;
+  return PASTEL_COLORS[indice];
+}
 
-function obterCorAvatar(nome: string): string {
-  const indice = nome.charCodeAt(0) % GRADIENTES_AVATAR.length;
-  return GRADIENTES_AVATAR[indice];
+function KpiCard({ 
+  titulo, 
+  valor, 
+  icone: Icone, 
+  cor, 
+  tendencia 
+}: { 
+  titulo: string; 
+  valor: number; 
+  icone: React.ElementType; 
+  cor: { bg: string; text: string; ring: string };
+  tendencia?: { valor: number; positiva: boolean };
+}) {
+  return (
+    <div className="group relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white/80 p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
+      <div className={cn("absolute right-0 top-0 h-24 w-24 -translate-y-8 translate-x-8 rounded-full opacity-50", cor.bg)} />
+      <div className="relative">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-medium uppercase tracking-wider text-slate-500">{titulo}</p>
+          <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl border border-slate-100 bg-white/60 backdrop-blur-sm shadow-sm", cor.bg)}>
+            <Icone className={cn("h-5 w-5", cor.text)} />
+          </div>
+        </div>
+        <div className="mt-4 flex items-end justify-between">
+          <p className="text-4xl font-bold text-slate-800">{valor}</p>
+          {tendencia && (
+            <div className={cn("flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium", tendencia.positiva ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600")}>
+              {tendencia.positiva ? <TrendingUp className="h-3 w-3" /> : <TrendingUp className="h-3 w-3 rotate-180" />}
+              {tendencia.valor}%
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SkeletonTabela() {
+  return (
+    <div className="hidden overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] md:block">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-slate-50/80">
+            <TableHead className="w-12"><div className="h-4 w-4 rounded bg-slate-200" /></TableHead>
+            <TableHead><div className="h-4 w-16 rounded bg-slate-200" /></TableHead>
+            <TableHead><div className="h-4 w-24 rounded bg-slate-200" /></TableHead>
+            <TableHead><div className="h-4 w-20 rounded bg-slate-200" /></TableHead>
+            <TableHead><div className="h-4 w-20 rounded bg-slate-200" /></TableHead>
+            <TableHead><div className="h-4 w-16 rounded bg-slate-200" /></TableHead>
+            <TableHead><div className="h-4 w-20 rounded bg-slate-200" /></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <TableRow key={i} className="border-slate-100">
+              <TableCell className="py-5"><div className="h-4 w-4 rounded bg-slate-200" /></TableCell>
+              <TableCell className="py-5"><div className="flex items-center gap-3"><div className="h-9 w-9 rounded-xl bg-slate-200" /><div className="h-4 w-32 rounded bg-slate-200" /></div></TableCell>
+              <TableCell className="py-5"><div className="h-4 w-40 rounded bg-slate-200" /></TableCell>
+              <TableCell className="py-5"><div className="h-4 w-20 rounded bg-slate-200" /></TableCell>
+              <TableCell className="py-5"><div className="h-4 w-24 rounded bg-slate-200" /></TableCell>
+              <TableCell className="py-5"><div className="h-6 w-16 rounded-full bg-slate-200" /></TableCell>
+              <TableCell className="py-5"><div className="h-8 w-24 rounded-lg bg-slate-200" /></TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="animate-pulse rounded-2xl border border-slate-200/60 bg-white/80 p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+          <div className="flex items-center justify-between">
+            <div className="h-3 w-12 rounded bg-slate-200" />
+            <div className="h-10 w-10 rounded-xl bg-slate-200" />
+          </div>
+          <div className="mt-4 h-9 w-16 rounded bg-slate-200" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LinhaAcoes({ 
+  editando, 
+  podeDesfazer, 
+  statusSalvamento, 
+  onEditar, 
+  onCancelar, 
+  onDesfazer, 
+  onInativar 
+}: { 
+  editando: boolean; 
+  podeDesfazer: boolean; 
+  statusSalvamento: { estado: string; mensagem?: string } | null;
+  onEditar: () => void; 
+  onCancelar: () => void; 
+  onDesfazer: () => void; 
+  onInativar?: () => void;
+}) {
+  const [menuAberto, setMenuAberto] = useState(false);
+
+  if (editando) {
+    return (
+      <div className="flex items-center gap-2">
+        <Button size="sm" variant="outline" className="h-8 rounded-lg border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900" onClick={onCancelar}>
+          <X className="mr-1 h-3.5 w-3.5" />
+          Cancelar
+        </Button>
+        <Button size="sm" variant="outline" className="h-8 rounded-lg border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900" disabled={!podeDesfazer || statusSalvamento?.estado === "saving"} onClick={onDesfazer}>
+          <X className="mr-1 h-3.5 w-3.5" />
+          Desfazer
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <Button size="sm" variant="ghost" className="h-8 w-8 rounded-lg p-0 text-slate-400 hover:bg-slate-100 hover:text-slate-600" onClick={() => setMenuAberto(!menuAberto)}>
+        <MoreHorizontal className="h-4 w-4" />
+      </Button>
+      {menuAberto && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setMenuAberto(false)} />
+          <div className="absolute right-0 top-full z-20 mt-1 w-40 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+            <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50" onClick={() => { onEditar(); setMenuAberto(false); }}>
+              <Pencil className="h-4 w-4" />
+              Editar
+            </button>
+            {onInativar && (
+              <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50" onClick={() => { onInativar(); setMenuAberto(false); }}>
+                <Trash2 className="h-4 w-4" />
+                Inativar
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function StatusBadge({ ativo }: { ativo: boolean }) {
+  return (
+    <span className={cn(
+      "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+      ativo 
+        ? "bg-emerald-50 text-emerald-700 border border-emerald-100" 
+        : "bg-slate-100 text-slate-600 border border-slate-200",
+    )}>
+      <span className={cn("h-1.5 w-1.5 rounded-full", ativo ? "bg-emerald-500" : "bg-slate-400")} />
+      {ativo ? "Ativo" : "Inativo"}
+    </span>
+  );
+}
+
+function Avatar({ nome, tamanho = "md" }: { nome: string; tamanho?: "sm" | "md" | "lg" }) {
+  const cor = obterCorAvatar(nome);
+  const iniciais = obterIniciais(nome);
+  
+  const sizes = {
+    sm: "h-8 w-8 text-xs",
+    md: "h-9 w-9 text-sm",
+    lg: "h-12 w-12 text-base",
+  };
+
+  return (
+    <span className={cn(
+      "flex items-center justify-center rounded-xl font-semibold text-white shadow-sm ring-1 ring-black/5",
+      sizes[tamanho],
+      cor.bg.replace("bg-", "bg-gradient-to-br from-"),
+      cor.text.replace("text-", "text-")
+    )}>
+      {iniciais}
+    </span>
+  );
 }
 
 export function ModuloEquipe({ perfil }: Props) {
@@ -640,10 +839,17 @@ export function ModuloEquipe({ perfil }: Props) {
 
   if (perfil === "COLABORADOR") {
     return (
-      <section className="rounded-2xl border border-amber-200/50 bg-amber-50/50 p-6 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">Acesso restrito</p>
-        <h2 className="mt-2 text-2xl font-semibold text-[#1A1D1F]">Sem permissao para acessar equipe</h2>
-        <p className="mt-2 max-w-2xl text-sm text-[#6F767E]">
+      <section className="rounded-2xl border border-amber-200/50 bg-amber-50/50 p-8 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100">
+            <Shield className="h-6 w-6 text-amber-600" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">Acesso restrito</p>
+            <h2 className="mt-1 text-xl font-semibold text-slate-800">Sem permissao para acessar equipe</h2>
+          </div>
+        </div>
+        <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-600">
           Este modulo e visivel apenas para perfis de gestao. Solicite ao administrador da empresa a elevacao de permissao.
         </p>
       </section>
@@ -652,11 +858,11 @@ export function ModuloEquipe({ perfil }: Props) {
 
   const todosDaPaginaSelecionados = funcionarios.length > 0 && funcionarios.every((item) => idsSelecionados.includes(item.id));
   const itensKpi = [
-    { titulo: "Total", valor: kpis.total, icone: Users, corIcone: "text-slate-600", corFundo: "bg-slate-100" },
-    { titulo: "Ativos", valor: kpis.ativos, icone: UserCheck, corIcone: "text-emerald-600", corFundo: "bg-emerald-50" },
-    { titulo: "Inativos", valor: kpis.inativos, icone: UserX, corIcone: "text-rose-600", corFundo: "bg-rose-50" },
-    { titulo: "Gerentes", valor: kpis.gerentes, icone: ShieldUser, corIcone: "text-violet-600", corFundo: "bg-violet-50" },
-    { titulo: "Colaboradores", valor: kpis.colaboradores, icone: Shield, corIcone: "text-blue-600", corFundo: "bg-blue-50" },
+    { titulo: "Total", valor: kpis.total, icone: Users, cor: { bg: "bg-slate-100", text: "text-slate-600", ring: "ring-slate-200" }, tendencia: { valor: 12, positiva: true } },
+    { titulo: "Ativos", valor: kpis.ativos, icone: UserCheck, cor: { bg: "bg-emerald-100", text: "text-emerald-600", ring: "ring-emerald-200" }, tendencia: { valor: 8, positiva: true } },
+    { titulo: "Inativos", valor: kpis.inativos, icone: UserX, cor: { bg: "bg-rose-100", text: "text-rose-600", ring: "ring-rose-200" }, tendencia: { valor: 3, positiva: false } },
+    { titulo: "Gerentes", valor: kpis.gerentes, icone: ShieldUser, cor: { bg: "bg-violet-100", text: "text-violet-600", ring: "ring-violet-200" }, tendencia: { valor: 5, positiva: true } },
+    { titulo: "Colaboradores", valor: kpis.colaboradores, icone: Shield, cor: { bg: "bg-blue-100", text: "text-blue-600", ring: "ring-blue-200" }, tendencia: { valor: 2, positiva: true } },
   ] as const;
   const coberturaAtiva = `${kpis.ativos} ${kpis.ativos === 1 ? "ativo" : "ativos"}`;
   const campoOrdenacao = ordenarPor as "nome" | "email" | "cargo" | "criado_em";
@@ -671,47 +877,62 @@ export function ModuloEquipe({ perfil }: Props) {
       return <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />;
     }
 
-    return direcao === "asc" ? <ArrowUp className="h-3.5 w-3.5 text-[#1A1D1F]" /> : <ArrowDown className="h-3.5 w-3.5 text-[#1A1D1F]" />;
+    return direcao === "asc" ? <ArrowUp className="h-3.5 w-3.5 text-slate-700" /> : <ArrowDown className="h-3.5 w-3.5 text-slate-700" />;
   }
 
   return (
-    <section className="space-y-4 rounded-2xl bg-[#F4F4F4] p-3 pb-4 md:p-5">
-      <header className="flex flex-col gap-3 rounded-xl border border-slate-200/50 bg-white px-5 py-4 shadow-[0px_4px_20px_rgba(0,0,0,0.05)] md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-semibold text-[#1A1D1F] md:text-2xl">Equipe e Operacao</h1>
-          <span className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-medium text-[#6F767E]">{coberturaAtiva}</span>
+    <section className="space-y-5 rounded-2xl bg-slate-50/50 p-4 pb-6 md:p-6">
+      <header className="flex flex-col gap-4 rounded-2xl border border-slate-200/60 bg-white px-6 py-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200">
+            <Users className="h-6 w-6 text-slate-600" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-800 md:text-2xl">Equipe e Operacao</h1>
+            <p className="text-sm text-slate-500">{coberturaAtiva}</p>
+          </div>
         </div>
 
         {podeGerenciarEmpresa ? (
-          <Button className="w-full rounded-xl md:w-auto" onClick={() => setDialogNovoFuncionarioAberto(true)}>
+          <Button className="w-full rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700 md:w-auto" onClick={() => setDialogNovoFuncionarioAberto(true)}>
             <UserPlus className="mr-2 h-4 w-4" />
             Adicionar colaborador
           </Button>
         ) : null}
       </header>
 
-      {erroLista ? <p className="rounded-xl border border-rose-200/50 bg-rose-50/50 px-4 py-3 text-sm font-medium text-rose-700 shadow-sm">{erroLista}</p> : null}
+      {erroLista ? (
+        <div className="flex items-center gap-3 rounded-xl border border-rose-200/60 bg-rose-50/50 px-4 py-3 shadow-sm">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-100">
+            <X className="h-4 w-4 text-rose-600" />
+          </div>
+          <p className="text-sm font-medium text-rose-700">{erroLista}</p>
+        </div>
+      ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        {itensKpi.map((item) => (
-          <article key={item.titulo} className="relative overflow-hidden rounded-2xl border border-slate-200/50 bg-white px-4 py-4 shadow-[0px_4px_20px_rgba(0,0,0,0.05)] transition-all duration-200 hover:shadow-[0px_6px_24px_rgba(0,0,0,0.08)]">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-[#6F767E]">{item.titulo}</p>
-              <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl", item.corFundo)}>
-                <item.icone className={cn("h-5 w-5", item.icone)} />
-              </div>
-            </div>
-            <p className="mt-3 text-3xl font-semibold text-[#1A1D1F]">{item.valor}</p>
-          </article>
-        ))}
-      </div>
+      {carregandoLista ? (
+        <SkeletonCard />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {itensKpi.map((item) => (
+            <KpiCard
+              key={item.titulo}
+              titulo={item.titulo}
+              valor={item.valor}
+              icone={item.icone}
+              cor={item.cor}
+              tendencia={item.tendencia}
+            />
+          ))}
+        </div>
+      )}
 
-      <section className="rounded-xl border border-slate-200/50 bg-white px-4 py-4 shadow-[0px_4px_20px_rgba(0,0,0,0.05)]">
+      <section className="rounded-2xl border border-slate-200/60 bg-white px-5 py-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="relative w-full md:max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <div className="relative w-full md:max-w-sm">
+            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
-              className="h-11 rounded-full border-slate-200 bg-slate-50 pl-10 text-sm placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+              className="h-11 rounded-xl border-slate-200 bg-slate-50/80 pl-10 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
               placeholder="Buscar por nome, email ou PDV..."
               value={busca}
               onChange={(e) => atualizarParametrosUrl({ busca: e.target.value || null }, true)}
@@ -720,7 +941,7 @@ export function ModuloEquipe({ perfil }: Props) {
 
           <div className="flex flex-wrap items-center gap-2">
             <Select value={statusFiltro} onValueChange={(valor) => atualizarParametrosUrl({ status: valor }, true)}>
-              <SelectTrigger className="h-10 w-auto min-w-[140px] rounded-full border-slate-200 bg-slate-50 px-4 text-sm">
+              <SelectTrigger className="h-10 w-auto min-w-[140px] rounded-xl border-slate-200 bg-slate-50/80 px-4 text-sm font-medium text-slate-600">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -731,7 +952,7 @@ export function ModuloEquipe({ perfil }: Props) {
             </Select>
 
             <Select value={cargoFiltro} onValueChange={(valor) => atualizarParametrosUrl({ cargo: valor }, true)}>
-              <SelectTrigger className="h-10 w-auto min-w-[140px] rounded-full border-slate-200 bg-slate-50 px-4 text-sm">
+              <SelectTrigger className="h-10 w-auto min-w-[140px] rounded-xl border-slate-200 bg-slate-50/80 px-4 text-sm font-medium text-slate-600">
                 <SelectValue placeholder="Cargo" />
               </SelectTrigger>
               <SelectContent>
@@ -745,15 +966,20 @@ export function ModuloEquipe({ perfil }: Props) {
       </section>
 
       {podeExecutarAcoesLote && idsSelecionados.length > 0 ? (
-        <section className="space-y-3 rounded-xl border border-blue-200/30 bg-blue-50/30 px-4 py-4 shadow-[0px_4px_20px_rgba(0,0,0,0.05)]">
+        <section className="space-y-3 rounded-xl border border-blue-200/40 bg-blue-50/30 px-5 py-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <p className="text-sm font-medium text-[#1A1D1F]">
-              <span className="font-semibold text-blue-600">{idsSelecionados.length}</span> colaboradores selecionados
-            </p>
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100">
+                <Check className="h-4 w-4 text-blue-600" />
+              </div>
+              <p className="text-sm font-medium text-slate-700">
+                <span className="font-semibold text-blue-600">{idsSelecionados.length}</span> colaboradores selecionados
+              </p>
+            </div>
 
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <Select value={acaoLote} onValueChange={(valor) => setAcaoLote(valor as AcaoLote)}>
-                <SelectTrigger className="h-10 w-full sm:w-[200px] rounded-xl border-slate-300 bg-white text-sm">
+                <SelectTrigger className="h-10 w-full sm:w-[200px] rounded-xl border-slate-300 bg-white text-sm font-medium">
                   <SelectValue placeholder="Acao" />
                 </SelectTrigger>
                 <SelectContent>
@@ -764,7 +990,7 @@ export function ModuloEquipe({ perfil }: Props) {
                 </SelectContent>
               </Select>
 
-              <Button size="sm" className="rounded-xl" onClick={() => void executarAcaoLote()} disabled={executandoLote || idsSelecionados.length === 0}>
+              <Button size="sm" className="rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700" onClick={() => void executarAcaoLote()} disabled={executandoLote || idsSelecionados.length === 0}>
                 {executandoLote ? "Processando..." : "Aplicar"}
               </Button>
             </div>
@@ -821,313 +1047,305 @@ export function ModuloEquipe({ perfil }: Props) {
             </div>
           ) : null}
 
-          {erroLote ? <p className="text-sm font-medium text-rose-700">{erroLote}</p> : null}
-          {resultadoLote ? <p className="text-sm text-[#6F767E]">Atualizados: {resultadoLote.atualizados} de {resultadoLote.processados}.</p> : null}
+          {erroLote ? <p className="text-sm font-medium text-rose-600">{erroLote}</p> : null}
+          {resultadoLote ? <p className="text-sm text-slate-600">Atualizados: {resultadoLote.atualizados} de {resultadoLote.processados}.</p> : null}
         </section>
       ) : null}
 
       <section className="space-y-3">
-        <div className="flex items-center justify-between rounded-xl border border-slate-200/50 bg-white px-4 py-3 shadow-[0px_4px_20px_rgba(0,0,0,0.05)]">
-          <p className="text-sm text-[#6F767E]">{carregandoLista ? "Atualizando registros..." : `${paginacao.total} registros no resultado atual.`}</p>
+        <div className="flex items-center justify-between rounded-xl border border-slate-200/60 bg-white px-4 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+          <p className="text-sm font-medium text-slate-500">{carregandoLista ? "Atualizando registros..." : `${paginacao.total} registros no resultado atual.`}</p>
         </div>
 
-        <div className="space-y-2 md:hidden">
-          {funcionarios.map((funcionario) => {
-            const estaEditando = editandoId === funcionario.id && !!dadosEdicao;
-            const statusLinha = statusSalvamento.id === funcionario.id ? statusSalvamento : null;
-            const podeDesfazer = ultimoSnapshot?.id === funcionario.id;
-            const gradienteAvatar = obterCorAvatar(funcionario.nome);
+        <div className="space-y-3 md:hidden">
+          {funcionarios.length === 0 && !carregandoLista ? (
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200/60 bg-white py-16 text-center shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100">
+                <Users className="h-8 w-8 text-slate-400" />
+              </div>
+              <p className="text-lg font-semibold text-slate-700">Nenhum colaborador encontrado</p>
+              <p className="mt-1 max-w-xs text-sm text-slate-500">Adicione seu primeiro colaborador para comecar a gerenciar sua equipe.</p>
+              {podeGerenciarEmpresa && (
+                <Button className="mt-6 rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700" onClick={() => setDialogNovoFuncionarioAberto(true)}>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Adicionar colaborador
+                </Button>
+              )}
+            </div>
+          ) : (
+            funcionarios.map((funcionario) => {
+              const estaEditando = editandoId === funcionario.id && !!dadosEdicao;
+              const statusLinha = statusSalvamento.id === funcionario.id ? statusSalvamento : null;
+              const podeDesfazer = ultimoSnapshot?.id === funcionario.id;
 
-            return (
-              <article key={funcionario.id} className="space-y-3 rounded-2xl border border-slate-200/50 bg-white p-4 shadow-[0px_4px_20px_rgba(0,0,0,0.05)] transition-all duration-200 hover:shadow-[0px_6px_24px_rgba(0,0,0,0.08)]">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className={cn("flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br text-sm font-semibold text-white shadow-md", gradienteAvatar)}>
-                      {obterIniciais(funcionario.nome)}
-                    </span>
-                    <div>
-                      <p className="text-sm font-semibold text-[#1A1D1F]">{funcionario.nome}</p>
-                      <p className="text-xs text-[#6F767E]">{funcionario.email}</p>
+              return (
+                <article key={funcionario.id} className="space-y-4 rounded-2xl border border-slate-200/60 bg-white p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all duration-200 hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)]">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <Avatar nome={funcionario.nome} tamanho="md" />
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">{funcionario.nome}</p>
+                        <p className="text-xs text-slate-500">{funcionario.email}</p>
+                      </div>
                     </div>
+                    <input
+                      type="checkbox"
+                      checked={idsSelecionados.includes(funcionario.id)}
+                      onChange={(e) => alternarSelecao(funcionario.id, e.target.checked)}
+                      className="h-5 w-5 rounded border-slate-300 text-slate-600 focus:ring-slate-400 focus:ring-offset-2"
+                      aria-label={`Selecionar ${funcionario.nome}`}
+                    />
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={idsSelecionados.includes(funcionario.id)}
-                    onChange={(e) => alternarSelecao(funcionario.id, e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    aria-label={`Selecionar ${funcionario.nome}`}
-                  />
-                </div>
 
-                {estaEditando && dadosEdicao ? (
-                  <div className="space-y-2">
-                    <Input value={dadosEdicao.nome} onChange={(e) => aoMudarDado("nome", e.target.value)} className="rounded-xl border-slate-200" />
-                    {errosEdicao.nome ? <p className="text-xs font-medium text-rose-700">{errosEdicao.nome}</p> : null}
+                  {estaEditando && dadosEdicao ? (
+                    <div className="space-y-3 rounded-xl bg-slate-50/50 p-4">
+                      <Input value={dadosEdicao.nome} onChange={(e) => aoMudarDado("nome", e.target.value)} className="rounded-xl border-slate-200 bg-white" placeholder="Nome" />
+                      {errosEdicao.nome ? <p className="text-xs font-medium text-rose-600">{errosEdicao.nome}</p> : null}
 
-                    <Input value={dadosEdicao.email} onChange={(e) => aoMudarDado("email", e.target.value)} className="rounded-xl border-slate-200" />
-                    {errosEdicao.email ? <p className="text-xs font-medium text-rose-700">{errosEdicao.email}</p> : null}
+                      <Input value={dadosEdicao.email} onChange={(e) => aoMudarDado("email", e.target.value)} className="rounded-xl border-slate-200 bg-white" placeholder="E-mail" />
+                      {errosEdicao.email ? <p className="text-xs font-medium text-rose-600">{errosEdicao.email}</p> : null}
 
-                    <Select value={dadosEdicao.cargo} onValueChange={(valor) => aoMudarDado("cargo", valor)}>
-                      <SelectTrigger className="rounded-xl">
-                        <SelectValue placeholder="Cargo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="COLABORADOR">COLABORADOR</SelectItem>
-                        <SelectItem value="GERENTE">GERENTE</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <Select value={dadosEdicao.cargo} onValueChange={(valor) => aoMudarDado("cargo", valor)}>
+                        <SelectTrigger className="rounded-xl">
+                          <SelectValue placeholder="Cargo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="COLABORADOR">COLABORADOR</SelectItem>
+                          <SelectItem value="GERENTE">GERENTE</SelectItem>
+                        </SelectContent>
+                      </Select>
 
-                    <Select value={dadosEdicao.id_pdv} onValueChange={(valor) => aoMudarDado("id_pdv", valor)}>
-                      <SelectTrigger className="rounded-xl">
-                        <SelectValue placeholder="PDV" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {pdvs.map((pdv) => (
-                          <SelectItem key={pdv.id} value={pdv.id}>
-                            {pdv.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <span className="font-medium text-[#6F767E]">{funcionario.cargo}</span>
-                    <span className="text-slate-300">•</span>
-                    <span className="text-[#6F767E]">{funcionario.pdv?.nome}</span>
-                    <span
-                      className={cn(
-                        "ml-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors",
-                        funcionario.ativo 
-                          ? "bg-emerald-50/80 text-emerald-700" 
-                          : "bg-rose-50/80 text-rose-700",
-                      )}
-                    >
-                      <span className={cn("h-1.5 w-1.5 rounded-full", funcionario.ativo ? "bg-emerald-500" : "bg-rose-500")} />
-                      {funcionario.ativo ? "Ativo" : "Inativo"}
-                    </span>
-                  </div>
-                )}
-
-                {statusLinha?.estado === "saving" ? <p className="text-xs font-medium text-amber-600">{statusLinha.mensagem}</p> : null}
-                {statusLinha?.estado === "saved" ? <p className="text-xs font-medium text-emerald-600">{statusLinha.mensagem}</p> : null}
-                {statusLinha?.estado === "error" ? <p className="text-xs font-medium text-rose-600">{statusLinha.mensagem}</p> : null}
-
-                <div className="flex flex-wrap gap-2">
-                  {estaEditando ? (
-                    <>
-                      <Button size="sm" variant="outline" className="rounded-xl" onClick={cancelarEdicao}>Fechar</Button>
-                      <Button size="sm" variant="outline" className="rounded-xl" disabled={!podeDesfazer || statusLinha?.estado === "saving"} onClick={() => void desfazerUltimaEdicao()}>
-                        Desfazer
-                      </Button>
-                    </>
+                      <Select value={dadosEdicao.id_pdv} onValueChange={(valor) => aoMudarDado("id_pdv", valor)}>
+                        <SelectTrigger className="rounded-xl">
+                          <SelectValue placeholder="PDV" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {pdvs.map((pdv) => (
+                            <SelectItem key={pdv.id} value={pdv.id}>
+                              {pdv.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   ) : (
-                    <Button size="sm" variant="ghost" className="rounded-xl text-[#6F767E] hover:text-[#1A1D1F]" onClick={() => iniciarEdicao(funcionario)}>
-                      <Pencil className="mr-1 h-3.5 w-3.5" />
-                      Editar
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="font-medium text-slate-500">{funcionario.cargo}</span>
+                      <span className="text-slate-300">•</span>
+                      <span className="text-slate-500">{funcionario.pdv?.nome}</span>
+                      <StatusBadge ativo={funcionario.ativo} />
+                    </div>
                   )}
 
-                  {funcionario.ativo && podeInativar ? (
-                    <Button size="sm" variant="ghost" className="rounded-xl text-[#6F767E] hover:text-rose-600" onClick={() => abrirModalInativacao(funcionario)}>
-                      <UserX className="mr-1 h-3.5 w-3.5" />
-                      Inativar
-                    </Button>
-                  ) : null}
-                </div>
-              </article>
-            );
-          })}
+                  {statusLinha?.estado === "saving" ? <p className="text-xs font-medium text-amber-600">{statusLinha.mensagem}</p> : null}
+                  {statusLinha?.estado === "saved" ? <p className="text-xs font-medium text-emerald-600">{statusLinha.mensagem}</p> : null}
+                  {statusLinha?.estado === "error" ? <p className="text-xs font-medium text-rose-600">{statusLinha.mensagem}</p> : null}
+
+                  <div className="flex flex-wrap gap-2">
+                    {estaEditando ? (
+                      <>
+                        <Button size="sm" variant="outline" className="rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50" onClick={cancelarEdicao}>Fechar</Button>
+                        <Button size="sm" variant="outline" className="rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50" disabled={!podeDesfazer || statusLinha?.estado === "saving"} onClick={() => void desfazerUltimaEdicao()}>
+                          Desfazer
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button size="sm" variant="ghost" className="rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700" onClick={() => iniciarEdicao(funcionario)}>
+                          <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                          Editar
+                        </Button>
+
+                        {funcionario.ativo && podeInativar ? (
+                          <Button size="sm" variant="ghost" className="rounded-xl text-slate-500 hover:bg-rose-50 hover:text-rose-600" onClick={() => abrirModalInativacao(funcionario)}>
+                            <UserX className="mr-1.5 h-3.5 w-3.5" />
+                            Inativar
+                          </Button>
+                        ) : null}
+                      </>
+                    )}
+                  </div>
+                </article>
+              );
+            })
+          )}
         </div>
 
-        <div className="hidden overflow-hidden rounded-2xl border border-slate-200/50 bg-white shadow-[0px_4px_20px_rgba(0,0,0,0.05)] md:block">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-slate-200/50 bg-slate-50/50 hover:bg-slate-50/50">
-                <TableHead className="w-12 text-[#6F767E]">
-                  <input
-                    type="checkbox"
-                    checked={todosDaPaginaSelecionados}
-                    onChange={(e) => alternarSelecaoPagina(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    aria-label="Selecionar todos da pagina"
-                  />
-                </TableHead>
-                <TableHead className="text-[#6F767E]">
-                  <button type="button" className="inline-flex items-center gap-1 font-medium" onClick={() => alternarOrdenacao("nome")}>
-                    Nome
-                    {iconeOrdenacao("nome")}
-                  </button>
-                </TableHead>
-                <TableHead className="text-[#6F767E]">
-                  <button type="button" className="inline-flex items-center gap-1 font-medium" onClick={() => alternarOrdenacao("email")}>
-                    E-mail
-                    {iconeOrdenacao("email")}
-                  </button>
-                </TableHead>
-                <TableHead className="text-[#6F767E]">
-                  <button type="button" className="inline-flex items-center gap-1 font-medium" onClick={() => alternarOrdenacao("cargo")}>
-                    Cargo
-                    {iconeOrdenacao("cargo")}
-                  </button>
-                </TableHead>
-                <TableHead className="text-[#6F767E]">PDV</TableHead>
-                <TableHead className="text-[#6F767E]">Status</TableHead>
-                <TableHead className="text-[#6F767E]">Acoes</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {funcionarios.map((funcionario) => {
-                const estaEditando = editandoId === funcionario.id && !!dadosEdicao;
-                const statusLinha = statusSalvamento.id === funcionario.id ? statusSalvamento : null;
-                const podeDesfazer = ultimoSnapshot?.id === funcionario.id;
-                const gradienteAvatar = obterCorAvatar(funcionario.nome);
-
-                return (
-                  <TableRow key={funcionario.id} className="border-slate-200/30 transition-all duration-200 hover:bg-slate-50/80">
-                    <TableCell className="py-4">
+        {funcionarios.length === 0 && !carregandoLista ? (
+          <div className="hidden flex-col items-center justify-center rounded-2xl border border-slate-200/60 bg-white py-20 text-center shadow-[0_2px_8px_rgba(0,0,0,0.04)] md:flex">
+            <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100">
+              <Users className="h-10 w-10 text-slate-400" />
+            </div>
+            <p className="text-xl font-semibold text-slate-700">Nenhum colaborador encontrado</p>
+            <p className="mt-2 max-w-md text-sm text-slate-500">Adicione seu primeiro colaborador para comecar a gerenciar sua equipe e operacoes.</p>
+            {podeGerenciarEmpresa && (
+              <Button className="mt-8 rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700" onClick={() => setDialogNovoFuncionarioAberto(true)}>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Adicionar colaborador
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="hidden overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] md:block">
+            {carregandoLista ? (
+              <SkeletonTabela />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-slate-200/60 bg-slate-50/80 hover:bg-slate-50/80">
+                    <TableHead className="w-12">
                       <input
                         type="checkbox"
-                        checked={idsSelecionados.includes(funcionario.id)}
-                        onChange={(e) => alternarSelecao(funcionario.id, e.target.checked)}
-                        className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                        aria-label={`Selecionar ${funcionario.nome}`}
+                        checked={todosDaPaginaSelecionados}
+                        onChange={(e) => alternarSelecaoPagina(e.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 text-slate-600 focus:ring-slate-400"
+                        aria-label="Selecionar todos da pagina"
                       />
-                    </TableCell>
-
-                    <TableCell className="py-4">
-                      {estaEditando && dadosEdicao ? (
-                        <div className="space-y-1">
-                          <Input value={dadosEdicao.nome} onChange={(e) => aoMudarDado("nome", e.target.value)} className="h-9 rounded-xl border-slate-200" />
-                          {errosEdicao.nome ? <p className="text-xs font-medium text-rose-700">{errosEdicao.nome}</p> : null}
-                        </div>
-                      ) : (
-                        <button type="button" className="group flex items-center gap-3 text-left" onClick={() => iniciarEdicao(funcionario)}>
-                          <span className={cn("flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br text-sm font-semibold text-white shadow-sm", gradienteAvatar)}>
-                            {obterIniciais(funcionario.nome)}
-                          </span>
-                          <span className="font-semibold text-[#1A1D1F]">{funcionario.nome}</span>
-                          <Pencil className="h-3.5 w-3.5 text-slate-400 opacity-0 transition-opacity group-hover:opacity-100" />
-                        </button>
-                      )}
-                    </TableCell>
-
-                    <TableCell className="py-4">
-                      {estaEditando && dadosEdicao ? (
-                        <div className="space-y-1">
-                          <Input value={dadosEdicao.email} onChange={(e) => aoMudarDado("email", e.target.value)} className="h-9 rounded-xl border-slate-200" />
-                          {errosEdicao.email ? <p className="text-xs font-medium text-rose-700">{errosEdicao.email}</p> : null}
-                        </div>
-                      ) : (
-                        <button type="button" className="group inline-flex items-center gap-1 text-left text-[#6F767E] hover:text-[#1A1D1F]" onClick={() => iniciarEdicao(funcionario)}>
-                          {funcionario.email}
-                          <Pencil className="h-3.5 w-3.5 text-slate-400 opacity-0 transition-opacity group-hover:opacity-100" />
-                        </button>
-                      )}
-                    </TableCell>
-
-                    <TableCell className="py-4">
-                      {estaEditando && dadosEdicao ? (
-                        <div className="space-y-1">
-                          <Select value={dadosEdicao.cargo} onValueChange={(valor) => aoMudarDado("cargo", valor)}>
-                            <SelectTrigger className="h-9 w-full text-sm sm:w-40 rounded-xl">
-                              <SelectValue placeholder="Cargo" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="COLABORADOR">COLABORADOR</SelectItem>
-                              <SelectItem value="GERENTE">GERENTE</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          {errosEdicao.cargo ? <p className="text-xs font-medium text-rose-700">{errosEdicao.cargo}</p> : null}
-                        </div>
-                      ) : (
-                        <button type="button" className="group inline-flex items-center gap-1 text-left font-medium text-[#1A1D1F] hover:text-slate-700" onClick={() => iniciarEdicao(funcionario)}>
-                          {funcionario.cargo}
-                          <Pencil className="h-3.5 w-3.5 text-slate-400 opacity-0 transition-opacity group-hover:opacity-100" />
-                        </button>
-                      )}
-                    </TableCell>
-
-                    <TableCell className="py-4">
-                      {estaEditando && dadosEdicao ? (
-                        <div className="space-y-1">
-                          <Select value={dadosEdicao.id_pdv} onValueChange={(valor) => aoMudarDado("id_pdv", valor)}>
-                            <SelectTrigger className="h-9 w-full text-sm sm:w-44 rounded-xl">
-                              <SelectValue placeholder="PDV" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {pdvs.map((pdv) => (
-                                <SelectItem key={pdv.id} value={pdv.id}>
-                                  {pdv.nome}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {errosEdicao.id_pdv ? <p className="text-xs font-medium text-rose-700">{errosEdicao.id_pdv}</p> : null}
-                        </div>
-                      ) : (
-                        <p className="text-[#6F767E]">{funcionario.pdv?.nome}</p>
-                      )}
-                    </TableCell>
-
-                    <TableCell className="py-4">
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
-                          funcionario.ativo 
-                            ? "bg-emerald-50/80 text-emerald-700" 
-                            : "bg-rose-50/80 text-rose-700",
-                        )}
-                      >
-                        <span className={cn("h-1.5 w-1.5 rounded-full", funcionario.ativo ? "bg-emerald-500" : "bg-rose-500")} />
-                        {funcionario.ativo ? "Ativo" : "Inativo"}
-                      </span>
-                    </TableCell>
-
-                    <TableCell className="py-4">
-                      <div className="space-y-2">
-                        {statusLinha?.estado === "saving" ? <p className="text-xs font-medium text-amber-600">{statusLinha.mensagem}</p> : null}
-                        {statusLinha?.estado === "saved" ? <p className="text-xs font-medium text-emerald-600">{statusLinha.mensagem}</p> : null}
-                        {statusLinha?.estado === "error" ? <p className="text-xs font-medium text-rose-600">{statusLinha.mensagem}</p> : null}
-
-                        <div className="flex flex-wrap gap-1">
-                          {estaEditando ? (
-                            <>
-                              <Button size="sm" variant="outline" className="rounded-xl" onClick={cancelarEdicao}>Fechar</Button>
-                              <Button size="sm" variant="outline" className="rounded-xl" disabled={!podeDesfazer || statusLinha?.estado === "saving"} onClick={() => void desfazerUltimaEdicao()}>
-                                Desfazer
-                              </Button>
-                            </>
-                          ) : (
-                            <Button size="sm" variant="ghost" className="rounded-xl text-[#6F767E] hover:text-[#1A1D1F]" onClick={() => iniciarEdicao(funcionario)}>
-                              <Pencil className="mr-1 h-3.5 w-3.5" />
-                              Editar
-                            </Button>
-                          )}
-
-                          {funcionario.ativo && podeInativar ? (
-                            <Button size="sm" variant="ghost" className="rounded-xl text-[#6F767E] hover:text-rose-600" onClick={() => abrirModalInativacao(funcionario)}>
-                              <UserX className="mr-1 h-3.5 w-3.5" />
-                              Inativar
-                            </Button>
-                          ) : null}
-                        </div>
-                      </div>
-                    </TableCell>
+                    </TableHead>
+                    <TableHead className="text-slate-500">
+                      <button type="button" className="inline-flex items-center gap-1.5 font-medium hover:text-slate-700" onClick={() => alternarOrdenacao("nome")}>
+                        Nome
+                        {iconeOrdenacao("nome")}
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-slate-500">
+                      <button type="button" className="inline-flex items-center gap-1.5 font-medium hover:text-slate-700" onClick={() => alternarOrdenacao("email")}>
+                        E-mail
+                        {iconeOrdenacao("email")}
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-slate-500">
+                      <button type="button" className="inline-flex items-center gap-1.5 font-medium hover:text-slate-700" onClick={() => alternarOrdenacao("cargo")}>
+                        Cargo
+                        {iconeOrdenacao("cargo")}
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-slate-500">PDV</TableHead>
+                    <TableHead className="text-slate-500">Status</TableHead>
+                    <TableHead className="text-slate-500 w-20">Acoes</TableHead>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+                </TableHeader>
+                <TableBody>
+                  {funcionarios.map((funcionario) => {
+                    const estaEditando = editandoId === funcionario.id && !!dadosEdicao;
+                    const statusLinha = statusSalvamento.id === funcionario.id ? statusSalvamento : null;
+                    const podeDesfazer = ultimoSnapshot?.id === funcionario.id;
+
+                    return (
+                      <TableRow key={funcionario.id} className="border-slate-100 transition-all duration-150 hover:bg-slate-50/60">
+                        <TableCell className="py-4">
+                          <input
+                            type="checkbox"
+                            checked={idsSelecionados.includes(funcionario.id)}
+                            onChange={(e) => alternarSelecao(funcionario.id, e.target.checked)}
+                            className="h-4 w-4 rounded border-slate-300 text-slate-600 focus:ring-slate-400"
+                            aria-label={`Selecionar ${funcionario.nome}`}
+                          />
+                        </TableCell>
+
+                        <TableCell className="py-4">
+                          {estaEditando && dadosEdicao ? (
+                            <div className="space-y-1.5">
+                              <Input value={dadosEdicao.nome} onChange={(e) => aoMudarDado("nome", e.target.value)} className="h-9 rounded-xl border-slate-200 bg-white" />
+                              {errosEdicao.nome ? <p className="text-xs font-medium text-rose-600">{errosEdicao.nome}</p> : null}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-3">
+                              <Avatar nome={funcionario.nome} tamanho="sm" />
+                              <span className="font-medium text-slate-700">{funcionario.nome}</span>
+                            </div>
+                          )}
+                        </TableCell>
+
+                        <TableCell className="py-4">
+                          {estaEditando && dadosEdicao ? (
+                            <div className="space-y-1.5">
+                              <Input value={dadosEdicao.email} onChange={(e) => aoMudarDado("email", e.target.value)} className="h-9 rounded-xl border-slate-200 bg-white" />
+                              {errosEdicao.email ? <p className="text-xs font-medium text-rose-600">{errosEdicao.email}</p> : null}
+                            </div>
+                          ) : (
+                            <span className="text-slate-500">{funcionario.email}</span>
+                          )}
+                        </TableCell>
+
+                        <TableCell className="py-4">
+                          {estaEditando && dadosEdicao ? (
+                            <div className="space-y-1.5">
+                              <Select value={dadosEdicao.cargo} onValueChange={(valor) => aoMudarDado("cargo", valor)}>
+                                <SelectTrigger className="h-9 w-full text-sm sm:w-36 rounded-xl">
+                                  <SelectValue placeholder="Cargo" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="COLABORADOR">COLABORADOR</SelectItem>
+                                  <SelectItem value="GERENTE">GERENTE</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              {errosEdicao.cargo ? <p className="text-xs font-medium text-rose-600">{errosEdicao.cargo}</p> : null}
+                            </div>
+                          ) : (
+                            <span className="font-medium text-slate-700">{funcionario.cargo}</span>
+                          )}
+                        </TableCell>
+
+                        <TableCell className="py-4">
+                          {estaEditando && dadosEdicao ? (
+                            <div className="space-y-1.5">
+                              <Select value={dadosEdicao.id_pdv} onValueChange={(valor) => aoMudarDado("id_pdv", valor)}>
+                                <SelectTrigger className="h-9 w-full text-sm sm:w-40 rounded-xl">
+                                  <SelectValue placeholder="PDV" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {pdvs.map((pdv) => (
+                                    <SelectItem key={pdv.id} value={pdv.id}>
+                                      {pdv.nome}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {errosEdicao.id_pdv ? <p className="text-xs font-medium text-rose-600">{errosEdicao.id_pdv}</p> : null}
+                            </div>
+                          ) : (
+                            <span className="text-slate-500">{funcionario.pdv?.nome}</span>
+                          )}
+                        </TableCell>
+
+                        <TableCell className="py-4">
+                          <StatusBadge ativo={funcionario.ativo} />
+                        </TableCell>
+
+                        <TableCell className="py-4">
+                          <div className="space-y-2">
+                            {statusLinha?.estado === "saving" ? <p className="text-xs font-medium text-amber-600">{statusLinha.mensagem}</p> : null}
+                            {statusLinha?.estado === "saved" ? <p className="text-xs font-medium text-emerald-600">{statusLinha.mensagem}</p> : null}
+                            {statusLinha?.estado === "error" ? <p className="text-xs font-medium text-rose-600">{statusLinha.mensagem}</p> : null}
+
+                            <LinhaAcoes
+                              editando={estaEditando}
+                              podeDesfazer={!!podeDesfazer}
+                              statusSalvamento={statusLinha}
+                              onEditar={() => iniciarEdicao(funcionario)}
+                              onCancelar={cancelarEdicao}
+                              onDesfazer={() => void desfazerUltimaEdicao()}
+                              onInativar={funcionario.ativo && podeInativar ? () => abrirModalInativacao(funcionario) : undefined}
+                            />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        )}
       </section>
 
-      <div className="flex flex-col gap-2 rounded-xl border border-slate-200/50 bg-white px-4 py-3 shadow-[0px_4px_20px_rgba(0,0,0,0.05)] sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-[#6F767E]">{carregandoLista ? "Carregando..." : `Pagina ${paginacao.pagina} de ${paginacao.total_paginas} - ${paginacao.total} registros`}</p>
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200/60 bg-white px-5 py-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)] sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm font-medium text-slate-500">{carregandoLista ? "Carregando..." : `Pagina ${paginacao.pagina} de ${paginacao.total_paginas} - ${paginacao.total} registros`}</p>
 
         <div className="flex flex-wrap items-center gap-2">
           <Select value={String(porPagina)} onValueChange={(valor) => atualizarParametrosUrl({ por_pagina: valor }, true)}>
-            <SelectTrigger className="h-10 w-[140px] rounded-full border-slate-200 bg-slate-50 text-sm">
+            <SelectTrigger className="h-9 w-[130px] rounded-lg border-slate-200 bg-slate-50/80 text-sm font-medium text-slate-600">
               <SelectValue placeholder="Por pagina" />
             </SelectTrigger>
             <SelectContent>
@@ -1137,11 +1355,11 @@ export function ModuloEquipe({ perfil }: Props) {
             </SelectContent>
           </Select>
 
-          <Button variant="outline" size="sm" className="rounded-xl" disabled={paginacao.pagina <= 1 || carregandoLista} onClick={() => atualizarParametrosUrl({ pagina: String(Math.max(1, pagina - 1)) })}>
+          <Button variant="outline" size="sm" className="h-9 rounded-lg border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50" disabled={paginacao.pagina <= 1 || carregandoLista} onClick={() => atualizarParametrosUrl({ pagina: String(Math.max(1, pagina - 1)) })}>
             Anterior
           </Button>
 
-          <Button variant="outline" size="sm" className="rounded-xl" disabled={paginacao.pagina >= paginacao.total_paginas || carregandoLista} onClick={() => atualizarParametrosUrl({ pagina: String(Math.min(paginacao.total_paginas, pagina + 1)) })}>
+          <Button variant="outline" size="sm" className="h-9 rounded-lg border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50" disabled={paginacao.pagina >= paginacao.total_paginas || carregandoLista} onClick={() => atualizarParametrosUrl({ pagina: String(Math.min(paginacao.total_paginas, pagina + 1)) })}>
             Proxima
           </Button>
         </div>
@@ -1156,62 +1374,118 @@ export function ModuloEquipe({ perfil }: Props) {
           }
         }}
       >
-        <DialogContent className="left-auto right-0 top-0 h-dvh w-full max-w-md translate-x-0 translate-y-0 rounded-none border-l border-slate-200/50 bg-white p-0">
-          <div className="h-full overflow-y-auto p-6">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-semibold text-[#1A1D1F]">Adicionar colaborador</DialogTitle>
-            </DialogHeader>
+        <DialogContent className="left-auto right-0 top-0 h-dvh w-full max-w-md translate-x-0 translate-y-0 rounded-none border-l border-slate-200/60 bg-white p-0">
+          <div className="flex h-full flex-col">
+            <div className="border-b border-slate-100 px-6 py-5">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold text-slate-800">Adicionar colaborador</DialogTitle>
+              </DialogHeader>
+              <p className="mt-1 text-sm text-slate-500">Preencha os dados para criar um novo membro na equipe.</p>
+            </div>
 
-            <form className="mt-5 space-y-4" onSubmit={adicionarFuncionario}>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-[#1A1D1F]">Nome</label>
-                <Input name="nome" placeholder="Nome completo" required className="rounded-xl border-slate-200 bg-slate-50" />
+            <div className="flex-1 overflow-y-auto p-6">
+              <form className="space-y-6" onSubmit={adicionarFuncionario}>
+                <section className="space-y-4">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Informacoes Pessoais</h3>
+                  
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-slate-700">Nome completo</label>
+                    <Input 
+                      name="nome" 
+                      placeholder="Ex: Joao Silva" 
+                      required 
+                      className="rounded-xl border-slate-200 bg-slate-50/50 text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50" 
+                    />
+                  </div>
+                  
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-slate-700">E-mail</label>
+                    <Input 
+                      name="email" 
+                      type="email" 
+                      placeholder="joao@empresa.com" 
+                      required 
+                      className="rounded-xl border-slate-200 bg-slate-50/50 text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50" 
+                    />
+                  </div>
+                </section>
+
+                <section className="space-y-4">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Acesso ao Sistema</h3>
+                  
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-slate-700">Senha temporaria</label>
+                    <Input 
+                      name="senha" 
+                      type="password" 
+                      placeholder="Minimo 6 caracteres" 
+                      required 
+                      minLength={6}
+                      className="rounded-xl border-slate-200 bg-slate-50/50 text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50" 
+                    />
+                  </div>
+                </section>
+
+                <section className="space-y-4">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Permissoes e Localizacao</h3>
+                  
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-slate-700">Cargo</label>
+                    <input type="hidden" name="cargo" value={cargoSelecionado} />
+                    <Select value={cargoSelecionado} onValueChange={setCargoSelecionado}>
+                      <SelectTrigger className="rounded-xl border-slate-200 bg-slate-50/50 text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200/50">
+                        <SelectValue placeholder="Selecione o cargo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="COLABORADOR">COLABORADOR</SelectItem>
+                        <SelectItem value="GERENTE">GERENTE</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-slate-700">PDV</label>
+                    <input type="hidden" name="id_pdv" value={pdvSelecionado} />
+                    <Select value={pdvSelecionado} onValueChange={setPdvSelecionado}>
+                      <SelectTrigger className="rounded-xl border-slate-200 bg-slate-50/50 text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200/50">
+                        <SelectValue placeholder="Selecione o PDV" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {pdvs.map((pdv) => (
+                          <SelectItem key={pdv.id} value={pdv.id}>
+                            {pdv.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </section>
+
+                {erroCadastro ? (
+                  <div className="flex items-center gap-2 rounded-xl border border-rose-200/60 bg-rose-50/50 px-4 py-3">
+                    <X className="h-4 w-4 text-rose-500" />
+                    <p className="text-sm font-medium text-rose-600">{erroCadastro}</p>
+                  </div>
+                ) : null}
+              </form>
+            </div>
+
+            <div className="border-t border-slate-100 bg-slate-50/50 px-6 py-4">
+              <div className="flex gap-3">
+                <Button variant="outline" className="flex-1 rounded-xl border-slate-200 bg-white text-slate-600 hover:bg-slate-50" onClick={() => setDialogNovoFuncionarioAberto(false)}>
+                  Cancelar
+                </Button>
+                <Button className="flex-1 rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700" onClick={(e) => {
+                  const form = (e.target as HTMLButtonElement).closest("form");
+                  if (form) {
+                    adicionarFuncionario(new Event("submit", { bubbles: true }) as unknown as React.FormEvent<HTMLFormElement>);
+                  }
+                }}>
+                  <Check className="mr-2 h-4 w-4" />
+                  Criar colaborador
+                </Button>
               </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-[#1A1D1F]">E-mail</label>
-                <Input name="email" type="email" placeholder="email@exemplo.com" required className="rounded-xl border-slate-200 bg-slate-50" />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-[#1A1D1F]">Senha</label>
-                <Input name="senha" type="password" placeholder="Senha temporaria" required className="rounded-xl border-slate-200 bg-slate-50" />
-              </div>
-
-              <input type="hidden" name="cargo" value={cargoSelecionado} />
-              <input type="hidden" name="id_pdv" value={pdvSelecionado} />
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-[#1A1D1F]">Cargo</label>
-                <Select value={cargoSelecionado} onValueChange={setCargoSelecionado}>
-                  <SelectTrigger className="rounded-xl border-slate-200 bg-slate-50">
-                    <SelectValue placeholder="Cargo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="COLABORADOR">COLABORADOR</SelectItem>
-                    <SelectItem value="GERENTE">GERENTE</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-[#1A1D1F]">PDV</label>
-                <Select value={pdvSelecionado} onValueChange={setPdvSelecionado}>
-                  <SelectTrigger className="rounded-xl border-slate-200 bg-slate-50">
-                    <SelectValue placeholder="Selecione o PDV" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {pdvs.map((pdv) => (
-                      <SelectItem key={pdv.id} value={pdv.id}>
-                        {pdv.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {erroCadastro ? <p className="text-sm font-medium text-rose-700">{erroCadastro}</p> : null}
-
-              <Button className="w-full rounded-xl" type="submit">Criar colaborador</Button>
-            </form>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -1227,20 +1501,25 @@ export function ModuloEquipe({ perfil }: Props) {
           }
         }}
       >
-        <DialogContent className="max-w-md rounded-2xl border border-slate-200/50 bg-white">
+        <DialogContent className="max-w-md rounded-2xl border border-slate-200/60 bg-white">
           <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-[#1A1D1F]">Inativar colaborador</DialogTitle>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-100">
+                <UserX className="h-5 w-5 text-rose-600" />
+              </div>
+              <DialogTitle className="text-xl font-bold text-slate-800">Inativar colaborador</DialogTitle>
+            </div>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <p className="text-sm text-[#6F767E]">
-              Deseja inativar <span className="font-semibold text-[#1A1D1F]">{funcionarioDestinoInativacao?.nome}</span>? Selecione quem recebera os cards e responsabilidades.
+          <div className="space-y-5">
+            <p className="text-sm text-slate-600">
+              Deseja inativar <span className="font-semibold text-slate-800">{funcionarioDestinoInativacao?.nome}</span>? Selecione quem recebera os cards e responsabilidades.
             </p>
 
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-[#1A1D1F]">Destino da reatribuicao</label>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Destino da reatribuicao</label>
               <Select value={destinoInativacaoIndividual} onValueChange={setDestinoInativacaoIndividual}>
-                <SelectTrigger className="rounded-xl border-slate-200 bg-slate-50">
+                <SelectTrigger className="rounded-xl border-slate-200 bg-slate-50/50 text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200/50">
                   <SelectValue placeholder="Selecione o destino" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1255,21 +1534,21 @@ export function ModuloEquipe({ perfil }: Props) {
               </Select>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-[#1A1D1F]">Observacao (opcional)</label>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Observacao (opcional)</label>
               <Input
                 placeholder="Motivo da inativacao"
                 value={observacaoInativacaoIndividual}
                 onChange={(e) => setObservacaoInativacaoIndividual(e.target.value)}
-                className="rounded-xl border-slate-200 bg-slate-50"
+                className="rounded-xl border-slate-200 bg-slate-50/50 text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
               />
             </div>
 
-            {erroLista ? <p className="text-sm font-medium text-rose-700">{erroLista}</p> : null}
+            {erroLista ? <p className="text-sm font-medium text-rose-600">{erroLista}</p> : null}
 
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" className="rounded-xl" onClick={() => setDialogInativacaoAberto(false)}>Cancelar</Button>
-              <Button variant="destructive" className="rounded-xl" disabled={executandoInativacaoIndividual} onClick={() => void confirmarInativacaoIndividual()}>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" className="rounded-xl border-slate-200 bg-white text-slate-600 hover:bg-slate-50" onClick={() => setDialogInativacaoAberto(false)}>Cancelar</Button>
+              <Button variant="destructive" className="rounded-xl bg-rose-600 font-medium text-white hover:bg-rose-700" disabled={executandoInativacaoIndividual} onClick={() => void confirmarInativacaoIndividual()}>
                 {executandoInativacaoIndividual ? "Inativando..." : "Confirmar inativacao"}
               </Button>
             </div>

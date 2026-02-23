@@ -2,9 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-export function BotaoSair() {
+type Props = {
+  apenasIcone?: boolean;
+  className?: string;
+};
+
+export function BotaoSair({ apenasIcone = false, className }: Props) {
   const router = useRouter();
   const [saindo, setSaindo] = useState(false);
 
@@ -21,8 +28,17 @@ export function BotaoSair() {
   }
 
   return (
-    <Button variant="outline" size="sm" onClick={sair} disabled={saindo}>
-      {saindo ? "Saindo..." : "Sair"}
+    <Button
+      variant={apenasIcone ? "ghost" : "outline"}
+      size={apenasIcone ? "icon" : "sm"}
+      onClick={sair}
+      disabled={saindo}
+      className={cn(className)}
+      aria-label="Sair"
+      title="Sair"
+    >
+      {apenasIcone ? <LogOut className="h-4 w-4" /> : null}
+      {apenasIcone ? null : saindo ? "Saindo..." : "Sair"}
     </Button>
   );
 }
