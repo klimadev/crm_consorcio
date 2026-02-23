@@ -156,72 +156,88 @@ export function ModuloPendencias({ perfil, idUsuario }: Props) {
   }
 
   return (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Pendências</h1>
-          <p className="text-sm text-sky-500">
-            Pendências detectadas automaticamente nos deals.
-          </p>
+    <section className="space-y-5 rounded-2xl bg-slate-50/50 p-4 pb-6">
+      <header className="flex flex-col gap-4 rounded-2xl border border-slate-200/60 bg-white px-6 py-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200">
+            <svg className="h-6 w-6 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-800 md:text-2xl">Pendencias</h1>
+            <p className="text-sm text-slate-500">
+              Pendencias detectadas automaticamente nos deals.
+            </p>
+          </div>
         </div>
 
-        {/* Botão para detectar pendências - apenas para EMPRESA */}
         {perfil === "EMPRESA" && (
-          <Button onClick={detectarPendencias} disabled={carregando}>
-            {carregando ? "Processando..." : "Detectar Pendências"}
+          <Button className="w-full rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700 md:w-auto" onClick={detectarPendencias} disabled={carregando}>
+            {carregando ? "Processando..." : "Detectar Pendencias"}
           </Button>
         )}
-      </div>
+      </header>
 
-      <div className="flex gap-2">
-        <Button
-          variant={filtroStatus === "PENDENTES" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setFiltroStatus("PENDENTES")}
-        >
-          Pendentes ({pendentesCount})
-        </Button>
-        <Button
-          variant={filtroStatus === "RESOLVIDAS" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setFiltroStatus("RESOLVIDAS")}
-        >
-          Resolvidas ({resolvidasCount})
-        </Button>
-        <Button
-          variant={filtroStatus === "TODAS" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setFiltroStatus("TODAS")}
-        >
-          Todas ({pendencias.length})
-        </Button>
-      </div>
+      <section className="rounded-2xl border border-slate-200/60 bg-white px-5 py-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={filtroStatus === "PENDENTES" ? "default" : "outline"}
+            size="sm"
+            className={filtroStatus === "PENDENTES" ? "rounded-xl bg-slate-800 font-medium" : "rounded-xl border-slate-200 bg-slate-50/80 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"}
+            onClick={() => setFiltroStatus("PENDENTES")}
+          >
+            Pendentes ({pendentesCount})
+          </Button>
+          <Button
+            variant={filtroStatus === "RESOLVIDAS" ? "default" : "outline"}
+            size="sm"
+            className={filtroStatus === "RESOLVIDAS" ? "rounded-xl bg-slate-800 font-medium" : "rounded-xl border-slate-200 bg-slate-50/80 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"}
+            onClick={() => setFiltroStatus("RESOLVIDAS")}
+          >
+            Resolvidas ({resolvidasCount})
+          </Button>
+          <Button
+            variant={filtroStatus === "TODAS" ? "default" : "outline"}
+            size="sm"
+            className={filtroStatus === "TODAS" ? "rounded-xl bg-slate-800 font-medium" : "rounded-xl border-slate-200 bg-slate-50/80 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"}
+            onClick={() => setFiltroStatus("TODAS")}
+          >
+            Todas ({pendencias.length})
+          </Button>
+        </div>
+      </section>
 
       {carregando ? (
-        <p className="text-center text-slate-500">Carregando pendências...</p>
+        <div className="flex items-center justify-center rounded-2xl border border-slate-200/60 bg-white py-16 text-center shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+          <p className="text-sm text-slate-500">Carregando pendencias...</p>
+        </div>
       ) : pendenciasFiltradas.length === 0 ? (
-        <p className="text-center text-slate-500">
-          Nenhuma pendência encontrada.
-        </p>
+        <div className="flex items-center justify-center rounded-2xl border border-slate-200/60 bg-white py-16 text-center shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+          <p className="text-sm text-slate-500">
+            Nenhuma pendencia encontrada.
+          </p>
+        </div>
       ) : (
         <div className="grid gap-3">
           {pendenciasFiltradas.map((pendencia) => (
             <Card
               key={pendencia.id}
-              className="cursor-pointer hover:bg-slate-50"
+              className="cursor-pointer rounded-2xl border border-slate-200/60 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all duration-200 hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)]"
               onClick={() => abrirDetalhes(pendencia)}
             >
-              <CardContent className="flex items-center justify-between p-4">
+              <CardContent className="flex items-center justify-between p-5">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <p className="font-medium">{pendencia.lead.nome}</p>
+                    <p className="font-semibold text-slate-800">{pendencia.lead.nome}</p>
                     <span
-                      className={`rounded-full px-2 py-0.5 text-xs ${
+                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
                         pendencia.resolvida
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                          : "bg-rose-50 text-rose-700 border border-rose-100"
                       }`}
                     >
+                      <span className={`h-1.5 w-1.5 rounded-full ${pendencia.resolvida ? "bg-emerald-500" : "bg-rose-500"}`} />
                       {pendencia.resolvida ? "Resolvida" : "Pendente"}
                     </span>
                   </div>
@@ -234,7 +250,7 @@ export function ModuloPendencias({ perfil, idUsuario }: Props) {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-medium">
+                  <p className="text-sm font-semibold text-slate-700">
                     {formataMoeda(pendencia.lead.valor_consorcio)}
                   </p>
                   <p className="text-xs text-slate-400">
@@ -257,19 +273,19 @@ export function ModuloPendencias({ perfil, idUsuario }: Props) {
           }
         }}
       >
-        <DialogContent>
+        <DialogContent className="rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Detalhes da Pendência</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-slate-800">Detalhes da Pendencia</DialogTitle>
           </DialogHeader>
 
           {pendenciaSelecionada && (
             <div className="space-y-4">
-              <div className="rounded-lg bg-slate-50 p-3">
-                <p className="font-medium">{pendenciaSelecionada.lead.nome}</p>
+              <div className="rounded-xl border border-slate-200/60 bg-slate-50/50 p-4">
+                <p className="font-semibold text-slate-800">{pendenciaSelecionada.lead.nome}</p>
                 <p className="text-sm text-slate-500">
                   {pendenciaSelecionada.lead.telefone}
                 </p>
-                <p className="text-sm">
+                <p className="text-sm font-medium text-slate-700">
                   {formataMoeda(pendenciaSelecionada.lead.valor_consorcio)}
                 </p>
                 <p className="text-xs text-slate-400">
@@ -279,24 +295,25 @@ export function ModuloPendencias({ perfil, idUsuario }: Props) {
               </div>
 
               <div>
-                <p className="text-sm font-medium">Tipo</p>
-                <p className="text-sm text-slate-600">
+                <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Tipo</p>
+                <p className="text-sm font-medium text-slate-700">
                   {LABELS_PENDENCIA[pendenciaSelecionada.tipo as TipoPendencia] ||
                     pendenciaSelecionada.tipo}
                 </p>
               </div>
 
               <div>
-                <p className="text-sm font-medium">Descrição</p>
+                <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Descricao</p>
                 <p className="text-sm text-slate-600">{pendenciaSelecionada.descricao}</p>
               </div>
 
               {/* Campo para anexar documento - apenas para EMPRESA e GERENTE */}
               {(perfil === "EMPRESA" || perfil === "GERENTE") && (
-                <div>
-                  <p className="text-sm font-medium">URL do Documento</p>
+                <div className="space-y-2">
+                  <p className="text-xs font-medium uppercase tracking-wider text-slate-500">URL do Documento</p>
                   <Input
-                    placeholder="Cole a URL do documento (ex: carta de crédito)"
+                    className="h-10 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
+                    placeholder="Cole a URL do documento (ex: carta de credito)"
                     value={urlDocumento}
                     onChange={(e) => setUrlDocumento(e.target.value)}
                   />
@@ -305,7 +322,7 @@ export function ModuloPendencias({ perfil, idUsuario }: Props) {
                       href={pendenciaSelecionada.documento_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="mt-1 block text-sm text-sky-500 hover:underline"
+                      className="mt-1 block text-sm font-medium text-sky-600 hover:underline"
                     >
                       Ver documento atual
                     </a>
@@ -315,26 +332,26 @@ export function ModuloPendencias({ perfil, idUsuario }: Props) {
 
               {/* Checkbox para resolver - apenas para EMPRESA e GERENTE */}
               {(perfil === "EMPRESA" || perfil === "GERENTE") && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3 rounded-xl border border-slate-200/60 bg-slate-50/50 p-3">
                   <input
                     type="checkbox"
                     id="resolvida"
                     checked={marcarResolvida}
                     onChange={(e) => setMarcarResolvida(e.target.checked)}
-                    className="h-4 w-4"
+                    className="h-5 w-5 rounded border-slate-300 text-slate-600 focus:ring-slate-400 focus:ring-offset-2"
                   />
-                  <label htmlFor="resolvida" className="text-sm">
+                  <label htmlFor="resolvida" className="text-sm font-medium text-slate-700">
                     Marcar como resolvida
                   </label>
                 </div>
               )}
 
-              {erro ? <p className="text-sm text-red-600">{erro}</p> : null}
+              {erro ? <p className="text-sm font-medium text-rose-600">{erro}</p> : null}
 
               {/* Botão salvar - apenas para EMPRESA e GERENTE */}
               {(perfil === "EMPRESA" || perfil === "GERENTE") && (
                 <Button 
-                  className="w-full" 
+                  className="w-full rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700" 
                   onClick={salvarPendencia}
                   disabled={salvando}
                 >

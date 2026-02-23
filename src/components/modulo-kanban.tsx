@@ -504,11 +504,18 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
   );
 
   return (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Kanban</h1>
-          <p className="text-sm text-sky-500">Funil de vendas com arrastar e soltar.</p>
+    <section className="space-y-5 rounded-2xl bg-slate-50/50 p-4 pb-6 md:p-6">
+      <header className="flex flex-col gap-4 rounded-2xl border border-slate-200/60 bg-white px-6 py-5 shadow-[0_2px_8px_rgba(0,0.0,0,04)] md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200">
+            <svg className="h-6 w-6 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-800 md:text-2xl">Kanban</h1>
+            <p className="text-sm text-slate-500">Funil de vendas com arrastar e soltar.</p>
+          </div>
         </div>
 
         <Dialog
@@ -521,7 +528,12 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
           }}
         >
           <DialogTrigger asChild>
-            <Button>+ Novo</Button>
+            <Button className="w-full rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700 md:w-auto">
+              <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Novo lead
+            </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -529,8 +541,9 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
             </DialogHeader>
 
             <form className="space-y-3" onSubmit={criarLead}>
-              <Input name="nome" placeholder="Nome" required />
+              <Input className="h-11 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50" name="nome" placeholder="Nome" required />
               <Input
+                className="h-11 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
                 name="telefone"
                 placeholder="Telefone"
                 value={telefoneNovoLead}
@@ -538,6 +551,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
                 required
               />
               <Input
+                className="h-11 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
                 name="valor_consorcio"
                 placeholder="Valor"
                 inputMode="numeric"
@@ -549,7 +563,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
               <input type="hidden" name="id_estagio" value={estagioNovoLead || estagioAberto} />
 
               <Select value={estagioNovoLead || estagioAberto} onValueChange={setEstagioNovoLead}>
-                <SelectTrigger>
+                <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-slate-50/80 text-sm font-medium text-slate-600">
                   <SelectValue placeholder="Estagio" />
                 </SelectTrigger>
                 <SelectContent>
@@ -565,7 +579,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
                 <Select
                   onValueChange={(valor) => setCargoNovoLead({ id_funcionario: valor })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-slate-50/80 text-sm font-medium text-slate-600">
                     <SelectValue placeholder="Funcionario" />
                   </SelectTrigger>
                   <SelectContent>
@@ -578,13 +592,13 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
                 </Select>
               ) : null}
 
-              {erroNovoLead ? <p className="text-sm text-red-600">{erroNovoLead}</p> : null}
+              {erroNovoLead ? <p className="text-sm font-medium text-red-600">{erroNovoLead}</p> : null}
 
-              <Button className="w-full" type="submit">Criar lead</Button>
+              <Button className="w-full rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700" type="submit">Criar lead</Button>
             </form>
           </DialogContent>
         </Dialog>
-      </div>
+      </header>
 
       <DragDropContext onDragEnd={aoDragEnd}>
         <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
@@ -592,13 +606,13 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
             <Droppable key={estagio.id} droppableId={estagio.id}>
               {(provided) => (
                 <div
-                  className="rounded-lg border border-sky-200 bg-white p-3"
+                  className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
                   ref={provided.innerRef}
                   {...provided.droppableProps}
                 >
                   <div className="mb-3">
-                    <p className="text-sm font-semibold">
-                      {estagio.nome} ({leadsPorEstagio[estagio.id]?.length ?? 0})
+                    <p className="text-sm font-semibold text-slate-700">
+                      {estagio.nome} <span className="font-normal text-slate-400">({leadsPorEstagio[estagio.id]?.length ?? 0})</span>
                     </p>
                   </div>
 
@@ -616,11 +630,10 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
                               ref={draggableProvided.innerRef}
                               {...draggableProvided.draggableProps}
                               {...draggableProvided.dragHandleProps}
-                              className={lead.id.startsWith("temp-") ? "bg-transparent" : "cursor-pointer"}
+                              className={lead.id.startsWith("temp-") ? "bg-transparent" : "cursor-pointer rounded-xl border border-slate-200/60 shadow-sm transition-all duration-200 hover:shadow-md"}
                               onClick={() => {
                                 if (lead.id.startsWith("temp-")) return;
                                 setLeadSelecionado(lead);
-                                // Carregar pendências do lead selecionado
                                 const pendenciasDoLead = todasPendencias.filter((p) => p.id_lead === lead.id);
                                 setPendenciasLead(pendenciasDoLead);
                               }}
@@ -628,11 +641,10 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
                               <CardContent className="p-3">
                                 <div className="flex items-start justify-between">
                                   <div>
-                                    <p className="text-sm font-medium">{lead.nome}</p>
-                                    <p className="text-xs text-sky-500">{lead.telefone}</p>
-                                    <p className="mt-1 text-sm">{formataMoeda(lead.valor_consorcio)}</p>
+                                    <p className="text-sm font-medium text-slate-800">{lead.nome}</p>
+                                    <p className="text-xs text-slate-500">{lead.telefone}</p>
+                                    <p className="mt-1 text-sm font-medium text-slate-700">{formataMoeda(lead.valor_consorcio)}</p>
                                   </div>
-                                  {/* Badge de pendências */}
                                   {pendenciasPorLead[lead.id]?.naoResolvidas > 0 && (
                                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
                                       {pendenciasPorLead[lead.id].naoResolvidas}
@@ -655,14 +667,14 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
       </DragDropContext>
 
       <Dialog open={Boolean(movimentoPendente)} onOpenChange={(aberto) => !aberto && setMovimentoPendente(null)}>
-        <DialogContent>
+        <DialogContent className="rounded-2xl">
           <DialogHeader>
             <DialogTitle>Motivo de perda</DialogTitle>
           </DialogHeader>
 
           <form className="space-y-3" onSubmit={confirmarPerda}>
-            <Textarea value={motivoPerda} onChange={(e) => setMotivoPerda(e.target.value)} required />
-            <Button className="w-full" type="submit">Confirmar</Button>
+            <Textarea className="rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50 min-h-[100px]" value={motivoPerda} onChange={(e) => setMotivoPerda(e.target.value)} placeholder="Descreva o motivo da perda..." required />
+            <Button className="w-full rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700" type="submit">Confirmar</Button>
           </form>
         </DialogContent>
       </Dialog>
@@ -696,8 +708,9 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
           </DrawerHeader>
 
           {leadSelecionado ? (
-            <div className="space-y-3 p-2 pb-6">
+            <div className="space-y-3 p-4 pb-6">
               <Input
+                className="h-11 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
                 value={leadSelecionado.telefone}
                 onChange={(e) =>
                   aoMudarLead({
@@ -707,6 +720,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
                 }
               />
               <Input
+                className="h-11 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
                 inputMode="numeric"
                 value={aplicaMascaraMoedaBr(String(Math.round(leadSelecionado.valor_consorcio * 100)))}
                 onChange={(e) =>
@@ -717,6 +731,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
                 }
               />
               <Textarea
+                className="rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50 min-h-[80px]"
                 placeholder="Observações..."
                 value={leadSelecionado.observacoes ?? ""}
                 onChange={(e) =>
@@ -773,8 +788,9 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
 
                 {/* Input de URL alternativa */}
                 <div className="relative">
-                  <p className="mb-1 text-xs text-slate-500">Ou cole uma URL:</p>
+                  <p className="mb-1 text-xs font-medium text-slate-500">Ou cole uma URL:</p>
                   <Input
+                    className="h-10 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
                     placeholder="URL do documento (Google Drive, etc)"
                     value={documentoAprovacaoUrl}
                     onChange={(e) => {
@@ -790,7 +806,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
                     href={leadSelecionado.documento_aprovacao_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="block text-sm text-sky-500 hover:underline"
+                    className="block text-sm font-medium text-sky-600 hover:underline"
                   >
                     Ver documento atual
                   </a>
@@ -803,53 +819,54 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
 
               {/* Alerta de pendência de documento */}
               {pendenciasLead.some((p) => p.tipo === "DOCUMENTO_APROVACAO_PENDENTE" && !p.resolvida) && (
-                <div className="rounded border border-amber-200 bg-amber-50 p-2 text-sm text-amber-800">
-                  <p className="font-medium">⚠️ Pendência: Documento de Aprovação</p>
-                  <p className="text-xs">Este lead não possui documento de aprovação anexado.</p>
+                <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 p-3 text-sm text-amber-800 shadow-sm">
+                  <p className="font-semibold">Pendencia: Documento de Aprovacao</p>
+                  <p className="text-xs mt-1">Este lead nao possui documento de aprovacao anexado.</p>
                 </div>
               )}
 
               {leadSelecionado.motivo_perda ? (
-                <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
-                  Motivo da perda: {leadSelecionado.motivo_perda}
-                </p>
+                <div className="rounded-xl border border-rose-200/60 bg-rose-50/50 p-3 text-sm text-rose-700 shadow-sm">
+                  <p className="font-semibold">Motivo da perda:</p>
+                  <p className="text-xs mt-1">{leadSelecionado.motivo_perda}</p>
+                </div>
               ) : null}
 
               {/* Pendências do lead -可以直接resolver */}
               {pendenciasLead.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-slate-700">Pendências</p>
+                  <p className="text-sm font-semibold text-slate-700">Pendencias</p>
                   {pendenciasLead.map((pendencia) => (
                     <div
                       key={pendencia.id}
-                      className={`flex items-center justify-between rounded border p-2 ${
-                        pendencia.resolvida ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"
+                      className={`flex items-center justify-between rounded-xl border p-3 ${
+                        pendencia.resolvida ? "border-emerald-200/60 bg-emerald-50/50" : "border-rose-200/60 bg-rose-50/50"
                       }`}
                     >
                       <div>
-                        <p className="text-sm font-medium">
+                        <p className="text-sm font-semibold text-slate-700">
                           {LABELS_PENDENCIA[pendencia.tipo as TipoPendencia] || pendencia.tipo}
                         </p>
-                        <p className="text-xs text-slate-600">{pendencia.descricao}</p>
+                        <p className="text-xs text-slate-500">{pendencia.descricao}</p>
                       </div>
                       <input
                         type="checkbox"
                         checked={pendencia.resolvida}
                         onChange={() => togglePendenciaResolvida(pendencia)}
-                        className="h-4 w-4"
+                        className="h-5 w-5 rounded border-slate-300 text-slate-600 focus:ring-slate-400 focus:ring-offset-2"
                       />
                     </div>
                   ))}
                 </div>
               )}
 
-              {erroDetalhesLead ? <p className="text-sm text-red-600">{erroDetalhesLead}</p> : null}
+              {erroDetalhesLead ? <p className="text-sm font-medium text-rose-600">{erroDetalhesLead}</p> : null}
 
               <div className="flex gap-2">
                 <Button 
                   variant="outline" 
                   asChild
-                  className="flex-1"
+                  className="flex-1 rounded-xl border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 >
                   <a
                     href={`https://wa.me/${normalizaTelefoneParaWhatsapp(leadSelecionado.telefone)}`}
@@ -861,6 +878,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
                 </Button>
                 <Button
                   variant="destructive"
+                  className="rounded-xl text-sm font-medium"
                   onClick={async () => {
                     if (!confirm("Tem certeza que deseja excluir este lead?")) return;
                     
