@@ -44,6 +44,7 @@ model Funcionario {
   senha_hash    String
   cargo         String
   ativo         Boolean       @default(true)
+  inativado_em  DateTime?
   criado_em     DateTime      @default(now())
   atualizado_em DateTime      @default(now()) @updatedAt
   empresa       Empresa       @relation(fields: [id_empresa], references: [id], onDelete: Restrict)
@@ -52,6 +53,40 @@ model Funcionario {
 
   @@index([id_empresa])
   @@index([id_pdv])
+}
+
+model ReatribuicaoFuncionario {
+  id                    String   @id @default(uuid())
+  id_empresa            String
+  id_funcionario_origem String
+  id_funcionario_destino String
+  quantidade_leads      Int
+  observacao            String?
+  criado_por_tipo       String
+  criado_por_id         String
+  criado_em             DateTime @default(now())
+
+  @@index([id_empresa])
+  @@index([id_funcionario_origem])
+  @@index([id_funcionario_destino])
+}
+
+model AuditoriaEquipe {
+  id                 String   @id @default(uuid())
+  id_empresa         String
+  id_funcionario_alvo String
+  acao               String
+  campo              String?
+  valor_anterior     String?
+  valor_novo         String?
+  observacao         String?
+  autor_tipo         String
+  autor_id           String
+  criado_em          DateTime @default(now())
+
+  @@index([id_empresa])
+  @@index([id_funcionario_alvo])
+  @@index([acao])
 }
 
 model EstagioFunil {

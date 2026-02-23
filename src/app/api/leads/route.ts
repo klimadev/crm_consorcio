@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     return auth.erro;
   }
 
-  const whereLeads = whereLeadsPorPerfil(auth.sessao);
+  const whereLeads = await whereLeadsPorPerfil(auth.sessao);
 
   const [estagios, leads, funcionarios] = await Promise.all([
     prisma.estagioFunil.findMany({

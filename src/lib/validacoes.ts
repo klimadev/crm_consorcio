@@ -1,8 +1,5 @@
 import { z } from "zod";
 
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-type RecordType<K extends string | number | symbol, V> = { [P in K]: V };
-
 export const esquemaLogin = z.object({
   email: z.string().trim().email("E-mail invalido."),
   senha: z.string().min(1, "Senha obrigatoria."),
@@ -46,7 +43,7 @@ export const TIPOS_PENDENCIA = [
 
 export type TipoPendencia = (typeof TIPOS_PENDENCIA)[number];
 
-export const LABELS_PENDENCIA: RecordType<TipoPendencia, string> = {
+export const LABELS_PENDENCIA: Record<TipoPendencia, string> = {
   SEM_RESPOSTA: "Sem Resposta",
   CARTA_CREDITO_PENDENTE: "Carta de Crédito Pendente",
   DOCUMENTOS_PENDENTES: "Documentos Pendentes",
@@ -69,6 +66,46 @@ export const esquemaAtualizarPendencia = z.object({
   documento_url: z.string().url().optional().nullable(),
   resolvida: z.boolean().optional(),
 });
+
+export const CARGOS_EQUIPE = ["COLABORADOR", "GERENTE"] as const;
+
+export const schemaAtualizarFuncionario = z.object({
+  nome: z.string().trim().min(2, "Nome deve ter ao menos 2 caracteres."),
+  email: z.string().trim().email("E-mail invalido."),
+  cargo: z.enum(CARGOS_EQUIPE, { message: "Cargo invalido." }),
+  id_pdv: z.string().trim().min(1, "PDV obrigatorio."),
+});
+
+export const schemaInativarFuncionario = z.object({
+  id_funcionario_destino: z.string().trim().min(1, "Destino obrigatorio."),
+  observacao: z.string().trim().max(500, "Observacao muito longa.").optional(),
+});
+
+export const schemaListarFuncionarios = z.object({
+  busca: z.string().trim().optional(),
+  status: z.enum(["TODOS", "ATIVO", "INATIVO"]).default("TODOS"),
+  cargo: z.enum(["TODOS", ...CARGOS_EQUIPE]).default("TODOS"),
+  id_pdv: z.string().trim().optional(),
+  ordenar_por: z.enum(["nome", "email", "cargo", "criado_em"]).default("nome"),
+  direcao: z.enum(["asc", "desc"]).default("asc"),
+  pagina: z.coerce.number().int().min(1).default(1),
+  por_pagina: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export const schemaAcaoLoteFuncionarios = z.object({
+  ids: z.array(z.string().trim().min(1)).min(1, "Selecione ao menos um colaborador."),
+  acao: z.enum(["ATIVAR", "INATIVAR", "ALTERAR_CARGO", "ALTERAR_PDV"]),
+  cargo: z.enum(CARGOS_EQUIPE).optional(),
+  id_pdv: z.string().trim().optional(),
+  id_funcionario_destino: z.string().trim().optional(),
+  observacao: z.string().trim().max(500, "Observacao muito longa.").optional(),
+});
+
+export type AcaoLoteFuncionarios = z.infer<typeof schemaAcaoLoteFuncionarios>;
+
+export function normalizarBuscaFuncionarios(valor?: string) {
+  return valor?.trim().toLowerCase() ?? "";
+}
 
 export function mensagemErroValidacao(erro: z.ZodError) {
   return erro.issues[0]?.message ?? "Dados invalidos.";

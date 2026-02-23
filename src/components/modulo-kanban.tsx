@@ -213,7 +213,12 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
   }
 
   // Auto-save function com debounce
-  const salvarDetalhesLead = useCallback(async (lead: Lead, urlDocumento?: string) => {
+  const salvarDetalhesLead = useCallback(async (
+    lead: Lead,
+    urlDocumento?: string,
+    opcoes?: { atualizarSelecionado?: boolean },
+  ) => {
+    const atualizarSelecionado = opcoes?.atualizarSelecionado ?? true;
     setSalvando(true);
     setSalvo(false);
     setErroDetalhesLead(null);
@@ -254,7 +259,11 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
       if (json.lead) {
         const leadAtualizado = json.lead;
         setLeads((atual) => atual.map((item) => (item.id === leadAtualizado.id ? leadAtualizado : item)));
-        setLeadSelecionado(leadAtualizado);
+        if (atualizarSelecionado) {
+          setLeadSelecionado((atual) =>
+            atual && atual.id === leadAtualizado.id ? leadAtualizado : atual,
+          );
+        }
 
         // Se documento foi adicionado, resolver a pendência automaticamente
         if (docUrl) {
@@ -665,7 +674,9 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
             clearTimeout(timeoutRef.current);
           }
           if (leadSelecionado) {
-            salvarDetalhesLead(leadSelecionado, documentoAprovacaoUrl);
+            void salvarDetalhesLead(leadSelecionado, documentoAprovacaoUrl, {
+              atualizarSelecionado: false,
+            });
           }
           setLeadSelecionado(null);
           setSalvo(false);
