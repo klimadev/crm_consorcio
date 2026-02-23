@@ -259,6 +259,108 @@ useEffect(() => {
 }, []);
 ```
 
+## Novo Estilo Visual (2024)
+
+O projeto utiliza um estilo visual moderno e consistente baseado no `modulo-equipe`. Todos os novos módulos devem seguir este padrão:
+
+### Estrutura Principal do Módulo
+
+```tsx
+// Container principal
+<section className="space-y-5 rounded-2xl bg-slate-50/50 p-4 pb-6 md:p-6">
+  
+  // Header com ícone e título
+  <header className="flex flex-col gap-4 rounded-2xl border border-slate-200/60 bg-white px-6 py-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] md:flex-row md:items-center md:justify-between">
+    <div className="flex items-center gap-4">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200">
+        <Icone className="h-6 w-6 text-slate-600" />
+      </div>
+      <div>
+        <h1 className="text-xl font-bold text-slate-800 md:text-2xl">Titulo</h1>
+        <p className="text-sm text-slate-500">Subtitulo</p>
+      </div>
+    </div>
+  </header>
+
+  // Seções internas
+  <section className="rounded-2xl border border-slate-200/60 bg-white px-5 py-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+    {/* Conteúdo */}
+  </section>
+</section>
+```
+
+### Cards e Itens
+
+```tsx
+// Card de item
+<article className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all duration-200 hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)]">
+  {/* Conteúdo */}
+</article>
+```
+
+### Inputs e Selects
+
+```tsx
+// Input
+<Input 
+  className="h-11 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50" 
+/>
+
+// Select
+<SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-slate-50/80 text-sm font-medium text-slate-600">
+  <SelectValue placeholder="Selecione..." />
+</SelectTrigger>
+```
+
+### Botões
+
+```tsx
+// Botão primário
+<Button className="rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700">
+  Texto
+</Button>
+
+// Botão secundário/outline
+<Button className="rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900">
+  Texto
+</Button>
+```
+
+### Badges de Status
+
+```tsx
+// Status ativo (verde)
+<span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+  Ativo
+</span>
+
+// Status inativo (cinza)
+<span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+  <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+  Inativo
+</span>
+```
+
+### Cores de Feedback
+
+```tsx
+// Erro/Alerta
+<div className="rounded-xl border border-rose-200/60 bg-rose-50/50 p-3 text-sm text-rose-700 shadow-sm">
+  Mensagem de erro
+</div>
+
+// Sucesso
+<div className="rounded-xl border border-emerald-200/60 bg-emerald-50/50 p-3 text-sm text-emerald-700 shadow-sm">
+  Mensagem de sucesso
+</div>
+
+// Informativo
+<div className="rounded-xl border border-amber-200/60 bg-amber-50/50 p-3 text-sm text-amber-800 shadow-sm">
+  Mensagem informativa
+</div>
+```
+
 ## Testing
 
 ```tsx
@@ -298,3 +400,4 @@ src/
 5. Always validate with `npm run lint` and `npm run build` before committing
 6. Implement rollback on API failures for optimistic updates
 7. Use controlled Dialog components with `open`/`onOpenChange`
+8. Follow the new visual style consistently across all modules
