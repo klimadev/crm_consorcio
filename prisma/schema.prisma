@@ -143,3 +143,21 @@ model Pendencia {
   @@index([id_empresa])
   @@index([id_lead])
 }
+
+model WhatsappInstancia {
+  id             String    @id @default(uuid())
+  id_empresa     String
+  id_criador     String
+  nome           String    // Nome amigável definido pelo usuário
+  instance_name  String    // Nome da instância na Evolution API
+  status         String    // connected, disconnected, qrcode, etc
+  phone          String?   // Número do WhatsApp conectado
+  profile_name   String?   // Nome do perfil do WhatsApp
+  profile_pic    String?   // URL da foto de perfil
+  criado_em      DateTime  @default(now())
+  atualizado_em  DateTime  @default(now()) @updatedAt
+
+  @@index([id_empresa])
+  @@index([id_criador])
+  @@unique([instance_name])
+}

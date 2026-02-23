@@ -11,20 +11,70 @@ import {
   Sparkles,
   Users,
   X,
+  AlertTriangle,
+  MessageCircle,
 } from "lucide-react";
 import { BotaoSair } from "@/components/botao-sair";
 import { SessaoToken } from "@/lib/tipos";
 import { DadosUsuarioLogado } from "@/lib/autenticacao";
 import { cn } from "@/lib/utils";
+import { usePendenciasGlobais } from "@/modules/kanban/hooks/use-pendencias-globais";
 
 type Props = {
   sessao: SessaoToken;
   dadosUsuario: DadosUsuarioLogado | null;
 };
 
+function MenuItemComBadge({
+  href,
+  label,
+  icon: Icone,
+  ativo,
+  resumo,
+  onClick,
+}: {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  ativo: boolean;
+  resumo?: { total: number; porGravidade: Record<string, number> } | null;
+  onClick?: () => void;
+}) {
+  const temPendenciaCritica = resumo?.porGravidade.critica && resumo.porGravidade.critica > 0;
+  const temPendencia = resumo && resumo.total > 0;
+
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      className={cn(
+        "relative flex items-center justify-between rounded-[10px] px-3 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-slate-600 transition-all duration-200 hover:bg-[#F1F3F5] hover:text-slate-900",
+        ativo && "bg-blue-500/10 pl-4 text-blue-700 hover:bg-blue-500/15 hover:text-blue-700",
+      )}
+    >
+      <div className="flex items-center gap-2.5">
+        {ativo ? <span className="absolute left-1 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-blue-600" /> : null}
+        <Icone className={cn("h-4 w-4", ativo && "text-blue-700")} />
+        {label}
+      </div>
+      {temPendencia && (
+        <span
+          className={cn(
+            "flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold text-white",
+            temPendenciaCritica ? "bg-red-500" : "bg-amber-500",
+          )}
+        >
+          {resumo.total > 99 ? "99+" : resumo.total}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
   const pathname = usePathname();
   const [sidebarAberta, setSidebarAberta] = useState(false);
+  const { resumo, carregando } = usePendenciasGlobais();
 
   const secoes = [
     {
@@ -35,12 +85,15 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
       titulo: "OPERACAO",
       itens: [
         { href: "/kanban", label: "Kanban", icon: LayoutGrid },
-        { href: "/equipe", label: "Equipe", icon: Users },
+        ...(sessao.perfil !== "COLABORADOR" ? [{ href: "/equipe", label: "Equipe", icon: Users }] : []),
       ],
     },
     {
       titulo: "SISTEMA",
-      itens: [{ href: "/configs", label: "Configuracoes", icon: Settings2 }],
+      itens: [
+        ...(sessao.perfil === "EMPRESA" ? [{ href: "/whatsapp", label: "WhatsApp", icon: MessageCircle }] : []),
+        ...(sessao.perfil === "EMPRESA" ? [{ href: "/configs", label: "Configuracoes", icon: Settings2 }] : []),
+      ],
     },
   ];
 
@@ -70,6 +123,20 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
               {secao.itens.map((item) => {
                 const Icone = item.icon;
                 const ativo = pathname === item.href || pathname.startsWith(`${item.href}/`);
+
+                if (item.href === "/kanban") {
+                  return (
+                    <MenuItemComBadge
+                      key={item.href}
+                      href={item.href}
+                      label={item.label}
+                      icon={Icone}
+                      ativo={ativo}
+                      resumo={resumo ?? undefined}
+                      onClick={() => setSidebarAberta(false)}
+                    />
+                  );
+                }
 
                 return (
                   <Link

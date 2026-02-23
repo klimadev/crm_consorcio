@@ -43,15 +43,25 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         setEstagioNovoLead={vm.setEstagioNovoLead}
         cargoNovoLead={vm.cargoNovoLead}
         setCargoNovoLead={vm.setCargoNovoLead}
+        filtros={vm.filtros}
+        setFiltros={vm.setFiltros}
+        modoFocoPendencias={vm.modoFocoPendencias}
+        setModoFocoPendencias={vm.setModoFocoPendencias}
+        resumoPendencias={vm.resumoPendencias}
+        notificacoesAtivadas={vm.notificacoesAtivadas}
+        alternarNotificacoes={vm.alternarNotificacoes}
+        permissaoNotificacao={vm.permissaoNotificacao}
       />
 
       <KanbanBoard
         estagios={vm.estagios}
         leadsPorEstagio={vm.leadsPorEstagio}
+        leadsFiltradosPorEstagio={vm.leadsFiltradosPorEstagio}
         pendenciasPorLead={vm.pendenciasPorLead}
         todasPendencias={vm.todasPendencias}
         onDragEnd={vm.aoDragEnd}
         onLeadClick={handleLeadClick}
+        modoFocoPendencias={vm.modoFocoPendencias}
       />
 
       <PerdaDialog

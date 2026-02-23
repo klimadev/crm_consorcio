@@ -1,4 +1,7 @@
 import { TipoPendencia } from "@/lib/validacoes";
+import type { PendenciaGravidade, ResumoPendencias } from "./hooks/use-pendencias-globais";
+
+export type { ResumoPendencias, PendenciaGravidade };
 
 export type Estagio = {
   id: string;
@@ -33,6 +36,23 @@ export type PendenciaDinamica = {
   resolvida: boolean;
 };
 
+export type PendenciaLeadInfo = {
+  total: number;
+  naoResolvidas: number;
+  tipos: TipoPendencia[];
+  gravidadeMaxima: PendenciaGravidade;
+};
+
+export type FiltroPendencia = "todos" | "com_pendencia" | "sem_pendencia";
+export type FiltroGravidade = "todas" | "critica" | "alerta" | "info";
+export type FiltroTipo = "todos" | TipoPendencia;
+
+export type KanbanFilters = {
+  status: FiltroPendencia;
+  gravidade: FiltroGravidade;
+  tipo: FiltroTipo;
+};
+
 export type Props = {
   perfil: "EMPRESA" | "GERENTE" | "COLABORADOR";
   idUsuario: string;
@@ -43,8 +63,10 @@ export type UseKanbanModuleReturn = {
   leads: Lead[];
   funcionarios: Funcionario[];
   leadsPorEstagio: Record<string, Lead[]>;
-  pendenciasPorLead: Record<string, { total: number; naoResolvidas: number }>;
+  leadsFiltradosPorEstagio: Record<string, Lead[]>;
+  pendenciasPorLead: Record<string, PendenciaLeadInfo>;
   todasPendencias: PendenciaDinamica[];
+  resumoPendencias: ResumoPendencias | null;
   leadSelecionado: Lead | null;
   pendenciasLead: PendenciaDinamica[];
   dialogNovoLeadAberto: boolean;
@@ -80,4 +102,12 @@ export type UseKanbanModuleReturn = {
   setCargoNovoLead: (cargo: { id_funcionario: string } | null) => void;
   setEstagioNovoLead: (estagio: string) => void;
   estagioNovoLead: string;
+  filtros: KanbanFilters;
+  setFiltros: (filtros: KanbanFilters) => void;
+  modoFocoPendencias: boolean;
+  setModoFocoPendencias: (ativo: boolean) => void;
+  recarregarPendencias: () => void;
+  notificacoesAtivadas: boolean;
+  alternarNotificacoes: () => Promise<boolean>;
+  permissaoNotificacao: () => NotificationPermission | "unknown";
 };

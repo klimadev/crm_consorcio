@@ -1,3 +1,5 @@
+"use client";
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -5,9 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   aplicaMascaraMoedaBr,
   aplicaMascaraTelefoneBr,
-  converteMoedaBrParaNumero,
 } from "@/lib/utils";
-import type { Estagio, Funcionario } from "../types";
+import type { Estagio, Funcionario, KanbanFilters, ResumoPendencias } from "../types";
+import { PendenciaBadge } from "./pendencia-badge";
+import { cn } from "@/lib/utils";
+import { Filter, X, Bell, BellOff } from "lucide-react";
 
 type KanbanHeaderProps = {
   dialogNovoLeadAberto: boolean;
@@ -27,6 +31,14 @@ type KanbanHeaderProps = {
   setEstagioNovoLead: (estagio: string) => void;
   cargoNovoLead: { id_funcionario: string } | null;
   setCargoNovoLead: (cargo: { id_funcionario: string } | null) => void;
+  filtros: KanbanFilters;
+  setFiltros: (filtros: KanbanFilters) => void;
+  modoFocoPendencias: boolean;
+  setModoFocoPendencias: (ativo: boolean) => void;
+  resumoPendencias: ResumoPendencias | null;
+  notificacoesAtivadas: boolean;
+  alternarNotificacoes: () => Promise<boolean>;
+  permissaoNotificacao: () => NotificationPermission | "unknown";
 };
 
 export function KanbanHeader({
@@ -47,7 +59,21 @@ export function KanbanHeader({
   setEstagioNovoLead,
   cargoNovoLead,
   setCargoNovoLead,
+  filtros,
+  setFiltros,
+  modoFocoPendencias,
+  setModoFocoPendencias,
+  resumoPendencias,
+  notificacoesAtivadas,
+  alternarNotificacoes,
+  permissaoNotificacao,
 }: KanbanHeaderProps) {
+  const filtrosAtivos = filtros.status !== "todos" || filtros.gravidade !== "todas" || filtros.tipo !== "todos";
+
+  const limparFiltros = () => {
+    setFiltros({ status: "todos", gravidade: "todas", tipo: "todos" });
+  };
+
   return (
     <header className="flex flex-col gap-4 rounded-2xl border border-slate-200/60 bg-white px-6 py-5 shadow-[0_2px_8px_rgba(0,0.0,0,04)] md:flex-row md:items-center md:justify-between">
       <div className="flex items-center gap-4">
@@ -62,93 +88,185 @@ export function KanbanHeader({
         </div>
       </div>
 
-      <Dialog
-        open={dialogNovoLeadAberto}
-        onOpenChange={(aberto) => {
-          setDialogNovoLeadAberto(aberto);
-          if (!aberto) {
-            setErroNovoLead(null);
+      <div className="flex flex-wrap items-center gap-3">
+        {resumoPendencias && (
+          <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2">
+            <PendenciaBadge resumo={resumoPendencias} tamanho="md" modoExpansivo />
+          </div>
+        )}
+
+        <Button
+          variant={modoFocoPendencias ? "default" : "outline"}
+          size="sm"
+          onClick={() => setModoFocoPendencias(!modoFocoPendencias)}
+          className={cn(
+            "rounded-xl text-sm font-medium",
+            modoFocoPendencias ? "bg-red-500 hover:bg-red-600" : "border-slate-200"
+          )}
+        >
+          <Filter className="mr-2 h-4 w-4" />
+          Foco Pendências
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={async () => {
+            const permissao = permissaoNotificacao();
+            if (permissao === "denied") {
+              alert("Notificações bloqueadas. Por favor, habilite nas configurações do navegador.");
+              return;
+            }
+            await alternarNotificacoes();
+          }}
+          className={cn(
+            "rounded-xl text-sm font-medium",
+            notificacoesAtivadas
+              ? "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
+              : "border-slate-200"
+          )}
+          title={
+            notificacoesAtivadas
+              ? "Notificações ativadas - clique para desativar"
+              : "Ativar notificações de novas pendências"
           }
-        }}
-      >
-        <DialogTrigger asChild>
-          <Button className="w-full rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700 md:w-auto">
-            <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Novo lead
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Cadastrar lead</DialogTitle>
-          </DialogHeader>
+        >
+          {notificacoesAtivadas ? (
+            <Bell className="h-4 w-4" />
+          ) : (
+            <BellOff className="h-4 w-4" />
+          )}
+        </Button>
 
-          <form className="space-y-3" onSubmit={criarLead}>
-            <Input
-              className="h-11 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
-              name="nome"
-              placeholder="Nome"
-              required
-            />
-            <Input
-              className="h-11 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
-              name="telefone"
-              placeholder="Telefone"
-              value={telefoneNovoLead}
-              onChange={(e) => setTelefoneNovoLead(aplicaMascaraTelefoneBr(e.target.value))}
-              required
-            />
-            <Input
-              className="h-11 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
-              name="valor_consorcio"
-              placeholder="Valor"
-              inputMode="numeric"
-              value={valorNovoLead}
-              onChange={(e) => setValorNovoLead(aplicaMascaraMoedaBr(e.target.value))}
-              required
-            />
+        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5">
+          <Select
+            value={filtros.status}
+            onValueChange={(v) => setFiltros({ ...filtros, status: v as KanbanFilters["status"] })}
+          >
+            <SelectTrigger className="h-8 w-32 border-0 bg-transparent text-sm font-medium text-slate-600 focus:ring-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="com_pendencia">Com pendência</SelectItem>
+              <SelectItem value="sem_pendencia">Sem pendência</SelectItem>
+            </SelectContent>
+          </Select>
 
-            <input type="hidden" name="id_estagio" value={estagioNovoLead || estagioAberto} />
+          <div className="h-4 w-px bg-slate-200" />
 
-            <Select value={estagioNovoLead || estagioAberto} onValueChange={setEstagioNovoLead}>
-              <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-slate-50/80 text-sm font-medium text-slate-600">
-                <SelectValue placeholder="Estagio" />
-              </SelectTrigger>
-              <SelectContent>
-                {estagios.map((estagio) => (
-                  <SelectItem key={estagio.id} value={estagio.id}>
-                    {estagio.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <Select
+            value={filtros.gravidade}
+            onValueChange={(v) => setFiltros({ ...filtros, gravidade: v as KanbanFilters["gravidade"] })}
+          >
+            <SelectTrigger className="h-8 w-24 border-0 bg-transparent text-sm font-medium text-slate-600 focus:ring-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Gravidade</SelectItem>
+              <SelectItem value="critica">Crítica</SelectItem>
+              <SelectItem value="alerta">Alerta</SelectItem>
+            </SelectContent>
+          </Select>
 
-            {perfil !== "COLABORADOR" ? (
-              <Select
-                onValueChange={(valor) => setCargoNovoLead({ id_funcionario: valor })}
-              >
+          {filtrosAtivos && (
+            <button
+              onClick={limparFiltros}
+              className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-200 text-slate-500 hover:bg-slate-300"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+
+        <Dialog
+          open={dialogNovoLeadAberto}
+          onOpenChange={(aberto) => {
+            setDialogNovoLeadAberto(aberto);
+            if (!aberto) {
+              setErroNovoLead(null);
+            }
+          }}
+        >
+          <DialogTrigger asChild>
+            <Button className="w-full rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700 md:w-auto">
+              <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Novo lead
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Cadastrar lead</DialogTitle>
+            </DialogHeader>
+
+            <form className="space-y-3" onSubmit={criarLead}>
+              <Input
+                className="h-11 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
+                name="nome"
+                placeholder="Nome"
+                required
+              />
+              <Input
+                className="h-11 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
+                name="telefone"
+                placeholder="Telefone"
+                value={telefoneNovoLead}
+                onChange={(e) => setTelefoneNovoLead(aplicaMascaraTelefoneBr(e.target.value))}
+                required
+              />
+              <Input
+                className="h-11 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
+                name="valor_consorcio"
+                placeholder="Valor"
+                inputMode="numeric"
+                value={valorNovoLead}
+                onChange={(e) => setValorNovoLead(aplicaMascaraMoedaBr(e.target.value))}
+                required
+              />
+
+              <input type="hidden" name="id_estagio" value={estagioNovoLead || estagioAberto} />
+
+              <Select value={estagioNovoLead || estagioAberto} onValueChange={setEstagioNovoLead}>
                 <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-slate-50/80 text-sm font-medium text-slate-600">
-                  <SelectValue placeholder="Funcionario" />
+                  <SelectValue placeholder="Estagio" />
                 </SelectTrigger>
                 <SelectContent>
-                  {funcionarios.map((funcionario) => (
-                    <SelectItem key={funcionario.id} value={funcionario.id}>
-                      {funcionario.nome}
+                  {estagios.map((estagio) => (
+                    <SelectItem key={estagio.id} value={estagio.id}>
+                      {estagio.nome}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            ) : null}
 
-            {erroNovoLead ? <p className="text-sm font-medium text-red-600">{erroNovoLead}</p> : null}
+              {perfil !== "COLABORADOR" ? (
+                <Select
+                  onValueChange={(valor) => setCargoNovoLead({ id_funcionario: valor })}
+                >
+                  <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-slate-50/80 text-sm font-medium text-slate-600">
+                    <SelectValue placeholder="Funcionario" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {funcionarios.map((funcionario) => (
+                      <SelectItem key={funcionario.id} value={funcionario.id}>
+                        {funcionario.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : null}
 
-            <Button className="w-full rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700" type="submit">
-              Criar lead
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+              {erroNovoLead ? <p className="text-sm font-medium text-red-600">{erroNovoLead}</p> : null}
+
+              <Button className="w-full rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700" type="submit">
+                Criar lead
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
     </header>
   );
 }

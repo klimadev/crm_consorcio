@@ -8,7 +8,8 @@ import {
   converteMoedaBrParaNumero,
 } from "@/lib/utils";
 import { DIAS_ESTAGIO_PARADO, LABELS_PENDENCIA, TipoPendencia } from "@/lib/validacoes";
-import type { Estagio, Lead, Funcionario, PendenciaDinamica, UseKanbanModuleReturn, Props } from "../types";
+import type { Estagio, Lead, Funcionario, PendenciaDinamica, UseKanbanModuleReturn, Props, KanbanFilters, PendenciaLeadInfo } from "../types";
+import { usePendenciasGlobais, getGravidadePendencia } from "./use-pendencias-globais";
 
 type PendenciaCalculada = {
   id: string;
@@ -52,6 +53,21 @@ function calcularPendenciasLead(lead: Lead, estagio: Estagio): PendenciaCalculad
   return pendencias;
 }
 
+function leadPassaFiltros(lead: Lead, pendenciaInfo: PendenciaLeadInfo | undefined, filtros: KanbanFilters): boolean {
+  if (filtros.status === "com_pendencia" && !pendenciaInfo) return false;
+  if (filtros.status === "sem_pendencia" && pendenciaInfo) return false;
+  
+  if (filtros.gravidade !== "todas" && pendenciaInfo) {
+    if (pendenciaInfo.gravidadeMaxima !== filtros.gravidade) return false;
+  }
+  
+  if (filtros.tipo !== "todos" && pendenciaInfo) {
+    if (!pendenciaInfo.tipos.includes(filtros.tipo)) return false;
+  }
+  
+  return true;
+}
+
 export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleReturn {
   const [estagios, setEstagios] = useState<Estagio[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -80,6 +96,21 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
   const [arquivoSelecionado, setArquivoSelecionado] = useState<File | null>(null);
   const [uploadando, setUploadando] = useState(false);
 
+  const [filtros, setFiltros] = useState<KanbanFilters>({
+    status: "todos",
+    gravidade: "todas",
+    tipo: "todos",
+  });
+  const [modoFocoPendencias, setModoFocoPendencias] = useState(false);
+
+  const {
+    resumo: resumoPendencias,
+    recarregar: recarregarPendencias,
+    notificacoesAtivadas,
+    alternarNotificacoes,
+    permissaoNotificacao,
+  } = usePendenciasGlobais();
+
   const bootstrap = useCallback(async () => {
     const resLeads = await fetch("/api/leads");
     if (resLeads.ok) {
@@ -101,8 +132,8 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     };
   }, [bootstrap]);
 
-  const pendenciasPorLead = useMemo(() => {
-    const mapa: Record<string, { total: number; naoResolvidas: number }> = {};
+  const pendenciasPorLead = useMemo((): Record<string, PendenciaLeadInfo> => {
+    const mapa: Record<string, PendenciaLeadInfo> = {};
     const mapaEstagios = Object.fromEntries(estagios.map(e => [e.id, e]));
     
     for (const lead of leads) {
@@ -111,9 +142,20 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
       
       const pendencias = calcularPendenciasLead(lead, estagio);
       if (pendencias.length > 0) {
+        const tipos = pendencias.map(p => p.tipo);
+        let gravidadeMaxima: "info" | "alerta" | "critica" = "info";
+        for (const tipo of tipos) {
+          const g = getGravidadePendencia(tipo);
+          const ordem = { info: 0, alerta: 1, critica: 2 };
+          if (ordem[g] > ordem[gravidadeMaxima]) {
+            gravidadeMaxima = g;
+          }
+        }
         mapa[lead.id] = {
           total: pendencias.length,
           naoResolvidas: pendencias.filter(p => !p.resolvida).length,
+          tipos,
+          gravidadeMaxima,
         };
       }
     }
@@ -139,6 +181,26 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     }
     return mapa;
   }, [estagios, leads]);
+
+  const leadsFiltradosPorEstagio = useMemo(() => {
+    const filtrosAtivos = modoFocoPendencias 
+      ? { status: "com_pendencia" as const, gravidade: "todas" as const, tipo: "todos" as const }
+      : filtros;
+    
+    const mapa: Record<string, Lead[]> = {};
+    for (const estagio of estagios) {
+      mapa[estagio.id] = [];
+    }
+    for (const lead of leads) {
+      if (mapa[lead.id_estagio]) {
+        const pendenciaInfo = pendenciasPorLead[lead.id];
+        if (leadPassaFiltros(lead, pendenciaInfo, filtrosAtivos)) {
+          mapa[lead.id_estagio].push(lead);
+        }
+      }
+    }
+    return mapa;
+  }, [estagios, leads, pendenciasPorLead, filtros, modoFocoPendencias]);
 
   const estagioAberto = useMemo(
     () => estagios.find((e) => e.tipo === "ABERTO")?.id ?? estagios[0]?.id ?? "",
@@ -446,8 +508,10 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     leads,
     funcionarios,
     leadsPorEstagio,
+    leadsFiltradosPorEstagio,
     pendenciasPorLead,
     todasPendencias: [],
+    resumoPendencias,
     leadSelecionado,
     pendenciasLead,
     dialogNovoLeadAberto,
@@ -483,5 +547,13 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     setCargoNovoLead,
     setEstagioNovoLead,
     estagioNovoLead,
+    filtros,
+    setFiltros,
+    modoFocoPendencias,
+    setModoFocoPendencias,
+    recarregarPendencias,
+    notificacoesAtivadas,
+    alternarNotificacoes,
+    permissaoNotificacao,
   };
 }
