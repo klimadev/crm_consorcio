@@ -22,8 +22,7 @@ npm run build             # Production build (includes TypeScript)
 npm run lint              # ESLint validation
 
 # Testing
-npm run test              # Run all tests (Vitest)
-npm run test -- --run     # Run tests once (non-watch mode)
+npm run test              # Run all tests once (Vitest)
 npm run test -- src/components/button.test.ts  # Single test file
 npm run test -- --run -t "test name"           # Single test by name
 
@@ -84,12 +83,56 @@ type Lead = { id: string; nome: string };
 
 ## Key Patterns
 
+### React Context for Cross-Component State
+When state needs to be shared between independent components (e.g., sidebar + kanban), use React Context:
+
+```tsx
+// Create context in a shared hook file
+const MyContext = createContext<MyContextValue | null>(null);
+
+export function MyProvider({ children }: { children: ReactNode }) {
+  const [state, setState] = useState(initial);
+  
+  // CRITICAL: Use useEffect for post-render sync, NOT synchronous calls
+  useEffect(() => {
+    // This runs AFTER re-render, ensuring fresh state
+    syncState();
+  }, [state, otherDep]);
+  
+  return (
+    <MyContext.Provider value={{ state, setState }}>
+      {children}
+    </MyContext.Provider>
+  );
+}
+
+export function useMyContext() {
+  const context = useContext(MyContext);
+  if (!context) throw new Error("useMyContext must be used within MyProvider");
+  return context;
+}
+```
+
 ### Optimistic UI
 ```tsx
 const idTemp = `temp-${Date.now()}`;
 setItems(prev => [{ ...item, id: idTemp }, ...prev]);
 const res = await fetch("/api/items", { method: "POST", body: JSON.stringify(item) });
 if (!res.ok) setItems(prev => prev.filter(i => i.id !== idTemp)); // rollback
+```
+
+### Synchronous State Sync Bug (AVOID)
+NEVER call sync functions synchronously after setState - data will be stale:
+
+```tsx
+// WRONG - stale data bug!
+setLeads(newLeads);
+sincronizarPendencias(); // ❌ Uses old leads!
+
+// CORRECT - use useEffect to sync after render
+useEffect(() => {
+  sincronizarPendencias();
+}, [leads, estagios]);
 ```
 
 ### Autosave/Debounce
@@ -179,3 +222,4 @@ describe("Component", () => {
 5. Implement rollback on API failures for optimistic updates
 6. Use controlled Dialog with `open`/`onOpenChange` and cleanup
 7. Follow the visual style consistently across all modules
+8. For cross-component state sync, use Context + useEffect (NOT synchronous calls)

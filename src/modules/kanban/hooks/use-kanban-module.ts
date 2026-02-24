@@ -10,6 +10,7 @@ import {
 import { DIAS_ESTAGIO_PARADO, LABELS_PENDENCIA, TipoPendencia } from "@/lib/validacoes";
 import type { Estagio, Lead, Funcionario, PendenciaDinamica, UseKanbanModuleReturn, Props, KanbanFilters, PendenciaLeadInfo } from "../types";
 import { usePendenciasGlobais, getGravidadePendencia } from "./use-pendencias-globais";
+import type { PendenciaInfo } from "./use-pendencias-globais";
 
 type PendenciaCalculada = {
   id: string;
@@ -106,6 +107,7 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
   const {
     resumo: resumoPendencias,
     recarregar: recarregarPendencias,
+    atualizarComDadosLocais,
     notificacoesAtivadas,
     alternarNotificacoes,
     permissaoNotificacao,
@@ -161,6 +163,28 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     }
     return mapa;
   }, [leads, estagios]);
+
+  const todasPendenciasLocais = useMemo<PendenciaCalculada[]>(() => {
+    const pendencias: PendenciaCalculada[] = [];
+    const mapaEstagios = Object.fromEntries(estagios.map(e => [e.id, e]));
+    for (const lead of leads) {
+      const estagio = mapaEstagios[lead.id_estagio];
+      if (!estagio) continue;
+      const p = calcularPendenciasLead(lead, estagio);
+      pendencias.push(...p);
+    }
+    return pendencias;
+  }, [leads, estagios]);
+
+  const sincronizarPendencias = useCallback(() => {
+    atualizarComDadosLocais(todasPendenciasLocais as PendenciaInfo[]);
+  }, [atualizarComDadosLocais, todasPendenciasLocais]);
+
+  useEffect(() => {
+    if (leads.length > 0 || estagios.length > 0) {
+      sincronizarPendencias();
+    }
+  }, [leads, estagios, sincronizarPendencias]);
 
   const pendenciasLead = useMemo(() => {
     if (!leadSelecionado) return [];

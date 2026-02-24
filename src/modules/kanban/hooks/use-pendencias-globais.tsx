@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { TipoPendencia, LABELS_PENDENCIA } from "@/lib/validacoes";
 
 export type PendenciaInfo = {
@@ -35,14 +35,21 @@ export function getGravidadePendencia(tipo: TipoPendencia): PendenciaGravidade {
   }
 }
 
+const STORAGE_KEYS = {
+  NOTIFICACOES_ATIVADAS: "notificacoes_pendencias_ativadas",
+  PENDENCIAS_ANTERIORES: "pendencias_anteriores",
+  JA_NOTIFICADAS: "pendencias_ja_notificadas",
+  PRIMEIRA_CARGA: "pendencias_primeira_carga",
+};
+
 function getNotificacoesAtivadas(): boolean {
   if (typeof window === "undefined") return false;
-  return localStorage.getItem("notificacoes_pendencias_ativadas") === "true";
+  return localStorage.getItem(STORAGE_KEYS.NOTIFICACOES_ATIVADAS) === "true";
 }
 
 function setNotificacoesAtivadas(ativadas: boolean): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem("notificacoes_pendencias_ativadas", String(ativadas));
+  localStorage.setItem(STORAGE_KEYS.NOTIFICACOES_ATIVADAS, String(ativadas));
 }
 
 function getNotificacaoPermissao(): NotificationPermission | "unknown" {
@@ -75,19 +82,89 @@ function enviarNotificacao(titulo: string, corpo: string, icone?: string): void 
   }
 }
 
-function detectarNovasPendencias(
-  anteriores: PendenciaInfo[],
-  atuais: PendenciaInfo[]
-): PendenciaInfo[] {
-  const idsAnteriores = new Set(anteriores.filter(p => !p.resolvida).map(p => p.id));
-  return atuais.filter(p => !p.resolvida && !idsAnteriores.has(p.id));
+function getPendenciasAnteriores(): PendenciaInfo[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const stored = localStorage.getItem(STORAGE_KEYS.PENDENCIAS_ANTERIORES);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
 }
 
-export function usePendenciasGlobais() {
+function setPendenciasAnteriores(pendencias: PendenciaInfo[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEYS.PENDENCIAS_ANTERIORES, JSON.stringify(pendencias));
+  } catch (e) {
+    console.error("Erro ao salvar pendências anteriores:", e);
+  }
+}
+
+function getJaNotificadas(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const stored = localStorage.getItem(STORAGE_KEYS.JA_NOTIFICADAS);
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function setJaNotificadas(ids: Set<string>): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEYS.JA_NOTIFICADAS, JSON.stringify([...ids]));
+  } catch (e) {
+    console.error("Erro ao salvar pendências notificadas:", e);
+  }
+}
+
+function isPrimeiraCarga(): boolean {
+  if (typeof window === "undefined") return true;
+  return localStorage.getItem(STORAGE_KEYS.PRIMEIRA_CARGA) !== "false";
+}
+
+function setPrimeiraCarga(valor: boolean): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(STORAGE_KEYS.PRIMEIRA_CARGA, String(valor));
+}
+
+function detectarNovasPendenciasNaoNotificadas(
+  anteriores: PendenciaInfo[],
+  atuais: PendenciaInfo[],
+  jaNotificadas: Set<string>
+): PendenciaInfo[] {
+  const idsAnteriores = new Set(anteriores.filter(p => !p.resolvida).map(p => p.id));
+  return atuais.filter(
+    p => !p.resolvida && !idsAnteriores.has(p.id) && !jaNotificadas.has(p.id)
+  );
+}
+
+type PendenciasContextValue = {
+  pendencias: PendenciaInfo[];
+  pendenciasPorLead: Record<string, { total: number; naoResolvidas: number; tipos: TipoPendencia[]; gravidadeMaxima: PendenciaGravidade }>;
+  resumo: ResumoPendencias;
+  carregando: boolean;
+  recarregar: () => void;
+  forcarAtualizacao: () => void;
+  atualizarComDadosLocais: (pendencias: PendenciaInfo[]) => void;
+  notificacoesAtivadas: boolean;
+  ativarNotificacoes: () => Promise<boolean>;
+  desativarNotificacoes: () => void;
+  alternarNotificacoes: () => Promise<boolean>;
+  permissaoNotificacao: () => NotificationPermission | "unknown";
+  marcarPendenciasAtuaisComoNotificadas: () => void;
+};
+
+const PendenciasContext = createContext<PendenciasContextValue | null>(null);
+
+export function usePendenciasProvider() {
   const [pendencias, setPendencias] = useState<PendenciaInfo[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [notificacoesAtivadas, setNotificacoesAtivadasState] = useState(getNotificacoesAtivadas);
-  const pendenciasAnterioresRef = useRef<PendenciaInfo[]>([]);
+  const jaNotificadasRef = useRef<Set<string>>(getJaNotificadas());
+  const pendenciasAnterioresRef = useRef<PendenciaInfo[]>(getPendenciasAnteriores());
 
   const buscarPendencias = useCallback(async () => {
     try {
@@ -96,7 +173,23 @@ export function usePendenciasGlobais() {
         const json = await res.json();
         const novasPendencias: PendenciaInfo[] = json.pendencias ?? [];
         
-        const novas = detectarNovasPendencias(pendenciasAnterioresRef.current, novasPendencias);
+        const ehPrimeiraCarga = isPrimeiraCarga();
+        const jaNotificadas = jaNotificadasRef.current;
+        const anteriores = pendenciasAnterioresRef.current;
+        
+        if (ehPrimeiraCarga && anteriores.length > 0) {
+          setPrimeiraCarga(false);
+        }
+        
+        if (!ehPrimeiraCarga || anteriores.length === 0) {
+          pendenciasAnterioresRef.current = novasPendencias;
+          setPendenciasAnteriores(novasPendencias);
+          setPendencias(novasPendencias);
+          setCarregando(false);
+          return;
+        }
+        
+        const novas = detectarNovasPendenciasNaoNotificadas(anteriores, novasPendencias, jaNotificadas);
         
         if (novas.length > 0 && notificacoesAtivadas && getNotificacaoPermissao() === "granted") {
           const criticas = novas.filter(p => getGravidadePendencia(p.tipo) === "critica");
@@ -115,10 +208,15 @@ export function usePendenciasGlobais() {
           
           if (corpo) {
             enviarNotificacao(titulo, corpo);
+            for (const p of novas) {
+              jaNotificadasRef.current.add(p.id);
+            }
+            setJaNotificadas(jaNotificadasRef.current);
           }
         }
         
         pendenciasAnterioresRef.current = novasPendencias;
+        setPendenciasAnteriores(novasPendencias);
         setPendencias(novasPendencias);
       }
     } catch (erro) {
@@ -138,10 +236,12 @@ export function usePendenciasGlobais() {
     if (permitido) {
       setNotificacoesAtivadas(true);
       setNotificacoesAtivadasState(true);
+      setPendenciasAnteriores(pendencias);
+      setPrimeiraCarga(false);
       return true;
     }
     return false;
-  }, []);
+  }, [pendencias]);
 
   const desativarNotificacoes = useCallback(() => {
     setNotificacoesAtivadas(false);
@@ -159,6 +259,30 @@ export function usePendenciasGlobais() {
   const permissaoNotificacao = useCallback((): NotificationPermission | "unknown" => {
     return getNotificacaoPermissao();
   }, []);
+
+  const forcarAtualizacao = useCallback(() => {
+    buscarPendencias();
+  }, [buscarPendencias]);
+
+  const atualizarComDadosLocais = useCallback((novasPendencias: PendenciaInfo[]) => {
+    pendenciasAnterioresRef.current = novasPendencias;
+    setPendenciasAnteriores(novasPendencias);
+    setPendencias(novasPendencias);
+    setCarregando(false);
+  }, []);
+
+  const marcarPendenciasAtuaisComoNotificadas = useCallback(() => {
+    const ids = new Set<string>();
+    for (const p of pendencias) {
+      if (!p.resolvida) {
+        ids.add(p.id);
+      }
+    }
+    setJaNotificadas(ids);
+    jaNotificadasRef.current = ids;
+    setPendenciasAnteriores(pendencias);
+    pendenciasAnterioresRef.current = pendencias;
+  }, [pendencias]);
 
   useEffect(() => {
     buscarPendencias();
@@ -226,10 +350,43 @@ export function usePendenciasGlobais() {
     resumo,
     carregando,
     recarregar,
+    forcarAtualizacao,
+    atualizarComDadosLocais,
     notificacoesAtivadas,
     ativarNotificacoes,
     desativarNotificacoes,
     alternarNotificacoes,
     permissaoNotificacao,
+    marcarPendenciasAtuaisComoNotificadas,
   };
+}
+
+const defaultValue = {
+  pendencias: [],
+  pendenciasPorLead: {} as Record<string, { total: number; naoResolvidas: number; tipos: TipoPendencia[]; gravidadeMaxima: PendenciaGravidade }>,
+  resumo: { total: 0, totalLeads: 0, porTipo: {} as Record<TipoPendencia, number>, porGravidade: { critica: 0, alerta: 0, info: 0 } },
+  carregando: true,
+  recarregar: () => {},
+  forcarAtualizacao: () => {},
+  atualizarComDadosLocais: () => {},
+  notificacoesAtivadas: false,
+  ativarNotificacoes: async () => false,
+  desativarNotificacoes: () => {},
+  alternarNotificacoes: async () => false,
+  permissaoNotificacao: () => "denied" as NotificationPermission | "unknown",
+  marcarPendenciasAtuaisComoNotificadas: () => {},
+};
+
+export function usePendenciasGlobais() {
+  const context = useContext(PendenciasContext);
+  return context ?? defaultValue;
+}
+
+export function PendenciasProvider({ children }: { children: ReactNode }) {
+  const value = usePendenciasProvider();
+  return (
+    <PendenciasContext.Provider value={value}>
+      {children}
+    </PendenciasContext.Provider>
+  );
 }

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { SidebarPrincipal } from "@/components/sidebar-principal";
+import { ProvidersWrapper } from "@/components/providers-wrapper";
 import {
   obterDadosUsuarioLogado,
   obterSessaoNoServidor,
@@ -19,9 +20,11 @@ export default async function LayoutDashboard({
   const dadosUsuario = await obterDadosUsuarioLogado(sessao);
 
   return (
-    <div className="min-h-screen lg:flex">
-      <SidebarPrincipal sessao={sessao} dadosUsuario={dadosUsuario} />
-      <main className="flex-1 p-4 lg:p-8">{children}</main>
-    </div>
+    <ProvidersWrapper>
+      <div className="min-h-screen lg:flex">
+        <SidebarPrincipal sessao={sessao} dadosUsuario={dadosUsuario} />
+        <main className="flex-1 p-4 lg:p-8">{children}</main>
+      </div>
+    </ProvidersWrapper>
   );
 }
