@@ -6,7 +6,7 @@ Agentic coding guidelines for this CRM application.
 
 - **Framework:** Next.js 16 (App Router)  
 - **Language:** TypeScript  
-- **Database:** Prisma ORM + PostgreSQL  
+- **Database:** Prisma ORM + SQLite (dev) / PostgreSQL (prod)
 - **Styling:** Tailwind CSS v4  
 - **UI Components:** Radix UI + class-variance-authority  
 - **Testing:** Vitest  
@@ -30,6 +30,7 @@ npm run test -- --run -t "test name"           # Single test by name
 npm run seed              # Seed database
 npx prisma studio         # Open Prisma GUI
 npx prisma db push        # Push schema changes
+npx prisma generate       # Regenerate Prisma client
 ```
 
 ## Project Structure
@@ -40,12 +41,21 @@ src/
 │   ├── (auth)/           # Auth pages
 │   ├── (dashboard)/      # Protected pages
 │   └── api/              # API routes
+│       └── whatsapp/
+│           ├── instances/  # WhatsApp instance management
+│           └── automations/ # WhatsApp automation rules
 ├── components/ui/         # Reusable UI components
 ├── modules/               # Modular architecture
 │   ├── equipe/           # Team module
-│   ├── kanban/           # Kanban module
-│   └── configs/          # Settings module
-└── lib/                   # Utilities
+│   ├── kanban/          # Kanban module
+│   ├── configs/         # Settings module
+│   └── whatsapp/        # WhatsApp module (instances + automations)
+│       ├── components/  # UI components
+│       ├── hooks/       # Module hooks
+│       └── types.ts     # Module types
+└── lib/                  # Utilities
+    ├── evolution-api.ts       # WhatsApp Evolution API integration
+    └── whatsapp-automations.ts # Event-driven automation orchestrator
 ```
 
 ## Code Style
@@ -87,7 +97,6 @@ type Lead = { id: string; nome: string };
 When state needs to be shared between independent components (e.g., sidebar + kanban), use React Context:
 
 ```tsx
-// Create context in a shared hook file
 const MyContext = createContext<MyContextValue | null>(null);
 
 export function MyProvider({ children }: { children: ReactNode }) {
@@ -95,7 +104,6 @@ export function MyProvider({ children }: { children: ReactNode }) {
   
   // CRITICAL: Use useEffect for post-render sync, NOT synchronous calls
   useEffect(() => {
-    // This runs AFTER re-render, ensuring fresh state
     syncState();
   }, [state, otherDep]);
   
@@ -156,6 +164,43 @@ useEffect(() => () => ref.current && clearTimeout(ref.current), []);
 const podeGerenciar = perfil === "EMPRESA";
 const podeInativar = perfil === "EMPRESA" || perfil === "GERENTE";
 ```
+
+## WhatsApp Automation Pattern (Event-Driven)
+
+This is the preferred pattern for building event-driven features:
+
+### Architecture
+```
+Trigger (e.g., lead stage changed) 
+  → Execute automation function 
+    → Find matching rules 
+      → Send WhatsApp message
+```
+
+### Example: Lead Stage Changed Event
+```ts
+// 1. In the API route that handles the event
+import { executarAutomacoesLeadStageChanged } from "@/lib/whatsapp-automations";
+
+await prisma.lead.update({ where: { id }, data: { id_estagio } });
+
+// 2. Execute automations (fire-and-forget, errors logged only)
+try {
+  await executarAutomacoesLeadStageChanged({
+    idEmpresa: auth.sessao.id_empresa,
+    lead: { id: lead.id, nome: lead.nome, telefone: lead.telefone },
+    estagioAnterior: { id: oldStage.id, nome: oldStage.nome },
+    estagioNovo: { id: newStage.id, nome: newStage.nome },
+  });
+} catch (erro) {
+  console.error("Erro ao executar automacoes WhatsApp:", erro);
+}
+```
+
+### Adding New Events
+1. Create automation function in `src/lib/whatsapp-automations.ts`
+2. Call it from the relevant API route after the action completes
+3. Add event type to `EVENTOS_AUTOMACAO_WHATSAPP` in `src/lib/validacoes.ts`
 
 ## Tailwind Classes
 ```tsx
@@ -223,3 +268,5 @@ describe("Component", () => {
 6. Use controlled Dialog with `open`/`onOpenChange` and cleanup
 7. Follow the visual style consistently across all modules
 8. For cross-component state sync, use Context + useEffect (NOT synchronous calls)
+9. For event-driven features, follow the WhatsApp automation pattern: trigger → find rules → execute action
+10. Always handle JSON parse errors gracefully: `const json = await resposta.json().catch(() => ({}))`

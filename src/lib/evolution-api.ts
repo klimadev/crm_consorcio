@@ -141,3 +141,31 @@ export async function gerarQrCode(instanceName: string): Promise<{
     return null;
   }
 }
+
+type EnviarMensagemTextoParams = {
+  instanceName: string;
+  telefone: string;
+  mensagem: string;
+};
+
+function normalizarTelefoneWhatsapp(telefone: string) {
+  return telefone.replace(/\D/g, "");
+}
+
+export async function enviarMensagemTexto(params: EnviarMensagemTextoParams): Promise<void> {
+  const numero = normalizarTelefoneWhatsapp(params.telefone);
+
+  const resposta = await fetch(`${EVOLUTION_API_URL}/message/sendText/${params.instanceName}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      number: numero,
+      text: params.mensagem,
+    }),
+  });
+
+  if (!resposta.ok) {
+    const erro = await resposta.json().catch(() => ({}));
+    throw new Error(erro.message ?? "Erro ao enviar mensagem WhatsApp");
+  }
+}

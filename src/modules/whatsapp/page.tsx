@@ -1,16 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Loader2, CheckCircle2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useWhatsappModule } from "./hooks/use-whatsapp-module";
+import { useWhatsappAutomations } from "./hooks/use-whatsapp-automations";
 import { WhatsappHeader } from "./components/whatsapp-header";
 import { InstanciasList } from "./components/instances-list";
+import { AutomacoesList } from "./components/automacoes-list";
 
 export function ModuloWhatsapp() {
   const vm = useWhatsappModule();
+  const automacoesVm = useWhatsappAutomations();
   const [nomeInstancia, setNomeInstancia] = useState("");
   const [sucesso, setSucesso] = useState<string | null>(null);
 
@@ -89,6 +92,23 @@ export function ModuloWhatsapp() {
           buscarQrCode={vm.buscarQrCode}
         />
       )}
+
+      {/* Seção de Automações */}
+      <div className="mt-6">
+        <h3 className="mb-3 text-lg font-semibold text-slate-800">Automações de Notificação</h3>
+        <p className="mb-4 text-sm text-slate-500">
+          Configure alertas automáticos quando eventos acontecerem (ex: mudança de estágio do lead).
+        </p>
+        <AutomacoesList
+          automacoes={automacoesVm.automacoes}
+          instancias={vm.instancias}
+          carregando={automacoesVm.carregando}
+          erro={automacoesVm.erro}
+          onCriar={automacoesVm.criarAutomacao}
+          onAlternar={automacoesVm.alternarAutomacao}
+          onExcluir={automacoesVm.excluirAutomacao}
+        />
+      </div>
     </section>
   );
 }

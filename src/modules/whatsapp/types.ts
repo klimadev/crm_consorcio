@@ -23,3 +23,33 @@ export type UseWhatsappModuleReturn = {
   getQrCode: (id: string) => string | null;
   recarregar: () => Promise<void>;
 };
+
+export type WhatsappAutomacao = {
+  id: string;
+  id_empresa: string;
+  id_whatsapp_instancia: string;
+  evento: string;
+  id_estagio_destino: string | null;
+  telefone_destino: string;
+  mensagem: string;
+  ativo: boolean;
+  criado_em: Date;
+  atualizado_em: Date;
+};
+
+export type UseWhatsappAutomationsReturn = {
+  automacoes: WhatsappAutomacao[];
+  carregando: boolean;
+  erro: string | null;
+  criarAutomacao: (data: {
+    id_whatsapp_instancia: string;
+    evento: string;
+    id_estagio_destino?: string;
+    telefone_destino: string;
+    mensagem: string;
+    ativo?: boolean;
+  }) => Promise<void>;
+  alternarAutomacao: (id: string, ativo: boolean) => Promise<void>;
+  excluirAutomacao: (id: string) => Promise<void>;
+  recarregar: () => Promise<void>;
+};

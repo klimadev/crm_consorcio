@@ -30,6 +30,20 @@ export const esquemaMoverLead = z.object({
   motivo_perda: z.string().trim().optional(),
 });
 
+export const EVENTOS_AUTOMACAO_WHATSAPP = ["LEAD_STAGE_CHANGED"] as const;
+
+export const esquemaCriarAutomacaoWhatsapp = z.object({
+  id_whatsapp_instancia: z.string().trim().min(1, "Instancia obrigatoria."),
+  evento: z.enum(EVENTOS_AUTOMACAO_WHATSAPP, { message: "Evento invalido." }),
+  id_estagio_destino: z.string().trim().optional(),
+  telefone_destino: z
+    .string()
+    .trim()
+    .refine((valor) => valor.replace(/\D/g, "").length >= 10, "Telefone destino invalido."),
+  mensagem: z.string().trim().min(5, "Mensagem muito curta.").max(1000, "Mensagem muito longa."),
+  ativo: z.boolean().optional(),
+});
+
 // Tipos de pendência AUTOMÁTICA - detectadas pelo sistema
 export const TIPOS_PENDENCIA = [
   "SEM_RESPOSTA",                  // Lead sem resposta há X dias

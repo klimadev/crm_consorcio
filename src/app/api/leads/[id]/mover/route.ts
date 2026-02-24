@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { exigirSessao } from "@/lib/permissoes";
 import { esquemaMoverLead, mensagemErroValidacao } from "@/lib/validacoes";
+import { executarAutomacoesLeadStageChanged } from "@/lib/whatsapp-automations";
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -34,6 +35,14 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         ? { id_funcionario: auth.sessao.id_usuario }
         : {}),
     },
+    include: {
+      estagio: {
+        select: {
+          id: true,
+          nome: true,
+        },
+      },
+    },
   });
 
   if (!lead) {
@@ -62,6 +71,27 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       motivo_perda: estagioDestino.tipo === "PERDIDO" ? dadosValidados.motivo_perda?.trim() : null,
     },
   });
+
+  try {
+    await executarAutomacoesLeadStageChanged({
+      idEmpresa: auth.sessao.id_empresa,
+      lead: {
+        id: lead.id,
+        nome: lead.nome,
+        telefone: lead.telefone,
+      },
+      estagioAnterior: {
+        id: lead.estagio.id,
+        nome: lead.estagio.nome,
+      },
+      estagioNovo: {
+        id: estagioDestino.id,
+        nome: estagioDestino.nome,
+      },
+    });
+  } catch (erro) {
+    console.error("Erro ao executar automacoes WhatsApp para lead:", erro);
+  }
 
   return NextResponse.json({ lead: leadAtualizado });
 }
