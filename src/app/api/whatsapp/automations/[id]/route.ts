@@ -34,6 +34,20 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     },
   });
 
+  if (body.ativo === false) {
+    await prisma.whatsappAutomacaoAgendamento.updateMany({
+      where: {
+        id_empresa: auth.sessao.id_empresa,
+        id_whatsapp_automacao: automacao.id,
+        status: "PENDENTE",
+      },
+      data: {
+        status: "CANCELADO",
+        erro_ultimo: "Automacao desativada.",
+      },
+    });
+  }
+
   return NextResponse.json({ automacao: atualizada });
 }
 
@@ -57,8 +71,24 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     return NextResponse.json({ erro: "Automação não encontrada." }, { status: 404 });
   }
 
-  await prisma.whatsappAutomacao.delete({
-    where: { id: automacao.id },
+  await prisma.$transaction(async (tx) => {
+    await tx.whatsappAutomacaoAgendamento.deleteMany({
+      where: {
+        id_empresa: auth.sessao.id_empresa,
+        id_whatsapp_automacao: automacao.id,
+      },
+    });
+
+    await tx.whatsappAutomacaoEtapa.deleteMany({
+      where: {
+        id_empresa: auth.sessao.id_empresa,
+        id_whatsapp_automacao: automacao.id,
+      },
+    });
+
+    await tx.whatsappAutomacao.delete({
+      where: { id: automacao.id },
+    });
   });
 
   return NextResponse.json({ ok: true });

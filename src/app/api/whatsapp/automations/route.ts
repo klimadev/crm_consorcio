@@ -11,6 +11,11 @@ export async function GET(request: NextRequest) {
 
   const automacoes = await prisma.whatsappAutomacao.findMany({
     where: { id_empresa: auth.sessao.id_empresa },
+    include: {
+      etapas: {
+        orderBy: { ordem: "asc" },
+      },
+    },
     orderBy: { criado_em: "desc" },
   });
 
@@ -29,10 +34,16 @@ export async function POST(request: NextRequest) {
 
   const body = (await request.json()) as {
     id_whatsapp_instancia?: string;
-    evento?: "LEAD_STAGE_CHANGED";
+    evento?: "LEAD_STAGE_CHANGED" | "LEAD_FOLLOW_UP";
     id_estagio_destino?: string;
     telefone_destino?: string;
+    tipo_destino?: "FIXO" | "LEAD_TELEFONE";
     mensagem?: string;
+    etapas?: Array<{
+      ordem: number;
+      delay_minutos: number;
+      mensagem_template: string;
+    }>;
     ativo?: boolean;
   };
 
@@ -66,16 +77,40 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const automacao = await prisma.whatsappAutomacao.create({
-    data: {
-      id_empresa: auth.sessao.id_empresa,
-      id_whatsapp_instancia: dados.id_whatsapp_instancia,
-      evento: dados.evento,
-      id_estagio_destino: dados.id_estagio_destino?.trim() || null,
-      telefone_destino: dados.telefone_destino,
-      mensagem: dados.mensagem,
-      ativo: dados.ativo ?? true,
-    },
+  const automacao = await prisma.$transaction(async (tx) => {
+    const criada = await tx.whatsappAutomacao.create({
+      data: {
+        id_empresa: auth.sessao.id_empresa,
+        id_whatsapp_instancia: dados.id_whatsapp_instancia,
+        evento: dados.evento,
+        id_estagio_destino: dados.id_estagio_destino?.trim() || null,
+        tipo_destino: dados.tipo_destino,
+        telefone_destino: dados.tipo_destino === "FIXO" ? dados.telefone_destino?.trim() : null,
+        mensagem: dados.evento === "LEAD_STAGE_CHANGED" ? dados.mensagem?.trim() ?? null : null,
+        ativo: dados.ativo ?? true,
+      },
+    });
+
+    if (dados.evento === "LEAD_FOLLOW_UP" && dados.etapas?.length) {
+      await tx.whatsappAutomacaoEtapa.createMany({
+        data: dados.etapas.map((etapa) => ({
+          id_empresa: auth.sessao.id_empresa,
+          id_whatsapp_automacao: criada.id,
+          ordem: etapa.ordem,
+          delay_minutos: etapa.delay_minutos,
+          mensagem_template: etapa.mensagem_template,
+        })),
+      });
+    }
+
+    return tx.whatsappAutomacao.findFirstOrThrow({
+      where: { id: criada.id },
+      include: {
+        etapas: {
+          orderBy: { ordem: "asc" },
+        },
+      },
+    });
   });
 
   return NextResponse.json({ automacao }, { status: 201 });

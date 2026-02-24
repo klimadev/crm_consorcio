@@ -105,6 +105,8 @@ export function ModuloWhatsapp() {
           carregando={automacoesVm.carregando}
           erro={automacoesVm.erro}
           onCriar={automacoesVm.criarAutomacao}
+          onPreview={automacoesVm.previewMensagem}
+          onDispararDispatch={automacoesVm.dispararDispatchFollowUp}
           onAlternar={automacoesVm.alternarAutomacao}
           onExcluir={automacoesVm.excluirAutomacao}
         />

@@ -72,6 +72,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     },
   });
 
+  const referenciaEvento = `${lead.id}:${Date.now()}`;
+
   try {
     await executarAutomacoesLeadStageChanged({
       idEmpresa: auth.sessao.id_empresa,
@@ -88,6 +90,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         id: estagioDestino.id,
         nome: estagioDestino.nome,
       },
+      referenciaEvento,
     });
   } catch (erro) {
     console.error("Erro ao executar automacoes WhatsApp para lead:", erro);

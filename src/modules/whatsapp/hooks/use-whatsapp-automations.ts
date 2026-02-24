@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import type { WhatsappAutomacao, UseWhatsappAutomationsReturn } from "../types";
+import type {
+  WhatsappAutomacao,
+  UseWhatsappAutomationsReturn,
+  WhatsappAutomacaoCreateInput,
+  WhatsappFollowUpDispatchResultado,
+} from "../types";
 
 export function useWhatsappAutomations(): UseWhatsappAutomationsReturn {
   const [automacoes, setAutomacoes] = useState<WhatsappAutomacao[]>([]);
@@ -37,14 +42,7 @@ export function useWhatsappAutomations(): UseWhatsappAutomationsReturn {
   }, [carregarAutomacoes]);
 
   const criarAutomacao = useCallback(
-    async (data: {
-      id_whatsapp_instancia: string;
-      evento: string;
-      id_estagio_destino?: string;
-      telefone_destino: string;
-      mensagem: string;
-      ativo?: boolean;
-    }) => {
+    async (data: WhatsappAutomacaoCreateInput) => {
       setErro(null);
 
       try {
@@ -70,6 +68,56 @@ export function useWhatsappAutomations(): UseWhatsappAutomationsReturn {
     },
     []
   );
+
+  const previewMensagem = useCallback(async (mensagem: string) => {
+    try {
+      const resposta = await fetch("/api/whatsapp/automations/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mensagem }),
+      });
+
+      const json = await resposta.json().catch(() => ({}));
+      if (!resposta.ok) {
+        setErro(json.erro ?? "Erro ao gerar preview.");
+        return null;
+      }
+
+      return typeof json.preview === "string" ? json.preview : null;
+    } catch {
+      setErro("Erro ao gerar preview.");
+      return null;
+    }
+  }, []);
+
+  const dispararDispatchFollowUp = useCallback(async (limite = 50): Promise<WhatsappFollowUpDispatchResultado | null> => {
+    setErro(null);
+
+    try {
+      const resposta = await fetch("/api/whatsapp/automations/follow-up/dispatch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ limite }),
+      });
+
+      const json = await resposta.json().catch(() => ({}));
+      if (!resposta.ok) {
+        setErro(json.erro ?? "Erro ao processar follow-ups.");
+        return null;
+      }
+
+      return {
+        runId: typeof json.runId === "string" ? json.runId : "dispatch-sem-id",
+        processados: typeof json.processados === "number" ? json.processados : 0,
+        enviados: typeof json.enviados === "number" ? json.enviados : 0,
+        falhas: typeof json.falhas === "number" ? json.falhas : 0,
+        detalhes: Array.isArray(json.detalhes) ? json.detalhes : [],
+      };
+    } catch {
+      setErro("Erro ao processar follow-ups.");
+      return null;
+    }
+  }, []);
 
   const alternarAutomacao = useCallback(async (id: string, ativo: boolean) => {
     const automacaoAnterior = automacoes.find((a) => a.id === id);
@@ -126,6 +174,8 @@ export function useWhatsappAutomations(): UseWhatsappAutomationsReturn {
     carregando,
     erro,
     criarAutomacao,
+    previewMensagem,
+    dispararDispatchFollowUp,
     alternarAutomacao,
     excluirAutomacao,
     recarregar: carregarAutomacoes,

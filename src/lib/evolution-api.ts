@@ -1,3 +1,5 @@
+import { mascararTelefoneParaLog, normalizarTelefoneParaWhatsapp } from "@/lib/phone";
+
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL ?? "http://localhost:8080";
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY ?? "";
 
@@ -148,24 +150,31 @@ type EnviarMensagemTextoParams = {
   mensagem: string;
 };
 
-function normalizarTelefoneWhatsapp(telefone: string) {
-  return telefone.replace(/\D/g, "");
-}
-
 export async function enviarMensagemTexto(params: EnviarMensagemTextoParams): Promise<void> {
-  const numero = normalizarTelefoneWhatsapp(params.telefone);
+  const numeroNormalizado = normalizarTelefoneParaWhatsapp(params.telefone);
+  if (!numeroNormalizado.valido || !numeroNormalizado.waNumber) {
+    throw new Error(numeroNormalizado.motivoErro ?? "Telefone invalido para envio WhatsApp.");
+  }
 
   const resposta = await fetch(`${EVOLUTION_API_URL}/message/sendText/${params.instanceName}`, {
     method: "POST",
     headers,
     body: JSON.stringify({
-      number: numero,
+      number: numeroNormalizado.waNumber,
       text: params.mensagem,
     }),
   });
 
   if (!resposta.ok) {
     const erro = await resposta.json().catch(() => ({}));
-    throw new Error(erro.message ?? "Erro ao enviar mensagem WhatsApp");
+    const mensagemErro =
+      typeof erro.message === "string"
+        ? erro.message
+        : typeof erro.error === "string"
+          ? erro.error
+          : "Erro ao enviar mensagem WhatsApp";
+    throw new Error(
+      `${mensagemErro} (status=${resposta.status}, instancia=${params.instanceName}, numero=${mascararTelefoneParaLog(numeroNormalizado.waNumber)})`,
+    );
   }
 }

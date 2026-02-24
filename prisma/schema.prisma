@@ -168,14 +168,62 @@ model WhatsappAutomacao {
   id_whatsapp_instancia String
   evento                String
   id_estagio_destino    String?
-  telefone_destino      String
-  mensagem              String
+  tipo_destino          String   @default("FIXO")
+  telefone_destino      String?
+  mensagem              String?
   ativo                 Boolean  @default(true)
   criado_em             DateTime @default(now())
   atualizado_em         DateTime @default(now()) @updatedAt
+  etapas                WhatsappAutomacaoEtapa[]
+  agendamentos          WhatsappAutomacaoAgendamento[]
 
   @@index([id_empresa])
   @@index([id_whatsapp_instancia])
   @@index([evento])
   @@index([ativo])
+}
+
+model WhatsappAutomacaoEtapa {
+  id                    String   @id @default(uuid())
+  id_empresa            String
+  id_whatsapp_automacao String
+  ordem                 Int
+  delay_minutos         Int
+  mensagem_template     String
+  ativo                 Boolean  @default(true)
+  criado_em             DateTime @default(now())
+  atualizado_em         DateTime @default(now()) @updatedAt
+  automacao             WhatsappAutomacao @relation(fields: [id_whatsapp_automacao], references: [id], onDelete: Cascade)
+  agendamentos          WhatsappAutomacaoAgendamento[]
+
+  @@index([id_empresa])
+  @@index([id_whatsapp_automacao])
+  @@unique([id_whatsapp_automacao, ordem])
+}
+
+model WhatsappAutomacaoAgendamento {
+  id                    String   @id @default(uuid())
+  id_empresa            String
+  id_whatsapp_automacao String
+  id_etapa              String
+  id_lead               String
+  referencia_evento     String
+  mensagem_template     String
+  contexto_json         String
+  agendado_para         DateTime
+  status                String   @default("PENDENTE")
+  tentativas            Int      @default(0)
+  erro_ultimo           String?
+  enviado_em            DateTime?
+  criado_em             DateTime @default(now())
+  atualizado_em         DateTime @default(now()) @updatedAt
+  automacao             WhatsappAutomacao @relation(fields: [id_whatsapp_automacao], references: [id], onDelete: Cascade)
+  etapa                 WhatsappAutomacaoEtapa @relation(fields: [id_etapa], references: [id], onDelete: Cascade)
+
+  @@index([id_empresa])
+  @@index([id_whatsapp_automacao])
+  @@index([id_etapa])
+  @@index([id_lead])
+  @@index([status, agendado_para])
+  @@unique([id_whatsapp_automacao, id_etapa, id_lead, referencia_evento])
 }

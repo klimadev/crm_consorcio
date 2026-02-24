@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizarTelefoneParaWhatsapp } from "@/lib/phone";
 
 export const esquemaLogin = z.object({
   email: z.string().trim().email("E-mail invalido."),
@@ -30,18 +31,80 @@ export const esquemaMoverLead = z.object({
   motivo_perda: z.string().trim().optional(),
 });
 
-export const EVENTOS_AUTOMACAO_WHATSAPP = ["LEAD_STAGE_CHANGED"] as const;
+export const EVENTOS_AUTOMACAO_WHATSAPP = ["LEAD_STAGE_CHANGED", "LEAD_FOLLOW_UP"] as const;
+export const TIPOS_DESTINO_AUTOMACAO_WHATSAPP = ["FIXO", "LEAD_TELEFONE"] as const;
+
+const esquemaEtapaFollowUp = z.object({
+  ordem: z.coerce.number().int().min(1, "Ordem da etapa invalida.").max(50, "Maximo de 50 etapas."),
+  delay_minutos: z
+    .coerce
+    .number()
+    .int()
+    .min(1, "Delay deve ser de no minimo 1 minuto.")
+    .max(60 * 24 * 30, "Delay maximo de 30 dias por etapa."),
+  mensagem_template: z
+    .string()
+    .trim()
+    .min(5, "Mensagem da etapa muito curta.")
+    .max(1000, "Mensagem da etapa muito longa."),
+});
 
 export const esquemaCriarAutomacaoWhatsapp = z.object({
   id_whatsapp_instancia: z.string().trim().min(1, "Instancia obrigatoria."),
   evento: z.enum(EVENTOS_AUTOMACAO_WHATSAPP, { message: "Evento invalido." }),
   id_estagio_destino: z.string().trim().optional(),
-  telefone_destino: z
-    .string()
-    .trim()
-    .refine((valor) => valor.replace(/\D/g, "").length >= 10, "Telefone destino invalido."),
-  mensagem: z.string().trim().min(5, "Mensagem muito curta.").max(1000, "Mensagem muito longa."),
+  tipo_destino: z.enum(TIPOS_DESTINO_AUTOMACAO_WHATSAPP).default("FIXO"),
+  telefone_destino: z.string().trim().optional(),
+  mensagem: z.string().trim().optional(),
+  etapas: z.array(esquemaEtapaFollowUp).max(50, "Maximo de 50 etapas.").optional(),
   ativo: z.boolean().optional(),
+}).superRefine((dados, ctx) => {
+  if (dados.tipo_destino === "FIXO") {
+    const telefone = dados.telefone_destino ?? "";
+    const normalizado = normalizarTelefoneParaWhatsapp(telefone);
+    if (!normalizado.valido) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["telefone_destino"],
+        message: "Telefone destino invalido para WhatsApp (use DDI+DDD+numero).",
+      });
+    }
+  }
+
+  if (dados.evento === "LEAD_STAGE_CHANGED") {
+    const mensagem = dados.mensagem?.trim() ?? "";
+    if (mensagem.length < 5) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["mensagem"],
+        message: "Mensagem muito curta.",
+      });
+    }
+  }
+
+  if (dados.evento === "LEAD_FOLLOW_UP") {
+    if (!dados.etapas?.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["etapas"],
+        message: "Defina ao menos 1 etapa de follow-up.",
+      });
+      return;
+    }
+
+    const ordens = new Set<number>();
+    for (const etapa of dados.etapas) {
+      if (ordens.has(etapa.ordem)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["etapas"],
+          message: "As ordens das etapas nao podem repetir.",
+        });
+        break;
+      }
+      ordens.add(etapa.ordem);
+    }
+  }
 });
 
 // Tipos de pendência AUTOMÁTICA - detectadas pelo sistema
