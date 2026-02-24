@@ -165,8 +165,15 @@ export function usePendenciasProvider() {
   const [notificacoesAtivadas, setNotificacoesAtivadasState] = useState(getNotificacoesAtivadas);
   const jaNotificadasRef = useRef<Set<string>>(getJaNotificadas());
   const pendenciasAnterioresRef = useRef<PendenciaInfo[]>(getPendenciasAnteriores());
+  const ultimoUpdateLocalRef = useRef<number>(0);
 
   const buscarPendencias = useCallback(async () => {
+    const agora = Date.now();
+    if (agora - ultimoUpdateLocalRef.current < 5000) {
+      setCarregando(false);
+      return;
+    }
+
     try {
       const res = await fetch("/api/pendencias");
       if (res.ok) {
@@ -265,6 +272,7 @@ export function usePendenciasProvider() {
   }, [buscarPendencias]);
 
   const atualizarComDadosLocais = useCallback((novasPendencias: PendenciaInfo[]) => {
+    ultimoUpdateLocalRef.current = Date.now();
     pendenciasAnterioresRef.current = novasPendencias;
     setPendenciasAnteriores(novasPendencias);
     setPendencias(novasPendencias);
@@ -286,7 +294,7 @@ export function usePendenciasProvider() {
 
   useEffect(() => {
     buscarPendencias();
-    const intervalo = setInterval(buscarPendencias, 60000);
+    const intervalo = setInterval(buscarPendencias, 300000);
     return () => clearInterval(intervalo);
   }, [buscarPendencias]);
 

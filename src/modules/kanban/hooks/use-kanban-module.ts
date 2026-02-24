@@ -7,52 +7,10 @@ import {
   aplicaMascaraTelefoneBr,
   converteMoedaBrParaNumero,
 } from "@/lib/utils";
-import { DIAS_ESTAGIO_PARADO, LABELS_PENDENCIA, TipoPendencia } from "@/lib/validacoes";
 import type { Estagio, Lead, Funcionario, PendenciaDinamica, UseKanbanModuleReturn, Props, KanbanFilters, PendenciaLeadInfo } from "../types";
 import { usePendenciasGlobais, getGravidadePendencia } from "./use-pendencias-globais";
 import type { PendenciaInfo } from "./use-pendencias-globais";
-
-type PendenciaCalculada = {
-  id: string;
-  id_lead: string;
-  tipo: TipoPendencia;
-  descricao: string;
-  resolvida: boolean;
-};
-
-function calcularPendenciasLead(lead: Lead, estagio: Estagio): PendenciaCalculada[] {
-  const pendencias: PendenciaCalculada[] = [];
-  const hoje = new Date();
-  const dataLimiteEstagioParado = new Date(hoje);
-  dataLimiteEstagioParado.setDate(dataLimiteEstagioParado.getDate() - DIAS_ESTAGIO_PARADO);
-
-  const isFechadoOuGanho = estagio.tipo === "FECHADO" || estagio.tipo === "GANHO";
-  const isGanhoOuPerdido = estagio.tipo === "GANHO" || estagio.tipo === "PERDIDO";
-  const hasDocumento = !!lead.documento_aprovacao_url;
-  const isEstagioParado = new Date(lead.atualizado_em || Date.now()) < dataLimiteEstagioParado;
-
-  if (isFechadoOuGanho && !hasDocumento) {
-    pendencias.push({
-      id: `${lead.id}:DOCUMENTO_APROVACAO_PENDENTE`,
-      id_lead: lead.id,
-      tipo: "DOCUMENTO_APROVACAO_PENDENTE",
-      descricao: LABELS_PENDENCIA.DOCUMENTO_APROVACAO_PENDENTE,
-      resolvida: false,
-    });
-  }
-
-  if (!isGanhoOuPerdido && isEstagioParado) {
-    pendencias.push({
-      id: `${lead.id}:ESTAGIO_PARADO`,
-      id_lead: lead.id,
-      tipo: "ESTAGIO_PARADO",
-      descricao: `Lead parado no estágio "${estagio.nome}" há mais de ${DIAS_ESTAGIO_PARADO} dias.`,
-      resolvida: false,
-    });
-  }
-
-  return pendencias;
-}
+import { calcularPendenciasLead, type PendenciaCalculada } from "@/lib/calculo-pendencias";
 
 function leadPassaFiltros(lead: Lead, pendenciaInfo: PendenciaLeadInfo | undefined, filtros: KanbanFilters): boolean {
   if (filtros.status === "com_pendencia" && !pendenciaInfo) return false;
@@ -327,6 +285,7 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
       if (!resposta.ok) {
         const json = await resposta.json();
         setErroDetalhesLead(json.erro ?? "Erro ao fazer upload.");
+        setArquivoSelecionado(null);
         return null;
       }
 
@@ -334,6 +293,7 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
       return json.url;
     } catch {
       setErroDetalhesLead("Erro ao fazer upload.");
+      setArquivoSelecionado(null);
       return null;
     } finally {
       setUploadando(false);

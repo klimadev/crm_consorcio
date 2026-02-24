@@ -14,31 +14,35 @@ export async function GET(request: NextRequest) {
     auth.sessao.perfil === "COLABORADOR" ? auth.sessao.id_usuario : undefined
   );
 
-  const pendenciasComLead = await Promise.all(
-    pendencias.map(async (p) => {
-      const lead = await prisma.lead.findUnique({
-        where: { id: p.id_lead },
+  const leadIds = pendencias.map((p) => p.id_lead);
+  const leadsComDados = await prisma.lead.findMany({
+    where: { id: { in: leadIds } },
+    select: {
+      id: true,
+      nome: true,
+      telefone: true,
+      valor_consorcio: true,
+      funcionario: {
         select: {
+          id: true,
           nome: true,
-          telefone: true,
-          valor_consorcio: true,
-          funcionario: {
+          pdv: {
             select: {
               id: true,
               nome: true,
-              pdv: {
-                select: {
-                  id: true,
-                  nome: true,
-                },
-              },
             },
           },
         },
-      });
-      return { ...p, lead };
-    })
-  );
+      },
+    },
+  });
+
+  const leadMap = new Map(leadsComDados.map((lead) => [lead.id, lead]));
+
+  const pendenciasComLead = pendencias.map((p) => ({
+    ...p,
+    lead: leadMap.get(p.id_lead) ?? null,
+  }));
 
   return NextResponse.json({ pendencias: pendenciasComLead });
 }

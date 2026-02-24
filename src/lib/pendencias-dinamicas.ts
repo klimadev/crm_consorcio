@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { DIAS_ESTAGIO_PARADO, LABELS_PENDENCIA, TipoPendencia } from "@/lib/validacoes";
+import { TipoPendencia } from "@/lib/validacoes";
+import { calcularPendenciasLead } from "@/lib/calculo-pendencias";
 
 export type PendenciaDinamica = {
   id: string;
@@ -8,47 +9,6 @@ export type PendenciaDinamica = {
   descricao: string;
   resolvida: boolean;
 };
-
-function gerarIdPendencia(leadId: string, tipo: string): string {
-  return `${leadId}:${tipo}`;
-}
-
-function calcularPendenciasLead(
-  lead: { id: string; atualizado_em: Date; documento_aprovacao_url: string | null },
-  estagio: { tipo: string; nome: string }
-): PendenciaDinamica[] {
-  const pendencias: PendenciaDinamica[] = [];
-  const hoje = new Date();
-  const dataLimiteEstagioParado = new Date(hoje);
-  dataLimiteEstagioParado.setDate(dataLimiteEstagioParado.getDate() - DIAS_ESTAGIO_PARADO);
-
-  const isFechadoOuGanho = estagio.tipo === "FECHADO" || estagio.tipo === "GANHO";
-  const isGanhoOuPerdido = estagio.tipo === "GANHO" || estagio.tipo === "PERDIDO";
-  const isEstagioParado = lead.atualizado_em < dataLimiteEstagioParado;
-  const hasDocumento = !!lead.documento_aprovacao_url;
-
-  if (isFechadoOuGanho && !hasDocumento) {
-    pendencias.push({
-      id: gerarIdPendencia(lead.id, "DOCUMENTO_APROVACAO_PENDENTE"),
-      id_lead: lead.id,
-      tipo: "DOCUMENTO_APROVACAO_PENDENTE",
-      descricao: LABELS_PENDENCIA.DOCUMENTO_APROVACAO_PENDENTE,
-      resolvida: false,
-    });
-  }
-
-  if (!isGanhoOuPerdido && isEstagioParado) {
-    pendencias.push({
-      id: gerarIdPendencia(lead.id, "ESTAGIO_PARADO"),
-      id_lead: lead.id,
-      tipo: "ESTAGIO_PARADO",
-      descricao: `Lead parado no estágio "${estagio.nome}" há mais de ${DIAS_ESTAGIO_PARADO} dias.`,
-      resolvida: false,
-    });
-  }
-
-  return pendencias;
-}
 
 export async function detectarPendenciasDinamicas(
   idEmpresa: string,
