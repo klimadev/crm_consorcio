@@ -5,6 +5,7 @@ import type {
   WhatsappAutomacao,
   UseWhatsappAutomationsReturn,
   WhatsappAutomacaoCreateInput,
+  WhatsappAutomacaoUpdateInput,
   WhatsappFollowUpDispatchResultado,
 } from "../types";
 
@@ -67,6 +68,38 @@ export function useWhatsappAutomations(): UseWhatsappAutomationsReturn {
       }
     },
     []
+  );
+
+  const atualizarAutomacao = useCallback(
+    async (id: string, data: WhatsappAutomacaoUpdateInput) => {
+      setErro(null);
+      const automacaoAnterior = automacoes.find((a) => a.id === id);
+      if (!automacaoAnterior) return;
+
+      try {
+        const resposta = await fetch(`/api/whatsapp/automations/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+
+        const json = await resposta.json().catch(() => ({}));
+
+        if (!resposta.ok) {
+          setErro(json.erro ?? "Erro ao atualizar automação.");
+          return;
+        }
+
+        if (json.automacao) {
+          setAutomacoes((atual) =>
+            atual.map((a) => (a.id === id ? json.automacao : a))
+          );
+        }
+      } catch {
+        setErro("Erro ao conectar com o servidor.");
+      }
+    },
+    [automacoes]
   );
 
   const previewMensagem = useCallback(async (mensagem: string) => {
@@ -174,6 +207,7 @@ export function useWhatsappAutomations(): UseWhatsappAutomationsReturn {
     carregando,
     erro,
     criarAutomacao,
+    atualizarAutomacao,
     previewMensagem,
     dispararDispatchFollowUp,
     alternarAutomacao,

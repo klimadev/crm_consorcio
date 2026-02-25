@@ -7,6 +7,23 @@ const EVENTO_LEAD_ESTAGIO_ALTERADO = "LEAD_STAGE_CHANGED";
 const EVENTO_LEAD_FOLLOW_UP = "LEAD_FOLLOW_UP";
 const DESTINO_FIXO = "FIXO";
 
+// Status constants for clear state machine
+const STATUS_PENDENTE = "PENDENTE";
+const STATUS_PROCESSANDO = "PROCESSANDO";
+const STATUS_ENVIADO = "ENVIADO";
+const STATUS_FALHA = "FALHA";
+const STATUS_CANCELADO = "CANCELADO";
+
+// Metrics for observability
+type DispatchMetrics = {
+  jobsClaimed: number;
+  jobsSkippedAlreadyClaimed: number;
+  jobsDuplicateBlocked: number;
+  jobsProcessed: number;
+  jobsEnviados: number;
+  jobsFalhas: number;
+};
+
 type ExecutarAutomacoesLeadStageChangedParams = {
   idEmpresa: string;
   lead: {
@@ -69,6 +86,92 @@ function resolverTelefoneDestino(
   return payload.lead.telefone;
 }
 
+/**
+ * Build deterministic idempotency key for follow-up scheduling
+ * Format: {id_empresa}:{id_lead}:{id_estagio_trigger}:{id_whatsapp_automacao}:{id_etapa}
+ * This ensures same lead+stage+automation+etapa always produces the same key
+ */
+function criarChaveIdempotencia(params: {
+  idEmpresa: string;
+  idLead: string;
+  idEstagioTrigger: string;
+  idAutomacao: string;
+  idEtapa: string;
+}): string {
+  return `${params.idEmpresa}:${params.idLead}:${params.idEstagioTrigger}:${params.idAutomacao}:${params.idEtapa}`;
+}
+
+/**
+ * Schedule follow-up with idempotency:
+ * - If pending job exists for same (lead+stage+automation+etapa), cancel it and create new one
+ * - This allows re-triggering when lead re-enters the same stage
+ */
+async function agendarFollowUpComIdempotencia(params: {
+  idEmpresa: string;
+  idLead: string;
+  idEstagioTrigger: string;
+  idAutomacao: string;
+  idEtapa: string;
+  delayMinutos: number;
+  mensagemTemplate: string;
+  contexto: ContextoTemplateAgendamento;
+  runId: string;
+}): Promise<{ agendado: boolean; substituido: boolean }> {
+  const chaveIdempotencia = criarChaveIdempotencia({
+    idEmpresa: params.idEmpresa,
+    idLead: params.idLead,
+    idEstagioTrigger: params.idEstagioTrigger,
+    idAutomacao: params.idAutomacao,
+    idEtapa: params.idEtapa,
+  });
+
+  const agendadoPara = new Date(Date.now() + params.delayMinutos * 60 * 1000);
+
+  // Check if there's already a pending job for this idempotency key
+  const agendamentoExistente = await prisma.whatsappAutomacaoAgendamento.findFirst({
+    where: {
+      id_empresa: params.idEmpresa,
+      chave_idempotencia: chaveIdempotencia,
+      status: { in: [STATUS_PENDENTE, STATUS_PROCESSANDO] },
+    },
+  });
+
+  // If exists, cancel it first (allow re-trigger when lead re-enters stage)
+  if (agendamentoExistente) {
+    await prisma.whatsappAutomacaoAgendamento.update({
+      where: { id: agendamentoExistente.id },
+      data: {
+        status: STATUS_CANCELADO,
+        erro_ultimo: "Substituido por novo agendamento (lead re-entrou no estagio)",
+      },
+    });
+    console.info(
+      `[WA_AUTOMATION] runId=${params.runId} chaveIdempotencia=${chaveIdempotencia} status=REPLACE oldId=${agendamentoExistente.id}`,
+    );
+  }
+
+  // Create new scheduling
+  await prisma.whatsappAutomacaoAgendamento.create({
+    data: {
+      id_empresa: params.idEmpresa,
+      id_whatsapp_automacao: params.idAutomacao,
+      id_etapa: params.idEtapa,
+      id_lead: params.idLead,
+      id_estagio_trigger: params.idEstagioTrigger,
+      chave_idempotencia: chaveIdempotencia,
+      // Legacy field - keep for backwards compatibility
+      referencia_evento: `${params.idLead}:${params.idEstagioTrigger}:${Date.now()}`,
+      mensagem_template: params.mensagemTemplate,
+      contexto_json: JSON.stringify(params.contexto),
+      agendado_para: agendadoPara,
+      status: STATUS_PENDENTE,
+      tentativas: 0,
+    },
+  });
+
+  return { agendado: true, substituido: !!agendamentoExistente };
+}
+
 export async function executarAutomacoesLeadStageChanged(
   payload: ExecutarAutomacoesLeadStageChangedParams,
 ) {
@@ -106,7 +209,7 @@ export async function executarAutomacoesLeadStageChanged(
   const contexto = criarContextoTemplate(payload);
 
   console.info(
-    `[WA_AUTOMATION] runId=${runId} leadId=${payload.lead.id} imediatas=${automacoesImediatas.length} followUps=${automacoesFollowUp.length} referencia=${payload.referenciaEvento ?? "auto"}`,
+    `[WA_AUTOMATION] runId=${runId} leadId=${payload.lead.id} imediatas=${automacoesImediatas.length} followUps=${automacoesFollowUp.length} estagioTrigger=${payload.estagioNovo.id}`,
   );
 
   const enviosImediatos = automacoesImediatas.map(async (automacao) => {
@@ -145,6 +248,7 @@ export async function executarAutomacoesLeadStageChanged(
     }
   });
 
+  // Schedule follow-ups with idempotency
   const idsAutomacoesFollowUp = automacoesFollowUp.map((item) => item.id);
   if (idsAutomacoesFollowUp.length) {
     const etapas = await prisma.whatsappAutomacaoEtapa.findMany({
@@ -156,55 +260,143 @@ export async function executarAutomacoesLeadStageChanged(
       orderBy: [{ id_whatsapp_automacao: "asc" }, { ordem: "asc" }],
     });
 
-    const referenciaEvento = payload.referenciaEvento ?? `${payload.lead.id}:${Date.now()}`;
+    let agendados = 0;
+    let substituidos = 0;
 
-    const agendamentos = automacoesFollowUp.flatMap((automacao) => {
-      return etapas
-        .filter((etapa) => etapa.id_whatsapp_automacao === automacao.id)
-        .map((etapa) => {
-          const agendadoPara = new Date(Date.now() + etapa.delay_minutos * 60 * 1000);
-          return prisma.whatsappAutomacaoAgendamento.upsert({
-            where: {
-              id_whatsapp_automacao_id_etapa_id_lead_referencia_evento: {
-                id_whatsapp_automacao: automacao.id,
-                id_etapa: etapa.id,
-                id_lead: payload.lead.id,
-                referencia_evento: referenciaEvento,
-              },
-            },
-            update: {
-              agendado_para: agendadoPara,
-              status: "PENDENTE",
-              tentativas: 0,
-              erro_ultimo: null,
-              contexto_json: JSON.stringify(contexto),
-              mensagem_template: etapa.mensagem_template,
-            },
-            create: {
-              id_empresa: payload.idEmpresa,
-              id_whatsapp_automacao: automacao.id,
-              id_etapa: etapa.id,
-              id_lead: payload.lead.id,
-              referencia_evento: referenciaEvento,
-              mensagem_template: etapa.mensagem_template,
-              contexto_json: JSON.stringify(contexto),
-              agendado_para: agendadoPara,
-              status: "PENDENTE",
-              tentativas: 0,
-            },
-          });
+    for (const automacao of automacoesFollowUp) {
+      const etapasDaAutomacao = etapas.filter((etapa) => etapa.id_whatsapp_automacao === automacao.id);
+      
+      for (const etapa of etapasDaAutomacao) {
+        const resultado = await agendarFollowUpComIdempotencia({
+          idEmpresa: payload.idEmpresa,
+          idLead: payload.lead.id,
+          idEstagioTrigger: payload.estagioNovo.id,
+          idAutomacao: automacao.id,
+          idEtapa: etapa.id,
+          delayMinutos: etapa.delay_minutos,
+          mensagemTemplate: etapa.mensagem_template,
+          contexto,
+          runId,
         });
-    });
+        
+        if (resultado.agendado) {
+          agendados++;
+          if (resultado.substituido) {
+            substituidos++;
+          }
+        }
+      }
+    }
 
-    const resultadoAgendamentos = await Promise.allSettled(agendamentos);
-    const agendados = resultadoAgendamentos.filter((item) => item.status === "fulfilled").length;
-    const falhas = resultadoAgendamentos.length - agendados;
     console.info(
-      `[WA_AUTOMATION] runId=${runId} tipo=follow-up agendados=${agendados} falhas=${falhas} referencia=${referenciaEvento}`,
+      `[WA_AUTOMATION] runId=${runId} tipo=follow-up agendados=${agendados} substituidos=${substituidos} estagioTrigger=${payload.estagioNovo.id}`,
     );
   }
 
   await Promise.allSettled(enviosImediatos);
+}
+
+/**
+ * Recovery: Reset stale PROCESSANDO jobs that have been stuck for too long
+ * These are jobs that were claimed but the worker crashed before completing
+ */
+async function recuperarStaleProcessando(params: {
+  idEmpresa?: string;
+  limite?: number;
+  timeoutMinutos?: number;
+}): Promise<number> {
+  const timeoutMinutos = params.timeoutMinutos ?? 15; // Consider stale after 15 minutes
+  
+  const resultado = await prisma.whatsappAutomacaoAgendamento.updateMany({
+    where: {
+      ...(params.idEmpresa ? { id_empresa: params.idEmpresa } : {}),
+      status: STATUS_PROCESSANDO,
+      atualizado_em: {
+        lt: new Date(Date.now() - timeoutMinutos * 60 * 1000),
+      },
+    },
+    data: {
+      status: STATUS_PENDENTE,
+      erro_ultimo: "Recovered from stale PROCESSANDO",
+    },
+  });
+
+  return resultado.count;
+}
+
+/**
+ * Atomic claim-lock: atomically claim a job by updating status from PENDENTE to PROCESSANDO
+ * Returns the claimed job or null if already claimed by another worker
+ */
+async function claimJob(params: {
+  id: string;
+  idEmpresa: string;
+}): Promise<{ success: boolean; chaveIdempotencia?: string }> {
+  const resultado = await prisma.whatsappAutomacaoAgendamento.updateMany({
+    where: {
+      id: params.id,
+      id_empresa: params.idEmpresa,
+      status: STATUS_PENDENTE, // Only claim if still PENDENTE
+    },
+    data: {
+      status: STATUS_PROCESSANDO,
+    },
+  });
+
+  if (resultado.count === 0) {
+    // Already claimed by another worker
+    return { success: false };
+  }
+
+  // Get the idempotency key for logging
+  const agendamento = await prisma.whatsappAutomacaoAgendamento.findUnique({
+    where: { id: params.id },
+    select: { chave_idempotencia: true },
+  });
+
+  return { 
+    success: true, 
+    chaveIdempotencia: agendamento?.chave_idempotencia ?? "unknown" 
+  };
+}
+
+/**
+ * Cancels all pending follow-up jobs for a lead when they leave a stage.
+ * This ensures a lead never has 2 follow-up jobs running simultaneously.
+ * If idEstagioSaindo is provided, only cancels jobs from that specific stage.
+ * If not provided, cancels ALL pending jobs for the lead.
+ */
+export async function cancelarAgendamentosPorLead(params: {
+  idEmpresa: string;
+  idLead: string;
+  idEstagioSaindo?: string;
+  motivo?: string;
+}): Promise<number> {
+  const whereClause: Parameters<typeof prisma.whatsappAutomacaoAgendamento.findFirst>[0]["where"] = {
+    id_empresa: params.idEmpresa,
+    id_lead: params.idLead,
+    status: { in: [STATUS_PENDENTE, STATUS_PROCESSANDO] },
+  };
+
+  if (params.idEstagioSaindo) {
+    whereClause.id_estagio_trigger = params.idEstagioSaindo;
+  }
+
+  const resultado = await prisma.whatsappAutomacaoAgendamento.updateMany({
+    where: whereClause,
+    data: {
+      status: STATUS_CANCELADO,
+      erro_ultimo: params.motivo ?? "Lead saiu do estágio trigger.",
+    },
+  });
+
+  if (resultado.count > 0) {
+    console.info(
+      `[WA_AUTOMATION] leadId=${params.idLead} estagioSaindo=${params.idEstagioSaindo ?? "todos"} cancelados=${resultado.count} motivo=${params.motivo ?? "lead_saiu_estagio"}`,
+    );
+  }
+
+  return resultado.count;
 }
 
 export async function processarAgendamentosFollowUpWhatsapp(params?: {
@@ -215,33 +407,118 @@ export async function processarAgendamentosFollowUpWhatsapp(params?: {
   const limite = params?.limite ?? 50;
   const runId = criarRunId("dispatch");
 
+  // Step 1: Recover stale PROCESSANDO jobs first
+  const recoveredCount = await recuperarStaleProcessando({
+    idEmpresa: params?.idEmpresa,
+    limite: 100,
+    timeoutMinutos: 15,
+  });
+
+  if (recoveredCount > 0) {
+    console.info(`[WA_DISPATCH] runId=${runId} recoveredStale=${recoveredCount}`);
+  }
+
+  // Step 2: Find pending jobs due for processing
   const agendamentos = await prisma.whatsappAutomacaoAgendamento.findMany({
     where: {
       ...(params?.idEmpresa ? { id_empresa: params.idEmpresa } : {}),
-      status: "PENDENTE",
+      status: STATUS_PENDENTE,
       agendado_para: { lte: new Date() },
     },
     orderBy: { agendado_para: "asc" },
     take: limite,
+    select: {
+      id: true,
+      id_empresa: true,
+      id_whatsapp_automacao: true,
+      id_etapa: true,
+      id_lead: true,
+      chave_idempotencia: true,
+      tentativas: true,
+    },
   });
 
   if (!agendamentos.length) {
     console.info(
       `[WA_DISPATCH] runId=${runId} origem=${params?.origem ?? "interno"} processados=0 enviados=0 falhas=0`,
     );
-    return { runId, processados: 0, enviados: 0, falhas: 0, detalhes: [] as FollowUpDispatchDetalhe[] };
+    return { 
+      runId, 
+      processados: 0, 
+      enviados: 0, 
+      falhas: 0, 
+      detalhes: [] as FollowUpDispatchDetalhe[],
+      metrics: {
+        jobsClaimed: 0,
+        jobsSkippedAlreadyClaimed: 0,
+        jobsDuplicateBlocked: 0,
+        jobsProcessed: 0,
+        jobsEnviados: 0,
+        jobsFalhas: 0,
+      }
+    };
   }
 
   console.info(
     `[WA_DISPATCH] runId=${runId} origem=${params?.origem ?? "interno"} encontrados=${agendamentos.length} limite=${limite}`,
   );
 
+  // Metrics for observability
+  const metrics: DispatchMetrics = {
+    jobsClaimed: 0,
+    jobsSkippedAlreadyClaimed: 0,
+    jobsDuplicateBlocked: 0,
+    jobsProcessed: 0,
+    jobsEnviados: 0,
+    jobsFalhas: 0,
+  };
+
   let enviados = 0;
   let falhas = 0;
   const detalhes: FollowUpDispatchDetalhe[] = [];
 
-  for (const agendamento of agendamentos) {
+  // Step 3: Process each job with atomic claim-lock
+  for (const agendamentoBase of agendamentos) {
+    // Try to atomically claim this job
+    const claimResult = await claimJob({
+      id: agendamentoBase.id,
+      idEmpresa: agendamentoBase.id_empresa,
+    });
+
+    if (!claimResult.success) {
+      metrics.jobsSkippedAlreadyClaimed++;
+      console.info(
+        `[WA_DISPATCH] runId=${runId} agendamentoId=${agendamentoBase.id} chaveIdempotencia=${agendamentoBase.chave_idempotencia ?? "unknown"} status=SKIPPED_ALREADY_CLAIMED`,
+      );
+      continue;
+    }
+
+    // Successfully claimed
+    metrics.jobsClaimed++;
+    console.info(
+      `[WA_DISPATCH] runId=${runId} agendamentoId=${agendamentoBase.id} chaveIdempotencia=${claimResult.chaveIdempotencia} status=CLAIMED`,
+    );
+
     try {
+      // Get full agendamento data for processing
+      const agendamento = await prisma.whatsappAutomacaoAgendamento.findUnique({
+        where: { id: agendamentoBase.id },
+      });
+
+      if (!agendamento) {
+        metrics.jobsSkippedAlreadyClaimed++;
+        continue;
+      }
+
+      // Check if already sent (idempotency double-check)
+      if (agendamento.status === STATUS_ENVIADO || agendamento.status === STATUS_CANCELADO) {
+        metrics.jobsDuplicateBlocked++;
+        console.info(
+          `[WA_DISPATCH] runId=${runId} agendamentoId=${agendamento.id} chaveIdempotencia=${agendamento.chave_idempotencia ?? "unknown"} status=SKIPPED_ALREADY_SENT`,
+        );
+        continue;
+      }
+
       const automacao = await prisma.whatsappAutomacao.findFirst({
         where: {
           id: agendamento.id_whatsapp_automacao,
@@ -254,7 +531,7 @@ export async function processarAgendamentosFollowUpWhatsapp(params?: {
       if (!automacao) {
         await prisma.whatsappAutomacaoAgendamento.update({
           where: { id: agendamento.id },
-          data: { status: "CANCELADO", erro_ultimo: "Automacao inativa ou inexistente." },
+          data: { status: STATUS_CANCELADO, erro_ultimo: "Automacao inativa ou inexistente." },
         });
         detalhes.push({
           agendamentoId: agendamento.id,
@@ -269,6 +546,7 @@ export async function processarAgendamentosFollowUpWhatsapp(params?: {
         console.warn(
           `[WA_DISPATCH] runId=${runId} agendamentoId=${agendamento.id} status=CANCELADO motivo=automacao_inativa`,
         );
+        metrics.jobsProcessed++;
         continue;
       }
 
@@ -309,15 +587,19 @@ export async function processarAgendamentosFollowUpWhatsapp(params?: {
         mensagem,
       });
 
-      enviados += 1;
+      // Success - mark as sent
       await prisma.whatsappAutomacaoAgendamento.update({
         where: { id: agendamento.id },
         data: {
-          status: "ENVIADO",
+          status: STATUS_ENVIADO,
           enviado_em: new Date(),
           erro_ultimo: null,
         },
       });
+
+      enviados += 1;
+      metrics.jobsEnviados++;
+      metrics.jobsProcessed++;
 
       detalhes.push({
         agendamentoId: agendamento.id,
@@ -335,15 +617,18 @@ export async function processarAgendamentosFollowUpWhatsapp(params?: {
       );
     } catch (erro) {
       falhas += 1;
-      const tentativas = agendamento.tentativas + 1;
-      const status = tentativas >= 3 ? "FALHA" : "PENDENTE";
+      metrics.jobsFalhas++;
+      metrics.jobsProcessed++;
+
+      const tentativas = agendamentoBase.tentativas + 1;
+      const status = tentativas >= 3 ? STATUS_FALHA : STATUS_PENDENTE;
       const proximaExecucao =
-        status === "PENDENTE"
+        status === STATUS_PENDENTE
           ? new Date(Date.now() + tentativas * 5 * 60 * 1000)
-          : agendamento.agendado_para;
+          : new Date();
 
       await prisma.whatsappAutomacaoAgendamento.update({
-        where: { id: agendamento.id },
+        where: { id: agendamentoBase.id },
         data: {
           tentativas,
           status,
@@ -354,31 +639,32 @@ export async function processarAgendamentosFollowUpWhatsapp(params?: {
 
       const mensagemErro = erro instanceof Error ? erro.message : "Erro ao enviar follow-up.";
       detalhes.push({
-        agendamentoId: agendamento.id,
-        automacaoId: agendamento.id_whatsapp_automacao,
-        etapaId: agendamento.id_etapa,
-        leadId: agendamento.id_lead,
+        agendamentoId: agendamentoBase.id,
+        automacaoId: agendamentoBase.id_whatsapp_automacao,
+        etapaId: agendamentoBase.id_etapa,
+        leadId: agendamentoBase.id_lead,
         tentativa: tentativas,
-        statusFinal: status,
+        statusFinal: status === STATUS_FALHA ? "FALHA" : "PENDENTE",
         telefoneE164: null,
         erro: mensagemErro,
       });
 
       console.error(
-        `[WA_DISPATCH] runId=${runId} agendamentoId=${agendamento.id} status=${status} tentativa=${tentativas} detalhe=${mensagemErro}`,
+        `[WA_DISPATCH] runId=${runId} agendamentoId=${agendamentoBase.id} status=${status} tentativa=${tentativas} detalhe=${mensagemErro}`,
       );
     }
   }
 
   console.info(
-    `[WA_DISPATCH] runId=${runId} origem=${params?.origem ?? "interno"} processados=${agendamentos.length} enviados=${enviados} falhas=${falhas}`,
+    `[WA_DISPATCH] runId=${runId} origem=${params?.origem ?? "interno"} processados=${metrics.jobsProcessed} enviados=${enviados} falhas=${falhas} metricsClaimed=${metrics.jobsClaimed} metricsSkipped=${metrics.jobsSkippedAlreadyClaimed}`,
   );
 
   return {
     runId,
-    processados: agendamentos.length,
+    processados: metrics.jobsProcessed,
     enviados,
     falhas,
     detalhes,
+    metrics,
   };
 }

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { exigirSessao, podeGerenciarEmpresa, respostaSemPermissao } from "@/lib/permissoes";
-import { esquemaCriarAutomacaoWhatsapp, mensagemErroValidacao } from "@/lib/validacoes";
+import { esquemaCriarAutomacaoWhatsapp, mensagemErroValidacao, STATUS_AUTOMACAO, STATUS_JOB } from "@/lib/validacoes";
+import { parseHorarioTexto } from "@/lib/parse-horario-texto";
 
 export async function GET(request: NextRequest) {
   const auth = await exigirSessao(request);
@@ -9,8 +10,12 @@ export async function GET(request: NextRequest) {
     return auth.erro;
   }
 
+  // Por padrão, excluir automações deletadas (soft delete)
   const automacoes = await prisma.whatsappAutomacao.findMany({
-    where: { id_empresa: auth.sessao.id_empresa },
+    where: { 
+      id_empresa: auth.sessao.id_empresa,
+      deleted_at: null,
+    },
     include: {
       etapas: {
         orderBy: { ordem: "asc" },
@@ -39,6 +44,7 @@ export async function POST(request: NextRequest) {
     telefone_destino?: string;
     tipo_destino?: "FIXO" | "LEAD_TELEFONE";
     mensagem?: string;
+    horario_texto?: string;
     etapas?: Array<{
       ordem: number;
       delay_minutos: number;
@@ -77,6 +83,25 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Processar horário textual (delay após trigger)
+  let horarioRaw: string | null = null;
+  let horarioNormalizado: string | null = null;
+  let delayMinutos: number | null = null;
+  let statusAutomacao: "ATIVA" | "INATIVA" | "ERRO_CONFIG" | "ERRO_JOB" = STATUS_AUTOMACAO.ATIVA;
+  const jobStatus: "SCHEDULED" | "NOT_SCHEDULED" | "DELETED" | "FAILED" = STATUS_JOB.NOT_SCHEDULED;
+
+  if (dados.horario_texto && dados.horario_texto.trim().length > 0) {
+    const resultadoHorario = parseHorarioTexto(dados.horario_texto);
+    if (resultadoHorario.ok) {
+      horarioRaw = resultadoHorario.raw;
+      horarioNormalizado = resultadoHorario.normalized;
+      delayMinutos = resultadoHorario.delay_minutos;
+    } else {
+      // Se horário inválido, marcar como erro de configuração
+      statusAutomacao = "ERRO_CONFIG";
+    }
+  }
+
   const automacao = await prisma.$transaction(async (tx) => {
     const criada = await tx.whatsappAutomacao.create({
       data: {
@@ -88,6 +113,13 @@ export async function POST(request: NextRequest) {
         telefone_destino: dados.tipo_destino === "FIXO" ? dados.telefone_destino?.trim() : null,
         mensagem: dados.evento === "LEAD_STAGE_CHANGED" ? dados.mensagem?.trim() ?? null : null,
         ativo: dados.ativo ?? true,
+        // Novos campos
+        horario_raw: horarioRaw,
+        horario_normalizado: horarioNormalizado,
+        delay_minutos: delayMinutos,
+        timezone: "America/Sao_Paulo",
+        status: statusAutomacao,
+        job_status: jobStatus,
       },
     });
 

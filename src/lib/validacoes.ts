@@ -1,5 +1,64 @@
 import { z } from "zod";
 import { normalizarTelefoneParaWhatsapp } from "@/lib/phone";
+import { parseHorarioTexto, MENSAGENS_ERRO, type HorarioErrorCode } from "@/lib/parse-horario-texto";
+
+// ============================================
+// Constantes de Status de Automação
+// ============================================
+
+export const STATUS_AUTOMACAO = {
+  ATIVA: "ATIVA",
+  INATIVA: "INATIVA",
+  ERRO_CONFIG: "ERRO_CONFIG",
+  ERRO_JOB: "ERRO_JOB",
+} as const;
+
+export type StatusAutomacao = typeof STATUS_AUTOMACAO[keyof typeof STATUS_AUTOMACAO];
+
+export const STATUS_JOB = {
+  SCHEDULED: "SCHEDULED",
+  NOT_SCHEDULED: "NOT_SCHEDULED",
+  DELETED: "DELETED",
+  FAILED: "FAILED",
+} as const;
+
+export type StatusJob = typeof STATUS_JOB[keyof typeof STATUS_JOB];
+
+// ============================================
+// Validação de Horário Textual
+// ============================================
+
+/**
+ * Schema Zod para validar horário textual com parse automático.
+ * Aceita formatos flexíveis: "9h", "09:30", "21h05", etc.
+ */
+export const esquemaHorarioTexto = z
+  .string()
+  .trim()
+  .min(1, MENSAGENS_ERRO.HORARIO_VAZIO)
+  .max(20, MENSAGENS_ERRO.HORARIO_MUITO_LONGO)
+  .refine(
+    (val) => {
+      const result = parseHorarioTexto(val);
+      return result.ok;
+    },
+    {
+      message: MENSAGENS_ERRO.HORARIO_FORMATO_INVALIDO,
+    }
+  );
+
+type HorarioTextoRaw = z.infer<typeof esquemaHorarioTexto>;
+
+/**
+ * Converte horário textual para formato normalizado HH:mm.
+ * Retorna null se inválido.
+ */
+export function normalizarHorarioSchema(val: HorarioTextoRaw): string | null {
+  const result = parseHorarioTexto(val);
+  return result.ok ? result.normalized : null;
+}
+
+export type HorarioTexto = string;
 
 export const esquemaLogin = z.object({
   email: z.string().trim().email("E-mail invalido."),
@@ -56,9 +115,21 @@ export const esquemaCriarAutomacaoWhatsapp = z.object({
   tipo_destino: z.enum(TIPOS_DESTINO_AUTOMACAO_WHATSAPP).default("FIXO"),
   telefone_destino: z.string().trim().optional(),
   mensagem: z.string().trim().optional(),
+  horario_texto: z.string().trim().max(20, "Horario muito longo.").optional(), // Novo campo de horário textual
   etapas: z.array(esquemaEtapaFollowUp).max(50, "Maximo de 50 etapas.").optional(),
   ativo: z.boolean().optional(),
 }).superRefine((dados, ctx) => {
+  // Validação de horário textual se fornecido
+  if (dados.horario_texto && dados.horario_texto.trim().length > 0) {
+    const result = parseHorarioTexto(dados.horario_texto);
+    if (!result.ok) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["horario_texto"],
+        message: result.message,
+      });
+    }
+  }
   if (dados.tipo_destino === "FIXO") {
     const telefone = dados.telefone_destino ?? "";
     const normalizado = normalizarTelefoneParaWhatsapp(telefone);
@@ -84,6 +155,77 @@ export const esquemaCriarAutomacaoWhatsapp = z.object({
 
   if (dados.evento === "LEAD_FOLLOW_UP") {
     if (!dados.etapas?.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["etapas"],
+        message: "Defina ao menos 1 etapa de follow-up.",
+      });
+      return;
+    }
+
+    const ordens = new Set<number>();
+    for (const etapa of dados.etapas) {
+      if (ordens.has(etapa.ordem)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["etapas"],
+          message: "As ordens das etapas nao podem repetir.",
+        });
+        break;
+      }
+      ordens.add(etapa.ordem);
+    }
+  }
+});
+
+// Schema para atualização de automação
+export const esquemaAtualizarAutomacaoWhatsapp = z.object({
+  id_whatsapp_instancia: z.string().trim().min(1, "Instancia obrigatoria.").optional(),
+  evento: z.enum(EVENTOS_AUTOMACAO_WHATSAPP, { message: "Evento invalido." }).optional(),
+  id_estagio_destino: z.string().trim().optional().nullable(),
+  tipo_destino: z.enum(TIPOS_DESTINO_AUTOMACAO_WHATSAPP).optional(),
+  telefone_destino: z.string().trim().optional().nullable(),
+  mensagem: z.string().trim().optional().nullable(),
+  horario_texto: z.string().trim().max(20, "Horario muito longo.").optional(), // Novo campo de horário textual
+  ativo: z.boolean().optional(),
+  etapas: z.array(esquemaEtapaFollowUp).max(50, "Maximo de 50 etapas.").optional(),
+}).superRefine((dados, ctx) => {
+  // Validação de horário textual se fornecido
+  if (dados.horario_texto && dados.horario_texto.trim().length > 0) {
+    const result = parseHorarioTexto(dados.horario_texto);
+    if (!result.ok) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["horario_texto"],
+        message: result.message,
+      });
+    }
+  }
+
+  if (dados.tipo_destino === "FIXO" && dados.telefone_destino) {
+    const normalizado = normalizarTelefoneParaWhatsapp(dados.telefone_destino);
+    if (!normalizado.valido) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["telefone_destino"],
+        message: "Telefone destino invalido para WhatsApp (use DDI+DDD+numero).",
+      });
+    }
+  }
+
+  if (dados.evento === "LEAD_STAGE_CHANGED") {
+    const mensagem = dados.mensagem?.trim() ?? "";
+    if (mensagem.length > 0 && mensagem.length < 5) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["mensagem"],
+        message: "Mensagem muito curta.",
+      });
+    }
+  }
+
+  if (dados.evento === "LEAD_FOLLOW_UP" && dados.etapas !== undefined) {
+    if (!dados.etapas.length) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["etapas"],

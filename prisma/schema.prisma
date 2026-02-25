@@ -172,15 +172,32 @@ model WhatsappAutomacao {
   telefone_destino      String?
   mensagem              String?
   ativo                 Boolean  @default(true)
+  // Novos campos para horário flexível e rastreamento
+  horario_raw           String?  // Texto original digitado pelo usuário
+  horario_normalizado   String?  // Texto normalizado (ex: "9 horas", "30 minutos")
+  delay_minutos         Int?     // Delay em minutos após o trigger
+  timezone              String   @default("America/Sao_Paulo")
+  // Status e rastreamento de job
+  status                String   @default("ATIVA") // ATIVA, INATIVA, ERRO_CONFIG, ERRO_JOB
+  job_id                String?  // ID do job no scheduler
+  job_status            String?  // SCHEDULED, NOT_SCHEDULED, DELETED, FAILED
+  ultima_sincronizacao_job_em DateTime?
+  ultima_execucao_em    DateTime?
+  proxima_execucao_em   DateTime?
+  // Soft delete para auditoria
+  deleted_at            DateTime?
+  // Timestamps
   criado_em             DateTime @default(now())
   atualizado_em         DateTime @default(now()) @updatedAt
   etapas                WhatsappAutomacaoEtapa[]
   agendamentos          WhatsappAutomacaoAgendamento[]
 
-  @@index([id_empresa])
+  @@index([id_empresa, status])
+  @@index([id_empresa, deleted_at])
   @@index([id_whatsapp_instancia])
   @@index([evento])
   @@index([ativo])
+  @@index([job_id])
 }
 
 model WhatsappAutomacaoEtapa {
@@ -207,13 +224,18 @@ model WhatsappAutomacaoAgendamento {
   id_whatsapp_automacao String
   id_etapa              String
   id_lead               String
+  // New idempotency fields for robust duplicate prevention
+  id_estagio_trigger    String?  // Stage that triggered this follow-up
+  chave_idempotencia    String?  // Deterministic key: {empresa}:{lead}:{stage_trigger}:{automacao}:{etapa}
+  // Keep legacy field for backwards compatibility during rollout
   referencia_evento     String
   mensagem_template     String
   contexto_json         String
   agendado_para         DateTime
   status                String   @default("PENDENTE")
+  // Status flow: PENDENTE -> PROCESSANDO (claimed) -> ENVIADO | PENDENTE (retry) | FALHA | CANCELADO
   tentativas            Int      @default(0)
-  erro_ultimo           String?
+  erro_ultimo          String?
   enviado_em            DateTime?
   criado_em             DateTime @default(now())
   atualizado_em         DateTime @default(now()) @updatedAt
@@ -225,5 +247,9 @@ model WhatsappAutomacaoAgendamento {
   @@index([id_etapa])
   @@index([id_lead])
   @@index([status, agendado_para])
+  @@index([status]) // For stale PROCESSANDO recovery
+  // New unique constraint for idempotency (replaces old reference-based dedup)
+  @@unique([id_empresa, chave_idempotencia])
+  // Keep legacy unique during migration, remove after full rollout
   @@unique([id_whatsapp_automacao, id_etapa, id_lead, referencia_evento])
 }

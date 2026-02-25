@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { exigirSessao } from "@/lib/permissoes";
 import { esquemaMoverLead, mensagemErroValidacao } from "@/lib/validacoes";
-import { executarAutomacoesLeadStageChanged } from "@/lib/whatsapp-automations";
+import { executarAutomacoesLeadStageChanged, cancelarAgendamentosPorLead } from "@/lib/whatsapp-automations";
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -64,6 +64,16 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ erro: "Motivo de perda e obrigatorio." }, { status: 400 });
   }
 
+  // Same-stage no-op guard: skip automation scheduling if lead is already in destination stage
+  if (lead.estagio.id === estagioDestino.id) {
+    console.info(`[LEAD_MOVE] leadId=${lead.id} status=NOOP motivo=mesmo_estagio`);
+    return NextResponse.json({ 
+      lead, 
+      mensagem: "Lead ja esta neste estagio.",
+      noop: true 
+    });
+  }
+
   const leadAtualizado = await prisma.lead.update({
     where: { id: lead.id },
     data: {
@@ -75,6 +85,15 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const referenciaEvento = `${lead.id}:${Date.now()}`;
 
   try {
+    // Cancel all pending follow-up jobs when lead leaves a stage
+    // This ensures a lead never has 2 follow-up jobs running simultaneously
+    await cancelarAgendamentosPorLead({
+      idEmpresa: auth.sessao.id_empresa,
+      idLead: lead.id,
+      idEstagioSaindo: lead.estagio.id, // Cancel jobs from the stage the lead is leaving
+      motivo: "Lead mudou de estágio",
+    });
+
     await executarAutomacoesLeadStageChanged({
       idEmpresa: auth.sessao.id_empresa,
       lead: {

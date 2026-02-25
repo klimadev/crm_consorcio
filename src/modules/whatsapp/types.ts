@@ -24,6 +24,9 @@ export type UseWhatsappModuleReturn = {
   recarregar: () => Promise<void>;
 };
 
+export type StatusAutomacao = "ATIVA" | "INATIVA" | "ERRO_CONFIG" | "ERRO_JOB";
+export type StatusJob = "SCHEDULED" | "NOT_SCHEDULED" | "DELETED" | "FAILED";
+
 export type WhatsappAutomacao = {
   id: string;
   id_empresa: string;
@@ -34,6 +37,18 @@ export type WhatsappAutomacao = {
   telefone_destino: string | null;
   mensagem: string | null;
   ativo: boolean;
+  // Novos campos para horário flexível e rastreamento
+  horario_raw: string | null;
+  horario_normalizado: string | null;
+  delay_minutos: number | null;
+  timezone: string;
+  status: StatusAutomacao;
+  job_id: string | null;
+  job_status: StatusJob | null;
+  ultima_sincronizacao_job_em: Date | null;
+  ultima_execucao_em: Date | null;
+  proxima_execucao_em: Date | null;
+  deleted_at: Date | null;
   etapas?: WhatsappAutomacaoEtapa[];
   criado_em: Date;
   atualizado_em: Date;
@@ -58,12 +73,29 @@ export type WhatsappAutomacaoCreateInput = {
   tipo_destino: "FIXO" | "LEAD_TELEFONE";
   telefone_destino?: string;
   mensagem?: string;
+  horario_texto?: string; // Horário textual flexível: "9h", "09:30", etc.
   etapas?: Array<{
     ordem: number;
     delay_minutos: number;
     mensagem_template: string;
   }>;
   ativo?: boolean;
+};
+
+export type WhatsappAutomacaoUpdateInput = {
+  id_whatsapp_instancia?: string;
+  evento?: "LEAD_STAGE_CHANGED" | "LEAD_FOLLOW_UP";
+  id_estagio_destino?: string | null;
+  tipo_destino?: "FIXO" | "LEAD_TELEFONE";
+  telefone_destino?: string | null;
+  mensagem?: string | null;
+  horario_texto?: string; // Horário textual flexível
+  ativo?: boolean;
+  etapas?: Array<{
+    ordem: number;
+    delay_minutos: number;
+    mensagem_template: string;
+  }>;
 };
 
 export type WhatsappFollowUpDispatchDetalhe = {
@@ -83,6 +115,14 @@ export type WhatsappFollowUpDispatchResultado = {
   enviados: number;
   falhas: number;
   detalhes: WhatsappFollowUpDispatchDetalhe[];
+  metrics?: {
+    jobsClaimed: number;
+    jobsSkippedAlreadyClaimed: number;
+    jobsDuplicateBlocked: number;
+    jobsProcessed: number;
+    jobsEnviados: number;
+    jobsFalhas: number;
+  };
 };
 
 export type UseWhatsappAutomationsReturn = {
@@ -90,6 +130,7 @@ export type UseWhatsappAutomationsReturn = {
   carregando: boolean;
   erro: string | null;
   criarAutomacao: (data: WhatsappAutomacaoCreateInput) => Promise<void>;
+  atualizarAutomacao: (id: string, data: WhatsappAutomacaoUpdateInput) => Promise<void>;
   previewMensagem: (mensagem: string) => Promise<string | null>;
   dispararDispatchFollowUp: (limite?: number) => Promise<WhatsappFollowUpDispatchResultado | null>;
   alternarAutomacao: (id: string, ativo: boolean) => Promise<void>;
@@ -102,4 +143,35 @@ export type EstagioFunilOption = {
   nome: string;
   tipo: string;
   ordem: number;
+};
+
+export type WhatsappJobsResumo = {
+  pendentes: number;
+  processando: number;
+  falhas: number;
+  enviadosHoje: number;
+  atualizadoEm: string;
+};
+
+export type WhatsappJobItem = {
+  id: string;
+  id_lead: string;
+  id_etapa: string;
+  id_estagio_trigger: string | null;
+  mensagem_template: string;
+  contexto_json: string;
+  agendado_para: string;
+  status: string;
+  tentativas: number;
+  erro_ultimo: string | null;
+  enviado_em: string | null;
+  criado_em: string;
+};
+
+export type UseWhatsappJobsReturn = {
+  resumo: WhatsappJobsResumo;
+  jobs: WhatsappJobItem[];
+  carregando: boolean;
+  erro: string | null;
+  recarregar: () => Promise<void>;
 };

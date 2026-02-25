@@ -4,69 +4,65 @@ Agentic coding guidelines for this CRM application.
 
 ## Tech Stack
 
-- **Framework:** Next.js 16 (App Router)  
-- **Language:** TypeScript  
+- **Framework:** Next.js 16 (App Router)
+- **Language:** TypeScript
 - **Database:** Prisma ORM + SQLite (dev) / PostgreSQL (prod)
-- **Styling:** Tailwind CSS v4  
-- **UI Components:** Radix UI + class-variance-authority  
-- **Testing:** Vitest  
+- **Styling:** Tailwind CSS v4
+- **UI Components:** Radix UI + class-variance-authority
+- **Testing:** Vitest
 
-## Build, Lint & Test Commands
+## Commands
 
 ```bash
 # Development
 npm run dev                # Start dev server
 
-# Build & Validate
-npm run build             # Production build (includes TypeScript)
-npm run lint              # ESLint validation
+# Validate (USE LINT - faster)
+npm run lint              # ESLint (FAST - use this always)
+npm run build             # Only when needed
 
 # Testing
-npm run test              # Run all tests once (Vitest)
-npm run test -- src/components/button.test.ts  # Single test file
-npm run test -- --run -t "test name"           # Single test by name
+npm run test              # Run all tests
+npm run test -- src/components/button.test.ts  # Single file
+npm run test -- --run -t "test name"           # Single test
 
 # Database
 npm run seed              # Seed database
 npx prisma studio         # Open Prisma GUI
 npx prisma db push        # Push schema changes
-npx prisma generate       # Regenerate Prisma client
+npx prisma generate       # Regenerate client
 ```
 
 ## Project Structure
 
 ```
 src/
-├── app/                    # Next.js App Router pages
+├── app/                    # Next.js App Router
 │   ├── (auth)/           # Auth pages
 │   ├── (dashboard)/      # Protected pages
 │   └── api/              # API routes
-│       └── whatsapp/
-│           ├── instances/  # WhatsApp instance management
-│           └── automations/ # WhatsApp automation rules
-├── components/ui/         # Reusable UI components
+├── components/ui/         # Reusable UI
 ├── modules/               # Modular architecture
 │   ├── equipe/           # Team module
 │   ├── kanban/          # Kanban module
 │   ├── configs/         # Settings module
-│   └── whatsapp/        # WhatsApp module (instances + automations)
+│   └── whatsapp/        # WhatsApp module
 │       ├── components/  # UI components
 │       ├── hooks/       # Module hooks
 │       └── types.ts     # Module types
 └── lib/                  # Utilities
-    ├── evolution-api.ts       # WhatsApp Evolution API integration
-    └── whatsapp-automations.ts # Event-driven automation orchestrator
 ```
 
 ## Code Style
 
-### File Naming
-- **Files:** kebab-case (`modulo-equipe.tsx`, `button.tsx`)
-- **Components:** PascalCase (`ModuloEquipe`, `Button`)
+### Naming
+- **Files:** kebab-case (`modulo-equipe.tsx`)
+- **Components:** PascalCase (`ModuloEquipe`)
+- **Hooks:** `use-nome-module.ts`
+- **Types:** PascalCase (`Lead`, `WhatsappAutomacao`)
 
-### Imports
+### Imports (use @/*)
 ```tsx
-// Use @/* alias
 import { Button } from "@/components/ui/button";
 import { cn, formataMoeda } from "@/lib/utils";
 import type { Lead } from "@/types";
@@ -85,35 +81,19 @@ export function ModuloExemplo({ perfil }: Props) {
 }
 ```
 
-### TypeScript
+### Error Handling
 ```tsx
-type Props = { perfil: "EMPRESA" | "GERENTE" | "COLABORADOR" };
-type Lead = { id: string; nome: string };
-```
+// API responses - always handle JSON parse errors
+const json = await resposta.json().catch(() => ({}));
 
-## Key Patterns
-
-### React Context for Cross-Component State
-When state needs to be shared between independent components (e.g., sidebar + kanban), use React Context:
-
-```tsx
-const MyContext = createContext<MyContextValue | null>(null);
-
-export function MyProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState(initial);
-  
-  // CRITICAL: Use useEffect for post-render sync, NOT synchronous calls
-  useEffect(() => {
-    syncState();
-  }, [state, otherDep]);
-  
-  return (
-    <MyContext.Provider value={{ state, setState }}>
-      {children}
-    </MyContext.Provider>
-  );
+// Async - always try/catch
+try {
+  await executarAutomacao(data);
+} catch (erro) {
+  console.error("Erro ao executar automacao:", erro);
 }
 
+// Context - throw if used outside provider
 export function useMyContext() {
   const context = useContext(MyContext);
   if (!context) throw new Error("useMyContext must be used within MyProvider");
@@ -121,37 +101,26 @@ export function useMyContext() {
 }
 ```
 
-### Optimistic UI
-```tsx
-const idTemp = `temp-${Date.now()}`;
-setItems(prev => [{ ...item, id: idTemp }, ...prev]);
-const res = await fetch("/api/items", { method: "POST", body: JSON.stringify(item) });
-if (!res.ok) setItems(prev => prev.filter(i => i.id !== idTemp)); // rollback
-```
+## Key Patterns
 
 ### Synchronous State Sync Bug (AVOID)
-NEVER call sync functions synchronously after setState - data will be stale:
-
 ```tsx
-// WRONG - stale data bug!
+// WRONG - stale data!
 setLeads(newLeads);
-sincronizarPendencias(); // ❌ Uses old leads!
+sincronizarPendencias();
 
-// CORRECT - use useEffect to sync after render
+// CORRECT - use useEffect
 useEffect(() => {
   sincronizarPendencias();
 }, [leads, estagios]);
 ```
 
-### Autosave/Debounce
+### Optimistic UI with Rollback
 ```tsx
-const ref = useRef<NodeJS.Timeout>();
-const onChange = (val) => {
-  setState(val);
-  if (ref.current) clearTimeout(ref.current);
-  ref.current = setTimeout(() => save(val), 1000);
-};
-useEffect(() => () => ref.current && clearTimeout(ref.current), []);
+const idTemp = `temp-${Date.now()}`;
+setItems(prev => [{ ...item, id: idTemp }, ...prev]);
+const res = await fetch("/api/items", { method: "POST", body: JSON.stringify(item) });
+if (!res.ok) setItems(prev => prev.filter(i => i.id !== idTemp));
 ```
 
 ### Controlled Dialog
@@ -159,90 +128,33 @@ useEffect(() => () => ref.current && clearTimeout(ref.current), []);
 <Dialog open={open} onOpenChange={o => { setOpen(o); if (!o) setErro(null); }}>
 ```
 
-### Permission System
+### Debounce/Autosave
 ```tsx
-const podeGerenciar = perfil === "EMPRESA";
-const podeInativar = perfil === "EMPRESA" || perfil === "GERENTE";
+const ref = useRef<NodeJS.Timeout>();
+const onChange = (val) => {
+  setState(val);
+  clearTimeout(ref.current);
+  ref.current = setTimeout(() => save(val), 1000);
+};
+useEffect(() => () => ref.current && clearTimeout(ref.current), []);
 ```
-
-## WhatsApp Automation Pattern (Event-Driven)
-
-This is the preferred pattern for building event-driven features:
-
-### Architecture
-```
-Trigger (e.g., lead stage changed) 
-  → Execute automation function 
-    → Find matching rules 
-      → Send WhatsApp message
-```
-
-### Example: Lead Stage Changed Event
-```ts
-// 1. In the API route that handles the event
-import { executarAutomacoesLeadStageChanged } from "@/lib/whatsapp-automations";
-
-await prisma.lead.update({ where: { id }, data: { id_estagio } });
-
-// 2. Execute automations (fire-and-forget, errors logged only)
-try {
-  await executarAutomacoesLeadStageChanged({
-    idEmpresa: auth.sessao.id_empresa,
-    lead: { id: lead.id, nome: lead.nome, telefone: lead.telefone },
-    estagioAnterior: { id: oldStage.id, nome: oldStage.nome },
-    estagioNovo: { id: newStage.id, nome: newStage.nome },
-  });
-} catch (erro) {
-  console.error("Erro ao executar automacoes WhatsApp:", erro);
-}
-```
-
-### Adding New Events
-1. Create automation function in `src/lib/whatsapp-automations.ts`
-2. Call it from the relevant API route after the action completes
-3. Add event type to `EVENTOS_AUTOMACAO_WHATSAPP` in `src/lib/validacoes.ts`
 
 ## Tailwind Classes
 ```tsx
-// Standard patterns
-className="space-y-3"           // vertical spacing
-className="flex items-center gap-2"  // alignment
-className="text-sm text-slate-500"   // secondary text
-// Conditional
+className="space-y-3"              // vertical spacing
+className="flex items-center gap-2" // alignment
+className="text-sm text-slate-500"  // secondary text
 className={cn("base", condition && "conditional")}
 ```
 
-## Visual Style (2024)
-
-### Module Shell
-```tsx
-<section className="space-y-5 rounded-2xl bg-slate-50/50 p-4 pb-6 md:p-6">
-  <header className="flex...rounded-2xl border border-slate-200/60 bg-white px-6 py-5...">
-    {/* header content */}
-  </header>
-  <section className="rounded-2xl border border-slate-200/60 bg-white px-5 py-4...">
-    {/* content */}
-  </section>
-</section>
-```
-
-### Status Badges
+## Status Badges
 ```tsx
 // Active (green)
 <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Ativo
 </span>
-// Inactive (gray)
-<span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
-  <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />Inativo
-</span>
-```
-
-### Feedback Colors
-```tsx
-// Error: border-rose-200/60 bg-rose-50/50 text-rose-700
-// Success: border-emerald-200/60 bg-emerald-50/50 text-emerald-700
-// Warning: border-amber-200/60 bg-amber-50/50 text-amber-800
+// Error (rose)
+<span className="...bg-rose-50 text-rose-700 border-rose-100...">Erro</span>
 ```
 
 ## Testing
@@ -258,15 +170,11 @@ describe("Component", () => {
 });
 ```
 
-## Key Conventions
+## Critical Rules
 
-1. Use `@/*` imports, kebab-case files, PascalCase components
-2. Extract business logic into custom hooks in `src/modules/*/hooks/`
-3. Keep page composition thin — only orchestration, no business logic
-4. Always validate with `npm run lint` and `npm run build` before committing
-5. Implement rollback on API failures for optimistic updates
-6. Use controlled Dialog with `open`/`onOpenChange` and cleanup
-7. Follow the visual style consistently across all modules
-8. For cross-component state sync, use Context + useEffect (NOT synchronous calls)
-9. For event-driven features, follow the WhatsApp automation pattern: trigger → find rules → execute action
-10. Always handle JSON parse errors gracefully: `const json = await resposta.json().catch(() => ({}))`
+1. **Use LINT over BUILD** - `npm run lint` is faster, use always
+2. **Verify Consolidation** - After changes, check other parts need updating (hooks, types, API routes)
+3. **Rollback on Fail** - Always implement rollback for optimistic updates
+4. **Context + useEffect** - For cross-component sync, use Context + useEffect (NOT sync calls)
+5. **Event-Driven** - For automations: trigger → find rules → execute action
+6. **Multi-tenant** - Always include `id_empresa` in queries for tenant isolation
