@@ -8,6 +8,6 @@ export const onboardingEquipeSteps: TourStep[] = [
     position: "right",
     stepInteraction: true,
     title: "Equipe",
-    content: "Gerencie colaboradores, acompanhe status e mantenha as permissoes do time organizadas.",
+    content: "Cadastre e gerencie funcionarios, atribua funcoes (colaborador/gerente) e PDVs. Realize operacoes em lote e reatribua leads ao inativar.",
   },
 ];

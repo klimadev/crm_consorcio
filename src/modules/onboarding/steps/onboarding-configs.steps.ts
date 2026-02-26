@@ -8,6 +8,6 @@ export const onboardingConfigsSteps: TourStep[] = [
     position: "right",
     stepInteraction: true,
     title: "Configuracoes",
-    content: "Ajuste estagios, PDVs e regras para adaptar o CRM ao fluxo da sua empresa.",
+    content: "Configure seus PDVs (pontos de venda) e personalize os estagios do funil de vendas.",
   },
 ];

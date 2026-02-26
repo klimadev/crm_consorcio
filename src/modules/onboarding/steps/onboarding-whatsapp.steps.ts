@@ -8,6 +8,6 @@ export const onboardingWhatsappSteps: TourStep[] = [
     position: "right",
     stepInteraction: true,
     title: "WhatsApp",
-    content: "Centralize conversas, automacoes e filas de envio para acelerar o atendimento.",
+    content: "Conecte multiplas instancias WhatsApp, crie automacoes de mensagens por mudanca de estagio e acompanhe fila de envios.",
   },
 ];

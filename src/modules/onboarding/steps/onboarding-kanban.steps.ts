@@ -8,6 +8,6 @@ export const onboardingKanbanSteps: TourStep[] = [
     position: "right",
     stepInteraction: true,
     title: "Kanban",
-    content: "No Kanban voce move leads entre estagios e enxerga gargalos da equipe em tempo real.",
+    content: "Gerencie sua pipeline de vendas com drag-and-drop. Acompanhe pendencias (leads estagnados, documentos faltando) e receba alertas.",
   },
 ];

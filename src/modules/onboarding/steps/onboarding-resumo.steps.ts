@@ -8,6 +8,6 @@ export const onboardingResumoSteps: TourStep[] = [
     position: "right",
     stepInteraction: true,
     title: "Resumo",
-    content: "Aqui voce acompanha os principais indicadores e uma visao geral da operacao.",
+    content: "Acompanhe valor total em aberto, receita fechada e taxa de conversao. Veja grafico de vendas dos ultimos 6 meses.",
   },
 ];
