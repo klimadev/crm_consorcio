@@ -6,7 +6,7 @@ export const onboardingWelcomeSteps: TourStep[] = [
     id: "welcome",
     selector: TOUR_SELECTORS.body,
     position: "center",
-    title: "Bem-vindo ao CRM",
-    content: "Vamos fazer um tour rapido para mostrar os principais modulos do sistema.",
+    title: "Bem-vindo ao CRM Consórcio",
+    content: "Sua central para gestionar consórcios. Acompanhe vendas no Resumo, gerencie leads no Kanban, conecte o WhatsApp e configure tudo em Configurações. Vamos começar!",
   },
 ];
