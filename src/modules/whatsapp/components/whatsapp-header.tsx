@@ -8,8 +8,8 @@ export function WhatsappHeader() {
           </svg>
         </div>
         <div>
-          <h1 className="text-xl font-bold text-slate-800 md:text-2xl">WhatsApp</h1>
-          <p className="text-sm text-slate-500">Gerencie suas conexões WhatsApp</p>
+          <h1 className="text-xl font-bold text-slate-800 md:text-2xl">Centro de Comando de Vendas</h1>
+          <p className="text-sm text-slate-500">Gerencie suas conexões e fluxos de engajamento</p>
         </div>
       </div>
     </header>

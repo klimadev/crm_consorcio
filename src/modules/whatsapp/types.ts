@@ -1,3 +1,6 @@
+export type ConnectionQuality = "excellent" | "good" | "unstable" | "offline" | "unknown";
+export type ConnectionDataSource = "evolution_live" | "db_cache" | "unavailable";
+
 export type WhatsappInstancia = {
   id: string;
   id_empresa: string;
@@ -10,6 +13,11 @@ export type WhatsappInstancia = {
   profile_pic: string | null;
   criado_em: Date;
   atualizado_em: Date;
+  // Novos campos para Cockpit
+  latency_ms: number | null;
+  last_seen_at: string | null;
+  connection_quality: ConnectionQuality;
+  data_source: ConnectionDataSource;
 };
 
 export type UseWhatsappModuleReturn = {
@@ -153,6 +161,8 @@ export type WhatsappJobsResumo = {
   atualizadoEm: string;
 };
 
+export type JobErrorCategory = "VALIDACAO" | "REDE" | "AUTENTICACAO" | "RATE_LIMIT" | "DESCONHECIDO" | null;
+
 export type WhatsappJobItem = {
   id: string;
   id_lead: string;
@@ -164,6 +174,13 @@ export type WhatsappJobItem = {
   status: string;
   tentativas: number;
   erro_ultimo: string | null;
+  // Novos campos para UX avançada
+  erro_codigo: string | null;
+  erro_categoria: JobErrorCategory;
+  erro_detalhe: string | null;
+  acao_recomendada: string | null;
+  tentativas_max: number;
+  progress_pct: number | null;
   enviado_em: string | null;
   criado_em: string;
 };

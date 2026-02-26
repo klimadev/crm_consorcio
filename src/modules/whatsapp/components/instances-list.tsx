@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { OptimisticSync } from "@/components/ui/optimistic-sync";
 import { Card, CardContent } from "@/components/ui/card";
-import { RefreshCw, Trash2, Smartphone, Clock, Wifi, WifiOff, QrCode, Loader2 } from "lucide-react";
+import { RefreshCw, Trash2, Smartphone, Clock, Wifi, WifiOff, QrCode, Loader2, Zap, AlertCircle } from "lucide-react";
 import type { WhatsappInstancia } from "../types";
 
 type Props = {
@@ -18,6 +18,7 @@ type Props = {
 interface StatusConfig {
   label: string;
   labelShort: string;
+  labelDetailed: string;
   className: string;
   icon: "connected" | "disconnected" | "qrcode" | "loading" | "error";
 }
@@ -29,6 +30,7 @@ function getStatusBadge(status: string): StatusConfig {
     return {
       label: "Conectado",
       labelShort: "Online",
+      labelDetailed: "Sincronizado e Pronto",
       className: "bg-emerald-50 text-emerald-700 border-emerald-200",
       icon: "connected",
     };
@@ -38,6 +40,7 @@ function getStatusBadge(status: string): StatusConfig {
     return {
       label: "Escaneie o QR Code",
       labelShort: "QR",
+      labelDetailed: "Aguardando Conexão",
       className: "bg-amber-50 text-amber-700 border-amber-200",
       icon: "qrcode",
     };
@@ -47,6 +50,7 @@ function getStatusBadge(status: string): StatusConfig {
     return {
       label: "Carregando...",
       labelShort: "Carregando",
+      labelDetailed: "Inicializando",
       className: "bg-blue-50 text-blue-700 border-blue-200",
       icon: "loading",
     };
@@ -56,6 +60,7 @@ function getStatusBadge(status: string): StatusConfig {
     return {
       label: "Desconectado",
       labelShort: "Offline",
+      labelDetailed: "Desconectado",
       className: "bg-slate-100 text-slate-600 border-slate-200",
       icon: "disconnected",
     };
@@ -64,6 +69,7 @@ function getStatusBadge(status: string): StatusConfig {
   return {
     label: "Erro",
     labelShort: "Erro",
+    labelDetailed: "Erro de Conexão",
     className: "bg-rose-50 text-rose-700 border-rose-200",
     icon: "error",
   };
@@ -207,6 +213,20 @@ function QrCodeDisplay({
   );
 }
 
+function getInitials(name: string | null): string {
+  if (!name) return "?";
+  return name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
+}
+
+function calculateUptime(lastSeenAt: string | null): string {
+  if (!lastSeenAt) return "—";
+  const diffMs = Date.now() - new Date(lastSeenAt).getTime();
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (days === 0) return "Hoje";
+  if (days === 1) return "1 dia";
+  return `${days} dias`;
+}
+
 function InstanceCard({ 
   instancia, 
   onExcluir, 
@@ -224,14 +244,21 @@ function InstanceCard({
   const badge = getStatusBadge(instancia.status);
   const isConnected = badge.icon === "connected";
 
+  const uptime = useMemo(() => {
+    return calculateUptime(instancia.last_seen_at);
+  }, [instancia.last_seen_at]);
+
   return (
     <OptimisticSync
       key={instancia.id}
       active={isTemporario}
       className="cursor-wait"
     >
-      <Card className="group relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm transition-all hover:shadow-lg hover:border-slate-300/60">
-        {/* Status indicator line */}
+      <Card className={`group relative overflow-hidden rounded-2xl border transition-all hover:shadow-lg ${
+        isConnected 
+          ? "border-emerald-200/60 bg-zinc-900 shadow-lg shadow-emerald-900/10" 
+          : "border-slate-200/60 bg-white hover:border-slate-300/60"
+      }`}>
         <div className={`absolute left-0 top-0 h-1 w-full transition-colors ${
           isConnected 
             ? "bg-gradient-to-r from-emerald-400 to-emerald-500" 
@@ -240,64 +267,108 @@ function InstanceCard({
               : "bg-slate-200"
         }`} />
         
-        <CardContent className="p-5 pt-6">
+        <CardContent className={`p-5 pt-6 ${isConnected ? "bg-zinc-900" : ""}`}>
           <div className="flex items-start gap-4">
-            {/* Avatar with status */}
             <div className="relative">
               {instancia.profile_pic ? (
                 <img
                   src={instancia.profile_pic}
                   alt="Foto de perfil"
-                  className="h-14 w-14 rounded-xl object-cover shadow-sm"
+                  className={`h-14 w-14 rounded-xl object-cover shadow-sm ${
+                    isConnected ? "ring-2 ring-emerald-500 ring-offset-2 ring-offset-zinc-900" : ""
+                  }`}
                 />
               ) : (
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-200 text-emerald-600 shadow-sm">
-                  <Smartphone className="h-7 w-7" />
+                <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl shadow-sm ${
+                  isConnected 
+                    ? "bg-gradient-to-br from-emerald-900 to-emerald-800 text-emerald-400 ring-2 ring-emerald-500 ring-offset-2 ring-offset-zinc-900" 
+                    : "bg-gradient-to-br from-emerald-100 to-emerald-200 text-emerald-600"
+                }`}>
+                  <span className="text-lg font-bold">{getInitials(instancia.profile_name || instancia.nome)}</span>
                 </div>
               )}
-              {/* Status dot */}
-              <div className={`absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white ${
-                isConnected 
-                  ? "bg-emerald-500" 
-                  : badge.icon === "qrcode"
-                    ? "bg-amber-500"
-                    : "bg-slate-300"
-              }`}>
-                <StatusIcon status={instancia.status} />
-              </div>
+              {isConnected && (
+                <div className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-emerald-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                </div>
+              )}
+              {!isConnected && (
+                <div className={`absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white ${
+                  badge.icon === "qrcode" ? "bg-amber-500" : "bg-slate-300"
+                }`}>
+                  <StatusIcon status={instancia.status} />
+                </div>
+              )}
             </div>
 
-            {/* Info */}
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <h3 className="truncate text-base font-semibold text-slate-800">
+                <h3 className={`truncate text-base font-semibold ${
+                  isConnected ? "text-white" : "text-slate-800"
+                }`}>
                   {instancia.profile_name || instancia.nome}
                 </h3>
               </div>
               {instancia.phone && (
-                <p className="mt-0.5 truncate text-sm text-slate-500 font-mono">
+                <p className={`mt-0.5 truncate text-sm font-mono ${
+                  isConnected ? "text-emerald-400/80" : "text-slate-500"
+                }`}>
                   {instancia.phone}
                 </p>
               )}
               {!instancia.phone && instancia.instance_name && (
-                <p className="mt-0.5 truncate text-xs text-slate-400">
+                <p className={`mt-0.5 truncate text-xs ${
+                  isConnected ? "text-zinc-500" : "text-slate-400"
+                }`}>
                   {instancia.instance_name}
                 </p>
               )}
               
-              {/* Status badge */}
               <div className="mt-2">
                 <span
-                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium border ${badge.className}`}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium border ${
+                    isConnected
+                      ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                      : badge.className
+                  }`}
                 >
                   <StatusIcon status={instancia.status} />
-                  {badge.labelShort}
+                  {isConnected ? "Sincronizado e Pronto" : badge.labelShort}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* QR Code section */}
+          {isConnected && (
+            <div className="mt-4 flex items-center gap-4 rounded-lg bg-zinc-800/50 p-3">
+              <div className="flex items-center gap-2">
+                <Zap className="h-3.5 w-3.5 text-emerald-400" />
+                <span className="text-xs text-zinc-400">
+                  {instancia.latency_ms ? `${instancia.latency_ms}ms` : "—"}
+                </span>
+              </div>
+              <div className="h-3 w-px bg-zinc-700" />
+              <div className="flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5 text-emerald-400" />
+                <span className="text-xs text-zinc-400">
+                  {uptime}
+                </span>
+              </div>
+              <div className="h-3 w-px bg-zinc-700" />
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-xs font-medium ${
+                  instancia.connection_quality === "excellent" || instancia.connection_quality === "good"
+                    ? "bg-emerald-500/20 text-emerald-400"
+                    : instancia.connection_quality === "unstable"
+                    ? "bg-amber-500/20 text-amber-400"
+                    : "bg-slate-700 text-slate-400"
+                }`}>
+                  {instancia.connection_quality === "unknown" ? "Desconhecido" : instancia.connection_quality}
+                </span>
+              </div>
+            </div>
+          )}
+
           <QrCodeDisplay 
             qrCode={getQrCode(instancia.id)} 
             phone={instancia.phone} 
@@ -305,12 +376,15 @@ function InstanceCard({
             buscarQrCode={buscarQrCode}
           />
 
-          {/* Actions */}
           <div className="mt-4 flex gap-2">
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all"
+              className={`flex-1 rounded-xl transition-all ${
+                isConnected
+                  ? "border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-600"
+                  : "border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300"
+              }`}
               disabled={isTemporario}
               onClick={() => onAtualizarStatus(instancia.id)}
             >
@@ -341,9 +415,9 @@ export function InstanciasList({ instancias, onExcluir, onAtualizarStatus, getQr
           <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100">
             <Smartphone className="h-10 w-10 text-slate-400" />
           </div>
-          <h3 className="text-lg font-semibold text-slate-800">Nenhuma conexão</h3>
+          <h3 className="text-lg font-semibold text-slate-800">Nenhuma conexão ativa</h3>
           <p className="mt-2 text-center text-sm text-slate-500 max-w-xs">
-            Crie sua primeira instância WhatsApp para começar a usar.
+            Crie sua primeira instância WhatsApp para iniciar o cockpit.
           </p>
         </CardContent>
       </Card>
