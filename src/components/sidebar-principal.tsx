@@ -19,6 +19,7 @@ import { SessaoToken } from "@/lib/tipos";
 import { DadosUsuarioLogado } from "@/lib/autenticacao";
 import { cn } from "@/lib/utils";
 import { usePendenciasGlobais } from "@/modules/kanban/hooks/use-pendencias-globais";
+import { TOUR_TARGETS } from "@/modules/onboarding/lib/selectors";
 
 type Props = {
   sessao: SessaoToken;
@@ -32,6 +33,7 @@ function MenuItemComBadge({
   ativo,
   resumo,
   onClick,
+  tourTarget,
 }: {
   href: string;
   label: string;
@@ -39,6 +41,7 @@ function MenuItemComBadge({
   ativo: boolean;
   resumo?: { total: number; porGravidade: Record<string, number> } | null;
   onClick?: () => void;
+  tourTarget?: string;
 }) {
   const temPendenciaCritica = resumo?.porGravidade.critica && resumo.porGravidade.critica > 0;
   const temPendencia = resumo && resumo.total > 0;
@@ -47,6 +50,7 @@ function MenuItemComBadge({
     <Link
       href={href}
       onClick={onClick}
+      data-tour={tourTarget}
       className={cn(
         "relative flex items-center justify-between rounded-[10px] px-3 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-slate-600 transition-all duration-200 hover:bg-[#F1F3F5] hover:text-slate-900",
         ativo && "bg-blue-500/10 pl-4 text-blue-700 hover:bg-blue-500/15 hover:text-blue-700",
@@ -79,20 +83,26 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
   const secoes = [
     {
       titulo: "GERAL",
-      itens: [{ href: "/resumo", label: "Resumo", icon: BarChart3 }],
+      itens: [{ href: "/resumo", label: "Resumo", icon: BarChart3, tourTarget: TOUR_TARGETS.sidebarModule1 }],
     },
     {
       titulo: "OPERACAO",
       itens: [
-        { href: "/kanban", label: "Kanban", icon: LayoutGrid },
-        ...(sessao.perfil !== "COLABORADOR" ? [{ href: "/equipe", label: "Equipe", icon: Users }] : []),
+        { href: "/kanban", label: "Kanban", icon: LayoutGrid, tourTarget: undefined },
+        ...(sessao.perfil !== "COLABORADOR"
+          ? [{ href: "/equipe", label: "Equipe", icon: Users, tourTarget: undefined }]
+          : []),
       ],
     },
     {
       titulo: "SISTEMA",
       itens: [
-        ...(sessao.perfil === "EMPRESA" ? [{ href: "/whatsapp", label: "WhatsApp", icon: MessageCircle }] : []),
-        ...(sessao.perfil === "EMPRESA" ? [{ href: "/configs", label: "Configuracoes", icon: Settings2 }] : []),
+        ...(sessao.perfil === "EMPRESA"
+          ? [{ href: "/whatsapp", label: "WhatsApp", icon: MessageCircle, tourTarget: undefined }]
+          : []),
+        ...(sessao.perfil === "EMPRESA"
+          ? [{ href: "/configs", label: "Configuracoes", icon: Settings2, tourTarget: undefined }]
+          : []),
       ],
     },
   ];
@@ -134,6 +144,7 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
                       ativo={ativo}
                       resumo={resumo ?? undefined}
                       onClick={() => setSidebarAberta(false)}
+                      tourTarget={item.tourTarget}
                     />
                   );
                 }
@@ -143,6 +154,7 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
                     key={item.href}
                     href={item.href}
                     onClick={() => setSidebarAberta(false)}
+                    data-tour={item.tourTarget}
                     className={cn(
                       "relative flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-slate-600 transition-all duration-200 hover:bg-[#F1F3F5] hover:text-slate-900",
                       ativo && "bg-blue-500/10 pl-4 text-blue-700 hover:bg-blue-500/15 hover:text-blue-700",
