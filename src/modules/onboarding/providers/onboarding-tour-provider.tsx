@@ -3,12 +3,8 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { OnboardingTourGate } from "@/modules/onboarding/components/onboarding-tour-gate";
 import { clearTourCompletion, readTourCompletion } from "@/modules/onboarding/lib/storage";
-import { dashboardInitialBundle } from "@/modules/onboarding/steps/dashboard-initial.steps";
+import { buildDashboardInitialBundle } from "@/modules/onboarding/steps";
 import type { OnboardingContextValue, TourBundle, TourIdentity, TourKey } from "@/modules/onboarding/types";
-
-const bundles: Record<TourKey, TourBundle> = {
-  "dashboard-initial": dashboardInitialBundle,
-};
 
 const OnboardingTourContext = createContext<OnboardingContextValue | null>(null);
 
@@ -19,6 +15,13 @@ type OnboardingTourProviderProps = {
 
 export function OnboardingTourProvider({ children, identity }: OnboardingTourProviderProps) {
   const [activeTourKey, setActiveTourKey] = useState<TourKey>("dashboard-initial");
+  const bundles = useMemo<Record<TourKey, TourBundle>>(
+    () => ({
+      "dashboard-initial": buildDashboardInitialBundle(identity.perfil),
+    }),
+    [identity.perfil],
+  );
+  const activeBundle = bundles[activeTourKey];
 
   const contextValue = useMemo<OnboardingContextValue>(
     () => ({
@@ -35,13 +38,13 @@ export function OnboardingTourProvider({ children, identity }: OnboardingTourPro
         return readTourCompletion(bundle.storageScope, identity) === "completed";
       },
     }),
-    [identity],
+    [bundles, identity],
   );
 
   return (
     <OnboardingTourContext.Provider value={contextValue}>
       {children}
-      <OnboardingTourGate bundle={bundles[activeTourKey]} identity={identity} />
+      <OnboardingTourGate bundle={activeBundle} identity={identity} />
     </OnboardingTourContext.Provider>
   );
 }

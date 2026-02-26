@@ -1,4 +1,5 @@
 import type { StepType } from "@reactour/tour";
+import type { Perfil } from "@/lib/tipos";
 
 export type TourKey = "dashboard-initial";
 
@@ -17,6 +18,7 @@ export type TourBundle = {
 export type TourIdentity = {
   tenantId: string;
   userId: string;
+  perfil: Perfil;
 };
 
 export type TourStorageState = "completed";

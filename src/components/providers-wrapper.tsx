@@ -11,6 +11,7 @@ export function ProvidersWrapper({ children, sessao }: { children: ReactNode; se
       identity={{
         tenantId: sessao.id_empresa,
         userId: sessao.id_usuario,
+        perfil: sessao.perfil,
       }}
     >
       <PendenciasProvider>{children}</PendenciasProvider>

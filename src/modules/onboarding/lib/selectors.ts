@@ -1,8 +1,16 @@
 export const TOUR_TARGETS = {
-  sidebarModule1: "sidebar-module-1",
+  sidebarResumo: "sidebar-resumo",
+  sidebarKanban: "sidebar-kanban",
+  sidebarEquipe: "sidebar-equipe",
+  sidebarWhatsapp: "sidebar-whatsapp",
+  sidebarConfigs: "sidebar-configs",
 } as const;
 
 export const TOUR_SELECTORS = {
   body: "body",
-  sidebarModule1: `[data-tour="${TOUR_TARGETS.sidebarModule1}"]`,
+  sidebarResumo: `[data-tour="${TOUR_TARGETS.sidebarResumo}"]`,
+  sidebarKanban: `[data-tour="${TOUR_TARGETS.sidebarKanban}"]`,
+  sidebarEquipe: `[data-tour="${TOUR_TARGETS.sidebarEquipe}"]`,
+  sidebarWhatsapp: `[data-tour="${TOUR_TARGETS.sidebarWhatsapp}"]`,
+  sidebarConfigs: `[data-tour="${TOUR_TARGETS.sidebarConfigs}"]`,
 } as const;

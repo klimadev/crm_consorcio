@@ -83,14 +83,14 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
   const secoes = [
     {
       titulo: "GERAL",
-      itens: [{ href: "/resumo", label: "Resumo", icon: BarChart3, tourTarget: TOUR_TARGETS.sidebarModule1 }],
+      itens: [{ href: "/resumo", label: "Resumo", icon: BarChart3, tourTarget: TOUR_TARGETS.sidebarResumo }],
     },
     {
       titulo: "OPERACAO",
       itens: [
-        { href: "/kanban", label: "Kanban", icon: LayoutGrid, tourTarget: undefined },
+        { href: "/kanban", label: "Kanban", icon: LayoutGrid, tourTarget: TOUR_TARGETS.sidebarKanban },
         ...(sessao.perfil !== "COLABORADOR"
-          ? [{ href: "/equipe", label: "Equipe", icon: Users, tourTarget: undefined }]
+          ? [{ href: "/equipe", label: "Equipe", icon: Users, tourTarget: TOUR_TARGETS.sidebarEquipe }]
           : []),
       ],
     },
@@ -98,10 +98,10 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
       titulo: "SISTEMA",
       itens: [
         ...(sessao.perfil === "EMPRESA"
-          ? [{ href: "/whatsapp", label: "WhatsApp", icon: MessageCircle, tourTarget: undefined }]
+          ? [{ href: "/whatsapp", label: "WhatsApp", icon: MessageCircle, tourTarget: TOUR_TARGETS.sidebarWhatsapp }]
           : []),
         ...(sessao.perfil === "EMPRESA"
-          ? [{ href: "/configs", label: "Configuracoes", icon: Settings2, tourTarget: undefined }]
+          ? [{ href: "/configs", label: "Configuracoes", icon: Settings2, tourTarget: TOUR_TARGETS.sidebarConfigs }]
           : []),
       ],
     },
