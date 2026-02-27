@@ -31,7 +31,7 @@ export function PreviewSimulator({
             <div className="h-5 w-5 rounded-full bg-zinc-600 flex items-center justify-center">
               <User className="h-3 w-3 text-white" />
             </div>
-            <span className="text-xs font-medium text-white">CRM Consórcio</span>
+            <span className="text-xs font-medium text-white">MC CRM Consórcio</span>
           </div>
           <Smartphone className="h-4 w-4 text-zinc-500" />
         </div>

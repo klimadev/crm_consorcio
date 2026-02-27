@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 type StatusBadgeProps = {
   ativo: boolean;
@@ -6,16 +6,8 @@ type StatusBadgeProps = {
 
 export function StatusBadge({ ativo }: StatusBadgeProps) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
-        ativo
-          ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
-          : "bg-slate-100 text-slate-600 border border-slate-200",
-      )}
-    >
-      <span className={cn("h-1.5 w-1.5 rounded-full", ativo ? "bg-emerald-500" : "bg-slate-400")} />
+    <Badge variant={ativo ? "success" : "secondary"} dot>
       {ativo ? "Ativo" : "Inativo"}
-    </span>
+    </Badge>
   );
 }

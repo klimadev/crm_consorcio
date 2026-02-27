@@ -245,7 +245,7 @@ function InstanceCard({
   const isConnected = badge.icon === "connected";
 
   const uptime = useMemo(() => {
-    return calculateUptime(instancia.last_seen_at);
+    return calculateUptime(instancia.last_seen_at || null);
   }, [instancia.last_seen_at]);
 
   return (

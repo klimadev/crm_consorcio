@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { enviarMensagemTexto } from "@/lib/evolution-api";
 import { renderizarTemplateWhatsapp } from "@/lib/whatsapp-template";
 import { mascararTelefoneParaLog, normalizarTelefoneParaWhatsapp } from "@/lib/phone";
@@ -372,7 +373,7 @@ export async function cancelarAgendamentosPorLead(params: {
   idEstagioSaindo?: string;
   motivo?: string;
 }): Promise<number> {
-  const whereClause: Parameters<typeof prisma.whatsappAutomacaoAgendamento.findFirst>[0]["where"] = {
+  const whereClause: Prisma.WhatsappAutomacaoAgendamentoWhereInput = {
     id_empresa: params.idEmpresa,
     id_lead: params.idLead,
     status: { in: [STATUS_PENDENTE, STATUS_PROCESSANDO] },

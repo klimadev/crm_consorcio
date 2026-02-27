@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState } from "react";
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { AlertCircle } from "lucide-react";
 import {
   aplicaMascaraMoedaBr,
   aplicaMascaraTelefoneBr,
@@ -53,20 +55,39 @@ export function LeadDetailsDrawer({
   onExcluirLead,
   onSalvarDetalhesLead,
 }: LeadDetailsDrawerProps) {
-  useEffect(() => {
-    if (leadSelecionado) {
-      setDocumentoAprovacaoUrl(leadSelecionado.documento_aprovacao_url ?? "");
-    }
-  }, [leadSelecionado?.id, setDocumentoAprovacaoUrl]);
+  const [temAlteracoes, setTemAlteracoes] = useState(false);
+  const [fecharConfirmado, setFecharConfirmado] = useState(false);
+  const [confirmarExclusaoAberta, setConfirmarExclusaoAberta] = useState(false);
 
-  const handleOpenChange = (aberto: boolean) => {
-    if (!aberto) {
-      if (leadSelecionado) {
-        onSalvarDetalhesLead(leadSelecionado, documentoAprovacaoUrl, {
-          atualizarSelecionado: false,
-        });
-      }
+  const initialUrl = leadSelecionado?.documento_aprovacao_url ?? "";
+  const urlEhAlterado = documentoAprovacaoUrl !== initialUrl;
+
+  const hasChanges = temAlteracoes || urlEhAlterado;
+
+  const handleOpenChange = async (aberto: boolean) => {
+    if (!aberto && !fecharConfirmado && hasChanges) {
+      const confirmar = window.confirm("Você tem alterações não salvas. Deseja descartar as alterações?");
+      if (!confirmar) return;
+      setFecharConfirmado(true);
+    }
+    if (aberto || (!hasChanges) || fecharConfirmado) {
       onOpenChange(false);
+      setFecharConfirmado(false);
+      setTemAlteracoes(false);
+    }
+  };
+
+  const handleMudarLead = (leadAtualizado: Lead) => {
+    onMudarLead(leadAtualizado);
+    setTemAlteracoes(true);
+  };
+
+  const handleSalvar = async () => {
+    if (leadSelecionado) {
+      await onSalvarDetalhesLead(leadSelecionado, documentoAprovacaoUrl, {
+        atualizarSelecionado: false,
+      });
+      setTemAlteracoes(false);
     }
   };
 
@@ -79,7 +100,13 @@ export function LeadDetailsDrawer({
             <span className="flex items-center gap-2">
               {salvando && <span className="text-amber-600">Salvando...</span>}
               {salvo && !salvando && <span className="text-green-600">Salvo ✓</span>}
-              {!salvando && !salvo && "Detalhes do lead"}
+              {!salvando && !salvo && hasChanges && (
+                <span className="flex items-center gap-1 text-amber-600">
+                  <AlertCircle className="h-3 w-3" />
+                  Alterações não salvas
+                </span>
+              )}
+              {!salvando && !salvo && !hasChanges && "Detalhes do lead"}
             </span>
           </DrawerDescription>
         </DrawerHeader>
@@ -90,7 +117,7 @@ export function LeadDetailsDrawer({
               className="h-11 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
               value={leadSelecionado.telefone}
               onChange={(e) =>
-                onMudarLead({
+                handleMudarLead({
                   ...leadSelecionado,
                   telefone: aplicaMascaraTelefoneBr(e.target.value),
                 })
@@ -101,7 +128,7 @@ export function LeadDetailsDrawer({
               inputMode="numeric"
               value={aplicaMascaraMoedaBr(String(Math.round(leadSelecionado.valor_consorcio * 100)))}
               onChange={(e) =>
-                onMudarLead({
+                handleMudarLead({
                   ...leadSelecionado,
                   valor_consorcio: converteMoedaBrParaNumero(e.target.value),
                 })
@@ -112,7 +139,7 @@ export function LeadDetailsDrawer({
               placeholder="Observações..."
               value={leadSelecionado.observacoes ?? ""}
               onChange={(e) =>
-                onMudarLead({
+                handleMudarLead({
                   ...leadSelecionado,
                   observacoes: e.target.value,
                 })
@@ -166,6 +193,7 @@ export function LeadDetailsDrawer({
                   value={documentoAprovacaoUrl}
                   onChange={(e) => {
                     setDocumentoAprovacaoUrl(e.target.value);
+                    setTemAlteracoes(true);
                     if (e.target.value) setArquivoSelecionado(null);
                   }}
                 />
@@ -222,6 +250,16 @@ export function LeadDetailsDrawer({
 
             {erroDetalhesLead ? <p className="text-sm font-medium text-rose-600">{erroDetalhesLead}</p> : null}
 
+            {hasChanges && (
+              <Button
+                className="w-full rounded-xl text-sm font-medium"
+                onClick={handleSalvar}
+                disabled={salvando}
+              >
+                {salvando ? "Salvando..." : "Salvar Alterações"}
+              </Button>
+            )}
+
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -239,14 +277,37 @@ export function LeadDetailsDrawer({
               <Button
                 variant="destructive"
                 className="rounded-xl text-sm font-medium"
-                onClick={async () => {
-                  if (!confirm("Tem certeza que deseja excluir este lead?")) return;
-                  await onExcluirLead(leadSelecionado.id);
-                }}
+                onClick={() => setConfirmarExclusaoAberta(true)}
               >
                 Excluir
               </Button>
             </div>
+
+            <Dialog open={confirmarExclusaoAberta} onOpenChange={setConfirmarExclusaoAberta}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Excluir lead</DialogTitle>
+                  <DialogDescription>
+                    Tem certeza que deseja excluir este lead? Esta ação não pode ser desfeita.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="gap-2 sm:gap-0">
+                  <Button type="button" variant="outline" onClick={() => setConfirmarExclusaoAberta(false)}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={async () => {
+                      await onExcluirLead(leadSelecionado.id);
+                      setConfirmarExclusaoAberta(false);
+                    }}
+                  >
+                    Excluir
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         ) : null}
       </DrawerContent>

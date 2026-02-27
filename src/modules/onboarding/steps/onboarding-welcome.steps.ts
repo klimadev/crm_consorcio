@@ -6,7 +6,7 @@ export const onboardingWelcomeSteps: TourStep[] = [
     id: "welcome",
     selector: TOUR_SELECTORS.body,
     position: "center",
-    title: "Bem-vindo ao CRM",
+    title: "Bem-vindo ao MC CRM",
     content: "Vamos fazer um tour rapido para mostrar os principais modulos do sistema.",
   },
 ];

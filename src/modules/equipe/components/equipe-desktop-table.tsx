@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -32,6 +32,64 @@ type LinhaAcoesProps = {
 
 function LinhaAcoes({ editando, podeDesfazer, statusSalvamento, onEditar, onCancelar, onDesfazer, onInativar }: LinhaAcoesProps) {
   const [menuAberto, setMenuAberto] = useState(false);
+  const [menuPosicao, setMenuPosicao] = useState<{ top: number; left: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const botaoRef = useRef<HTMLButtonElement>(null);
+
+  function alternarMenu() {
+    if (!menuAberto) {
+      const rect = botaoRef.current?.getBoundingClientRect();
+      if (rect) {
+        setMenuPosicao({
+          top: rect.bottom + 6,
+          left: rect.right - 160,
+        });
+      }
+    }
+
+    setMenuAberto((aberto) => !aberto);
+  }
+
+  useEffect(() => {
+    if (!menuAberto) {
+      return;
+    }
+
+    function aoClicarFora(evento: MouseEvent) {
+      if (!menuRef.current?.contains(evento.target as Node)) {
+        setMenuAberto(false);
+      }
+    }
+
+    function aoPressionarEsc(evento: KeyboardEvent) {
+      if (evento.key === "Escape") {
+        setMenuAberto(false);
+      }
+    }
+
+    function atualizarPosicao() {
+      const rect = botaoRef.current?.getBoundingClientRect();
+      if (!rect) {
+        return;
+      }
+      setMenuPosicao({
+        top: rect.bottom + 6,
+        left: rect.right - 160,
+      });
+    }
+
+    document.addEventListener("mousedown", aoClicarFora);
+    document.addEventListener("keydown", aoPressionarEsc);
+    window.addEventListener("scroll", atualizarPosicao, true);
+    window.addEventListener("resize", atualizarPosicao);
+
+    return () => {
+      document.removeEventListener("mousedown", aoClicarFora);
+      document.removeEventListener("keydown", aoPressionarEsc);
+      window.removeEventListener("scroll", atualizarPosicao, true);
+      window.removeEventListener("resize", atualizarPosicao);
+    };
+  }, [menuAberto]);
 
   if (editando) {
     return (
@@ -49,26 +107,26 @@ function LinhaAcoes({ editando, podeDesfazer, statusSalvamento, onEditar, onCanc
   }
 
   return (
-    <div className="relative">
-      <Button size="sm" variant="ghost" className="h-8 w-8 rounded-lg p-0 text-slate-400 hover:bg-slate-100 hover:text-slate-600" onClick={() => setMenuAberto(!menuAberto)}>
+    <div ref={menuRef}>
+      <Button ref={botaoRef} size="sm" variant="ghost" className="h-8 w-8 rounded-lg p-0 text-slate-400 hover:bg-slate-100 hover:text-slate-600" onClick={alternarMenu}>
         <MoreHorizontal className="h-4 w-4" />
       </Button>
-      {menuAberto && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setMenuAberto(false)} />
-          <div className="absolute right-0 top-full z-20 mt-1 w-40 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
-            <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50" onClick={() => { onEditar(); setMenuAberto(false); }}>
-              <Pencil className="h-4 w-4" />
-              Editar
+      {menuAberto && menuPosicao && (
+        <div
+          className="fixed z-50 w-40 rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
+          style={{ top: `${menuPosicao.top}px`, left: `${menuPosicao.left}px` }}
+        >
+          <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50" onClick={() => { onEditar(); setMenuAberto(false); }}>
+            <Pencil className="h-4 w-4" />
+            Editar
+          </button>
+          {onInativar && (
+            <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50" onClick={() => { onInativar(); setMenuAberto(false); }}>
+              <Trash2 className="h-4 w-4" />
+              Deletar
             </button>
-            {onInativar && (
-              <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50" onClick={() => { onInativar(); setMenuAberto(false); }}>
-                <Trash2 className="h-4 w-4" />
-                Inativar
-              </button>
-            )}
-          </div>
-        </>
+          )}
+        </div>
       )}
     </div>
   );
@@ -113,7 +171,7 @@ export function EquipeDesktopTable({ vm }: EquipeDesktopTableProps) {
   }
 
   return (
-    <div className="hidden overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] md:block">
+    <div className="hidden rounded-2xl border border-slate-200/60 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] md:block">
       <Table>
         <TableHeader>
           <TableRow className="bg-slate-50/80">

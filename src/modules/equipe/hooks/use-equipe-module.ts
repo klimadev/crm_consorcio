@@ -113,6 +113,9 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
   const [pdvLote, setPdvLote] = useState("");
   const [destinoInativacaoLote, setDestinoInativacaoLote] = useState("");
   const [observacaoLote, setObservacaoLote] = useState("");
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+
+  const INATIVA_POLLING_MS = 15000;
 
   const busca = searchParams.get("busca") ?? "";
   const statusFiltro = searchParams.get("status") ?? "TODOS";
@@ -232,6 +235,23 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
   useEffect(() => {
     void carregarFuncionarios();
   }, [carregarFuncionarios]);
+
+  useEffect(() => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+    }
+
+    pollingRef.current = setInterval(() => {
+      void carregarFuncionarios();
+    }, INATIVA_POLLING_MS);
+
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [carregarFuncionarios, INATIVA_POLLING_MS]);
 
   const salvarFuncionario = useCallback(
     async (id: string, dados: DadosEdicao) => {
@@ -383,7 +403,7 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
       }
 
       if (destino === id) {
-        setErroLista("O destino da reatribuicao precisa ser diferente do colaborador inativado.");
+        setErroLista("O destino da reatribuicao precisa ser diferente do colaborador deletado.");
         return false;
       }
 
@@ -393,7 +413,7 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
       }
 
       setErroLista(null);
-      setFuncionarios((atual) => atual.map((item) => (item.id === id ? { ...item, ativo: false } : item)));
+      setFuncionarios((atual) => atual.filter((item) => item.id !== id));
 
       const resposta = await fetch(`/api/funcionarios/${id}/inativar`, {
         method: "PATCH",
@@ -406,8 +426,8 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
 
       if (!resposta.ok) {
         const json = await resposta.json().catch(() => null);
-        setErroLista(json?.erro ?? "Erro ao inativar funcionario.");
-        setFuncionarios((atual) => atual.map((item) => (item.id === id ? funcionarioAnterior : item)));
+        setErroLista(json?.erro ?? "Erro ao deletar funcionario.");
+        setFuncionarios((atual) => [...atual, funcionarioAnterior]);
         return false;
       }
 
@@ -419,13 +439,15 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
 
   const abrirModalInativacao = useCallback(
     (funcionario: Funcionario) => {
+      const destinoAutomatico = funcionariosAtivosParaDestino.find((item) => item.id !== funcionario.id);
+
       setFuncionarioDestinoInativacao({ id: funcionario.id, nome: funcionario.nome });
-      setDestinoInativacaoIndividual("");
+      setDestinoInativacaoIndividual(destinoAutomatico?.id ?? "");
       setObservacaoInativacaoIndividual("");
-      setErroLista(null);
+      setErroLista(destinoAutomatico ? null : "Nao ha outro colaborador ativo para receber os leads.");
       setDialogInativacaoAberto(true);
     },
-    [],
+    [funcionariosAtivosParaDestino],
   );
 
   const confirmarInativacaoIndividual = useCallback(async () => {
@@ -577,6 +599,10 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
     return () => {
       limparTimerAutoSave();
       limparTimerStatus();
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
     };
   }, [limparTimerAutoSave, limparTimerStatus]);
 

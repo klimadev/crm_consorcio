@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CRM Consorcio",
-  description: "CRM multi-tenant para vendas de consorcios",
+  title: "MC CRM Consórcio",
+  description: "CRM multi-tenant para vendas de consórcios",
 };
 
 export default function RootLayout({

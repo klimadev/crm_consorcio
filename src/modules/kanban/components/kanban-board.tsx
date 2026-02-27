@@ -38,9 +38,12 @@ export function KanbanBoard({
           
           return (
             <Droppable key={estagio.id} droppableId={estagio.id}>
-              {(provided) => (
+              {(provided, snapshot) => (
                 <div
-                  className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+                  className={cn(
+                    "rounded-2xl border border-slate-200/60 bg-white p-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all duration-200",
+                    snapshot.isDraggingOver && "border-blue-300 bg-blue-50/50"
+                  )}
                   ref={provided.innerRef}
                   {...provided.droppableProps}
                 >

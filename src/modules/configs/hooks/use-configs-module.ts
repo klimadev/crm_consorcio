@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import type { Pdv, Estagio, UseConfigsReturn } from "../types";
 
 function ordenarPdvs(lista: Pdv[]) {
@@ -11,6 +11,8 @@ export function useConfigsModule(): UseConfigsReturn {
   const [pdvs, setPdvs] = useState<Pdv[]>([]);
   const [estagios, setEstagios] = useState<Estagio[]>([]);
   const [erro, setErro] = useState<string | null>(null);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const INATIVA_POLLING_MS = 15000;
 
   const bootstrap = useCallback(async () => {
     const [resPdvs, resEstagios] = await Promise.all([
@@ -38,10 +40,18 @@ export function useConfigsModule(): UseConfigsReturn {
 
     void carregarInicial();
 
+    pollingRef.current = setInterval(() => {
+      void bootstrap();
+    }, INATIVA_POLLING_MS);
+
     return () => {
       ativo = false;
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
     };
-  }, [bootstrap]);
+  }, [bootstrap, INATIVA_POLLING_MS]);
 
   const criarPdv = useCallback(async (evento: React.FormEvent<HTMLFormElement>) => {
     evento.preventDefault();

@@ -19,27 +19,42 @@ export default function PaginaLogin() {
     const email = String(dados.get("email") ?? "");
     const senha = String(dados.get("senha") ?? "");
 
-    const resposta = await fetch("/api/autenticacao/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, senha }),
-    });
+    let resposta;
+    let json = {};
 
-    const json = await resposta.json();
+    try {
+      resposta = await fetch("/api/autenticacao/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, senha }),
+      });
 
-    if (!resposta.ok) {
-      setErro(json.erro ?? "Falha no login");
+      json = await resposta.json().catch(() => ({}));
+    } catch {
+      setErro("Erro de conexao. Verifique sua internet e tente novamente.");
       setCarregando(false);
       return;
     }
 
+    if (!resposta.ok) {
+      const erroApi = (json as { erro?: string }).erro;
+      const mensagem = erroApi 
+        ?? (resposta.status === 401 ? "E-mail ou senha incorretos."
+        : resposta.status === 0 ? "Servidor indisponivel. Tente mais tarde."
+        : "Falha ao fazer login. Tente novamente.");
+      setErro(mensagem);
+      setCarregando(false);
+      return;
+    }
+
+    setCarregando(false);
     router.push("/resumo");
   }
 
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
       <section className="w-full max-w-md rounded-xl border border-sky-200 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold">Entrar no CRM</h1>
+        <h1 className="text-2xl font-semibold">Entrar no MC CRM</h1>
         <p className="mt-1 text-sm text-sky-500">Use seu e-mail e senha da empresa ou funcionario.</p>
 
         <form className="mt-6 space-y-4" onSubmit={aoEntrar}>

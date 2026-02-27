@@ -7,6 +7,7 @@ import { EquipeKpiGrid } from "./components/equipe-header";
 import { EquipeFilters } from "./components/equipe-filters";
 import { EquipeBulkActions } from "./components/equipe-bulk-actions";
 import { EquipeDesktopTable } from "./components/equipe-desktop-table";
+import { EquipeMobileList } from "./components/equipe-mobile-list";
 import { EquipePagination } from "./components/equipe-pagination";
 import { NovoFuncionarioDialog } from "./components/dialogs/novo-funcionario-dialog";
 import { InativacaoDialog } from "./components/dialogs/inativacao-dialog";
@@ -50,6 +51,7 @@ export function ModuloEquipe({ perfil }: Props) {
       <EquipeKpiGrid vm={vm} />
       <EquipeFilters vm={vm} />
       <EquipeBulkActions vm={vm} />
+      <EquipeMobileList vm={vm} />
       <EquipeDesktopTable vm={vm} />
       <EquipePagination vm={vm} />
       <NovoFuncionarioDialog vm={vm} />

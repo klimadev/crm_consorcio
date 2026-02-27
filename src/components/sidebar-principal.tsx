@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   BarChart3,
@@ -11,7 +11,6 @@ import {
   Sparkles,
   Users,
   X,
-  AlertTriangle,
   MessageCircle,
 } from "lucide-react";
 import { BotaoSair } from "@/components/botao-sair";
@@ -77,8 +76,9 @@ function MenuItemComBadge({
 
 export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
   const pathname = usePathname();
+  const router = useRouter();
   const [sidebarAberta, setSidebarAberta] = useState(false);
-  const { resumo, carregando } = usePendenciasGlobais();
+  const { resumo } = usePendenciasGlobais();
 
   const secoes = [
     {
@@ -117,7 +117,7 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
             <Sparkles className="h-4 w-4" />
           </div>
           <div>
-            <p className="text-[15px] font-semibold tracking-[-0.01em] text-slate-900">CRM Consorcio</p>
+            <p className="text-[15px] font-semibold tracking-[-0.01em] text-slate-900">MC CRM Consórcio</p>
           </div>
         </div>
       </div>
@@ -143,17 +143,20 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
                       icon={Icone}
                       ativo={ativo}
                       resumo={resumo ?? undefined}
-                      onClick={() => setSidebarAberta(false)}
-                      tourTarget={item.tourTarget}
-                    />
-                  );
+                       tourTarget={item.tourTarget}
+                     />
+                   );
                 }
 
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    onClick={() => setSidebarAberta(false)}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      router.push(item.href);
+                      setSidebarAberta(false);
+                    }}
                     data-tour={item.tourTarget}
                     className={cn(
                       "relative flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-slate-600 transition-all duration-200 hover:bg-[#F1F3F5] hover:text-slate-900",

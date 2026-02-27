@@ -82,6 +82,10 @@ export function useWhatsappModule(): UseWhatsappModuleReturn {
       profile_pic: null,
       criado_em: new Date(),
       atualizado_em: new Date(),
+      latency_ms: null,
+      last_seen_at: null,
+      connection_quality: "unknown",
+      data_source: "unavailable",
     };
 
     setInstancias((atual) => [instanciaTemp, ...atual]);

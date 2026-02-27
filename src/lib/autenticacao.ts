@@ -39,7 +39,7 @@ export function definirCookieSessao(resposta: NextResponse, token: string) {
   resposta.cookies.set(NOME_COOKIE_SESSAO, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: false,
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
   });
@@ -49,7 +49,7 @@ export function limparCookieSessao(resposta: NextResponse) {
   resposta.cookies.set(NOME_COOKIE_SESSAO, "", {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: false,
     path: "/",
     expires: new Date(0),
   });

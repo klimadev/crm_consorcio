@@ -91,14 +91,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         },
       });
 
-      await tx.funcionario.updateMany({
+      await tx.funcionario.delete({
         where: {
           id,
           id_empresa: auth.sessao.id_empresa,
-        },
-        data: {
-          ativo: false,
-          inativado_em: new Date(),
         },
       });
 
@@ -119,9 +115,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
           {
             id_empresa: auth.sessao.id_empresa,
             id_funcionario_alvo: id,
-            acao: "INATIVAR_FUNCIONARIO",
+            acao: "DELETAR_FUNCIONARIO",
             valor_anterior: "ATIVO",
-            valor_novo: "INATIVO",
+            valor_novo: "DELETADO",
             observacao,
             autor_tipo: auth.sessao.perfil,
             autor_id: auth.sessao.id_usuario,
@@ -140,7 +136,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       });
     });
   } catch {
-    return NextResponse.json({ erro: "Erro ao inativar funcionario." }, { status: 500 });
+    return NextResponse.json({ erro: "Erro ao deletar funcionario." }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true, leads_reatribuidos: quantidadeLeads });

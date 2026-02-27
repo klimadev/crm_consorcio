@@ -13,11 +13,11 @@ export type WhatsappInstancia = {
   profile_pic: string | null;
   criado_em: Date;
   atualizado_em: Date;
-  // Novos campos para Cockpit
-  latency_ms: number | null;
-  last_seen_at: string | null;
-  connection_quality: ConnectionQuality;
-  data_source: ConnectionDataSource;
+  // Campos legacy (mantidos para compatibilidade, populados pela API)
+  latency_ms?: number | null;
+  last_seen_at?: string | null;
+  connection_quality?: ConnectionQuality;
+  data_source?: ConnectionDataSource;
 };
 
 export type UseWhatsappModuleReturn = {

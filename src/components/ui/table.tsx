@@ -18,11 +18,11 @@ function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
 }
 
 function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
-  return <tr className={cn("border-b hover:bg-sky-50", className)} {...props} />;
+  return <tr className={cn("border-b hover:bg-slate-50", className)} {...props} />;
 }
 
 function TableHead({ className, ...props }: React.ComponentProps<"th">) {
-  return <th className={cn("h-10 px-2 text-left align-middle font-medium text-sky-500", className)} {...props} />;
+  return <th className={cn("h-10 px-2 text-left align-middle font-medium text-slate-500", className)} {...props} />;
 }
 
 function TableCell({ className, ...props }: React.ComponentProps<"td">) {

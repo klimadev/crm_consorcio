@@ -20,20 +20,37 @@ export default function PaginaCadastroEmpresa() {
     const email = String(dados.get("email") ?? "");
     const senha = String(dados.get("senha") ?? "");
 
-    const resposta = await fetch("/api/autenticacao/cadastro-empresa", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nome, email, senha }),
-    });
+    let resposta;
+    let json = {};
 
-    const json = await resposta.json();
+    try {
+      resposta = await fetch("/api/autenticacao/cadastro-empresa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome, email, senha }),
+      });
 
-    if (!resposta.ok) {
-      setErro(json.erro ?? "Falha no cadastro");
+      json = await resposta.json().catch(() => ({}));
+    } catch {
+      setErro("Erro de conexao. Verifique sua internet e tente novamente.");
       setCarregando(false);
       return;
     }
 
+    if (!resposta.ok) {
+      const erroApi = (json as { erro?: string }).erro;
+      const mensagem = erroApi
+        ?? (resposta.status === 409 ? "Este e-mail ja esta cadastrado."
+        : resposta.status === 0 ? "Servidor indisponivel. Tente mais tarde."
+        : "Falha ao criar conta. Tente novamente.");
+      setErro(mensagem);
+      setCarregando(false);
+      return;
+    }
+
+    setErro(null);
+    setCarregando(false);
+    alert("Conta criada com sucesso! Redirecionando...");
     router.push("/resumo");
   }
 
