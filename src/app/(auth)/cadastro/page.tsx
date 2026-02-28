@@ -4,9 +4,11 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 
 export default function PaginaCadastroEmpresa() {
   const router = useRouter();
+  const { addToast } = useToast();
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
 
@@ -48,9 +50,9 @@ export default function PaginaCadastroEmpresa() {
       return;
     }
 
-    setErro(null);
+setErro(null);
     setCarregando(false);
-    alert("Conta criada com sucesso! Redirecionando...");
+    addToast({ type: "success", title: "Conta criada com sucesso!" });
     router.push("/resumo");
   }
 

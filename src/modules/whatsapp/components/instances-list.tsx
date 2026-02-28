@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { OptimisticSync } from "@/components/ui/optimistic-sync";
 import { Card, CardContent } from "@/components/ui/card";
 import { RefreshCw, Trash2, Smartphone, Clock, Wifi, WifiOff, QrCode, Loader2, Zap, AlertCircle } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
 import type { WhatsappInstancia } from "../types";
 
 type Props = {
@@ -391,15 +392,17 @@ function InstanceCard({
               <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
               Atualizar
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-xl border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition-all"
-              disabled={isTemporario}
-              onClick={() => onExcluir(instancia.id)}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+<Tooltip content="Excluir instância">
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-xl border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition-all"
+                disabled={isTemporario}
+                onClick={() => onExcluir(instancia.id)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </Tooltip>
           </div>
         </CardContent>
       </Card>

@@ -53,6 +53,8 @@ export type KanbanFilters = {
   tipo: FiltroTipo;
 };
 
+export type OrdenacaoKanban = "valor_maior" | "valor_menor" | "recente" | "antigo" | "nome";
+
 export type Props = {
   perfil: "EMPRESA" | "GERENTE" | "COLABORADOR";
   idUsuario: string;
@@ -104,6 +106,10 @@ export type UseKanbanModuleReturn = {
   estagioNovoLead: string;
   filtros: KanbanFilters;
   setFiltros: (filtros: KanbanFilters) => void;
+  busca: string;
+  setBusca: (busca: string) => void;
+  ordenacao: OrdenacaoKanban;
+  setOrdenacao: (ordenacao: OrdenacaoKanban) => void;
   modoFocoPendencias: boolean;
   setModoFocoPendencias: (ativo: boolean) => void;
   recarregarPendencias: () => void;

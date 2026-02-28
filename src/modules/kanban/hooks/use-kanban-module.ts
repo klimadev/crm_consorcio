@@ -61,6 +61,8 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     tipo: "todos",
   });
   const [modoFocoPendencias, setModoFocoPendencias] = useState(false);
+  const [busca, setBusca] = useState("");
+  const [ordenacao, setOrdenacao] = useState<"valor_maior" | "valor_menor" | "recente" | "antigo" | "nome">("recente");
 
   const {
     resumo: resumoPendencias,
@@ -177,12 +179,38 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
       if (mapa[lead.id_estagio]) {
         const pendenciaInfo = pendenciasPorLead[lead.id];
         if (leadPassaFiltros(lead, pendenciaInfo, filtrosAtivos)) {
+          if (busca) {
+            const buscaLower = busca.toLowerCase();
+            const matchesNome = lead.nome.toLowerCase().includes(buscaLower);
+            const matchesTelefone = lead.telefone.includes(busca);
+            if (!matchesNome && !matchesTelefone) continue;
+          }
           mapa[lead.id_estagio].push(lead);
         }
       }
     }
+    
+    for (const estagioId of Object.keys(mapa)) {
+      mapa[estagioId] = [...mapa[estagioId]].sort((a, b) => {
+        switch (ordenacao) {
+          case "valor_maior":
+            return b.valor_consorcio - a.valor_consorcio;
+          case "valor_menor":
+            return a.valor_consorcio - b.valor_consorcio;
+          case "recente":
+            return new Date(b.atualizado_em).getTime() - new Date(a.atualizado_em).getTime();
+          case "antigo":
+            return new Date(a.atualizado_em).getTime() - new Date(b.atualizado_em).getTime();
+          case "nome":
+            return a.nome.localeCompare(b.nome);
+          default:
+            return 0;
+        }
+      });
+    }
+    
     return mapa;
-  }, [estagios, leads, pendenciasPorLead, filtros, modoFocoPendencias]);
+  }, [estagios, leads, pendenciasPorLead, filtros, modoFocoPendencias, busca, ordenacao]);
 
   const estagioAberto = useMemo(
     () => estagios.find((e) => e.tipo === "ABERTO")?.id ?? estagios[0]?.id ?? "",
@@ -533,6 +561,10 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     estagioNovoLead,
     filtros,
     setFiltros,
+    busca,
+    setBusca,
+    ordenacao,
+    setOrdenacao,
     modoFocoPendencias,
     setModoFocoPendencias,
     recarregarPendencias,

@@ -16,6 +16,7 @@ import { Loader2, Check, ChevronRight, ChevronLeft, Zap, Filter, MessageSquare, 
 import { useAutomationForm, type FormMode, type EtapaForm } from "./use-automation-form";
 import { renderizarTemplateWhatsapp } from "@/lib/whatsapp-template";
 import type { EstagioFunilOption, WhatsappAutomacao, WhatsappInstancia } from "../../types";
+import { PreviewSimulator } from "./preview-simulator";
 
 interface AutomationFormDialogProps {
   open: boolean;
@@ -320,35 +321,48 @@ export function AutomationFormDialog({
             title={isFollowUp ? "Configurar Timeline" : "Criar Mensagem"}
             description={isFollowUp ? "Defina a sequência de mensagens" : "Escreva a mensagem que será enviada"}
           >
-            <div className="space-y-6">
-              <VariableChips onSelect={handleInserirVariavel} />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-6">
+                <VariableChips onSelect={handleInserirVariavel} />
 
-              {isFollowUp ? (
-                <FollowupTimelineEditorV2
-                  etapas={form.formState.etapas}
-                  contextoPreview={contextoPreview}
-                  onAdicionarEtapa={form.adicionarEtapa}
-                  onAtualizarEtapa={form.atualizarEtapa}
-                  onRemoverEtapa={form.removerEtapa}
-                />
-              ) : (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700" htmlFor="mensagem">Mensagem</label>
-                  <Textarea
-                    id="mensagem"
-                    className="min-h-[160px] text-sm"
-                    placeholder="Ex: Olá {{lead_nome}}, tudo bem? Vi que você avançou para {{estagio_novo}}!"
-                    value={form.formState.mensagemPrincipal}
-                    onChange={(e) => form.setMensagemPrincipal(e.target.value)}
+                {isFollowUp ? (
+                  <FollowupTimelineEditorV2
+                    etapas={form.formState.etapas}
+                    contextoPreview={contextoPreview}
+                    onAdicionarEtapa={form.adicionarEtapa}
+                    onAtualizarEtapa={form.atualizarEtapa}
+                    onRemoverEtapa={form.removerEtapa}
                   />
-                  <p className="text-xs text-slate-500">
-                    Prévia:{" "}
-                    <span className="text-emerald-600 font-medium">
-                      {renderizarTemplateWhatsapp(form.formState.mensagemPrincipal, contextoPreview) || "..."}
-                    </span>
-                  </p>
-                </div>
-              )}
+                ) : (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700" htmlFor="mensagem">Mensagem</label>
+                    <Textarea
+                      id="mensagem"
+                      className="min-h-[160px] text-sm"
+                      placeholder="Ex: Olá {{lead_nome}}, tudo bem? Vi que você avançou para {{estagio_novo}}!"
+                      value={form.formState.mensagemPrincipal}
+                      onChange={(e) => form.setMensagemPrincipal(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+              
+              <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                <h4 className="text-sm font-medium text-slate-700 mb-4 text-center">Preview WhatsApp</h4>
+                {isFollowUp ? (
+                  <PreviewSimulator
+                    evento="LEAD_FOLLOW_UP"
+                    etapas={form.formState.etapas}
+                    contextoPreview={contextoPreview}
+                  />
+                ) : (
+                  <PreviewSimulator
+                    evento="LEAD_STAGE_CHANGED"
+                    mensagem={form.formState.mensagemPrincipal}
+                    contextoPreview={contextoPreview}
+                  />
+                )}
+              </div>
             </div>
           </StepCard>
         );

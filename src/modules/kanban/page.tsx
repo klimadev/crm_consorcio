@@ -45,6 +45,10 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         setCargoNovoLead={vm.setCargoNovoLead}
         filtros={vm.filtros}
         setFiltros={vm.setFiltros}
+        busca={vm.busca}
+        setBusca={vm.setBusca}
+        ordenacao={vm.ordenacao}
+        setOrdenacao={vm.setOrdenacao}
         modoFocoPendencias={vm.modoFocoPendencias}
         setModoFocoPendencias={vm.setModoFocoPendencias}
         resumoPendencias={vm.resumoPendencias}
@@ -62,6 +66,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         onDragEnd={vm.aoDragEnd}
         onLeadClick={handleLeadClick}
         modoFocoPendencias={vm.modoFocoPendencias}
+        funcionarios={vm.funcionarios}
       />
 
       <PerdaDialog

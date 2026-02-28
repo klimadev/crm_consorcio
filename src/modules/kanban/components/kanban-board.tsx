@@ -4,8 +4,9 @@ import { DragDropContext, Draggable, Droppable, DropResult } from "@hello-pangea
 import { Card, CardContent } from "@/components/ui/card";
 import { OptimisticSync } from "@/components/ui/optimistic-sync";
 import { formataMoeda } from "@/lib/utils";
-import type { Estagio, Lead, PendenciaLeadInfo } from "../types";
+import type { Estagio, Lead, PendenciaLeadInfo, Funcionario } from "../types";
 import { PendenciaBadge, getClasseBordaGravidade } from "./pendencia-badge";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 type KanbanBoardProps = {
@@ -17,6 +18,7 @@ type KanbanBoardProps = {
   onDragEnd: (resultado: DropResult) => Promise<void>;
   onLeadClick: (lead: Lead) => void;
   modoFocoPendencias?: boolean;
+  funcionarios?: Funcionario[];
 };
 
 export function KanbanBoard({
@@ -27,6 +29,7 @@ export function KanbanBoard({
   onDragEnd,
   onLeadClick,
   modoFocoPendencias = false,
+  funcionarios = [],
 }: KanbanBoardProps) {
   const usarFiltrados = leadsFiltradosPorEstagio && Object.values(leadsFiltradosPorEstagio).some(arr => arr.length > 0);
 
@@ -83,11 +86,29 @@ export function KanbanBoard({
                               >
                                 <CardContent className="p-3">
                                   <div className="flex items-start justify-between">
-                                    <div>
-                                      <p className="text-sm font-medium text-slate-800">{lead.nome}</p>
-                                      <p className="text-xs text-slate-500">{lead.telefone}</p>
-                                      <p className="mt-1 text-sm font-medium text-slate-700">{formataMoeda(lead.valor_consorcio)}</p>
-                                    </div>
+                                    <Tooltip content={`${lead.nome}\n${lead.telefone}\nValor: ${formataMoeda(lead.valor_consorcio)}`} side="right">
+                                      <div>
+                                        <p className="text-sm font-medium text-slate-800">{lead.nome}</p>
+                                        <p className="text-xs text-slate-500">{lead.telefone}</p>
+                                        <p className="mt-1 text-sm font-medium text-slate-700">{formataMoeda(lead.valor_consorcio)}</p>
+                                        {funcionarios.length > 0 && lead.id_funcionario && (
+                                          <p className="mt-1 text-xs text-slate-400">
+                                            {funcionarios.find(f => f.id === lead.id_funcionario)?.nome || "Responsável"}
+                                          </p>
+                                        )}
+                                        <p className="text-xs text-slate-400">
+                                          {(() => {
+                                            const diff = Date.now() - new Date(lead.atualizado_em).getTime();
+                                            const dias = Math.floor(diff / (1000 * 60 * 60 * 24));
+                                            if (dias === 0) return "Hoje";
+                                            if (dias === 1) return "Ontem";
+                                            if (dias < 7) return `${dias}d atrás`;
+                                            if (dias < 30) return `${Math.floor(dias / 7)} sem atrás`;
+                                            return `${Math.floor(dias / 30)}m atrás`;
+                                          })()}
+                                        </p>
+                                      </div>
+                                    </Tooltip>
                                     {(() => {
                                       const pendencias = pendenciasPorLead[lead.id];
                                       if (!pendencias) return null;

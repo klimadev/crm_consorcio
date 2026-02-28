@@ -3,6 +3,7 @@
 import { Zap, Check, X, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
 import { Clock3, ArrowRight, AlertCircle } from "lucide-react";
 import type { WhatsappAutomacao } from "../../types";
 
@@ -114,6 +115,7 @@ export function AutomationFlowItem({
           </div>
 
           <div className="flex items-center gap-1 border-l border-slate-100 bg-slate-50/50 px-2">
+<Tooltip content={automacao.ativo ? "Desativar" : "Ativar"}>
             <button
               type="button"
               className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${
@@ -122,7 +124,6 @@ export function AutomationFlowItem({
                   : "border-slate-200 bg-white text-slate-400 hover:bg-slate-100"
               }`}
               onClick={() => onToggle(automacao.id, !automacao.ativo)}
-              title={automacao.ativo ? "Desativar" : "Ativar"}
             >
               {automacao.ativo ? (
                 <Check className="h-4 w-4" />
@@ -130,12 +131,13 @@ export function AutomationFlowItem({
                 <X className="h-4 w-4" />
               )}
             </button>
+            </Tooltip>
+            <Tooltip content="Editar automação">
             <Button
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-slate-400 hover:text-blue-600"
               onClick={() => onEdit(automacao)}
-              title="Editar"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -152,6 +154,8 @@ export function AutomationFlowItem({
                 <path d="m15 5 4 4" />
               </svg>
             </Button>
+            </Tooltip>
+            <Tooltip content="Excluir automação">
             <Button
               variant="ghost"
               size="icon"
@@ -160,6 +164,7 @@ export function AutomationFlowItem({
             >
               <Trash2 className="h-4 w-4" />
             </Button>
+            </Tooltip>
           </div>
         </div>
       </CardContent>

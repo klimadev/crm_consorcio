@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,10 +9,11 @@ import {
   aplicaMascaraMoedaBr,
   aplicaMascaraTelefoneBr,
 } from "@/lib/utils";
-import type { Estagio, Funcionario, KanbanFilters, ResumoPendencias } from "../types";
+import type { Estagio, Funcionario, KanbanFilters, ResumoPendencias, OrdenacaoKanban } from "../types";
 import { PendenciaBadge } from "./pendencia-badge";
 import { cn } from "@/lib/utils";
-import { Filter, X, Bell, BellOff } from "lucide-react";
+import { Filter, X, Bell, BellOff, Search, ArrowUpDown } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
 
 type KanbanHeaderProps = {
   dialogNovoLeadAberto: boolean;
@@ -33,6 +35,10 @@ type KanbanHeaderProps = {
   setCargoNovoLead: (cargo: { id_funcionario: string } | null) => void;
   filtros: KanbanFilters;
   setFiltros: (filtros: KanbanFilters) => void;
+  busca: string;
+  setBusca: (busca: string) => void;
+  ordenacao: OrdenacaoKanban;
+  setOrdenacao: (ordenacao: OrdenacaoKanban) => void;
   modoFocoPendencias: boolean;
   setModoFocoPendencias: (ativo: boolean) => void;
   resumoPendencias: ResumoPendencias | null;
@@ -61,6 +67,10 @@ export function KanbanHeader({
   setCargoNovoLead,
   filtros,
   setFiltros,
+  busca,
+  setBusca,
+  ordenacao,
+  setOrdenacao,
   modoFocoPendencias,
   setModoFocoPendencias,
   resumoPendencias,
@@ -68,7 +78,24 @@ export function KanbanHeader({
   alternarNotificacoes,
   permissaoNotificacao,
 }: KanbanHeaderProps) {
+  const { addToast } = useToast();
   const filtrosAtivos = filtros.status !== "todos" || filtros.gravidade !== "todas" || filtros.tipo !== "todos";
+  const inputBuscaRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        inputBuscaRef.current?.focus();
+      }
+      if (e.key === "Escape" && document.activeElement === inputBuscaRef.current) {
+        setBusca("");
+        inputBuscaRef.current?.blur();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const limparFiltros = () => {
     setFiltros({ status: "todos", gravidade: "todas", tipo: "todos" });
@@ -89,6 +116,40 @@ export function KanbanHeader({
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            ref={inputBuscaRef}
+            type="text"
+            placeholder="Buscar lead... (Ctrl+K)"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            className="h-9 w-48 rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200/50"
+          />
+          {busca && (
+            <button
+              onClick={() => setBusca("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-slate-200 p-0.5 hover:bg-slate-300"
+            >
+              <X className="h-3 w-3 text-slate-500" />
+            </button>
+          )}
+        </div>
+
+        <Select value={ordenacao} onValueChange={(v) => setOrdenacao(v as OrdenacaoKanban)}>
+          <SelectTrigger className="h-9 w-36 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-600">
+            <ArrowUpDown className="mr-2 h-4 w-4" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="recente">Mais recente</SelectItem>
+            <SelectItem value="antigo">Mais antigo</SelectItem>
+            <SelectItem value="valor_maior">Maior valor</SelectItem>
+            <SelectItem value="valor_menor">Menor valor</SelectItem>
+            <SelectItem value="nome">Nome A-Z</SelectItem>
+          </SelectContent>
+        </Select>
+
         {resumoPendencias && (
           <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2">
             <PendenciaBadge resumo={resumoPendencias} tamanho="md" modoExpansivo />
@@ -113,8 +174,8 @@ export function KanbanHeader({
           size="sm"
           onClick={async () => {
             const permissao = permissaoNotificacao();
-            if (permissao === "denied") {
-              alert("Notificações bloqueadas. Por favor, habilite nas configurações do navegador.");
+if (permissao === "denied") {
+              addToast({ type: "warning", title: "Notificações bloqueadas", description: "Habilite nas configurações do navegador." });
               return;
             }
             await alternarNotificacoes();

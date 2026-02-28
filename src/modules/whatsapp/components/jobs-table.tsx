@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Loader2, TimerReset, AlertCircle, Send, CheckCircle2, XCircle, Clock, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, TimerReset, AlertCircle, Send, CheckCircle2, XCircle, Clock, ArrowRight, ChevronDown, ChevronUp, RotateCcw } from "lucide-react";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import type { WhatsappJobItem, WhatsappJobsResumo } from "../types";
 
@@ -10,6 +10,7 @@ type JobsTableProps = {
   jobs: WhatsappJobItem[];
   carregando: boolean;
   erro: string | null;
+  onRetryJob?: (jobId: string) => Promise<void>;
 };
 
 type ContextoLead = {
@@ -251,8 +252,23 @@ function getContextoLead(contextoJson: string): ContextoLead | null {
   }
 }
 
-export function JobsTable({ resumo, jobs, carregando, erro }: JobsTableProps) {
+export function JobsTable({ resumo, jobs, carregando, erro, onRetryJob }: JobsTableProps) {
   const [filter, setFilter] = useState<FilterType>("todos");
+  const [retryingJobs, setRetryingJobs] = useState<Set<string>>(new Set());
+  
+  const handleRetry = async (jobId: string) => {
+    if (!onRetryJob) return;
+    setRetryingJobs(prev => new Set(prev).add(jobId));
+    try {
+      await onRetryJob(jobId);
+    } finally {
+      setRetryingJobs(prev => {
+        const next = new Set(prev);
+        next.delete(jobId);
+        return next;
+      });
+    }
+  };
   
   const filteredJobs = useMemo(() => {
     if (filter === "todos") return jobs;
@@ -386,6 +402,21 @@ export function JobsTable({ resumo, jobs, carregando, erro }: JobsTableProps) {
                           <span className="text-amber-600" title={`${job.tentativas} tentativas`}>
                             ({job.tentativas})
                           </span>
+                        )}
+                        {job.status === "FALHA" && onRetryJob && (
+                          <button
+                            onClick={() => handleRetry(job.id)}
+                            disabled={retryingJobs.has(job.id)}
+                            className="ml-2 inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-rose-600 hover:bg-rose-200 transition-colors disabled:opacity-50"
+                            title="Tentar novamente"
+                          >
+                            {retryingJobs.has(job.id) ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <RotateCcw className="h-3 w-3" />
+                            )}
+                            Retry
+                          </button>
                         )}
                       </div>
                     </TableCell>
