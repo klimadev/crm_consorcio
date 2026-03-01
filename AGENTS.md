@@ -9,22 +9,22 @@ Agentic coding guidelines for this CRM application.
 - **Database:** Prisma ORM + SQLite (dev) / PostgreSQL (prod)
 - **Styling:** Tailwind CSS v4
 - **UI Components:** Radix UI + class-variance-authority
-- **Testing:** Vitest
+- **Testing:** Vitest + React Testing Library
 
 ## Commands
 
 ```bash
 # Development
-npm run dev                # Start dev server
+npm run dev                # Start dev server (port 3333)
 
-# Validate (USE LINT - faster)
-npm run lint              # ESLint (FAST - use this always)
-npm run build             # Only when needed
+# Validate (USE LINT FIRST - faster)
+npm run lint               # ESLint (FAST - always run this first)
+npm run build              # Full build (only when needed)
 
 # Testing
-npm run test              # Run all tests
-npm run test -- src/components/button.test.ts  # Single file
-npm run test -- --run -t "test name"           # Single test
+npm run test                           # Run all tests
+npm run test -- src/file.test.ts      # Single file
+npm run test -- --run -t "test name"  # Single test by name
 
 # Database
 npm run seed              # Seed database
@@ -33,29 +33,46 @@ npx prisma db push        # Push schema changes
 npx prisma generate       # Regenerate client
 ```
 
+## Test Credentials
+
+| Email | Password |
+|-------|----------|
+| liam@gmail.com | lima123 |
+| teste1@gmail.com | teste123 |
+
 ## Project Structure
 
 ```
 src/
 ├── app/                    # Next.js App Router
-│   ├── (auth)/           # Auth pages
+│   ├── (auth)/           # Auth pages (login, cadastro)
 │   ├── (dashboard)/      # Protected pages
 │   └── api/              # API routes
-├── components/ui/         # Reusable UI
+├── components/ui/         # Reusable UI components
 ├── modules/               # Modular architecture
-│   ├── equipe/           # Team module
-│   ├── kanban/          # Kanban module
-│   ├── configs/         # Settings module
-│   └── whatsapp/        # WhatsApp module
-│       ├── components/  # UI components
+│   ├── equipe/           # Team module (funcionários)
+│   ├── kanban/           # Kanban module (leads pipeline)
+│   ├── configs/          # Settings module (estágios)
+│   └── whatsapp/         # WhatsApp module
+│       ├── components/   # UI components
 │       ├── hooks/       # Module hooks
 │       └── types.ts     # Module types
 └── lib/                  # Utilities
 ```
 
+## Largest Files (Complexity Indicators)
+
+| Lines | File | Purpose |
+|-------|------|---------|
+| 624 | `automation-form-dialog.tsx` | WhatsApp automation form |
+| 594 | `whatsapp-automations.ts` | Automation logic |
+| 587 | `use-equipe-module.ts` | Team module hook |
+| 511 | `use-kanban-module.ts` | Kanban module hook |
+| 449 | `jobs-table.tsx` | WhatsApp jobs/agendamentos |
+
 ## Code Style
 
-### Naming
+### Naming Conventions
 - **Files:** kebab-case (`modulo-equipe.tsx`)
 - **Components:** PascalCase (`ModuloEquipe`)
 - **Hooks:** `use-nome-module.ts`
@@ -81,7 +98,8 @@ export function ModuloExemplo({ perfil }: Props) {
 }
 ```
 
-### Error Handling
+## Error Handling
+
 ```tsx
 // API responses - always handle JSON parse errors
 const json = await resposta.json().catch(() => ({}));
@@ -128,33 +146,12 @@ if (!res.ok) setItems(prev => prev.filter(i => i.id !== idTemp));
 <Dialog open={open} onOpenChange={o => { setOpen(o); if (!o) setErro(null); }}>
 ```
 
-### Debounce/Autosave
-```tsx
-const ref = useRef<NodeJS.Timeout>();
-const onChange = (val) => {
-  setState(val);
-  clearTimeout(ref.current);
-  ref.current = setTimeout(() => save(val), 1000);
-};
-useEffect(() => () => ref.current && clearTimeout(ref.current), []);
-```
-
 ## Tailwind Classes
 ```tsx
 className="space-y-3"              // vertical spacing
 className="flex items-center gap-2" // alignment
 className="text-sm text-slate-500"  // secondary text
 className={cn("base", condition && "conditional")}
-```
-
-## Status Badges
-```tsx
-// Active (green)
-<span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
-  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Ativo
-</span>
-// Error (rose)
-<span className="...bg-rose-50 text-rose-700 border-rose-100...">Erro</span>
 ```
 
 ## Testing
@@ -170,6 +167,13 @@ describe("Component", () => {
 });
 ```
 
+## Validation Pipeline (ALWAYS RUN)
+
+After ANY code change, run in order:
+1. `npm run lint` - Fastest, catch syntax errors
+2. `npm run build` - Full type check + build
+3. Manual logic review - Verify flows, edge cases
+
 ## Critical Rules
 
 1. **Use LINT over BUILD** - `npm run lint` is faster, use always
@@ -178,3 +182,11 @@ describe("Component", () => {
 4. **Context + useEffect** - For cross-component sync, use Context + useEffect (NOT sync calls)
 5. **Event-Driven** - For automations: trigger → find rules → execute action
 6. **Multi-tenant** - Always include `id_empresa` in queries for tenant isolation
+7. **Never Block** - Never run dev server or processes that require human interaction
+
+## Editing Strategy
+
+1. **Maximum First** - Edit entire files when possible
+2. **Multi-file** - Edit all related files in same iteration
+3. **Fail Fast** - If lint/build fails, fix all related errors before continuing
+4. **Loop** - Repeat validation until passing
