@@ -154,20 +154,37 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ erro: "PDV nao encontrado." }, { status: 404 });
   }
 
-  const senha_hash = await bcrypt.hash(senha, 10);
-
-  const funcionario = await prisma.funcionario.create({
-    data: {
-      id_empresa: auth.sessao.id_empresa,
-      id_pdv,
-      nome,
-      email,
-      senha_hash,
-      cargo,
-    },
+  const emailExistente = await prisma.funcionario.findFirst({
+    where: { email, id_empresa: auth.sessao.id_empresa },
+    select: { id: true },
   });
 
-  return NextResponse.json({ funcionario });
+  if (emailExistente) {
+    return NextResponse.json({ erro: "Email ja cadastrado." }, { status: 409 });
+  }
+
+  const senha_hash = await bcrypt.hash(senha, 10);
+
+  try {
+    const funcionario = await prisma.funcionario.create({
+      data: {
+        id_empresa: auth.sessao.id_empresa,
+        id_pdv,
+        nome,
+        email,
+        senha_hash,
+        cargo,
+      },
+    });
+
+    return NextResponse.json({ funcionario });
+  } catch (erro: unknown) {
+    const prismaErro = erro as { code?: string };
+    if (prismaErro.code === "P2002") {
+      return NextResponse.json({ erro: "Email ja cadastrado." }, { status: 409 });
+    }
+    throw erro;
+  }
 }
 
 export async function PATCH(request: NextRequest) {

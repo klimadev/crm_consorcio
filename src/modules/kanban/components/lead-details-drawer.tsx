@@ -6,14 +6,16 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertCircle } from "lucide-react";
 import {
   aplicaMascaraMoedaBr,
   aplicaMascaraTelefoneBr,
   converteMoedaBrParaNumero,
-  normalizaTelefoneParaWhatsapp,
 } from "@/lib/utils";
 import type { Lead, PendenciaDinamica } from "../types";
+import { useWhatsappChat } from "@/modules/whatsapp/hooks/use-whatsapp-chat";
+import { WhatsappChatPanel } from "@/modules/whatsapp/components/chat/whatsapp-chat-panel";
 
 const LABELS_PENDENCIA: Record<string, string> = {
   DOCUMENTO_APROVACAO_PENDENTE: "Documento de Aprovação (Pdf/Link) Pendente",
@@ -58,6 +60,7 @@ export function LeadDetailsDrawer({
   const [temAlteracoes, setTemAlteracoes] = useState(false);
   const [fecharConfirmado, setFecharConfirmado] = useState(false);
   const [confirmarExclusaoAberta, setConfirmarExclusaoAberta] = useState(false);
+  const [tabAtiva, setTabAtiva] = useState("detalhes");
 
   const initialUrl = leadSelecionado?.documento_aprovacao_url ?? "";
   const urlEhAlterado = documentoAprovacaoUrl !== initialUrl;
@@ -74,6 +77,7 @@ export function LeadDetailsDrawer({
       onOpenChange(false);
       setFecharConfirmado(false);
       setTemAlteracoes(false);
+      setTabAtiva("detalhes");
     }
   };
 
@@ -90,6 +94,13 @@ export function LeadDetailsDrawer({
       setTemAlteracoes(false);
     }
   };
+
+  const whatsappChat = useWhatsappChat({
+    leadId: leadSelecionado?.id,
+    enabled: Boolean(leadSelecionado),
+    markReadEnabled: tabAtiva === "chat" && Boolean(leadSelecionado),
+    pollMs: 30000,
+  });
 
   return (
     <Drawer open={Boolean(leadSelecionado)} onOpenChange={handleOpenChange}>
@@ -112,7 +123,18 @@ export function LeadDetailsDrawer({
         </DrawerHeader>
 
         {leadSelecionado ? (
-          <div className="space-y-3 p-4 pb-6">
+          <Tabs key={leadSelecionado.id} value={tabAtiva} onValueChange={setTabAtiva} className="p-4 pb-6">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
+              <TabsTrigger value="chat" className="relative">
+                Chat WhatsApp
+                {whatsappChat.unreadCount > 0 ? (
+                  <span className="ml-2 h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                ) : null}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="detalhes" className="space-y-3">
             <Input
               className="h-11 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
               value={leadSelecionado.telefone}
@@ -262,21 +284,8 @@ export function LeadDetailsDrawer({
 
             <div className="flex gap-2">
               <Button
-                variant="outline"
-                asChild
-                className="flex-1 rounded-xl border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-              >
-                <a
-                  href={`https://wa.me/${normalizaTelefoneParaWhatsapp(leadSelecionado.telefone)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  WhatsApp
-                </a>
-              </Button>
-              <Button
                 variant="destructive"
-                className="rounded-xl text-sm font-medium"
+                className="w-full rounded-xl text-sm font-medium"
                 onClick={() => setConfirmarExclusaoAberta(true)}
               >
                 Excluir
@@ -308,7 +317,23 @@ export function LeadDetailsDrawer({
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-          </div>
+
+            </TabsContent>
+
+            <TabsContent value="chat">
+              <WhatsappChatPanel
+                leadNome={leadSelecionado.nome}
+                messages={whatsappChat.messages}
+                connectionStatus={whatsappChat.connectionStatus}
+                loading={whatsappChat.loading}
+                sending={whatsappChat.sending}
+                canSend={whatsappChat.canSend}
+                error={whatsappChat.error}
+                onSendMessage={whatsappChat.sendMessage}
+                onRetryMessage={whatsappChat.retryMessage}
+              />
+            </TabsContent>
+          </Tabs>
         ) : null}
       </DrawerContent>
     </Drawer>

@@ -485,7 +485,7 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
         setLeads((atual) => atual.filter((item) => item.id !== idTemporario));
       }
 
-      evento.currentTarget.reset();
+      evento.currentTarget?.reset();
       setEstagioNovoLead("");
       setCargoNovoLead(null);
       setTelefoneNovoLead("");

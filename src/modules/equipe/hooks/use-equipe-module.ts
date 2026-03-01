@@ -586,7 +586,7 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
         return;
       }
 
-      evento.currentTarget.reset();
+      evento.currentTarget?.reset();
       setCargoSelecionado("COLABORADOR");
       setPdvSelecionado("");
       setDialogNovoFuncionarioAberto(false);

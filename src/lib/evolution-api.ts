@@ -84,7 +84,8 @@ export async function criarInstancia(params: CriarInstanciaParams): Promise<{
 
     if (!resposta.ok) {
       const erro = await resposta.json().catch(() => ({}));
-      throw new Error(erro.message ?? "Erro ao criar instância");
+      const mensagemErro = erro?.error?.message ?? erro?.message ?? erro?.reason ?? "Erro ao criar instância";
+      throw new Error(mensagemErro);
     }
 
     const json = await resposta.json();

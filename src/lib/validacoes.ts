@@ -329,3 +329,17 @@ export function normalizarBuscaFuncionarios(valor?: string) {
 export function mensagemErroValidacao(erro: z.ZodError) {
   return erro.issues[0]?.message ?? "Dados invalidos.";
 }
+
+export const esquemaWhatsappChatMessagesQuery = z.object({
+  leadId: z.string().trim().min(1, "Lead obrigatorio."),
+});
+
+export const esquemaWhatsappChatSendMessage = z.object({
+  leadId: z.string().trim().min(1, "Lead obrigatorio."),
+  text: z.string().trim().min(1, "Mensagem obrigatoria.").max(4096, "Mensagem muito longa."),
+  clientTempId: z.string().trim().min(1, "ID temporario obrigatorio."),
+});
+
+export const esquemaWhatsappChatMarkRead = z.object({
+  leadId: z.string().trim().min(1, "Lead obrigatorio."),
+});

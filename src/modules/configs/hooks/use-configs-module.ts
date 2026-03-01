@@ -86,7 +86,7 @@ export function useConfigsModule(): UseConfigsReturn {
       );
     }
 
-    evento.currentTarget.reset();
+    evento.currentTarget?.reset();
   }, []);
 
   const atualizarPdv = useCallback(async (id: string, nome: string) => {

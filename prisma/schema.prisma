@@ -118,6 +118,7 @@ model Lead {
   funcionario             Funcionario  @relation(fields: [id_funcionario], references: [id])
   empresa                 Empresa      @relation(fields: [id_empresa], references: [id])
   pendencias              Pendencia[]
+  whatsapp_mensagens      WhatsappMensagem[]
 
   @@index([id_empresa])
   @@index([id_funcionario])
@@ -153,9 +154,39 @@ model WhatsappInstancia {
   atualizado_em DateTime @default(now()) @updatedAt
   profile_name  String?
   profile_pic   String?
+  mensagens     WhatsappMensagem[]
 
   @@index([id_empresa])
   @@index([id_criador])
+}
+
+model WhatsappMensagem {
+  id                    String   @id @default(uuid())
+  id_empresa            String
+  id_lead               String
+  id_whatsapp_instancia String
+
+  mensagem_id    String
+  remote_jid     String
+  from_me        Boolean
+  tipo           String   @default("text")
+  conteudo       String?
+  status         String   @default("PENDING")
+  timestamp      Int
+  lida_no_crm_em DateTime?
+  erro           String?
+  payload_json   String?
+
+  criado_em     DateTime @default(now())
+  atualizado_em DateTime @default(now()) @updatedAt
+
+  lead      Lead             @relation(fields: [id_lead], references: [id], onDelete: Cascade)
+  instancia WhatsappInstancia @relation(fields: [id_whatsapp_instancia], references: [id], onDelete: Cascade)
+
+  @@unique([id_whatsapp_instancia, mensagem_id])
+  @@index([id_empresa, id_lead, timestamp])
+  @@index([id_empresa, id_lead, lida_no_crm_em])
+  @@index([id_empresa, remote_jid])
 }
 
 model WhatsappAutomacao {

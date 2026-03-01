@@ -33,12 +33,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ erro: "Nome do PDV e obrigatorio." }, { status: 400 });
   }
 
-  const pdv = await prisma.pdv.create({
-    data: {
-      nome,
-      id_empresa: auth.sessao.id_empresa,
-    },
-  });
+  try {
+    const pdv = await prisma.pdv.create({
+      data: {
+        nome,
+        id_empresa: auth.sessao.id_empresa,
+      },
+    });
 
-  return NextResponse.json({ pdv });
+    return NextResponse.json({ pdv });
+  } catch (erro) {
+    console.error("Erro ao criar PDV:", erro);
+    return NextResponse.json({ erro: "Erro ao criar PDV." }, { status: 500 });
+  }
 }

@@ -1,5 +1,24 @@
 export type ConnectionQuality = "excellent" | "good" | "unstable" | "offline" | "unknown";
 export type ConnectionDataSource = "evolution_live" | "db_cache" | "unavailable";
+export type ChatConnectionStatus = "online" | "offline" | "unknown";
+export type ChatMessageStatus = "PENDING" | "SENT" | "DELIVERED" | "READ" | "ERROR" | "DELETED" | "PLAYED";
+
+export type WhatsappChatMessage = {
+  id: string;
+  messageId: string;
+  leadId: string;
+  remoteJid: string;
+  fromMe: boolean;
+  direction: "incoming" | "outgoing";
+  text: string;
+  kind: "text" | "unsupported";
+  status: ChatMessageStatus;
+  timestamp: number;
+  createdAtIso: string;
+  readAtIso: string | null;
+  optimistic: boolean;
+  error: string | null;
+};
 
 export type WhatsappInstancia = {
   id: string;

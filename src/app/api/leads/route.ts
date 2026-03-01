@@ -80,16 +80,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ erro: "Estagio ou funcionario invalido." }, { status: 400 });
   }
 
-  const lead = await prisma.lead.create({
-    data: {
-      id_empresa: auth.sessao.id_empresa,
-      id_estagio: dadosValidados.id_estagio,
-      id_funcionario: dadosValidados.id_funcionario,
-      nome: dadosValidados.nome,
-      telefone: dadosValidados.telefone,
-      valor_consorcio: dadosValidados.valor_consorcio,
-    },
-  });
+  try {
+    const lead = await prisma.lead.create({
+      data: {
+        id_empresa: auth.sessao.id_empresa,
+        id_estagio: dadosValidados.id_estagio,
+        id_funcionario: dadosValidados.id_funcionario,
+        nome: dadosValidados.nome,
+        telefone: dadosValidados.telefone,
+        valor_consorcio: dadosValidados.valor_consorcio,
+      },
+    });
 
-  return NextResponse.json({ lead });
+    return NextResponse.json({ lead });
+  } catch (erro) {
+    console.error("Erro ao criar lead:", erro);
+    return NextResponse.json({ erro: "Erro ao criar lead." }, { status: 500 });
+  }
 }
