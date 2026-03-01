@@ -14,6 +14,7 @@ type Props = {
   sending: boolean;
   canSend: boolean;
   error: string | null;
+  blockedReason?: string | null;
   onSendMessage: (text: string) => Promise<void>;
   onRetryMessage: (message: WhatsappChatMessage) => Promise<void>;
 };
@@ -26,6 +27,7 @@ export function WhatsappChatPanel({
   sending,
   canSend,
   error,
+  blockedReason,
   onSendMessage,
   onRetryMessage,
 }: Props) {
@@ -49,9 +51,10 @@ export function WhatsappChatPanel({
       </div>
 
       {error ? <p className="px-3 py-1 text-xs text-rose-600">{error}</p> : null}
-      {!canSend ? <p className="px-3 pb-1 text-xs text-amber-700">WhatsApp desconectado.</p> : null}
+      {blockedReason ? <p className="px-3 pb-1 text-xs text-amber-700">{blockedReason}</p> : null}
+      {!blockedReason && !canSend ? <p className="px-3 pb-1 text-xs text-amber-700">WhatsApp desconectado.</p> : null}
 
-      <WhatsappMessageInput disabled={!canSend} sending={sending} onSend={onSendMessage} />
+      <WhatsappMessageInput disabled={Boolean(blockedReason) || !canSend} sending={sending} onSend={onSendMessage} />
     </div>
   );
 }

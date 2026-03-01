@@ -49,20 +49,25 @@ function mergeMessages(base: WhatsappChatMessage[], incoming: WhatsappChatMessag
   return Array.from(map.values()).sort((a, b) => a.timestamp - b.timestamp);
 }
 
-export function useWhatsappChat({ leadId, enabled, markReadEnabled, pollMs = 5000 }: UseWhatsappChatParams) {
+export function useWhatsappChat({ leadId, enabled, markReadEnabled, pollMs = 30000 }: UseWhatsappChatParams) {
   const [messages, setMessages] = useState<WhatsappChatMessage[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<ChatConnectionStatus>("unknown");
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [backoffMs, setBackoffMs] = useState(pollMs);
+  const backoffMsRef = useRef(pollMs);
+  const messagesRef = useRef<WhatsappChatMessage[]>([]);
 
   const mountedRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestSeqRef = useRef(0);
   const controllerRef = useRef<AbortController | null>(null);
   const markReadInFlightRef = useRef(false);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const stopPolling = useCallback(() => {
     if (timeoutRef.current) {
@@ -85,7 +90,7 @@ export function useWhatsappChat({ leadId, enabled, markReadEnabled, pollMs = 500
     const signal = controllerRef.current.signal;
 
     if (mountedRef.current) {
-      setLoading((prev) => prev || messages.length === 0);
+      setLoading((prev) => prev || messagesRef.current.length === 0);
       setError(null);
     }
 
@@ -100,21 +105,22 @@ export function useWhatsappChat({ leadId, enabled, markReadEnabled, pollMs = 500
       setMessages((prev) => mergeMessages(prev, json.messages ?? []));
       setConnectionStatus(json.connectionStatus ?? "unknown");
       setUnreadCount(json.unreadCount ?? 0);
-      setBackoffMs(pollMs);
+      backoffMsRef.current = pollMs;
     } catch (err) {
       if (!mountedRef.current || signal.aborted) return;
       setError(err instanceof Error ? err.message : "Erro ao carregar mensagens.");
-      setBackoffMs(10000);
+      backoffMsRef.current = Math.max(pollMs, 30000);
     } finally {
       if (!mountedRef.current) return;
       setLoading(false);
       if (enabled) {
+        const delay = document.visibilityState === "hidden" ? Math.max(backoffMsRef.current, 30000) : backoffMsRef.current;
         timeoutRef.current = setTimeout(() => {
           void fetchMessages();
-        }, document.visibilityState === "hidden" ? Math.max(backoffMs, 10000) : backoffMs);
+        }, delay);
       }
     }
-  }, [enabled, leadId, pollMs, backoffMs]);
+  }, [enabled, leadId, pollMs]);
 
   const reload = useCallback(async () => {
     stopPolling();
@@ -245,7 +251,7 @@ export function useWhatsappChat({ leadId, enabled, markReadEnabled, pollMs = 500
     setMessages([]);
     setUnreadCount(0);
     setError(null);
-    setBackoffMs(pollMs);
+    backoffMsRef.current = pollMs;
 
     if (!enabled || !leadId) {
       stopPolling();
@@ -263,7 +269,7 @@ export function useWhatsappChat({ leadId, enabled, markReadEnabled, pollMs = 500
     void markRead();
   }, [markReadEnabled, unreadCount, markRead]);
 
-  const canSend = useMemo(() => connectionStatus !== "offline", [connectionStatus]);
+  const canSend = useMemo(() => enabled && Boolean(leadId) && connectionStatus === "online", [connectionStatus, enabled, leadId]);
 
   return {
     messages,

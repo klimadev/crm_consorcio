@@ -7,12 +7,14 @@ import type { ChatConnectionStatus, ChatMessageStatus, WhatsappChatMessage } fro
 
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL ?? "http://localhost:8080";
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY ?? "";
+const EVOLUTION_FETCH_TIMEOUT_MS = 5000;
 
 type LeadComAcesso = {
   id: string;
   id_empresa: string;
   telefone: string;
   nome: string;
+  id_whatsapp_instancia: string | null;
 };
 
 type InstanciaResolvida = {
@@ -61,10 +63,30 @@ export function mapearStatusMensagem(rawStatus: unknown, fromMe: boolean): ChatM
 function extrairStatusDaMensagem(raw: Record<string, unknown>): unknown {
   const messageUpdate = raw.MessageUpdate;
   if (Array.isArray(messageUpdate) && messageUpdate.length > 0) {
-    const lastUpdate = messageUpdate[messageUpdate.length - 1];
-    if (lastUpdate && typeof lastUpdate === "object") {
-      return (lastUpdate as Record<string, unknown>).status;
+    const statusPriority: Record<string, number> = {
+      READ: 4,
+      PLAYED: 4,
+      DELIVERY_ACK: 3,
+      DELIVERED: 3,
+      SERVER_ACK: 2,
+      SENT: 2,
+      PENDING: 1,
+    };
+    let strongestStatus: string | undefined;
+    let highestPriority = 0;
+    for (const update of messageUpdate) {
+      if (update && typeof update === "object") {
+        const status = (update as Record<string, unknown>).status;
+        if (typeof status === "string") {
+          const priority = statusPriority[status] ?? 0;
+          if (priority > highestPriority) {
+            highestPriority = priority;
+            strongestStatus = status;
+          }
+        }
+      }
     }
+    if (strongestStatus) return strongestStatus;
   }
   return raw.status;
 }
@@ -137,31 +159,30 @@ export async function buscarLeadComAcesso(sessao: SessaoToken, leadId: string): 
       id_empresa: true,
       telefone: true,
       nome: true,
+      id_whatsapp_instancia: true,
     },
   });
 }
 
 export async function resolverInstanciaDoLead(idEmpresa: string, leadId: string): Promise<InstanciaResolvida | null> {
-  const ultimaMensagem = await prisma.whatsappMensagem.findFirst({
-    where: { id_empresa: idEmpresa, id_lead: leadId },
-    orderBy: { timestamp: "desc" },
-    include: {
-      instancia: {
-        select: { id: true, instance_name: true },
-      },
+  const lead = await prisma.lead.findFirst({
+    where: {
+      id: leadId,
+      id_empresa: idEmpresa,
+    },
+    select: {
+      id_whatsapp_instancia: true,
     },
   });
 
-  if (ultimaMensagem?.instancia) {
-    return {
-      id: ultimaMensagem.instancia.id,
-      instanceName: ultimaMensagem.instancia.instance_name,
-    };
-  }
+  const instanciaId = lead?.id_whatsapp_instancia;
+  if (!instanciaId) return null;
 
   const instancia = await prisma.whatsappInstancia.findFirst({
-    where: { id_empresa: idEmpresa },
-    orderBy: [{ atualizado_em: "desc" }, { criado_em: "desc" }],
+    where: {
+      id: instanciaId,
+      id_empresa: idEmpresa,
+    },
     select: { id: true, instance_name: true },
   });
 
@@ -201,14 +222,25 @@ export async function buscarConnectionStatus(instanceName: string): Promise<Chat
 }
 
 export async function buscarMensagensEvolution(instanceName: string, remoteJid: string) {
-  const response = await fetch(`${EVOLUTION_API_URL}/chat/findMessages/${instanceName}`, {
-    method: "POST",
-    headers: payloadHeaders(),
-    body: JSON.stringify({
-      where: { key: { remoteJid } },
-      limit: 80,
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, EVOLUTION_FETCH_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(`${EVOLUTION_API_URL}/chat/findMessages/${instanceName}`, {
+      method: "POST",
+      headers: payloadHeaders(),
+      body: JSON.stringify({
+        where: { key: { remoteJid } },
+        limit: 80,
+      }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     throw new Error("Erro ao buscar mensagens na Evolution API.");
@@ -249,7 +281,7 @@ const statusWeight: Record<ChatMessageStatus, number> = {
 };
 
 export async function upsertMensagensNoBanco(
-  tx: Prisma.TransactionClient,
+  tx: Prisma.TransactionClient | typeof prisma,
   params: {
     idEmpresa: string;
     idLead: string;
@@ -257,34 +289,81 @@ export async function upsertMensagensNoBanco(
     mensagens: MensagemNormalizada[];
   },
 ) {
+  if (params.mensagens.length === 0) return;
+
+  const porMensagemId = new Map<string, MensagemNormalizada>();
   for (const mensagem of params.mensagens) {
-    await tx.whatsappMensagem.upsert({
-      where: {
-        id_whatsapp_instancia_mensagem_id: {
-          id_whatsapp_instancia: params.idWhatsappInstancia,
-          mensagem_id: mensagem.messageId,
-        },
-      },
-      create: {
-        id_empresa: params.idEmpresa,
-        id_lead: params.idLead,
-        id_whatsapp_instancia: params.idWhatsappInstancia,
-        mensagem_id: mensagem.messageId,
-        remote_jid: mensagem.remoteJid,
-        from_me: mensagem.fromMe,
+    const existente = porMensagemId.get(mensagem.messageId);
+    if (!existente || mensagem.timestamp >= existente.timestamp) {
+      porMensagemId.set(mensagem.messageId, mensagem);
+    }
+  }
+
+  const mensagensUnicas = Array.from(porMensagemId.values());
+  const mensagemIds = mensagensUnicas.map((mensagem) => mensagem.messageId);
+
+  const existentes = await tx.whatsappMensagem.findMany({
+    where: {
+      id_whatsapp_instancia: params.idWhatsappInstancia,
+      mensagem_id: { in: mensagemIds },
+    },
+    select: {
+      id: true,
+      mensagem_id: true,
+      status: true,
+      tipo: true,
+      conteudo: true,
+      erro: true,
+      payload_json: true,
+    },
+  });
+
+  const existentePorMensagemId = new Map(existentes.map((registro) => [registro.mensagem_id, registro]));
+
+  const paraCriar = mensagensUnicas
+    .filter((mensagem) => !existentePorMensagemId.has(mensagem.messageId))
+    .map((mensagem) => ({
+      id_empresa: params.idEmpresa,
+      id_lead: params.idLead,
+      id_whatsapp_instancia: params.idWhatsappInstancia,
+      mensagem_id: mensagem.messageId,
+      remote_jid: mensagem.remoteJid,
+      from_me: mensagem.fromMe,
+      tipo: mensagem.kind,
+      conteudo: mensagem.text,
+      status: mensagem.status,
+      timestamp: mensagem.timestamp,
+      erro: mensagem.error,
+      payload_json: mensagem.payloadJson,
+    }));
+
+  if (paraCriar.length > 0) {
+    await tx.whatsappMensagem.createMany({
+      data: paraCriar,
+    });
+  }
+
+  for (const mensagem of mensagensUnicas) {
+    const existente = existentePorMensagemId.get(mensagem.messageId);
+    if (!existente) continue;
+
+    const statusAtual = mapearStatusMensagem(existente.status, mensagem.fromMe);
+    const statusFinal = escolherStatusMaisForte(statusAtual, mensagem.status);
+    const precisaAtualizar =
+      existente.tipo !== mensagem.kind ||
+      (existente.conteudo ?? "") !== mensagem.text ||
+      existente.status !== statusFinal ||
+      (existente.erro ?? null) !== mensagem.error ||
+      (existente.payload_json ?? null) !== mensagem.payloadJson;
+
+    if (!precisaAtualizar) continue;
+
+    await tx.whatsappMensagem.update({
+      where: { id: existente.id },
+      data: {
         tipo: mensagem.kind,
         conteudo: mensagem.text,
-        status: mensagem.status,
-        timestamp: mensagem.timestamp,
-        erro: mensagem.error,
-        payload_json: mensagem.payloadJson,
-      },
-      update: {
-        tipo: mensagem.kind,
-        conteudo: mensagem.text,
-        status: {
-          set: mensagem.status,
-        },
+        status: statusFinal,
         erro: mensagem.error,
         payload_json: mensagem.payloadJson,
       },

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertCircle } from "lucide-react";
 import {
   aplicaMascaraMoedaBr,
@@ -16,6 +17,7 @@ import {
 import type { Lead, PendenciaDinamica } from "../types";
 import { useWhatsappChat } from "@/modules/whatsapp/hooks/use-whatsapp-chat";
 import { WhatsappChatPanel } from "@/modules/whatsapp/components/chat/whatsapp-chat-panel";
+import type { WhatsappInstancia } from "@/modules/whatsapp/types";
 
 const LABELS_PENDENCIA: Record<string, string> = {
   DOCUMENTO_APROVACAO_PENDENTE: "Documento de Aprovação (Pdf/Link) Pendente",
@@ -26,6 +28,7 @@ type LeadDetailsDrawerProps = {
   leadSelecionado: Lead | null;
   pendenciasLead: PendenciaDinamica[];
   onOpenChange: (aberto: boolean) => void;
+  perfil: "EMPRESA" | "GERENTE" | "COLABORADOR";
   onMudarLead: (leadAtualizado: Lead) => void;
   documentoAprovacaoUrl: string;
   setDocumentoAprovacaoUrl: (url: string) => void;
@@ -44,6 +47,7 @@ export function LeadDetailsDrawer({
   leadSelecionado,
   pendenciasLead,
   onOpenChange,
+  perfil,
   onMudarLead,
   documentoAprovacaoUrl,
   setDocumentoAprovacaoUrl,
@@ -61,6 +65,9 @@ export function LeadDetailsDrawer({
   const [fecharConfirmado, setFecharConfirmado] = useState(false);
   const [confirmarExclusaoAberta, setConfirmarExclusaoAberta] = useState(false);
   const [tabAtiva, setTabAtiva] = useState("detalhes");
+  const [instancias, setInstancias] = useState<WhatsappInstancia[]>([]);
+  const [carregandoInstancias, setCarregandoInstancias] = useState(false);
+  const [erroInstancias, setErroInstancias] = useState<string | null>(null);
 
   const initialUrl = leadSelecionado?.documento_aprovacao_url ?? "";
   const urlEhAlterado = documentoAprovacaoUrl !== initialUrl;
@@ -95,10 +102,43 @@ export function LeadDetailsDrawer({
     }
   };
 
+  const chatConfigurado = Boolean(leadSelecionado?.id_whatsapp_instancia);
+
+  useEffect(() => {
+    if (!leadSelecionado || perfil !== "EMPRESA") return;
+
+    const carregarInstancias = async () => {
+      setCarregandoInstancias(true);
+      setErroInstancias(null);
+      try {
+        const resposta = await fetch("/api/whatsapp/instances", { cache: "no-store" });
+        const json = (await resposta.json().catch(() => ({}))) as {
+          instancias?: WhatsappInstancia[];
+          erro?: string;
+        };
+
+        if (!resposta.ok) {
+          setErroInstancias(json.erro ?? "Erro ao carregar instancias WhatsApp.");
+          setInstancias([]);
+          return;
+        }
+
+        setInstancias(json.instancias ?? []);
+      } catch {
+        setErroInstancias("Erro ao carregar instancias WhatsApp.");
+        setInstancias([]);
+      } finally {
+        setCarregandoInstancias(false);
+      }
+    };
+
+    void carregarInstancias();
+  }, [leadSelecionado?.id, perfil]);
+
   const whatsappChat = useWhatsappChat({
     leadId: leadSelecionado?.id,
-    enabled: Boolean(leadSelecionado),
-    markReadEnabled: tabAtiva === "chat" && Boolean(leadSelecionado),
+    enabled: Boolean(leadSelecionado) && chatConfigurado,
+    markReadEnabled: tabAtiva === "chat" && Boolean(leadSelecionado) && chatConfigurado,
     pollMs: 30000,
   });
 
@@ -135,6 +175,38 @@ export function LeadDetailsDrawer({
             </TabsList>
 
             <TabsContent value="detalhes" className="space-y-3">
+            {perfil === "EMPRESA" ? (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700">Instancia WhatsApp do lead</label>
+                <Select
+                  value={leadSelecionado.id_whatsapp_instancia ?? "none"}
+                  onValueChange={(value) =>
+                    handleMudarLead({
+                      ...leadSelecionado,
+                      id_whatsapp_instancia: value === "none" ? null : value,
+                    })
+                  }
+                  disabled={carregandoInstancias}
+                >
+                  <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50">
+                    <SelectValue placeholder="Selecione uma instancia" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem instancia</SelectItem>
+                    {instancias.map((instancia) => (
+                      <SelectItem key={instancia.id} value={instancia.id}>
+                        {instancia.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {erroInstancias ? <p className="text-xs text-rose-600">{erroInstancias}</p> : null}
+                <p className="text-xs text-slate-500">
+                  Sem instancia configurada, o chat WhatsApp deste lead fica bloqueado.
+                </p>
+              </div>
+            ) : null}
+
             <Input
               className="h-11 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
               value={leadSelecionado.telefone}
@@ -329,6 +401,7 @@ export function LeadDetailsDrawer({
                 sending={whatsappChat.sending}
                 canSend={whatsappChat.canSend}
                 error={whatsappChat.error}
+                blockedReason={chatConfigurado ? null : "Lead sem instancia WhatsApp configurada pela empresa."}
                 onSendMessage={whatsappChat.sendMessage}
                 onRetryMessage={whatsappChat.retryMessage}
               />

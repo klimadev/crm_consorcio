@@ -23,10 +23,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ erro: "Lead nao encontrado." }, { status: 404 });
   }
 
+  const instancia = await resolverInstanciaDoLead(auth.sessao.id_empresa, lead.id);
+  if (!instancia) {
+    return NextResponse.json({ erro: "Lead sem instancia WhatsApp configurada." }, { status: 409 });
+  }
+
   const mensagensNaoLidas = await prisma.whatsappMensagem.findMany({
     where: {
       id_empresa: auth.sessao.id_empresa,
       id_lead: lead.id,
+      id_whatsapp_instancia: instancia.id,
       from_me: false,
       lida_no_crm_em: null,
     },
@@ -38,6 +44,7 @@ export async function POST(request: NextRequest) {
     where: {
       id_empresa: auth.sessao.id_empresa,
       id_lead: lead.id,
+      id_whatsapp_instancia: instancia.id,
       from_me: false,
       lida_no_crm_em: null,
     },
@@ -46,8 +53,7 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  const instancia = await resolverInstanciaDoLead(auth.sessao.id_empresa, lead.id);
-  if (instancia && mensagensNaoLidas.length > 0) {
+  if (mensagensNaoLidas.length > 0) {
     await marcarMensagensComoLidasEvolution(
       instancia.instanceName,
       mensagensNaoLidas.map((mensagem: { remote_jid: string; mensagem_id: string }) => ({
@@ -61,6 +67,7 @@ export async function POST(request: NextRequest) {
     where: {
       id_empresa: auth.sessao.id_empresa,
       id_lead: lead.id,
+      id_whatsapp_instancia: instancia.id,
       from_me: false,
       lida_no_crm_em: null,
     },

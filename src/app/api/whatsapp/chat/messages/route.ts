@@ -13,6 +13,8 @@ import {
   upsertMensagensNoBanco,
 } from "@/lib/whatsapp-chat";
 
+const syncInFlight = new Set<string>();
+
 export async function GET(request: NextRequest) {
   const auth = await exigirSessao(request);
   if (auth.erro) return auth.erro;
@@ -31,24 +33,7 @@ export async function GET(request: NextRequest) {
 
   const instancia = await resolverInstanciaDoLead(auth.sessao.id_empresa, lead.id);
   if (!instancia) {
-    const mensagensCache = await prisma.whatsappMensagem.findMany({
-      where: { id_empresa: auth.sessao.id_empresa, id_lead: lead.id },
-      orderBy: { timestamp: "asc" },
-    });
-    const unreadCount = await prisma.whatsappMensagem.count({
-      where: {
-        id_empresa: auth.sessao.id_empresa,
-        id_lead: lead.id,
-        from_me: false,
-        lida_no_crm_em: null,
-      },
-    });
-
-    return NextResponse.json({
-      messages: mensagensCache.map(mapearMensagemDbParaCanonica),
-      connectionStatus: "offline",
-      unreadCount,
-    });
+    return NextResponse.json({ erro: "Lead sem instancia WhatsApp configurada." }, { status: 409 });
   }
 
   const remoteJidInfo = normalizarRemoteJidParaLead(lead.telefone);
@@ -85,14 +70,21 @@ export async function GET(request: NextRequest) {
       });
 
       if (mensagensNormalizadas.length > 0) {
-        await prisma.$transaction(async (tx) => {
-          await upsertMensagensNoBanco(tx, {
-            idEmpresa: auth.sessao.id_empresa,
-            idLead: lead.id,
-            idWhatsappInstancia: instancia.id,
-            mensagens: mensagensNormalizadas,
-          });
-        });
+        const syncKey = `${auth.sessao.id_empresa}:${lead.id}`;
+
+        if (!syncInFlight.has(syncKey)) {
+          syncInFlight.add(syncKey);
+          try {
+            await upsertMensagensNoBanco(prisma, {
+              idEmpresa: auth.sessao.id_empresa,
+              idLead: lead.id,
+              idWhatsappInstancia: instancia.id,
+              mensagens: mensagensNormalizadas,
+            });
+          } finally {
+            syncInFlight.delete(syncKey);
+          }
+        }
 
         const mensagensAtualizadas = await prisma.whatsappMensagem.findMany({
           where: { id_empresa: auth.sessao.id_empresa, id_lead: lead.id },

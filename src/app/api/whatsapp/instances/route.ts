@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   }
 
   const instanciasDb = await prisma.whatsappInstancia.findMany({
-    where: { id_criador: auth.sessao.id_usuario },
+    where: { id_empresa: auth.sessao.id_empresa },
     orderBy: { criado_em: "desc" },
   });
 

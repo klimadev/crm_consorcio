@@ -106,6 +106,7 @@ model Lead {
   id_empresa              String
   id_funcionario          String
   id_estagio              String
+  id_whatsapp_instancia   String?
   nome                    String
   telefone                String
   valor_consorcio         Float
@@ -117,12 +118,14 @@ model Lead {
   estagio                 EstagioFunil @relation(fields: [id_estagio], references: [id])
   funcionario             Funcionario  @relation(fields: [id_funcionario], references: [id])
   empresa                 Empresa      @relation(fields: [id_empresa], references: [id])
+  whatsapp_instancia      WhatsappInstancia? @relation(fields: [id_whatsapp_instancia], references: [id], onDelete: SetNull)
   pendencias              Pendencia[]
   whatsapp_mensagens      WhatsappMensagem[]
 
   @@index([id_empresa])
   @@index([id_funcionario])
   @@index([id_estagio])
+  @@index([id_empresa, id_whatsapp_instancia])
 }
 
 model Pendencia {
@@ -155,6 +158,7 @@ model WhatsappInstancia {
   profile_name  String?
   profile_pic   String?
   mensagens     WhatsappMensagem[]
+  leads         Lead[]
 
   @@index([id_empresa])
   @@index([id_criador])

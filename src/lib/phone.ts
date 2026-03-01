@@ -59,8 +59,30 @@ export function normalizarTelefoneParaWhatsapp(valor: string): NormalizacaoTelef
 
   let internacional = digits;
 
-  if (digits.length === 10 || digits.length === 11) {
+  if (digits.length === 10) {
     internacional = `55${digits}`;
+  } else if (digits.length === 11) {
+    if (digits.startsWith("55")) {
+      const ddd = digits.slice(2, 4);
+      const resto = digits.slice(4);
+      if (!resto.startsWith("9") && resto.length === 8) {
+        internacional = `55${ddd}9${resto}`;
+      } else {
+        internacional = digits;
+      }
+    } else {
+      const ddd = digits.slice(0, 2);
+      const resto = digits.slice(2);
+      if (resto.startsWith("9") && resto.length === 9) {
+        internacional = `55${digits}`;
+      } else if (resto.length === 8) {
+        internacional = `55${ddd}9${resto}`;
+      } else {
+        internacional = `55${digits}`;
+      }
+    }
+  } else if (digits.length === 12 && digits.startsWith("55")) {
+    internacional = digits;
   }
 
   if (internacional.length < 12 || internacional.length > 15) {

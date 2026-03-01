@@ -80,6 +80,7 @@ export const esquemaCriarLead = z.object({
   valor_consorcio: z.number().positive("Valor do consorcio deve ser maior que zero."),
   id_estagio: z.string().trim().min(1, "Estagio obrigatorio."),
   id_funcionario: z.string().trim().min(1, "Funcionario obrigatorio."),
+  id_whatsapp_instancia: z.string().trim().min(1, "Instancia invalida.").nullable().optional(),
 });
 
 export const esquemaMoverLead = z.object({
