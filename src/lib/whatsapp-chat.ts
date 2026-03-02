@@ -25,6 +25,7 @@ type InstanciaResolvida = {
 type MensagemNormalizada = {
   messageId: string;
   remoteJid: string;
+  remoteJidAlt: string | null;
   fromMe: boolean;
   kind: "text" | "unsupported";
   text: string;
@@ -116,6 +117,7 @@ export function normalizarMensagensEvolution(payload: unknown): MensagemNormaliz
     .map((raw): MensagemNormalizada | null => {
       const key = (raw.key ?? {}) as Record<string, unknown>;
       const remoteJid = typeof key.remoteJid === "string" ? key.remoteJid : "";
+      const remoteJidAlt = typeof key.remoteJidAlt === "string" ? key.remoteJidAlt : null;
       const messageId = typeof key.id === "string" ? key.id : "";
       if (!remoteJid || !messageId) return null;
 
@@ -128,6 +130,7 @@ export function normalizarMensagensEvolution(payload: unknown): MensagemNormaliz
       return {
         messageId,
         remoteJid,
+        remoteJidAlt,
         fromMe,
         kind,
         text,
@@ -222,6 +225,16 @@ export async function buscarConnectionStatus(instanceName: string): Promise<Chat
 }
 
 export async function buscarMensagensEvolution(instanceName: string, remoteJid: string) {
+  const telefoneBusca = remoteJid.replace(/\D/g, "");
+  const where = telefoneBusca
+    ? {
+        OR: [
+          { key: { remoteJid: `${telefoneBusca}@s.whatsapp.net` } },
+          { key: { remoteJidAlt: `${telefoneBusca}@s.whatsapp.net` } },
+        ],
+      }
+    : { key: { remoteJid } };
+
   const controller = new AbortController();
   const timeout = setTimeout(() => {
     controller.abort();
@@ -233,7 +246,7 @@ export async function buscarMensagensEvolution(instanceName: string, remoteJid: 
       method: "POST",
       headers: payloadHeaders(),
       body: JSON.stringify({
-        where: { key: { remoteJid } },
+        where,
         limit: 80,
       }),
       signal: controller.signal,

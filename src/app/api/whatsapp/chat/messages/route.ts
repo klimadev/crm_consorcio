@@ -65,7 +65,8 @@ export async function GET(request: NextRequest) {
       const targetNumber = remoteJidInfo.waNumber.replace(/\D/g, "");
 
       const mensagensNormalizadas = normalizarMensagensEvolution(payload).filter((mensagem) => {
-        const msgNumber = mensagem.remoteJid.replace(/\D/g, "");
+        const jidComparacao = mensagem.remoteJidAlt ?? mensagem.remoteJid;
+        const msgNumber = jidComparacao.replace(/\D/g, "");
         return msgNumber.includes(targetNumber) || targetNumber.includes(msgNumber);
       });
 
