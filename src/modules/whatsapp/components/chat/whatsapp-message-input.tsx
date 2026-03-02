@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { SendHorizonal } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { SendHorizonal, Mic, Paperclip, Smile, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Props = {
@@ -12,35 +12,86 @@ type Props = {
 
 export function WhatsappMessageInput({ disabled, sending, onSend }: Props) {
   const [text, setText] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!disabled && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [disabled]);
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!text.trim() || disabled || sending) return;
+    const content = text;
+    setText("");
+    await onSend(content);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
 
   return (
     <form
-      className="sticky bottom-0 border-t border-slate-200 bg-white p-3"
-      onSubmit={async (event) => {
-        event.preventDefault();
-        if (!text.trim() || disabled || sending) return;
-        const content = text;
-        setText("");
-        await onSend(content);
-      }}
+      className="flex items-center gap-2 px-3 py-2.5 bg-[#f0f2f5]"
+      onSubmit={handleSubmit}
     >
-      <div className="flex items-center gap-2 rounded-full bg-slate-100 p-1.5 pr-1">
+      <div className="flex items-center gap-1">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 rounded-full text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+          disabled={disabled}
+        >
+          <Smile className="h-5 w-5" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 rounded-full text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+          disabled={disabled}
+        >
+          <Paperclip className="h-5 w-5" />
+        </Button>
+      </div>
+
+      <div className="flex-1 flex items-center bg-white rounded-[20px] px-4 py-2 shadow-sm border border-transparent focus-within:border-[#00a884] focus-within:shadow-md transition-all">
         <input
-          className="h-9 flex-1 bg-transparent px-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          ref={inputRef}
+          className="flex-1 bg-transparent text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none min-h-[20px] max-h-[100px]"
           placeholder="Digite uma mensagem..."
           value={text}
           disabled={disabled}
           onChange={(event) => setText(event.target.value)}
+          onKeyDown={handleKeyDown}
         />
+      </div>
+
+      {text.trim() ? (
         <Button
           type="submit"
           size="icon"
           disabled={disabled || sending || !text.trim()}
-          className="h-9 w-9 rounded-full bg-emerald-600 text-white hover:scale-105 hover:bg-emerald-700 active:scale-95"
+          className="h-10 w-10 rounded-full bg-[#00a884] text-white hover:bg-[#008f6b] active:scale-95 transition-all shadow-sm"
         >
-          <SendHorizonal className="h-4 w-4" />
+          <Send className="h-5 w-5" />
         </Button>
-      </div>
+      ) : (
+        <Button
+          type="button"
+          size="icon"
+          disabled={disabled}
+          className="h-10 w-10 rounded-full text-slate-400 hover:bg-slate-200"
+        >
+          <Mic className="h-5 w-5" />
+        </Button>
+      )}
     </form>
   );
 }

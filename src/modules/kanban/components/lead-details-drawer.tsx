@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, X, Phone, FileText, Trash2, Send, MessageCircle } from "lucide-react";
 import {
   aplicaMascaraMoedaBr,
   aplicaMascaraTelefoneBr,
@@ -143,272 +142,331 @@ export function LeadDetailsDrawer({
   });
 
   return (
-    <Drawer open={Boolean(leadSelecionado)} onOpenChange={handleOpenChange}>
-      <DrawerContent className="mx-auto w-full max-w-xl">
-        <DrawerHeader>
-          <DrawerTitle>{leadSelecionado?.nome}</DrawerTitle>
-          <DrawerDescription>
-            <span className="flex items-center gap-2">
-              {salvando && <span className="text-amber-600">Salvando...</span>}
-              {salvo && !salvando && <span className="text-green-600">Salvo ✓</span>}
+    <>
+      <Sheet open={Boolean(leadSelecionado)} onOpenChange={handleOpenChange}>
+        <SheetContent side="right" className="w-full sm:max-w-lg flex flex-col h-full overflow-hidden p-0">
+          <SheetHeader className="px-4 py-3 border-b bg-gradient-to-r from-emerald-600 to-emerald-700 text-white space-y-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <MessageCircle className="h-5 w-5 flex-shrink-0" />
+                <SheetTitle className="text-white text-base truncate">{leadSelecionado?.nome}</SheetTitle>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-white hover:bg-white/20 flex-shrink-0"
+                onClick={() => handleOpenChange(false)}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <SheetDescription className="text-emerald-100 flex items-center gap-2">
+              <Phone className="h-3 w-3" />
+              {leadSelecionado?.telefone}
+              {salvando && <span className="text-amber-200">• Salvando...</span>}
+              {salvo && !salvando && <span className="text-emerald-200">• Salvo ✓</span>}
               {!salvando && !salvo && hasChanges && (
-                <span className="flex items-center gap-1 text-amber-600">
+                <span className="flex items-center gap-1 text-amber-200">
                   <AlertCircle className="h-3 w-3" />
                   Alterações não salvas
                 </span>
               )}
-              {!salvando && !salvo && !hasChanges && "Detalhes do lead"}
-            </span>
-          </DrawerDescription>
-        </DrawerHeader>
+            </SheetDescription>
+          </SheetHeader>
 
-        {leadSelecionado ? (
-          <Tabs key={leadSelecionado.id} value={tabAtiva} onValueChange={setTabAtiva} className="p-4 pb-6">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
-              <TabsTrigger value="chat" className="relative">
-                Chat WhatsApp
-                {whatsappChat.unreadCount > 0 ? (
-                  <span className="ml-2 h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-                ) : null}
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="detalhes" className="space-y-3">
-            {perfil === "EMPRESA" ? (
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">Instancia WhatsApp do lead</label>
-                <Select
-                  value={leadSelecionado.id_whatsapp_instancia ?? "none"}
-                  onValueChange={(value) =>
-                    handleMudarLead({
-                      ...leadSelecionado,
-                      id_whatsapp_instancia: value === "none" ? null : value,
-                    })
-                  }
-                  disabled={carregandoInstancias}
-                >
-                  <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50">
-                    <SelectValue placeholder="Selecione uma instancia" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Sem instancia</SelectItem>
-                    {instancias.map((instancia) => (
-                      <SelectItem key={instancia.id} value={instancia.id}>
-                        {instancia.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {erroInstancias ? <p className="text-xs text-rose-600">{erroInstancias}</p> : null}
-                <p className="text-xs text-slate-500">
-                  Sem instancia configurada, o chat WhatsApp deste lead fica bloqueado.
-                </p>
-              </div>
-            ) : null}
-
-            <Input
-              className="h-11 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
-              value={leadSelecionado.telefone}
-              onChange={(e) =>
-                handleMudarLead({
-                  ...leadSelecionado,
-                  telefone: aplicaMascaraTelefoneBr(e.target.value),
-                })
-              }
-            />
-            <Input
-              className="h-11 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
-              inputMode="numeric"
-              value={aplicaMascaraMoedaBr(String(Math.round(leadSelecionado.valor_consorcio * 100)))}
-              onChange={(e) =>
-                handleMudarLead({
-                  ...leadSelecionado,
-                  valor_consorcio: converteMoedaBrParaNumero(e.target.value),
-                })
-              }
-            />
-            <Textarea
-              className="rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50 min-h-[80px]"
-              placeholder="Observações..."
-              value={leadSelecionado.observacoes ?? ""}
-              onChange={(e) =>
-                handleMudarLead({
-                  ...leadSelecionado,
-                  observacoes: e.target.value,
-                })
-              }
-            />
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">
-                Documento de Aprovação (Pdf)
-              </label>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="file"
-                  accept="application/pdf"
-                  id="documento-upload"
-                  className="block w-full text-sm text-slate-500
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-md file:border-0
-                    file:text-sm file:font-medium
-                    file:bg-sky-50 file:text-sky-700
-                    hover:file:bg-sky-100
-                  "
-                  onChange={(e) => {
-                    const arquivo = e.target.files?.[0];
-                    if (arquivo) {
-                      if (arquivo.type !== "application/pdf") {
-                        return;
-                      }
-                      if (arquivo.size > 10 * 1024 * 1024) {
-                        return;
-                      }
-                      setArquivoSelecionado(arquivo);
-                      setErroDetalhesLead(null);
-                      setTimeout(() => onSalvarDetalhesLead(leadSelecionado), 100);
-                    }
-                  }}
-                />
-              </div>
-              {arquivoSelecionado && (
-                <p className="text-sm text-sky-600">
-                  Arquivo selecionado: {arquivoSelecionado.name}
-                </p>
-              )}
-
-              <div className="relative">
-                <p className="mb-1 text-xs font-medium text-slate-500">Ou cole uma URL:</p>
-                <Input
-                  className="h-10 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
-                  placeholder="URL do documento (Google Drive, etc)"
-                  value={documentoAprovacaoUrl}
-                  onChange={(e) => {
-                    setDocumentoAprovacaoUrl(e.target.value);
-                    setTemAlteracoes(true);
-                    if (e.target.value) setArquivoSelecionado(null);
-                  }}
-                />
-              </div>
-
-              {leadSelecionado?.documento_aprovacao_url && (
-                <a
-                  href={leadSelecionado.documento_aprovacao_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block text-sm font-medium text-sky-600 hover:underline"
-                >
-                  Ver documento atual
-                </a>
-              )}
-
-              <p className="text-xs text-slate-500">
-                O documento de aprovação é opcional, mas sua ausência gera uma pendência.
-              </p>
-            </div>
-
-            {pendenciasLead.some((p) => p.tipo === "DOCUMENTO_APROVACAO_PENDENTE") && (
-              <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 p-3 text-sm text-amber-800 shadow-sm">
-                <p className="font-semibold">Pendencia: Documento de Aprovacao</p>
-                <p className="mt-1 text-xs">Este lead nao possui documento de aprovacao anexado.</p>
-              </div>
-            )}
-
-            {leadSelecionado.motivo_perda ? (
-              <div className="rounded-xl border border-rose-200/60 bg-rose-50/50 p-3 text-sm text-rose-700 shadow-sm">
-                <p className="font-semibold">Motivo da perda:</p>
-                <p className="mt-1 text-xs">{leadSelecionado.motivo_perda}</p>
-              </div>
-            ) : null}
-
-            {pendenciasLead.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-slate-700">Pendencias</p>
-                {pendenciasLead.map((pendencia) => (
-                  <div
-                    key={pendencia.id}
-                    className="flex items-center justify-between rounded-xl border border-rose-200/60 bg-rose-50/50 p-3"
+          {leadSelecionado ? (
+            <Tabs value={tabAtiva} onValueChange={setTabAtiva} className="flex-1 flex flex-col min-h-0">
+              <div className="px-4 py-2 border-b bg-slate-50">
+                <TabsList className="grid w-full grid-cols-2 bg-slate-200">
+                  <TabsTrigger 
+                    value="detalhes" 
+                    className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-sm"
                   >
-                    <div>
-                      <p className="text-sm font-semibold text-slate-700">
-                        {LABELS_PENDENCIA[pendencia.tipo] || pendencia.tipo}
-                      </p>
-                      <p className="text-xs text-slate-500">{pendencia.descricao}</p>
-                    </div>
-                  </div>
-                ))}
+                    <FileText className="h-4 w-4 mr-2" />
+                    Detalhes
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="chat" 
+                    className="relative data-[state=active]:bg-white data-[state=active]:shadow-sm text-sm"
+                  >
+                    <MessageCircle className="h-4 w-4 mr-2" />
+                    Chat
+                    {whatsappChat.unreadCount > 0 ? (
+                      <span className="ml-1 h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                    ) : null}
+                  </TabsTrigger>
+                </TabsList>
               </div>
-            )}
 
-            {erroDetalhesLead ? <p className="text-sm font-medium text-rose-600">{erroDetalhesLead}</p> : null}
+              <TabsContent value="detalhes" className="flex-1 overflow-y-auto p-4 m-0 space-y-4">
+                {perfil === "EMPRESA" ? (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                      <MessageCircle className="h-4 w-4 text-emerald-600" />
+                      Instância WhatsApp do lead
+                    </label>
+                    <Select
+                      value={leadSelecionado.id_whatsapp_instancia ?? "none"}
+                      onValueChange={(value) =>
+                        handleMudarLead({
+                          ...leadSelecionado,
+                          id_whatsapp_instancia: value === "none" ? null : value,
+                        })
+                      }
+                      disabled={carregandoInstancias}
+                    >
+                      <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-white text-sm text-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20">
+                        <SelectValue placeholder="Selecione uma instância" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sem instância</SelectItem>
+                        {instancias.map((instancia) => (
+                          <SelectItem key={instancia.id} value={instancia.id}>
+                            {instancia.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {erroInstancias ? <p className="text-xs text-rose-600">{erroInstancias}</p> : null}
+                    <p className="text-xs text-slate-500">
+                      Sem instância configurada, o chat WhatsApp deste lead fica bloqueado.
+                    </p>
+                  </div>
+                ) : null}
 
-            {hasChanges && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-emerald-600" />
+                    Telefone
+                  </label>
+                  <Input
+                    className="h-11 rounded-xl border-slate-200 bg-white text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                    value={leadSelecionado.telefone}
+                    onChange={(e) =>
+                      handleMudarLead({
+                        ...leadSelecionado,
+                        telefone: aplicaMascaraTelefoneBr(e.target.value),
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700">Valor do Consórcio</label>
+                  <Input
+                    className="h-11 rounded-xl border-slate-200 bg-white text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                    inputMode="numeric"
+                    value={aplicaMascaraMoedaBr(String(Math.round(leadSelecionado.valor_consorcio * 100)))}
+                    onChange={(e) =>
+                      handleMudarLead({
+                        ...leadSelecionado,
+                        valor_consorcio: converteMoedaBrParaNumero(e.target.value),
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700">Observações</label>
+                  <Textarea
+                    className="rounded-xl border-slate-200 bg-white text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 min-h-[100px]"
+                    placeholder="Observações..."
+                    value={leadSelecionado.observacoes ?? ""}
+                    onChange={(e) =>
+                      handleMudarLead({
+                        ...leadSelecionado,
+                        observacoes: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-emerald-600" />
+                    Documento de Aprovação (Pdf)
+                  </label>
+
+                  <div className="rounded-xl border-2 border-dashed border-slate-200 p-4 hover:border-emerald-400 transition-colors">
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      id="documento-upload"
+                      className="block w-full text-sm text-slate-500
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-lg file:border-0
+                        file:text-sm file:font-medium
+                        file:bg-emerald-50 file:text-emerald-700
+                        hover:file:bg-emerald-100
+                      "
+                      onChange={(e) => {
+                        const arquivo = e.target.files?.[0];
+                        if (arquivo) {
+                          if (arquivo.type !== "application/pdf") {
+                            return;
+                          }
+                          if (arquivo.size > 10 * 1024 * 1024) {
+                            return;
+                          }
+                          setArquivoSelecionado(arquivo);
+                          setErroDetalhesLead(null);
+                          setTimeout(() => onSalvarDetalhesLead(leadSelecionado), 100);
+                        }
+                      }}
+                    />
+                  </div>
+                  {arquivoSelecionado && (
+                    <p className="text-sm text-emerald-600 font-medium">
+                      ✓ Arquivo selecionado: {arquivoSelecionado.name}
+                    </p>
+                  )}
+
+                  <div className="relative">
+                    <p className="mb-1 text-xs font-medium text-slate-500">Ou cole uma URL:</p>
+                    <Input
+                      className="h-10 rounded-xl border-slate-200 bg-white text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                      placeholder="URL do documento (Google Drive, etc)"
+                      value={documentoAprovacaoUrl}
+                      onChange={(e) => {
+                        setDocumentoAprovacaoUrl(e.target.value);
+                        setTemAlteracoes(true);
+                        if (e.target.value) setArquivoSelecionado(null);
+                      }}
+                    />
+                  </div>
+
+                  {leadSelecionado?.documento_aprovacao_url && (
+                    <a
+                      href={leadSelecionado.documento_aprovacao_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:underline"
+                    >
+                      <FileText className="h-4 w-4" />
+                      Ver documento atual
+                    </a>
+                  )}
+
+                  <p className="text-xs text-slate-500">
+                    O documento de aprovação é opcional, mas sua ausência gera uma pendência.
+                  </p>
+                </div>
+
+                {pendenciasLead.some((p) => p.tipo === "DOCUMENTO_APROVACAO_PENDENTE") && (
+                  <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 p-4 text-sm text-amber-800 shadow-sm">
+                    <p className="font-semibold flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4" />
+                      Pendência: Documento de Aprovação
+                    </p>
+                    <p className="mt-1 text-xs">Este lead não possui documento de aprovação anexado.</p>
+                  </div>
+                )}
+
+                {leadSelecionado.motivo_perda ? (
+                  <div className="rounded-xl border border-rose-200/60 bg-rose-50/50 p-4 text-sm text-rose-700 shadow-sm">
+                    <p className="font-semibold">Motivo da perda:</p>
+                    <p className="mt-1 text-xs">{leadSelecionado.motivo_perda}</p>
+                  </div>
+                ) : null}
+
+                {pendenciasLead.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-slate-700">Pendências</p>
+                    {pendenciasLead.map((pendencia) => (
+                      <div
+                        key={pendencia.id}
+                        className="flex items-center justify-between rounded-xl border border-rose-200/60 bg-rose-50/50 p-3"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-slate-700">
+                            {LABELS_PENDENCIA[pendencia.tipo] || pendencia.tipo}
+                          </p>
+                          <p className="text-xs text-slate-500">{pendencia.descricao}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {erroDetalhesLead ? (
+                  <p className="text-sm font-medium text-rose-600 bg-rose-50 p-3 rounded-xl">{erroDetalhesLead}</p>
+                ) : null}
+
+                {hasChanges && (
+                  <Button
+                    className="w-full rounded-xl text-sm font-medium bg-emerald-600 hover:bg-emerald-700"
+                    onClick={handleSalvar}
+                    disabled={salvando}
+                  >
+                    {salvando ? "Salvando..." : "Salvar Alterações"}
+                  </Button>
+                )}
+
+                <div className="pt-4 border-t">
+                  <Button
+                    variant="destructive"
+                    className="w-full rounded-xl text-sm font-medium"
+                    onClick={() => setConfirmarExclusaoAberta(true)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Excluir Lead
+                  </Button>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="chat" className="flex-1 m-0 overflow-hidden">
+                <WhatsappChatPanel
+                  leadNome={leadSelecionado.nome}
+                  messages={whatsappChat.messages}
+                  connectionStatus={whatsappChat.connectionStatus}
+                  loading={whatsappChat.loading}
+                  sending={whatsappChat.sending}
+                  canSend={whatsappChat.canSend}
+                  error={whatsappChat.error}
+                  blockedReason={chatConfigurado ? null : "Lead sem instância WhatsApp configurada pela empresa."}
+                  onSendMessage={whatsappChat.sendMessage}
+                  onRetryMessage={whatsappChat.retryMessage}
+                />
+              </TabsContent>
+            </Tabs>
+          ) : null}
+        </SheetContent>
+      </Sheet>
+
+      {confirmarExclusaoAberta && leadSelecionado && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-center mb-4">
+              <div className="h-12 w-12 rounded-full bg-rose-100 flex items-center justify-center">
+                <Trash2 className="h-6 w-6 text-rose-600" />
+              </div>
+            </div>
+            <h3 className="text-lg font-semibold text-center text-slate-900 mb-2">Excluir lead</h3>
+            <p className="text-sm text-slate-600 text-center mb-6">
+              Tem certeza que deseja excluir <strong>{leadSelecionado.nome}</strong>? Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-3">
               <Button
-                className="w-full rounded-xl text-sm font-medium"
-                onClick={handleSalvar}
-                disabled={salvando}
+                variant="outline"
+                className="flex-1 rounded-xl"
+                onClick={() => setConfirmarExclusaoAberta(false)}
               >
-                {salvando ? "Salvando..." : "Salvar Alterações"}
+                Cancelar
               </Button>
-            )}
-
-            <div className="flex gap-2">
               <Button
                 variant="destructive"
-                className="w-full rounded-xl text-sm font-medium"
-                onClick={() => setConfirmarExclusaoAberta(true)}
+                className="flex-1 rounded-xl"
+                onClick={async () => {
+                  await onExcluirLead(leadSelecionado.id);
+                  setConfirmarExclusaoAberta(false);
+                }}
               >
                 Excluir
               </Button>
             </div>
-
-            <Dialog open={confirmarExclusaoAberta} onOpenChange={setConfirmarExclusaoAberta}>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Excluir lead</DialogTitle>
-                  <DialogDescription>
-                    Tem certeza que deseja excluir este lead? Esta ação não pode ser desfeita.
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter className="gap-2 sm:gap-0">
-                  <Button type="button" variant="outline" onClick={() => setConfirmarExclusaoAberta(false)}>
-                    Cancelar
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={async () => {
-                      await onExcluirLead(leadSelecionado.id);
-                      setConfirmarExclusaoAberta(false);
-                    }}
-                  >
-                    Excluir
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            </TabsContent>
-
-            <TabsContent value="chat">
-              <WhatsappChatPanel
-                leadNome={leadSelecionado.nome}
-                messages={whatsappChat.messages}
-                connectionStatus={whatsappChat.connectionStatus}
-                loading={whatsappChat.loading}
-                sending={whatsappChat.sending}
-                canSend={whatsappChat.canSend}
-                error={whatsappChat.error}
-                blockedReason={chatConfigurado ? null : "Lead sem instancia WhatsApp configurada pela empresa."}
-                onSendMessage={whatsappChat.sendMessage}
-                onRetryMessage={whatsappChat.retryMessage}
-              />
-            </TabsContent>
-          </Tabs>
-        ) : null}
-      </DrawerContent>
-    </Drawer>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
