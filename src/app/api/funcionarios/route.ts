@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ erro: "Preencha todos os campos." }, { status: 400 });
   }
 
-  if (!["COLABORADOR", "GERENTE"].includes(cargo)) {
+  if (!["COLABORADOR", "GERENTE", "ADMINISTRADOR"].includes(cargo)) {
     return NextResponse.json({ erro: "Cargo invalido." }, { status: 400 });
   }
 

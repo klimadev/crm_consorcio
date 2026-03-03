@@ -287,7 +287,7 @@ export const esquemaAtualizarPendencia = z.object({
   resolvida: z.boolean().optional(),
 });
 
-export const CARGOS_EQUIPE = ["COLABORADOR", "GERENTE"] as const;
+export const CARGOS_EQUIPE = ["COLABORADOR", "GERENTE", "ADMINISTRADOR"] as const;
 
 export const schemaAtualizarFuncionario = z.object({
   nome: z.string().trim().min(2, "Nome deve ter ao menos 2 caracteres."),

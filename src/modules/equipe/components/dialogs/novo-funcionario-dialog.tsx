@@ -59,6 +59,7 @@ export function NovoFuncionarioDialog({ vm }: NovoFuncionarioDialogProps) {
             <SelectContent>
               <SelectItem value="COLABORADOR">Colaborador</SelectItem>
               <SelectItem value="GERENTE">Gerente</SelectItem>
+              <SelectItem value="ADMINISTRADOR">Administrador</SelectItem>
             </SelectContent>
           </Select>
 

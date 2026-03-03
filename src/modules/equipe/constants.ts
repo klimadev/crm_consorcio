@@ -1,4 +1,4 @@
-export const CARGOS_EQUIPE = ["COLABORADOR", "GERENTE"] as const;
+export const CARGOS_EQUIPE = ["COLABORADOR", "GERENTE", "ADMINISTRADOR"] as const;
 
 export const PASTEL_COLORS = [
   { bg: "bg-violet-100", text: "text-violet-700", ring: "ring-violet-200" },

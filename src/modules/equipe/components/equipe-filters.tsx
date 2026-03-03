@@ -44,6 +44,7 @@ export function EquipeFilters({ vm }: EquipeFiltersProps) {
               <SelectItem value="TODOS">Todos</SelectItem>
               <SelectItem value="COLABORADOR">Colaborador</SelectItem>
               <SelectItem value="GERENTE">Gerente</SelectItem>
+              <SelectItem value="ADMINISTRADOR">Administrador</SelectItem>
             </SelectContent>
           </Select>
         </div>

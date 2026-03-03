@@ -1,5 +1,5 @@
 export type Perfil = "EMPRESA" | "GERENTE" | "COLABORADOR";
-export type CargoFuncionario = "GERENTE" | "COLABORADOR";
+export type CargoFuncionario = "GERENTE" | "COLABORADOR" | "ADMINISTRADOR";
 export type TipoEstagioFunil = "ABERTO" | "GANHO" | "PERDIDO";
 
 export type SessaoToken = {

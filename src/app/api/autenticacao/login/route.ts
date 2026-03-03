@@ -52,14 +52,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ erro: "Credenciais invalidas." }, { status: 401 });
   }
 
+  const perfilFuncionario = (funcionario.cargo === "ADMINISTRADOR" ? "EMPRESA" : funcionario.cargo) as Perfil;
+
   const token = await criarTokenSessao({
     id_usuario: funcionario.id,
     id_empresa: funcionario.id_empresa,
-    perfil: funcionario.cargo as Perfil,
+    perfil: perfilFuncionario,
     id_pdv: funcionario.id_pdv,
   });
 
-  const resposta = NextResponse.json({ ok: true, perfil: funcionario.cargo as Perfil });
+  const resposta = NextResponse.json({ ok: true, perfil: perfilFuncionario });
   definirCookieSessao(resposta, token);
   return resposta;
 }

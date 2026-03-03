@@ -145,6 +145,7 @@ export function EquipeMobileList({ vm }: EquipeMobileListProps) {
                   <SelectContent>
                     <SelectItem value="COLABORADOR">COLABORADOR</SelectItem>
                     <SelectItem value="GERENTE">GERENTE</SelectItem>
+                    <SelectItem value="ADMINISTRADOR">ADMINISTRADOR</SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="flex gap-2">

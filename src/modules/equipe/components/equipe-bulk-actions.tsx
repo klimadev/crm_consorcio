@@ -54,6 +54,7 @@ export function EquipeBulkActions({ vm }: EquipeBulkActionsProps) {
           <SelectContent>
             <SelectItem value="COLABORADOR">COLABORADOR</SelectItem>
             <SelectItem value="GERENTE">GERENTE</SelectItem>
+            <SelectItem value="ADMINISTRADOR">ADMINISTRADOR</SelectItem>
           </SelectContent>
         </Select>
       ) : null}
