@@ -38,8 +38,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   const querAtualizarInstancia = Object.prototype.hasOwnProperty.call(body, "id_whatsapp_instancia");
-  if (querAtualizarInstancia && auth.sessao.perfil !== "EMPRESA") {
-    return NextResponse.json({ erro: "Apenas a empresa pode definir a instancia do lead." }, { status: 403 });
+  if (querAtualizarInstancia && auth.sessao.perfil !== "EMPRESA" && auth.sessao.perfil !== "GERENTE") {
+    return NextResponse.json({ erro: "Apenas a empresa ou gerente pode definir a instancia do lead." }, { status: 403 });
   }
 
   let idWhatsappInstanciaAtualizada: string | null | undefined;

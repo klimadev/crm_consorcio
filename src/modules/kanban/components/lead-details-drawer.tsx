@@ -104,7 +104,7 @@ export function LeadDetailsDrawer({
   const chatConfigurado = Boolean(leadSelecionado?.id_whatsapp_instancia);
 
   useEffect(() => {
-    if (!leadSelecionado || perfil !== "EMPRESA") return;
+    if (!leadSelecionado || (perfil !== "EMPRESA" && perfil !== "GERENTE")) return;
 
     const carregarInstancias = async () => {
       setCarregandoInstancias(true);
@@ -199,7 +199,7 @@ export function LeadDetailsDrawer({
               </div>
 
               <TabsContent value="detalhes" className="flex-1 overflow-y-auto p-4 m-0 space-y-4">
-                {perfil === "EMPRESA" ? (
+                {(perfil === "EMPRESA" || perfil === "GERENTE") ? (
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
                       <MessageCircle className="h-4 w-4 text-emerald-600" />

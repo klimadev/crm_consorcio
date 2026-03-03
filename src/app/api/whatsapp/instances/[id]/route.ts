@@ -18,9 +18,16 @@ export async function DELETE(request: NextRequest, { params }: Params) {
 
   const { id } = await params;
 
-  const instancia = await prisma.whatsappInstancia.findFirst({
-    where: { id, id_criador: auth.sessao.id_usuario },
-  });
+  let instancia;
+  if (auth.sessao.perfil === "GERENTE") {
+    instancia = await prisma.whatsappInstancia.findFirst({
+      where: { id, id_empresa: auth.sessao.id_empresa },
+    });
+  } else {
+    instancia = await prisma.whatsappInstancia.findFirst({
+      where: { id, id_criador: auth.sessao.id_usuario },
+    });
+  }
 
   if (!instancia) {
     return NextResponse.json({ erro: "Instância não encontrada ou acesso negado." }, { status: 404 });
@@ -51,9 +58,16 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   const { id } = await params;
 
-  const instancia = await prisma.whatsappInstancia.findFirst({
-    where: { id, id_criador: auth.sessao.id_usuario },
-  });
+  let instancia;
+  if (auth.sessao.perfil === "GERENTE") {
+    instancia = await prisma.whatsappInstancia.findFirst({
+      where: { id, id_empresa: auth.sessao.id_empresa },
+    });
+  } else {
+    instancia = await prisma.whatsappInstancia.findFirst({
+      where: { id, id_criador: auth.sessao.id_usuario },
+    });
+  }
 
   if (!instancia) {
     return NextResponse.json({ erro: "Instância não encontrada ou acesso negado." }, { status: 404 });

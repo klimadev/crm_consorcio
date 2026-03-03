@@ -97,7 +97,7 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
     {
       titulo: "SISTEMA",
       itens: [
-        ...(sessao.perfil === "EMPRESA"
+        ...(sessao.perfil === "EMPRESA" || sessao.perfil === "GERENTE"
           ? [{ href: "/whatsapp", label: "WhatsApp", icon: MessageCircle, tourTarget: TOUR_TARGETS.sidebarWhatsapp }]
           : []),
         ...(sessao.perfil === "EMPRESA"

@@ -9,7 +9,7 @@ export default async function PaginaWhatsapp() {
     redirect("/login");
   }
 
-  if (sessao.perfil !== "EMPRESA") {
+  if (sessao.perfil !== "EMPRESA" && sessao.perfil !== "GERENTE") {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">

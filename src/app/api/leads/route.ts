@@ -70,8 +70,8 @@ export async function POST(request: NextRequest) {
   const dadosValidados = validacao.data;
 
   const idWhatsappInstancia = dadosValidados.id_whatsapp_instancia ?? null;
-  if (idWhatsappInstancia && auth.sessao.perfil !== "EMPRESA") {
-    return NextResponse.json({ erro: "Apenas a empresa pode definir a instancia do lead." }, { status: 403 });
+  if (idWhatsappInstancia && auth.sessao.perfil !== "EMPRESA" && auth.sessao.perfil !== "GERENTE") {
+    return NextResponse.json({ erro: "Apenas a empresa ou gerente pode definir a instancia do lead." }, { status: 403 });
   }
 
   const [estagio, funcionario, instancia] = await Promise.all([

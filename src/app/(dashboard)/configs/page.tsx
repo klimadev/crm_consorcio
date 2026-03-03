@@ -8,7 +8,7 @@ export default async function PaginaConfigs() {
     return null;
   }
 
-  if (sessao.perfil !== "EMPRESA") {
+  if (sessao.perfil !== "EMPRESA" && sessao.perfil !== "GERENTE") {
     return <p className="text-sm text-sky-600">Acesso permitido apenas para perfil EMPRESA.</p>;
   }
 
