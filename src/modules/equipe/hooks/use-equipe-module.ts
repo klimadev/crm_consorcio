@@ -386,6 +386,7 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
       setStatusSalvamento({ id, estado: "saving", mensagem: "Salvando alteracoes..." });
 
       let funcionarioAnterior: Funcionario | null = null;
+      let encontrouFuncionarioNaLista = false;
 
       setFuncionarios((atual) =>
         atual.map((item) => {
@@ -393,15 +394,11 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
             return item;
           }
 
+          encontrouFuncionarioNaLista = true;
           funcionarioAnterior = item;
           return atualizarFuncionarioNaLista(item, dados, pdvs);
         }),
       );
-
-      if (!funcionarioAnterior) {
-        setStatusSalvamento({ id, estado: "error", mensagem: "Funcionario nao encontrado." });
-        return false;
-      }
 
       try {
         const resposta = await fetch(`/api/funcionarios/${id}`, {
@@ -412,7 +409,9 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
 
         if (!resposta.ok) {
           const json = await resposta.json().catch(() => null);
-          setFuncionarios((atual) => atual.map((item) => (item.id === id ? funcionarioAnterior ?? item : item)));
+          if (encontrouFuncionarioNaLista && funcionarioAnterior) {
+            setFuncionarios((atual) => atual.map((item) => (item.id === id ? funcionarioAnterior ?? item : item)));
+          }
           setStatusSalvamento({
             id,
             estado: "error",
@@ -438,7 +437,9 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
 
         return true;
       } catch {
-        setFuncionarios((atual) => atual.map((item) => (item.id === id ? funcionarioAnterior ?? item : item)));
+        if (encontrouFuncionarioNaLista && funcionarioAnterior) {
+          setFuncionarios((atual) => atual.map((item) => (item.id === id ? funcionarioAnterior ?? item : item)));
+        }
         setStatusSalvamento({ id, estado: "error", mensagem: "Erro ao salvar alteracoes." });
         return false;
       }
@@ -551,13 +552,14 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
 
   const salvarEdicaoAtual = useCallback(async () => {
     if (!editandoId || !dadosEdicao) {
-      return;
+      return false;
     }
 
     const ok = await salvarFuncionario(editandoId, dadosEdicao);
     if (ok) {
       fecharDrawerEdicao();
     }
+    return ok;
   }, [fecharDrawerEdicao, dadosEdicao, editandoId, salvarFuncionario]);
 
   const funcionariosAtivosParaDestino = useMemo(
@@ -954,6 +956,7 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     drawerEdicaoAberto,
     fecharDrawerEdicao,
     dadosEdicao,
+    setDadosEdicao,
     errosEdicao,
     statusSalvamento,
     ultimoSnapshot,

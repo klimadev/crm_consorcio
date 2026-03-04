@@ -19,7 +19,11 @@ export function EquipeFilters({ vm }: EquipeFiltersProps) {
 
   // Sincroniza com o valor da URL quando muda externamente
   useEffect(() => {
-    setBuscaTempoReal(vm.busca);
+    const sincronizacao = setTimeout(() => {
+      setBuscaTempoReal(vm.busca);
+    }, 0);
+
+    return () => clearTimeout(sincronizacao);
   }, [vm.busca]);
 
   // Aplica debounce - só atualiza a URL após 400ms sem digitar

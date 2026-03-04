@@ -21,13 +21,17 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
 
   useEffect(() => {
     if (aberto && funcionario) {
-      setDados({
-        nome: funcionario.nome,
-        email: funcionario.email,
-        cargo: funcionario.cargo,
-        id_pdv: funcionario.pdv?.id ?? "",
-      });
-      setErros({});
+      const sincronizacao = setTimeout(() => {
+        setDados({
+          nome: funcionario.nome,
+          email: funcionario.email,
+          cargo: funcionario.cargo,
+          id_pdv: funcionario.pdv?.id ?? "",
+        });
+        setErros({});
+      }, 0);
+
+      return () => clearTimeout(sincronizacao);
     }
   }, [aberto, funcionario]);
 

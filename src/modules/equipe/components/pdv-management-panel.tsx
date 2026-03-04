@@ -13,6 +13,7 @@ type PdvManagementPanelProps = {
 };
 
 export function PdvManagementPanel({ vm }: PdvManagementPanelProps) {
+  const VALOR_SEM_INSTANCIA = "__SEM_INSTANCIA__";
   const [nomeEdicao, setNomeEdicao] = useState("");
   const [instanciaEdicao, setInstanciaEdicao] = useState<string>("");
 
@@ -107,12 +108,15 @@ export function PdvManagementPanel({ vm }: PdvManagementPanelProps) {
                       className="h-9"
                       placeholder="Nome do PDV"
                     />
-                    <Select value={instanciaEdicao} onValueChange={setInstanciaEdicao}>
+                    <Select
+                      value={instanciaEdicao || VALOR_SEM_INSTANCIA}
+                      onValueChange={(valor) => setInstanciaEdicao(valor === VALOR_SEM_INSTANCIA ? "" : valor)}
+                    >
                       <SelectTrigger className="h-9">
                         <SelectValue placeholder="Selecione uma instância WhatsApp" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Nenhuma</SelectItem>
+                        <SelectItem value={VALOR_SEM_INSTANCIA}>Nenhuma</SelectItem>
                         {vm.instancias.map((instancia) => (
                           <SelectItem key={instancia.id} value={instancia.id}>
                             {instancia.nome}
@@ -238,3 +242,4 @@ export function PdvManagementPanel({ vm }: PdvManagementPanelProps) {
     </div>
   );
 }
+

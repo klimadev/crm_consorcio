@@ -110,6 +110,7 @@ export type UseEquipeModuleReturn = {
   drawerEdicaoAberto: boolean;
   fecharDrawerEdicao: () => void;
   dadosEdicao: DadosEdicao | null;
+  setDadosEdicao: (dados: DadosEdicao | null) => void;
   errosEdicao: ErrosEdicao;
   statusSalvamento: StatusSalvamento;
   ultimoSnapshot: { id: string; dados: DadosEdicao } | null;
@@ -146,6 +147,7 @@ export type UseEquipeModuleReturn = {
   criarPdv: (nome: string) => Promise<void>;
   editarPdv: (id: string, nome: string, id_whatsapp_instancia?: string | null) => Promise<boolean>;
   excluirPdv: (id: string) => Promise<void>;
+  instancias: WhatsappInstancia[];
   funcionariosDestinoInativacao: FuncionarioDestinoInativacao | null;
   destinoInativacaoIndividual: string;
   setDestinoInativacaoIndividual: (destino: string) => void;
@@ -164,7 +166,7 @@ export type UseEquipeModuleReturn = {
   iniciarEdicao: (funcionario: Funcionario) => void;
   cancelarEdicao: () => void;
   aoMudarDado: (campo: keyof DadosEdicao, valor: string) => void;
-  salvarEdicaoAtual: () => Promise<void>;
+  salvarEdicaoAtual: () => Promise<boolean>;
   desfazerUltimaEdicao: () => Promise<void>;
   abrirModalInativacao: (funcionario: Funcionario) => void;
   confirmarInativacaoIndividual: () => Promise<void>;

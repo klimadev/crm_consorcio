@@ -28,6 +28,10 @@ function DrawerHeader({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
   return <div className={cn("mb-4", className)} {...props} />;
 }
 
+function DrawerFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("mt-4 flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)} {...props} />;
+}
+
 function DrawerTitle({ className, ...props }: React.ComponentProps<typeof DrawerPrimitive.Title>) {
   return <DrawerPrimitive.Title className={cn("text-lg font-semibold", className)} {...props} />;
 }
@@ -45,6 +49,7 @@ export {
   DrawerContent,
   DrawerClose,
   DrawerHeader,
+  DrawerFooter,
   DrawerTitle,
   DrawerDescription,
 };
