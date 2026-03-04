@@ -3,20 +3,13 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { criarTokenSessao, definirCookieSessao } from "@/lib/autenticacao";
 import { esquemaCadastroEmpresa, mensagemErroValidacao } from "@/lib/validacoes";
+import { ESTAGIOS_FIXOS_PADRAO } from "@/lib/estagios-fixos";
 
 type CorpoCadastroEmpresa = {
   nome?: string;
   email?: string;
   senha?: string;
 };
-
-const estagiosPadrao = [
-  { nome: "Novo Lead", tipo: "ABERTO", ordem: 1 },
-  { nome: "Em Atendimento", tipo: "ABERTO", ordem: 2 },
-  { nome: "Proposta", tipo: "ABERTO", ordem: 3 },
-  { nome: "Fechado", tipo: "GANHO", ordem: 4 },
-  { nome: "Perdido", tipo: "PERDIDO", ordem: 5 },
-] as const;
 
 export async function POST(request: Request) {
   const body = (await request.json()) as CorpoCadastroEmpresa;
@@ -49,7 +42,7 @@ export async function POST(request: Request) {
     });
 
     await tx.estagioFunil.createMany({
-      data: estagiosPadrao.map((estagio) => ({
+      data: ESTAGIOS_FIXOS_PADRAO.map((estagio) => ({
         id_empresa: novaEmpresa.id,
         nome: estagio.nome,
         tipo: estagio.tipo,

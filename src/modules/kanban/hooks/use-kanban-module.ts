@@ -47,6 +47,7 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
   const [erroNovoLead, setErroNovoLead] = useState<string | null>(null);
   const [erroDetalhesLead, setErroDetalhesLead] = useState<string | null>(null);
   const [documentoAprovacaoUrl, setDocumentoAprovacaoUrl] = useState("");
+  const [sincronizandoWhatsapp, setSincronizandoWhatsapp] = useState(false);
 
   const [salvando, setSalvando] = useState(false);
   const [salvo, setSalvo] = useState(false);
@@ -495,6 +496,36 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     [perfil, idUsuario, cargoNovoLead, telefoneNovoLead, valorNovoLead],
   );
 
+  const sincronizarWhatsapp = useCallback(async () => {
+    if (sincronizandoWhatsapp) {
+      return { ok: false, erro: "Sincronizacao ja em andamento." };
+    }
+
+    setSincronizandoWhatsapp(true);
+    try {
+      const resposta = await fetch("/api/leads/sync-whatsapp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const json = (await resposta.json().catch(() => ({}))) as {
+        erro?: string;
+        criados?: number;
+      };
+
+      if (!resposta.ok) {
+        return { ok: false, erro: json.erro ?? "Erro ao sincronizar contatos do WhatsApp." };
+      }
+
+      await bootstrap();
+      return { ok: true, criados: json.criados ?? 0 };
+    } catch {
+      return { ok: false, erro: "Erro ao sincronizar contatos do WhatsApp." };
+    } finally {
+      setSincronizandoWhatsapp(false);
+    }
+  }, [bootstrap, sincronizandoWhatsapp]);
+
   const excluirLead = useCallback(async (id: string) => {
     const resposta = await fetch(`/api/leads/${id}`, {
       method: "DELETE",
@@ -550,6 +581,8 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     salvarDetalhesLead,
     setLeadSelecionado,
     criarLead,
+    sincronizandoWhatsapp,
+    sincronizarWhatsapp,
     confirmarPerda,
     aoDragEnd,
     aoMudarLead,

@@ -1,2 +1,2 @@
 export { ModuloConfigs } from "./page";
-export type { Estagio, UseConfigsReturn } from "./types";
+export type { UseConfigsReturn } from "./types";

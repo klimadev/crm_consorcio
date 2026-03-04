@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { exigirSessao, whereLeadsPorPerfil } from "@/lib/permissoes";
 import { esquemaCriarLead, mensagemErroValidacao } from "@/lib/validacoes";
+import { garantirEstagiosFixosEmpresa } from "@/lib/estagios-fixos";
 
 
 export async function GET(request: NextRequest) {
@@ -9,6 +10,8 @@ export async function GET(request: NextRequest) {
   if (auth.erro) {
     return auth.erro;
   }
+
+  await garantirEstagiosFixosEmpresa(auth.sessao.id_empresa);
 
   const whereLeads = await whereLeadsPorPerfil(auth.sessao);
 
@@ -92,6 +95,7 @@ export async function POST(request: NextRequest) {
         nome: dadosValidados.nome,
         telefone: dadosValidados.telefone,
         valor_consorcio: dadosValidados.valor_consorcio,
+        origem: "MANUAL",
       },
     });
 

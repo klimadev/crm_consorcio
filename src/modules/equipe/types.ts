@@ -115,6 +115,7 @@ export type UseEquipeModuleReturn = {
   podeInativar: boolean;
   podeAdicionarFuncionario: boolean;
   busca: string;
+  idPdvFiltro: string;
   statusFiltro: string;
   cargoFiltro: string;
   ordenarPor: string;
@@ -123,8 +124,6 @@ export type UseEquipeModuleReturn = {
   porPagina: number;
   funcionariosAtivosParaDestino: Funcionario[];
   funcionariosDestinoMesmoPdv: Funcionario[];
-  abaAtiva: "colaboradores" | "pdvs";
-  setAbaAtiva: (aba: "colaboradores" | "pdvs") => void;
   carregandoPdvs: boolean;
   criandoPdv: boolean;
   pdvEmEdicao: PdvEmEdicao | null;
@@ -155,6 +154,7 @@ export type UseEquipeModuleReturn = {
   iniciarEdicao: (funcionario: Funcionario) => void;
   cancelarEdicao: () => void;
   aoMudarDado: (campo: keyof DadosEdicao, valor: string) => void;
+  salvarEdicaoAtual: () => Promise<void>;
   desfazerUltimaEdicao: () => Promise<void>;
   abrirModalInativacao: (funcionario: Funcionario) => void;
   confirmarInativacaoIndividual: () => Promise<void>;

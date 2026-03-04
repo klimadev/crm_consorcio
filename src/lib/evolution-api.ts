@@ -19,6 +19,11 @@ export type EvolutionInstance = {
   };
 };
 
+export type EvolutionContato = {
+  id: string;
+  nome: string | null;
+};
+
 export async function listarInstancias(): Promise<EvolutionInstance[]> {
   try {
     const resposta = await fetch(`${EVOLUTION_API_URL}/instance/fetchInstances`, {
@@ -178,4 +183,45 @@ export async function enviarMensagemTexto(params: EnviarMensagemTextoParams): Pr
       `${mensagemErro} (status=${resposta.status}, instancia=${params.instanceName}, numero=${mascararTelefoneParaLog(numeroNormalizado.waNumber)})`,
     );
   }
+}
+
+export async function buscarContatos(instanceName: string): Promise<EvolutionContato[]> {
+  const resposta = await fetch(`${EVOLUTION_API_URL}/chat/findContacts/${instanceName}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({}),
+  });
+
+  if (!resposta.ok) {
+    const erro = await resposta.json().catch(() => ({}));
+    throw new Error(erro.message ?? "Erro ao buscar contatos na Evolution");
+  }
+
+  const json = (await resposta.json().catch(() => ({}))) as {
+    contacts?: Array<{
+      id?: string;
+      remoteJid?: string;
+      pushName?: string;
+      name?: string;
+    }>;
+    data?: Array<{
+      id?: string;
+      remoteJid?: string;
+      pushName?: string;
+      name?: string;
+    }>;
+  };
+
+  const bruto = json.contacts ?? json.data ?? [];
+
+  return bruto
+    .map((contato) => {
+      const id = (contato.remoteJid ?? contato.id ?? "").trim();
+      if (!id) return null;
+      return {
+        id,
+        nome: (contato.pushName ?? contato.name ?? "").trim() || null,
+      };
+    })
+    .filter((item): item is EvolutionContato => item !== null);
 }

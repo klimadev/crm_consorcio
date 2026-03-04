@@ -5,6 +5,8 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Check,
+  Loader2,
   MoreHorizontal,
   Pencil,
   Search,
@@ -27,12 +29,13 @@ type LinhaAcoesProps = {
   podeDesfazer: boolean;
   statusSalvamento: { estado: string; mensagem?: string } | null;
   onEditar: () => void;
+  onSalvar: () => void;
   onCancelar: () => void;
   onDesfazer: () => void;
   onInativar?: () => void;
 };
 
-function LinhaAcoes({ editando, podeDesfazer, statusSalvamento, onEditar, onCancelar, onDesfazer, onInativar }: LinhaAcoesProps) {
+function LinhaAcoes({ editando, podeDesfazer, statusSalvamento, onEditar, onSalvar, onCancelar, onDesfazer, onInativar }: LinhaAcoesProps) {
   const [menuAberto, setMenuAberto] = useState(false);
   const [menuPosicao, setMenuPosicao] = useState<{ top: number; left: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -96,8 +99,14 @@ function LinhaAcoes({ editando, podeDesfazer, statusSalvamento, onEditar, onCanc
   }, [menuAberto]);
 
   if (editando) {
+    const salvando = statusSalvamento?.estado === "saving";
+
     return (
       <div className="flex items-center gap-2">
+        <Button size="sm" className="h-8 rounded-lg bg-emerald-600 px-2 text-xs font-medium text-white hover:bg-emerald-500" disabled={salvando} onClick={onSalvar}>
+          {salvando ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1 h-3.5 w-3.5" />}
+          Salvar
+        </Button>
         <Button size="sm" variant="outline" className="h-8 rounded-lg border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900" onClick={onCancelar}>
           <X className="mr-1 h-3.5 w-3.5" />
           Cancelar
@@ -159,7 +168,7 @@ export function EquipeDesktopTable({ vm }: EquipeDesktopTableProps) {
 
   const todosDaPaginaSelecionados = vm.funcionarios.length > 0 && vm.funcionarios.every((item) => vm.idsSelecionados.includes(item.id));
 
-  const temFiltrosAtivos = vm.busca || vm.statusFiltro !== "TODOS" || vm.cargoFiltro !== "TODOS";
+  const temFiltrosAtivos = vm.busca || vm.idPdvFiltro || vm.statusFiltro !== "TODOS" || vm.cargoFiltro !== "TODOS";
 
   if (vm.funcionarios.length === 0 && !vm.carregandoLista) {
     const ehSemResultados = temFiltrosAtivos;
@@ -396,6 +405,7 @@ export function EquipeDesktopTable({ vm }: EquipeDesktopTableProps) {
                     podeDesfazer={podeDesfazer}
                     statusSalvamento={statusLinha}
                     onEditar={() => vm.iniciarEdicao(funcionario)}
+                    onSalvar={() => void vm.salvarEdicaoAtual()}
                     onCancelar={vm.cancelarEdicao}
                     onDesfazer={vm.desfazerUltimaEdicao}
                     onInativar={funcionario.ativo && vm.podeInativar ? () => vm.abrirModalInativacao(funcionario) : undefined}

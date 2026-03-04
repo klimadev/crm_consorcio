@@ -20,6 +20,7 @@ export type Lead = {
   observacoes: string | null;
   motivo_perda: string | null;
   documento_aprovacao_url: string | null;
+  origem?: "MANUAL" | "SINCRONIZACAO_WHATSAPP" | string;
   atualizado_em: string;
 };
 
@@ -95,6 +96,8 @@ export type UseKanbanModuleReturn = {
   salvarDetalhesLead: (lead: Lead, urlDocumento?: string, opcoes?: { atualizarSelecionado?: boolean }) => Promise<void>;
   setLeadSelecionado: (lead: Lead | null) => void;
   criarLead: (evento: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  sincronizandoWhatsapp: boolean;
+  sincronizarWhatsapp: () => Promise<{ ok: boolean; erro?: string; criados?: number }>;
   confirmarPerda: (evento: React.FormEvent<HTMLFormElement>) => Promise<void>;
   aoDragEnd: (resultado: import("@hello-pangea/dnd").DropResult) => Promise<void>;
   aoMudarLead: (leadAtualizado: Lead) => void;

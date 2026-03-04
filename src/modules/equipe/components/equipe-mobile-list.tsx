@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import {
+  Check,
+  Loader2,
   MoreHorizontal,
   Pencil,
   Trash2,
@@ -55,6 +57,8 @@ export function EquipeMobileList({ vm }: EquipeMobileListProps) {
       {vm.funcionarios.map((funcionario) => {
         const estaEditando = vm.editandoId === funcionario.id && !!vm.dadosEdicao;
         const isSelected = vm.idsSelecionados.includes(funcionario.id);
+        const statusLinha = vm.statusSalvamento.id === funcionario.id ? vm.statusSalvamento : null;
+        const podeDesfazer = vm.ultimoSnapshot?.id === funcionario.id;
 
         return (
           <div
@@ -123,6 +127,9 @@ export function EquipeMobileList({ vm }: EquipeMobileListProps) {
 
             {estaEditando && vm.dadosEdicao && (
               <div className="mt-4 space-y-3 rounded-lg bg-slate-50 p-3">
+                <p className="text-xs font-medium text-slate-500">
+                  {statusLinha?.estado === "saving" ? "Salvando alteracoes..." : statusLinha?.estado === "error" ? statusLinha.mensagem : "Edicao ativa"}
+                </p>
                 <Input
                   className="h-9 rounded-lg border-slate-200 bg-white text-sm"
                   placeholder="Nome"
@@ -149,6 +156,15 @@ export function EquipeMobileList({ vm }: EquipeMobileListProps) {
                   </SelectContent>
                 </Select>
                 <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    className="h-8 flex-1 rounded-lg bg-emerald-600 text-xs text-white hover:bg-emerald-500"
+                    onClick={() => void vm.salvarEdicaoAtual()}
+                    disabled={statusLinha?.estado === "saving"}
+                  >
+                    {statusLinha?.estado === "saving" ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1 h-3.5 w-3.5" />}
+                    Salvar
+                  </Button>
                   <Button 
                     size="sm" 
                     variant="outline" 
@@ -156,6 +172,15 @@ export function EquipeMobileList({ vm }: EquipeMobileListProps) {
                     onClick={vm.cancelarEdicao}
                   >
                     Cancelar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 rounded-lg border-slate-200 bg-white px-3 text-xs"
+                    onClick={() => void vm.desfazerUltimaEdicao()}
+                    disabled={!podeDesfazer || statusLinha?.estado === "saving"}
+                  >
+                    Desfazer
                   </Button>
                 </div>
               </div>

@@ -65,7 +65,7 @@ type EquipeKpiGridProps = {
 };
 
 export function EquipeKpiGrid({ vm }: EquipeKpiGridProps) {
-  const temFiltrosAtivos = vm.busca || vm.statusFiltro !== "TODOS" || vm.cargoFiltro !== "TODOS";
+  const temFiltrosAtivos = vm.busca || vm.idPdvFiltro || vm.statusFiltro !== "TODOS" || vm.cargoFiltro !== "TODOS";
   
   // Se há filtros ativos, mostra KPIs filtrados. Se não, mostra totais
   const kpisExibir = temFiltrosAtivos ? vm.kpis : vm.kpisTotais;

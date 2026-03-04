@@ -73,7 +73,6 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
 
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
   const [pdvs, setPdvs] = useState<Pdv[]>([]);
-  const [abaAtiva, setAbaAtiva] = useState<"colaboradores" | "pdvs">("colaboradores");
   const [carregandoPdvs, setCarregandoPdvs] = useState(false);
   const [criandoPdv, setCriandoPdv] = useState(false);
   const [pdvEmEdicao, setPdvEmEdicao] = useState<{ id: string; nome: string } | null>(null);
@@ -153,6 +152,7 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
   const INATIVA_POLLING_MS = 15000;
 
   const busca = searchParams.get("busca") ?? "";
+  const idPdvFiltro = searchParams.get("id_pdv") ?? "";
   const statusFiltro = searchParams.get("status") ?? "TODOS";
   const cargoFiltro = searchParams.get("cargo") ?? "TODOS";
   const ordenarPor = searchParams.get("ordenar_por") ?? "nome";
@@ -223,6 +223,7 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
   const limparFiltros = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("busca");
+    params.delete("id_pdv");
     params.delete("status");
     params.delete("cargo");
     params.delete("ordenar_por");
@@ -361,7 +362,7 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
           estado: "error",
           mensagem: "Corrija os campos destacados.",
         });
-        return;
+        return false;
       }
 
       setStatusSalvamento({ id, estado: "saving", mensagem: "Salvando alteracoes..." });
@@ -381,7 +382,7 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
 
       if (!funcionarioAnterior) {
         setStatusSalvamento({ id, estado: "error", mensagem: "Funcionario nao encontrado." });
-        return;
+        return false;
       }
 
       try {
@@ -399,14 +400,13 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
             estado: "error",
             mensagem: json?.erro ?? "Erro ao salvar alteracoes.",
           });
-          return;
+          return false;
         }
 
         setUltimoSnapshot({ id, dados: extrairDadosEdicao(funcionarioAnterior) });
         setStatusSalvamento({ id, estado: "saved", mensagem: "Alteracoes salvas." });
         setTemAlteracoesNaoSalvas(false);
 
-        // Feedback visual - toast de sucesso
         addToast({
           type: "success",
           title: "Alterações salvas",
@@ -417,9 +417,12 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
         statusTimeoutRef.current = setTimeout(() => {
           setStatusSalvamento((atual) => (atual.id === id ? { id, estado: "idle" } : atual));
         }, 2000);
+
+        return true;
       } catch {
         setFuncionarios((atual) => atual.map((item) => (item.id === id ? funcionarioAnterior ?? item : item)));
         setStatusSalvamento({ id, estado: "error", mensagem: "Erro ao salvar alteracoes." });
+        return false;
       }
     },
     [limparTimerStatus, pdvs, addToast],
@@ -503,6 +506,17 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     setErrosEdicao({});
     await salvarFuncionario(editandoId, ultimoSnapshot.dados);
   }, [editandoId, ultimoSnapshot, limparTimerAutoSave, salvarFuncionario]);
+
+  const salvarEdicaoAtual = useCallback(async () => {
+    if (!editandoId || !dadosEdicao) {
+      return;
+    }
+
+    const ok = await salvarFuncionario(editandoId, dadosEdicao);
+    if (ok) {
+      cancelarEdicao();
+    }
+  }, [cancelarEdicao, dadosEdicao, editandoId, salvarFuncionario]);
 
   const funcionariosAtivosParaDestino = useMemo(
     () => funcionarios.filter((funcionario) => funcionario.ativo),
@@ -906,6 +920,7 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     podeInativar,
     podeAdicionarFuncionario,
     busca,
+    idPdvFiltro,
     statusFiltro,
     cargoFiltro,
     ordenarPor,
@@ -914,8 +929,6 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     porPagina,
     funcionariosAtivosParaDestino,
     funcionariosDestinoMesmoPdv,
-    abaAtiva,
-    setAbaAtiva,
     carregandoPdvs,
     criandoPdv,
     pdvEmEdicao,
@@ -946,6 +959,7 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     iniciarEdicao,
     cancelarEdicao,
     aoMudarDado,
+    salvarEdicaoAtual,
     desfazerUltimaEdicao,
     abrirModalInativacao,
     confirmarInativacaoIndividual,

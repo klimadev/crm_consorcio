@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import {
 import type { Estagio, Funcionario, KanbanFilters, ResumoPendencias, OrdenacaoKanban } from "../types";
 import { PendenciaBadge } from "./pendencia-badge";
 import { cn } from "@/lib/utils";
-import { Filter, X, Bell, BellOff, Search, ArrowUpDown } from "lucide-react";
+import { Filter, X, Bell, BellOff, Search, ArrowUpDown, RefreshCw } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 
 type KanbanHeaderProps = {
@@ -45,6 +45,8 @@ type KanbanHeaderProps = {
   notificacoesAtivadas: boolean;
   alternarNotificacoes: () => Promise<boolean>;
   permissaoNotificacao: () => NotificationPermission | "unknown";
+  sincronizandoWhatsapp: boolean;
+  sincronizarWhatsapp: () => Promise<{ ok: boolean; erro?: string; criados?: number }>;
 };
 
 export function KanbanHeader({
@@ -77,6 +79,8 @@ export function KanbanHeader({
   notificacoesAtivadas,
   alternarNotificacoes,
   permissaoNotificacao,
+  sincronizandoWhatsapp,
+  sincronizarWhatsapp,
 }: KanbanHeaderProps) {
   const { addToast } = useToast();
   const filtrosAtivos = filtros.status !== "todos" || filtros.gravidade !== "todas" || filtros.tipo !== "todos";
@@ -327,6 +331,35 @@ if (permissao === "denied") {
             </form>
           </DialogContent>
         </Dialog>
+
+        <Button
+          variant="outline"
+          className="rounded-xl border-slate-200"
+          disabled={sincronizandoWhatsapp}
+          onClick={async () => {
+            const resultado = await sincronizarWhatsapp();
+            if (!resultado.ok) {
+              addToast({
+                type: "error",
+                title: "Falha na sincronizacao",
+                description: resultado.erro ?? "Nao foi possivel sincronizar contatos.",
+              });
+              return;
+            }
+
+            addToast({
+              type: "success",
+              title: "Sincronizacao concluida",
+              description:
+                resultado.criados && resultado.criados > 0
+                  ? `${resultado.criados} lead(s) novo(s) importado(s).`
+                  : "Nenhum novo contato para importar.",
+            });
+          }}
+        >
+          <RefreshCw className={cn("mr-2 h-4 w-4", sincronizandoWhatsapp && "animate-spin")} />
+          {sincronizandoWhatsapp ? "Sincronizando..." : "Sincronizar WhatsApp"}
+        </Button>
       </div>
     </header>
   );

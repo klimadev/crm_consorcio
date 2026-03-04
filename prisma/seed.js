@@ -5,7 +5,7 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 const ESTAGIOS_PADRAO = [
-  { nome: "Novo Lead", tipo: "ABERTO", ordem: 1 },
+  { nome: "Indefinido", tipo: "ABERTO", ordem: 1 },
   { nome: "Em Atendimento", tipo: "ABERTO", ordem: 2 },
   { nome: "Proposta", tipo: "ABERTO", ordem: 3 },
   { nome: "Fechado", tipo: "GANHO", ordem: 4 },
@@ -100,11 +100,11 @@ async function main() {
     orderBy: { ordem: "asc" },
   });
 
-  const estagioNovoLead = estagios.find((estagio) => estagio.ordem === 1);
+  const estagioIndefinido = estagios.find((estagio) => estagio.ordem === 1);
   const estagioProposta = estagios.find((estagio) => estagio.ordem === 3);
   const estagioFechado = estagios.find((estagio) => estagio.tipo === "GANHO");
 
-  if (!estagioNovoLead || !estagioProposta || !estagioFechado) {
+  if (!estagioIndefinido || !estagioProposta || !estagioFechado) {
     throw new Error("Estagios padrao nao encontrados para seed.");
   }
 
@@ -113,10 +113,11 @@ async function main() {
       {
         id_empresa: empresa.id,
         id_funcionario: funcionarios[0].id,
-        id_estagio: estagioNovoLead.id,
+        id_estagio: estagioIndefinido.id,
         nome: "Carlos Almeida",
         telefone: "(11) 99876-1234",
         valor_consorcio: 85000,
+        origem: "MANUAL",
       },
       {
         id_empresa: empresa.id,
@@ -126,6 +127,7 @@ async function main() {
         telefone: "(11) 98888-4321",
         valor_consorcio: 120000,
         observacoes: "Cliente pediu retorno na sexta.",
+        origem: "MANUAL",
       },
       {
         id_empresa: empresa.id,
@@ -134,6 +136,7 @@ async function main() {
         nome: "Rafael Lima",
         telefone: "(11) 97777-6543",
         valor_consorcio: 98000,
+        origem: "MANUAL",
       },
     ],
   });

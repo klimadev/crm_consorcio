@@ -12,7 +12,7 @@ type EquipeFiltersProps = {
 };
 
 export function EquipeFilters({ vm }: EquipeFiltersProps) {
-  const temFiltrosAtivos = vm.busca || vm.statusFiltro !== "TODOS" || vm.cargoFiltro !== "TODOS";
+  const temFiltrosAtivos = vm.busca || vm.idPdvFiltro || vm.statusFiltro !== "TODOS" || vm.cargoFiltro !== "TODOS";
 
   // Debounce para a busca - evita requests excessivos a cada digitação
   const [buscaTempoReal, setBuscaTempoReal] = useState(vm.busca);

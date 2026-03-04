@@ -9,7 +9,7 @@ import { EquipeBulkActions } from "./components/equipe-bulk-actions";
 import { EquipeDesktopTable } from "./components/equipe-desktop-table";
 import { EquipeMobileList } from "./components/equipe-mobile-list";
 import { EquipePagination } from "./components/equipe-pagination";
-import { EquipeTabs } from "./components/equipe-tabs";
+import { EquipePdvOverview } from "./components/equipe-pdv-overview";
 import { PdvManagementPanel } from "./components/pdv-management-panel";
 import { NovoFuncionarioDialog } from "./components/dialogs/novo-funcionario-dialog";
 import { InativacaoDialog } from "./components/dialogs/inativacao-dialog";
@@ -51,18 +51,15 @@ export function ModuloEquipe({ perfil }: Props) {
       ) : null}
 
       <EquipeKpiGrid vm={vm} />
-      <EquipeTabs vm={vm} />
-      {vm.abaAtiva === "colaboradores" ? (
-        <>
-          <EquipeFilters vm={vm} />
-          <EquipeBulkActions vm={vm} />
-          <EquipeMobileList vm={vm} />
-          <EquipeDesktopTable vm={vm} />
-          <EquipePagination vm={vm} />
-        </>
-      ) : (
-        <PdvManagementPanel vm={vm} />
-      )}
+      <EquipePdvOverview vm={vm} />
+
+      <EquipeFilters vm={vm} />
+      <EquipeBulkActions vm={vm} />
+      <EquipeMobileList vm={vm} />
+      <EquipeDesktopTable vm={vm} />
+      <EquipePagination vm={vm} />
+
+      {vm.podeGerenciarEmpresa ? <PdvManagementPanel vm={vm} /> : null}
       <NovoFuncionarioDialog vm={vm} />
       <InativacaoDialog vm={vm} />
     </section>
