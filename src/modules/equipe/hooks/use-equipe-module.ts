@@ -16,6 +16,7 @@ import type {
   FuncionarioDestinoInativacao,
   AcaoLote,
   UseEquipeModuleReturn,
+  WhatsappInstancia,
 } from "../types";
 import { CARGOS_EQUIPE, PASTEL_COLORS } from "../constants";
 
@@ -75,11 +76,12 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
   const [pdvs, setPdvs] = useState<Pdv[]>([]);
   const [carregandoPdvs, setCarregandoPdvs] = useState(false);
   const [criandoPdv, setCriandoPdv] = useState(false);
-  const [pdvEmEdicao, setPdvEmEdicao] = useState<{ id: string; nome: string } | null>(null);
+  const [pdvEmEdicao, setPdvEmEdicao] = useState<{ id: string; nome: string; id_whatsapp_instancia?: string | null } | null>(null);
   const [salvandoPdvId, setSalvandoPdvId] = useState<string | null>(null);
   const [pdvParaExcluir, setPdvParaExcluir] = useState<{ id: string; nome: string } | null>(null);
   const [excluindoPdvId, setExcluindoPdvId] = useState<string | null>(null);
   const [erroGestaoPdvs, setErroGestaoPdvs] = useState<string | null>(null);
+  const [instancias, setInstancias] = useState<WhatsappInstancia[]>([]);
   const [paginacao, setPaginacao] = useState<Paginacao>({
     pagina: 1,
     por_pagina: 20,
@@ -130,6 +132,8 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
   const [executandoInativacaoIndividual, setExecutandoInativacaoIndividual] = useState(false);
 
   const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [editandoFuncionario, setEditandoFuncionario] = useState<Funcionario | null>(null);
+  const [drawerEdicaoAberto, setDrawerEdicaoAberto] = useState(false);
   const [dadosEdicao, setDadosEdicao] = useState<DadosEdicao | null>(null);
   const [errosEdicao, setErrosEdicao] = useState<ErrosEdicao>({});
   const [statusSalvamento, setStatusSalvamento] = useState<StatusSalvamento>({ id: null, estado: "idle" });
@@ -312,12 +316,26 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     }
   }, []);
 
+  const carregarInstancias = useCallback(async () => {
+    try {
+      const resposta = await fetch("/api/whatsapp/instances", { cache: "no-store" });
+      const json = (await resposta.json().catch(() => ({}))) as {
+        instancias?: WhatsappInstancia[];
+      };
+      if (resposta.ok) {
+        setInstancias(json.instancias ?? []);
+      }
+    } catch {
+      // Silencioso - falha em carregar instancias nao bloqueia o resto
+    }
+  }, []);
+
   useEffect(() => {
     let ativo = true;
 
     const carregarRecursos = async () => {
       if (!ativo) return;
-      await carregarPdvs();
+      await Promise.all([carregarPdvs(), carregarInstancias()]);
     };
 
     void carregarRecursos();
@@ -325,7 +343,7 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     return () => {
       ativo = false;
     };
-  }, [carregarPdvs]);
+  }, [carregarPdvs, carregarInstancias]);
 
   useEffect(() => {
     void carregarFuncionarios();
@@ -431,14 +449,38 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
   const iniciarEdicao = useCallback(
     (funcionario: Funcionario) => {
       limparTimerAutoSave();
+      setEditandoFuncionario(funcionario);
       setEditandoId(funcionario.id);
-      setDadosEdicao(extrairDadosEdicao(funcionario));
+      setDadosEdicao({
+        nome: funcionario.nome,
+        email: funcionario.email,
+        cargo: funcionario.cargo,
+        id_pdv: funcionario.pdv?.id ?? "",
+      });
       setErrosEdicao({});
-      setStatusSalvamento({ id: funcionario.id, estado: "idle" });
-      setTemAlteracoesNaoSalvas(true);
+      setStatusSalvamento({ id: null, estado: "idle" });
+      setDrawerEdicaoAberto(true);
     },
     [limparTimerAutoSave],
   );
+
+  const abrirDrawerEdicao = useCallback(
+    (funcionario: Funcionario) => {
+      setEditandoFuncionario(funcionario);
+      setDrawerEdicaoAberto(true);
+    },
+    [],
+  );
+
+  const fecharDrawerEdicao = useCallback(() => {
+    setDrawerEdicaoAberto(false);
+    setEditandoFuncionario(null);
+    setEditandoId(null);
+    setDadosEdicao(null);
+    setErrosEdicao({});
+    setStatusSalvamento({ id: null, estado: "idle" });
+    setTemAlteracoesNaoSalvas(false);
+  }, []);
 
   const cancelarEdicao = useCallback(() => {
     limparTimerAutoSave();
@@ -514,9 +556,9 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
 
     const ok = await salvarFuncionario(editandoId, dadosEdicao);
     if (ok) {
-      cancelarEdicao();
+      fecharDrawerEdicao();
     }
-  }, [cancelarEdicao, dadosEdicao, editandoId, salvarFuncionario]);
+  }, [fecharDrawerEdicao, dadosEdicao, editandoId, salvarFuncionario]);
 
   const funcionariosAtivosParaDestino = useMemo(
     () => funcionarios.filter((funcionario) => funcionario.ativo),
@@ -567,7 +609,7 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     }
   }, [carregarPdvs]);
 
-  const editarPdv = useCallback(async (id: string, nome: string) => {
+  const editarPdv = useCallback(async (id: string, nome: string, id_whatsapp_instancia?: string | null) => {
     const nomeNormalizado = nome.trim();
     if (!nomeNormalizado) {
       setErroGestaoPdvs("Nome do PDV e obrigatorio.");
@@ -582,14 +624,18 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     setErroGestaoPdvs(null);
     setSalvandoPdvId(id);
     setPdvs((atual) =>
-      atual.map((item) => (item.id === id ? { ...item, nome: nomeNormalizado } : item)),
+      atual.map((item) =>
+        item.id === id
+          ? { ...item, nome: nomeNormalizado, id_whatsapp_instancia: id_whatsapp_instancia ?? null }
+          : item
+      ),
     );
 
     try {
       const resposta = await fetch(`/api/pdvs/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nome: nomeNormalizado }),
+        body: JSON.stringify({ nome: nomeNormalizado, id_whatsapp_instancia }),
       });
 
       if (!resposta.ok) {
@@ -904,6 +950,9 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     setDialogInativacaoAberto,
     editandoId,
     setEditandoId,
+    editandoFuncionario,
+    drawerEdicaoAberto,
+    fecharDrawerEdicao,
     dadosEdicao,
     errosEdicao,
     statusSalvamento,
@@ -941,6 +990,7 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     criarPdv,
     editarPdv,
     excluirPdv,
+    instancias,
     funcionariosDestinoInativacao: funcionarioDestinoInativacao,
     destinoInativacaoIndividual,
     setDestinoInativacaoIndividual,

@@ -17,11 +17,18 @@ export type Pdv = {
 export type PdvEmEdicao = {
   id: string;
   nome: string;
+  id_whatsapp_instancia?: string | null;
 };
 
 export type PdvParaExcluir = {
   id: string;
   nome: string;
+};
+
+export type WhatsappInstancia = {
+  id: string;
+  nome: string;
+  status: string;
 };
 
 export type Funcionario = {
@@ -99,6 +106,9 @@ export type UseEquipeModuleReturn = {
   setDialogInativacaoAberto: (aberto: boolean) => void;
   editandoId: string | null;
   setEditandoId: (id: string | null) => void;
+  editandoFuncionario: Funcionario | null;
+  drawerEdicaoAberto: boolean;
+  fecharDrawerEdicao: () => void;
   dadosEdicao: DadosEdicao | null;
   errosEdicao: ErrosEdicao;
   statusSalvamento: StatusSalvamento;
@@ -134,7 +144,7 @@ export type UseEquipeModuleReturn = {
   excluindoPdvId: string | null;
   erroGestaoPdvs: string | null;
   criarPdv: (nome: string) => Promise<void>;
-  editarPdv: (id: string, nome: string) => Promise<boolean>;
+  editarPdv: (id: string, nome: string, id_whatsapp_instancia?: string | null) => Promise<boolean>;
   excluirPdv: (id: string) => Promise<void>;
   funcionariosDestinoInativacao: FuncionarioDestinoInativacao | null;
   destinoInativacaoIndividual: string;

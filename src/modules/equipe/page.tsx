@@ -13,6 +13,7 @@ import { EquipePdvOverview } from "./components/equipe-pdv-overview";
 import { PdvManagementPanel } from "./components/pdv-management-panel";
 import { NovoFuncionarioDialog } from "./components/dialogs/novo-funcionario-dialog";
 import { InativacaoDialog } from "./components/dialogs/inativacao-dialog";
+import { FuncionarioEditarDrawer } from "./components/funcionario-editar-drawer";
 import type { Props } from "./types";
 
 export function ModuloEquipe({ perfil }: Props) {
@@ -62,6 +63,12 @@ export function ModuloEquipe({ perfil }: Props) {
       {vm.podeGerenciarEmpresa ? <PdvManagementPanel vm={vm} /> : null}
       <NovoFuncionarioDialog vm={vm} />
       <InativacaoDialog vm={vm} />
+      <FuncionarioEditarDrawer 
+        vm={vm} 
+        funcionario={vm.editandoFuncionario} 
+        aberto={vm.drawerEdicaoAberto} 
+        onFechar={vm.fecharDrawerEdicao} 
+      />
     </section>
   );
 }

@@ -5,6 +5,7 @@ import { AlertCircle, Loader2, Pencil, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { UseEquipeModuleReturn } from "../types";
 
 type PdvManagementPanelProps = {
@@ -13,6 +14,7 @@ type PdvManagementPanelProps = {
 
 export function PdvManagementPanel({ vm }: PdvManagementPanelProps) {
   const [nomeEdicao, setNomeEdicao] = useState("");
+  const [instanciaEdicao, setInstanciaEdicao] = useState<string>("");
 
   const aoCriarPdv = async (evento: React.FormEvent<HTMLFormElement>) => {
     evento.preventDefault();
@@ -23,14 +25,16 @@ export function PdvManagementPanel({ vm }: PdvManagementPanelProps) {
     form.reset();
   };
 
-  const iniciarEdicaoPdv = (id: string, nome: string) => {
-    vm.setPdvEmEdicao({ id, nome });
+  const iniciarEdicaoPdv = (id: string, nome: string, id_whatsapp_instancia?: string | null) => {
+    vm.setPdvEmEdicao({ id, nome, id_whatsapp_instancia });
     setNomeEdicao(nome);
+    setInstanciaEdicao(id_whatsapp_instancia ?? "");
   };
 
   const cancelarEdicaoPdv = () => {
     vm.setPdvEmEdicao(null);
     setNomeEdicao("");
+    setInstanciaEdicao("");
   };
 
   const salvarEdicaoPdv = async () => {
@@ -38,7 +42,7 @@ export function PdvManagementPanel({ vm }: PdvManagementPanelProps) {
       return;
     }
 
-    const ok = await vm.editarPdv(vm.pdvEmEdicao.id, nomeEdicao);
+    const ok = await vm.editarPdv(vm.pdvEmEdicao.id, nomeEdicao, instanciaEdicao || null);
     if (ok) {
       cancelarEdicaoPdv();
     }
@@ -95,31 +99,50 @@ export function PdvManagementPanel({ vm }: PdvManagementPanelProps) {
             <article key={pdv.id} className="space-y-3 rounded-2xl border border-slate-200/60 bg-white p-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
               <div className="flex items-start justify-between">
                 {emEdicao ? (
-                  <div className="flex flex-1 gap-2">
+                  <div className="flex flex-1 flex-col gap-2">
                     <Input
                       value={nomeEdicao}
                       onChange={(evento) => setNomeEdicao(evento.target.value)}
                       disabled={salvando}
                       className="h-9"
+                      placeholder="Nome do PDV"
                     />
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="rounded-lg bg-emerald-600 text-white hover:bg-emerald-500"
-                      disabled={salvando}
-                      onClick={() => void salvarEdicaoPdv()}
-                    >
-                      {salvando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Salvar"}
-                    </Button>
-                    <Button type="button" size="sm" variant="outline" className="rounded-lg" disabled={salvando} onClick={cancelarEdicaoPdv}>
-                      Cancelar
-                    </Button>
+                    <Select value={instanciaEdicao} onValueChange={setInstanciaEdicao}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Selecione uma instância WhatsApp" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Nenhuma</SelectItem>
+                        {vm.instancias.map((instancia) => (
+                          <SelectItem key={instancia.id} value={instancia.id}>
+                            {instancia.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="rounded-lg bg-emerald-600 text-white hover:bg-emerald-500"
+                        disabled={salvando}
+                        onClick={() => void salvarEdicaoPdv()}
+                      >
+                        {salvando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Salvar"}
+                      </Button>
+                      <Button type="button" size="sm" variant="outline" className="rounded-lg" disabled={salvando} onClick={cancelarEdicaoPdv}>
+                        Cancelar
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <>
                     <div>
                       <h3 className="text-sm font-semibold text-slate-800">{pdv.nome}</h3>
                       <p className="mt-1 text-xs text-slate-500">{temColaboradores ? `${pdv.funcionarios?.length} colaborador(es)` : "Sem colaboradores"}</p>
+                      {pdv.whatsapp_instancia && (
+                        <p className="mt-1 text-xs text-emerald-600">WhatsApp: {pdv.whatsapp_instancia.nome}</p>
+                      )}
                     </div>
                     <div className="flex gap-1">
                       <Button
@@ -128,7 +151,7 @@ export function PdvManagementPanel({ vm }: PdvManagementPanelProps) {
                         variant="outline"
                         className="rounded-lg"
                         disabled={excluindo}
-                        onClick={() => iniciarEdicaoPdv(pdv.id, pdv.nome)}
+                        onClick={() => iniciarEdicaoPdv(pdv.id, pdv.nome, pdv.id_whatsapp_instancia)}
                       >
                         <Pencil className="mr-1 h-3.5 w-3.5" />
                         Editar
