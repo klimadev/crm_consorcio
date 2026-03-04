@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
   const instancia = await resolverInstanciaDoLead(auth.sessao.id_empresa, lead.id);
   if (!instancia) {
-    return NextResponse.json({ erro: "Lead sem instancia WhatsApp configurada." }, { status: 409 });
+    return NextResponse.json({ erro: "Lead sem instancia WhatsApp configurada no PDV." }, { status: 409 });
   }
 
   const connectionStatus = await buscarConnectionStatus(instancia.instanceName);

@@ -327,7 +327,7 @@ export const schemaListarFuncionarios = z.object({
   status: z.enum(["TODOS", "ATIVO", "INATIVO"]).default("TODOS"),
   cargo: z.enum(["TODOS", ...CARGOS_EQUIPE]).default("TODOS"),
   id_pdv: z.string().trim().optional(),
-  ordenar_por: z.enum(["nome", "email", "cargo", "criado_em"]).default("nome"),
+  ordenar_por: z.enum(["nome", "email", "cargo", "status", "pdv", "criado_em"]).default("nome"),
   direcao: z.enum(["asc", "desc"]).default("asc"),
   pagina: z.coerce.number().int().min(1).default(1),
   por_pagina: z.coerce.number().int().min(1).max(100).default(20),

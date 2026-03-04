@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useToast } from "@/components/ui/toast";
 import type {
   Funcionario,
   Pdv,
@@ -14,7 +15,6 @@ import type {
   ResultadoLote,
   FuncionarioDestinoInativacao,
   AcaoLote,
-  WhatsappInstanciaResumo,
   UseEquipeModuleReturn,
 } from "../types";
 import { CARGOS_EQUIPE, PASTEL_COLORS } from "../constants";
@@ -65,22 +65,21 @@ function atualizarFuncionarioNaLista(item: Funcionario, dados: DadosEdicao, pdvs
   };
 }
 
-export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
+export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleReturn {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { addToast } = useToast();
 
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
   const [pdvs, setPdvs] = useState<Pdv[]>([]);
-  const [instanciasWhatsapp, setInstanciasWhatsapp] = useState<WhatsappInstanciaResumo[]>([]);
   const [abaAtiva, setAbaAtiva] = useState<"colaboradores" | "pdvs">("colaboradores");
   const [carregandoPdvs, setCarregandoPdvs] = useState(false);
-  const [carregandoInstanciasWhatsapp, setCarregandoInstanciasWhatsapp] = useState(false);
   const [criandoPdv, setCriandoPdv] = useState(false);
-  const [criandoInstanciaWhatsapp, setCriandoInstanciaWhatsapp] = useState(false);
-  const [salvandoInstanciaWhatsappId, setSalvandoInstanciaWhatsappId] = useState<string | null>(null);
-  const [excluindoInstanciaWhatsappId, setExcluindoInstanciaWhatsappId] = useState<string | null>(null);
-  const [salvandoInstanciaPdvId, setSalvandoInstanciaPdvId] = useState<string | null>(null);
+  const [pdvEmEdicao, setPdvEmEdicao] = useState<{ id: string; nome: string } | null>(null);
+  const [salvandoPdvId, setSalvandoPdvId] = useState<string | null>(null);
+  const [pdvParaExcluir, setPdvParaExcluir] = useState<{ id: string; nome: string } | null>(null);
+  const [excluindoPdvId, setExcluindoPdvId] = useState<string | null>(null);
   const [erroGestaoPdvs, setErroGestaoPdvs] = useState<string | null>(null);
   const [paginacao, setPaginacao] = useState<Paginacao>({
     pagina: 1,
@@ -95,12 +94,36 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
     gerentes: 0,
     colaboradores: 0,
   });
+  const [kpisTotais, setKpisTotais] = useState<KpisEquipe>({
+    total: 0,
+    ativos: 0,
+    inativos: 0,
+    gerentes: 0,
+    colaboradores: 0,
+  });
   const [carregandoLista, setCarregandoLista] = useState(false);
+  const [atualizando, setAtualizando] = useState(false); // Indica se está em背景Polling (refresh discreto)
+  const [carregandoCadastro, setCarregandoCadastro] = useState(false);
   const [erroCadastro, setErroCadastro] = useState<string | null>(null);
   const [erroLista, setErroLista] = useState<string | null>(null);
   const [cargoSelecionado, setCargoSelecionado] = useState("COLABORADOR");
   const [pdvSelecionado, setPdvSelecionado] = useState("");
   const [dialogNovoFuncionarioAberto, setDialogNovoFuncionarioAberto] = useState(false);
+
+  // Callback para abrir o dialog com valores corretos para o perfil
+  const abrirDialogNovoFuncionario = useCallback(
+    (aberto: boolean) => {
+      if (aberto) {
+        // GERENTE só pode adicionar COLABORADOR no próprio PDV
+        if (perfil === "GERENTE" && id_pdv) {
+          setCargoSelecionado("COLABORADOR");
+          setPdvSelecionado(id_pdv);
+        }
+      }
+      setDialogNovoFuncionarioAberto(aberto);
+    },
+    [perfil, id_pdv],
+  );
   const [dialogInativacaoAberto, setDialogInativacaoAberto] = useState(false);
   const [funcionarioDestinoInativacao, setFuncionarioDestinoInativacao] = useState<FuncionarioDestinoInativacao | null>(null);
   const [destinoInativacaoIndividual, setDestinoInativacaoIndividual] = useState("");
@@ -112,6 +135,7 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
   const [errosEdicao, setErrosEdicao] = useState<ErrosEdicao>({});
   const [statusSalvamento, setStatusSalvamento] = useState<StatusSalvamento>({ id: null, estado: "idle" });
   const [ultimoSnapshot, setUltimoSnapshot] = useState<{ id: string; dados: DadosEdicao } | null>(null);
+  const [temAlteracoesNaoSalvas, setTemAlteracoesNaoSalvas] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const statusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -138,6 +162,31 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
   const podeGerenciarEmpresa = perfil === "EMPRESA";
   const podeExecutarAcoesLote = perfil === "EMPRESA";
   const podeInativar = perfil === "EMPRESA" || perfil === "GERENTE";
+  const podeAdicionarFuncionario = perfil === "EMPRESA" || perfil === "GERENTE";
+
+  // Contadores para os filtros
+  const contadoresFiltro = useMemo(() => {
+    const todos = funcionarios;
+    const ativos = todos.filter((f) => f.ativo);
+    const inativos = todos.filter((f) => !f.ativo);
+    const colaboradores = todos.filter((f) => f.cargo === "COLABORADOR");
+    const gerentes = todos.filter((f) => f.cargo === "GERENTE");
+    const administradores = todos.filter((f) => f.cargo === "ADMINISTRADOR");
+
+    return {
+      status: {
+        TODOS: todos.length,
+        ATIVO: ativos.length,
+        INATIVO: inativos.length,
+      },
+      cargo: {
+        TODOS: todos.length,
+        COLABORADOR: colaboradores.length,
+        GERENTE: gerentes.length,
+        ADMINISTRADOR: administradores.length,
+      },
+    };
+  }, [funcionarios]);
 
   const atualizarParametrosUrl = useCallback(
     (atualizacoes: Record<string, string | null>, resetarPagina = false) => {
@@ -171,6 +220,18 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
     timeoutRef.current = null;
   }, []);
 
+  const limparFiltros = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("busca");
+    params.delete("status");
+    params.delete("cargo");
+    params.delete("ordenar_por");
+    params.delete("direcao");
+    params.set("pagina", "1");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname);
+  }, [pathname, router, searchParams]);
+
   const limparTimerStatus = useCallback(() => {
     if (!statusTimeoutRef.current) {
       return;
@@ -196,6 +257,7 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
         funcionarios?: Funcionario[];
         paginacao?: Paginacao;
         kpis?: KpisEquipe;
+        kpis_totais?: KpisEquipe;
       };
 
       const lista = json.funcionarios ?? [];
@@ -208,15 +270,22 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
           total_paginas: 1,
         },
       );
-      setKpis(
-        json.kpis ?? {
-          total: lista.length,
-          ativos: lista.filter((funcionario) => funcionario.ativo).length,
-          inativos: lista.filter((funcionario) => !funcionario.ativo).length,
-          gerentes: lista.filter((funcionario) => funcionario.cargo === "GERENTE").length,
-          colaboradores: lista.filter((funcionario) => funcionario.cargo === "COLABORADOR").length,
-        },
-      );
+
+      // Se a API retorna kpis_totais, usa. Se não, usa kpis como totais
+      const kpisCalculados = json.kpis ?? {
+        total: lista.length,
+        ativos: lista.filter((funcionario) => funcionario.ativo).length,
+        inativos: lista.filter((funcionario) => !funcionario.ativo).length,
+        gerentes: lista.filter((funcionario) => funcionario.cargo === "GERENTE").length,
+        colaboradores: lista.filter((funcionario) => funcionario.cargo === "COLABORADOR").length,
+      };
+
+      // Usa kpis_totais da API se disponível, senão usa kpis como totais
+      const kpisTotaisCalculados = json.kpis_totais ?? kpisCalculados;
+
+      setKpis(kpisCalculados);
+      setKpisTotais(kpisTotaisCalculados);
+
       setIdsSelecionados((atual) => atual.filter((id) => lista.some((funcionario) => funcionario.id === id)));
     } finally {
       setCarregandoLista(false);
@@ -242,37 +311,12 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
     }
   }, []);
 
-  const carregarInstanciasWhatsapp = useCallback(async () => {
-    setCarregandoInstanciasWhatsapp(true);
-    setErroGestaoPdvs(null);
-    try {
-      const resposta = await fetch("/api/whatsapp/instances", { cache: "no-store" });
-      const json = (await resposta.json().catch(() => ({}))) as {
-        instancias?: Array<{ id: string; nome: string; status: string }>;
-        erro?: string;
-      };
-      if (!resposta.ok) {
-        setErroGestaoPdvs(json.erro ?? "Erro ao carregar instancias WhatsApp.");
-        return;
-      }
-      setInstanciasWhatsapp(
-        (json.instancias ?? []).map((instancia) => ({
-          id: instancia.id,
-          nome: instancia.nome,
-          status: instancia.status,
-        })),
-      );
-    } finally {
-      setCarregandoInstanciasWhatsapp(false);
-    }
-  }, []);
-
   useEffect(() => {
     let ativo = true;
 
     const carregarRecursos = async () => {
       if (!ativo) return;
-      await Promise.all([carregarPdvs(), carregarInstanciasWhatsapp()]);
+      await carregarPdvs();
     };
 
     void carregarRecursos();
@@ -280,7 +324,7 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
     return () => {
       ativo = false;
     };
-  }, [carregarPdvs, carregarInstanciasWhatsapp]);
+  }, [carregarPdvs]);
 
   useEffect(() => {
     void carregarFuncionarios();
@@ -292,7 +336,11 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
     }
 
     pollingRef.current = setInterval(() => {
-      void carregarFuncionarios();
+      // Não recarrega se houver edição em andamento ou alterações não salvas
+      if (!editandoId && !temAlteracoesNaoSalvas) {
+        setAtualizando(true);
+        carregarFuncionarios().finally(() => setAtualizando(false));
+      }
     }, INATIVA_POLLING_MS);
 
     return () => {
@@ -301,7 +349,7 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
         pollingRef.current = null;
       }
     };
-  }, [carregarFuncionarios, INATIVA_POLLING_MS]);
+  }, [carregarFuncionarios, INATIVA_POLLING_MS, editandoId, temAlteracoesNaoSalvas]);
 
   const salvarFuncionario = useCallback(
     async (id: string, dados: DadosEdicao) => {
@@ -356,6 +404,14 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
 
         setUltimoSnapshot({ id, dados: extrairDadosEdicao(funcionarioAnterior) });
         setStatusSalvamento({ id, estado: "saved", mensagem: "Alteracoes salvas." });
+        setTemAlteracoesNaoSalvas(false);
+
+        // Feedback visual - toast de sucesso
+        addToast({
+          type: "success",
+          title: "Alterações salvas",
+          duration: 2000,
+        });
 
         limparTimerStatus();
         statusTimeoutRef.current = setTimeout(() => {
@@ -366,7 +422,7 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
         setStatusSalvamento({ id, estado: "error", mensagem: "Erro ao salvar alteracoes." });
       }
     },
-    [limparTimerStatus, pdvs],
+    [limparTimerStatus, pdvs, addToast],
   );
 
   const iniciarEdicao = useCallback(
@@ -376,6 +432,7 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
       setDadosEdicao(extrairDadosEdicao(funcionario));
       setErrosEdicao({});
       setStatusSalvamento({ id: funcionario.id, estado: "idle" });
+      setTemAlteracoesNaoSalvas(true);
     },
     [limparTimerAutoSave],
   );
@@ -386,6 +443,7 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
     setDadosEdicao(null);
     setErrosEdicao({});
     setStatusSalvamento({ id: null, estado: "idle" });
+    setTemAlteracoesNaoSalvas(false);
   }, [limparTimerAutoSave]);
 
   const aoMudarDado = useCallback(
@@ -417,10 +475,16 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
 
       setStatusSalvamento({ id: editandoId, estado: "idle" });
       timeoutRef.current = setTimeout(() => {
+        // Feedback visual - toast de salvamento em andamento
+        addToast({
+          type: "info",
+          title: "Salvando alterações...",
+          duration: 800,
+        });
         void salvarFuncionario(editandoId, novosDados);
       }, 700);
     },
-    [dadosEdicao, editandoId, limparTimerAutoSave, salvarFuncionario],
+    [dadosEdicao, editandoId, limparTimerAutoSave, salvarFuncionario, addToast],
   );
 
   const desfazerUltimaEdicao = useCallback(async () => {
@@ -458,58 +522,6 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
     );
   }, [funcionarios, funcionarioDestinoInativacao]);
 
-  const atualizarInstanciaPadraoPdv = useCallback(async (idPdv: string, idInstancia: string | null) => {
-    setErroGestaoPdvs(null);
-    setSalvandoInstanciaPdvId(idPdv);
-
-    const pdvAnterior = pdvs.find((item) => item.id === idPdv);
-    if (!pdvAnterior) {
-      setSalvandoInstanciaPdvId(null);
-      return;
-    }
-
-    const instanciaSelecionada = idInstancia
-      ? instanciasWhatsapp.find((instancia) => instancia.id === idInstancia) ?? null
-      : null;
-
-    setPdvs((atual) =>
-      atual.map((item) =>
-        item.id === idPdv
-          ? {
-              ...item,
-              id_whatsapp_instancia: idInstancia,
-              whatsapp_instancia: instanciaSelecionada
-                ? {
-                    id: instanciaSelecionada.id,
-                    nome: instanciaSelecionada.nome,
-                    status: instanciaSelecionada.status,
-                  }
-                : null,
-            }
-          : item,
-      ),
-    );
-
-    try {
-      const resposta = await fetch(`/api/pdvs/${idPdv}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_whatsapp_instancia: idInstancia }),
-      });
-
-      if (!resposta.ok) {
-        const json = (await resposta.json().catch(() => ({}))) as { erro?: string };
-        setErroGestaoPdvs(json.erro ?? "Erro ao salvar instancia padrao do PDV.");
-        setPdvs((atual) => atual.map((item) => (item.id === idPdv ? pdvAnterior : item)));
-      }
-    } catch {
-      setErroGestaoPdvs("Erro ao salvar instancia padrao do PDV.");
-      setPdvs((atual) => atual.map((item) => (item.id === idPdv ? pdvAnterior : item)));
-    } finally {
-      setSalvandoInstanciaPdvId(null);
-    }
-  }, [pdvs, instanciasWhatsapp]);
-
   const criarPdv = useCallback(async (nome: string) => {
     const nomeNormalizado = nome.trim();
     if (!nomeNormalizado) {
@@ -541,70 +553,26 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
     }
   }, [carregarPdvs]);
 
-  const criarInstanciaWhatsapp = useCallback(async (nome: string) => {
+  const editarPdv = useCallback(async (id: string, nome: string) => {
     const nomeNormalizado = nome.trim();
-    if (nomeNormalizado.length < 3) {
-      setErroGestaoPdvs("Nome da instancia deve ter ao menos 3 caracteres.");
-      return;
-    }
-
-    setErroGestaoPdvs(null);
-    setCriandoInstanciaWhatsapp(true);
-
-    try {
-      const resposta = await fetch("/api/whatsapp/instances", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nome: nomeNormalizado }),
-      });
-
-      const json = (await resposta.json().catch(() => ({}))) as { erro?: string };
-      if (!resposta.ok) {
-        setErroGestaoPdvs(json.erro ?? "Erro ao criar instancia WhatsApp.");
-        return;
-      }
-
-      await carregarInstanciasWhatsapp();
-    } catch {
-      setErroGestaoPdvs("Erro ao criar instancia WhatsApp.");
-    } finally {
-      setCriandoInstanciaWhatsapp(false);
-    }
-  }, [carregarInstanciasWhatsapp]);
-
-  const salvarInstanciaWhatsapp = useCallback(async (id: string, nome: string) => {
-    const nomeNormalizado = nome.trim();
-    if (nomeNormalizado.length < 3) {
-      setErroGestaoPdvs("Nome da instancia deve ter ao menos 3 caracteres.");
+    if (!nomeNormalizado) {
+      setErroGestaoPdvs("Nome do PDV e obrigatorio.");
       return false;
     }
 
-    const anterior = instanciasWhatsapp.find((instancia) => instancia.id === id);
-    if (!anterior) {
+    const pdvAnterior = pdvs.find((item) => item.id === id);
+    if (!pdvAnterior) {
       return false;
     }
 
     setErroGestaoPdvs(null);
-    setSalvandoInstanciaWhatsappId(id);
-    setInstanciasWhatsapp((atual) =>
-      atual.map((instancia) =>
-        instancia.id === id ? { ...instancia, nome: nomeNormalizado } : instancia,
-      ),
-    );
-
+    setSalvandoPdvId(id);
     setPdvs((atual) =>
-      atual.map((pdv) =>
-        pdv.id_whatsapp_instancia === id && pdv.whatsapp_instancia
-          ? {
-              ...pdv,
-              whatsapp_instancia: { ...pdv.whatsapp_instancia, nome: nomeNormalizado },
-            }
-          : pdv,
-      ),
+      atual.map((item) => (item.id === id ? { ...item, nome: nomeNormalizado } : item)),
     );
 
     try {
-      const resposta = await fetch(`/api/whatsapp/instances/${id}`, {
+      const resposta = await fetch(`/api/pdvs/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nome: nomeNormalizado }),
@@ -612,74 +580,48 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
 
       if (!resposta.ok) {
         const json = (await resposta.json().catch(() => ({}))) as { erro?: string };
-        setErroGestaoPdvs(json.erro ?? "Erro ao atualizar instancia WhatsApp.");
-        setInstanciasWhatsapp((atual) => atual.map((instancia) => (instancia.id === id ? anterior : instancia)));
-        setPdvs((atual) =>
-          atual.map((pdv) =>
-            pdv.id_whatsapp_instancia === id && pdv.whatsapp_instancia
-              ? {
-                  ...pdv,
-                  whatsapp_instancia: { ...pdv.whatsapp_instancia, nome: anterior.nome },
-                }
-              : pdv,
-          ),
-        );
+        setErroGestaoPdvs(json.erro ?? "Erro ao editar PDV.");
+        setPdvs((atual) => atual.map((item) => (item.id === id ? pdvAnterior : item)));
         return false;
       }
       return true;
     } catch {
-      setErroGestaoPdvs("Erro ao atualizar instancia WhatsApp.");
-      setInstanciasWhatsapp((atual) => atual.map((instancia) => (instancia.id === id ? anterior : instancia)));
-      setPdvs((atual) =>
-        atual.map((pdv) =>
-          pdv.id_whatsapp_instancia === id && pdv.whatsapp_instancia
-            ? {
-                ...pdv,
-                whatsapp_instancia: { ...pdv.whatsapp_instancia, nome: anterior.nome },
-              }
-            : pdv,
-        ),
-      );
+      setErroGestaoPdvs("Erro ao editar PDV.");
+      setPdvs((atual) => atual.map((item) => (item.id === id ? pdvAnterior : item)));
       return false;
     } finally {
-      setSalvandoInstanciaWhatsappId(null);
+      setSalvandoPdvId(null);
     }
-  }, [instanciasWhatsapp]);
+  }, [pdvs]);
 
-  const excluirInstanciaWhatsapp = useCallback(async (id: string) => {
-    const anteriorInstancias = instanciasWhatsapp;
-    const anteriorPdvs = pdvs;
+  const excluirPdv = useCallback(async (id: string) => {
+    const pdvAnterior = pdvs.find((item) => item.id === id);
 
     setErroGestaoPdvs(null);
-    setExcluindoInstanciaWhatsappId(id);
-    setInstanciasWhatsapp((atual) => atual.filter((instancia) => instancia.id !== id));
-    setPdvs((atual) =>
-      atual.map((pdv) =>
-        pdv.id_whatsapp_instancia === id
-          ? { ...pdv, id_whatsapp_instancia: null, whatsapp_instancia: null }
-          : pdv,
-      ),
-    );
+    setExcluindoPdvId(id);
+    setPdvs((atual) => atual.filter((item) => item.id !== id));
 
     try {
-      const resposta = await fetch(`/api/whatsapp/instances/${id}`, {
+      const resposta = await fetch(`/api/pdvs/${id}`, {
         method: "DELETE",
       });
 
       if (!resposta.ok) {
         const json = (await resposta.json().catch(() => ({}))) as { erro?: string };
-        setErroGestaoPdvs(json.erro ?? "Erro ao excluir instancia WhatsApp.");
-        setInstanciasWhatsapp(anteriorInstancias);
-        setPdvs(anteriorPdvs);
+        setErroGestaoPdvs(json.erro ?? "Erro ao excluir PDV.");
+        if (pdvAnterior) {
+          setPdvs((atual) => [...atual, pdvAnterior]);
+        }
       }
     } catch {
-      setErroGestaoPdvs("Erro ao excluir instancia WhatsApp.");
-      setInstanciasWhatsapp(anteriorInstancias);
-      setPdvs(anteriorPdvs);
+      setErroGestaoPdvs("Erro ao excluir PDV.");
+      if (pdvAnterior) {
+        setPdvs((atual) => [...atual, pdvAnterior]);
+      }
     } finally {
-      setExcluindoInstanciaWhatsappId(null);
+      setExcluindoPdvId(null);
     }
-  }, [instanciasWhatsapp, pdvs]);
+  }, [pdvs]);
 
   const inativarFuncionario = useCallback(
     async (id: string, destino: string, obs?: string) => {
@@ -855,33 +797,48 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
     async (evento: React.FormEvent<HTMLFormElement>) => {
       evento.preventDefault();
       setErroCadastro(null);
+      setCarregandoCadastro(true);
+      
       const dados = new FormData(evento.currentTarget);
+      const nomeFuncionario = dados.get("nome") as string;
 
-      const resposta = await fetch("/api/funcionarios", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nome: dados.get("nome"),
-          email: dados.get("email"),
-          senha: dados.get("senha"),
-          cargo: dados.get("cargo"),
-          id_pdv: dados.get("id_pdv"),
-        }),
-      });
+      try {
+        const resposta = await fetch("/api/funcionarios", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nome: dados.get("nome"),
+            email: dados.get("email"),
+            senha: dados.get("senha"),
+            cargo: dados.get("cargo"),
+            id_pdv: dados.get("id_pdv"),
+          }),
+        });
 
-      if (!resposta.ok) {
-        const json = await resposta.json().catch(() => null);
-        setErroCadastro(json?.erro ?? "Erro ao cadastrar funcionario");
-        return;
+        if (!resposta.ok) {
+          const json = await resposta.json().catch(() => null);
+          setErroCadastro(json?.erro ?? "Erro ao cadastrar funcionario");
+          return;
+        }
+
+        // Feedback de sucesso
+        addToast({
+          type: "success",
+          title: "Colaborador cadastrado",
+          description: `${nomeFuncionario} foi adicionado à equipe.`,
+          duration: 4000,
+        });
+
+        evento.currentTarget?.reset();
+        setCargoSelecionado("COLABORADOR");
+        setPdvSelecionado("");
+        setDialogNovoFuncionarioAberto(false);
+        void carregarFuncionarios();
+      } finally {
+        setCarregandoCadastro(false);
       }
-
-      evento.currentTarget?.reset();
-      setCargoSelecionado("COLABORADOR");
-      setPdvSelecionado("");
-      setDialogNovoFuncionarioAberto(false);
-      void carregarFuncionarios();
     },
-    [carregarFuncionarios],
+    [carregarFuncionarios, addToast],
   );
 
   useEffect(() => {
@@ -895,6 +852,21 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
     };
   }, [limparTimerAutoSave, limparTimerStatus]);
 
+  // Warning ao sair com alterações pendentes
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (temAlteracoesNaoSalvas) {
+        event.preventDefault();
+        event.returnValue = "Você tem alterações não salvas. Deseja sair?";
+        return event.returnValue;
+      }
+      return undefined;
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [temAlteracoesNaoSalvas]);
+
   const todosDaPaginaSelecionados = useMemo(
     () => funcionarios.length > 0 && funcionarios.every((item) => idsSelecionados.includes(item.id)),
     [funcionarios, idsSelecionados],
@@ -905,11 +877,15 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
     pdvs,
     paginacao,
     kpis,
+    kpisTotais,
     carregandoLista,
+    carregandoCadastro,
+    atualizando,
     erroLista,
     erroCadastro,
     dialogNovoFuncionarioAberto,
     setDialogNovoFuncionarioAberto,
+    abrirDialogNovoFuncionario,
     dialogInativacaoAberto,
     setDialogInativacaoAberto,
     editandoId,
@@ -928,6 +904,7 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
     podeGerenciarEmpresa,
     podeExecutarAcoesLote,
     podeInativar,
+    podeAdicionarFuncionario,
     busca,
     statusFiltro,
     cargoFiltro,
@@ -939,20 +916,18 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
     funcionariosDestinoMesmoPdv,
     abaAtiva,
     setAbaAtiva,
-    instanciasWhatsapp,
     carregandoPdvs,
-    carregandoInstanciasWhatsapp,
     criandoPdv,
-    criandoInstanciaWhatsapp,
-    salvandoInstanciaWhatsappId,
-    excluindoInstanciaWhatsappId,
-    salvandoInstanciaPdvId,
+    pdvEmEdicao,
+    setPdvEmEdicao,
+    pdvParaExcluir,
+    setPdvParaExcluir,
+    salvandoPdvId,
+    excluindoPdvId,
     erroGestaoPdvs,
     criarPdv,
-    criarInstanciaWhatsapp,
-    salvarInstanciaWhatsapp,
-    excluirInstanciaWhatsapp,
-    atualizarInstanciaPadraoPdv,
+    editarPdv,
+    excluirPdv,
     funcionariosDestinoInativacao: funcionarioDestinoInativacao,
     destinoInativacaoIndividual,
     setDestinoInativacaoIndividual,
@@ -984,5 +959,8 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
     setErroLista,
     todosDaPaginaSelecionados,
     carregarFuncionarios,
+    contadoresFiltro,
+    temAlteracoesNaoSalvas,
+    limparFiltros,
   };
 }

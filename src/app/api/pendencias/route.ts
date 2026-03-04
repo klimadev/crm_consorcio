@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { exigeSessao } from "./permissoes";
 import { detectarPendenciasDinamicas } from "@/lib/pendencias-dinamicas";
 import { prisma } from "@/lib/prisma";
+import { whereLeadsPorPerfil } from "@/lib/permissoes";
 
 export async function GET(request: NextRequest) {
   const auth = await exigeSessao(request);
@@ -9,9 +10,12 @@ export async function GET(request: NextRequest) {
     return auth.erro;
   }
 
+  const whereLeads = await whereLeadsPorPerfil(auth.sessao);
+  
   const pendencias = await detectarPendenciasDinamicas(
     auth.sessao.id_empresa,
-    auth.sessao.perfil === "COLABORADOR" ? auth.sessao.id_usuario : undefined
+    auth.sessao.perfil === "COLABORADOR" ? auth.sessao.id_usuario : undefined,
+    whereLeads
   );
 
   const leadIds = pendencias.map((p) => p.id_lead);

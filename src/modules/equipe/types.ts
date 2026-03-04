@@ -14,13 +14,12 @@ export type Pdv = {
   }>;
 };
 
-export type WhatsappInstanciaResumo = {
+export type PdvEmEdicao = {
   id: string;
   nome: string;
-  status: string;
 };
 
-export type WhatsappInstanciaEmEdicao = {
+export type PdvParaExcluir = {
   id: string;
   nome: string;
 };
@@ -51,6 +50,7 @@ export type KpisEquipe = {
 
 export type Props = {
   perfil: "EMPRESA" | "GERENTE" | "COLABORADOR";
+  id_pdv?: string | null;
 };
 
 export type DadosEdicao = {
@@ -86,11 +86,15 @@ export type UseEquipeModuleReturn = {
   pdvs: Pdv[];
   paginacao: Paginacao;
   kpis: KpisEquipe;
+  kpisTotais: KpisEquipe;
   carregandoLista: boolean;
+  carregandoCadastro: boolean;
+  atualizando: boolean;
   erroLista: string | null;
   erroCadastro: string | null;
   dialogNovoFuncionarioAberto: boolean;
   setDialogNovoFuncionarioAberto: (aberto: boolean) => void;
+  abrirDialogNovoFuncionario: (aberto: boolean) => void;
   dialogInativacaoAberto: boolean;
   setDialogInativacaoAberto: (aberto: boolean) => void;
   editandoId: string | null;
@@ -109,6 +113,7 @@ export type UseEquipeModuleReturn = {
   podeGerenciarEmpresa: boolean;
   podeExecutarAcoesLote: boolean;
   podeInativar: boolean;
+  podeAdicionarFuncionario: boolean;
   busca: string;
   statusFiltro: string;
   cargoFiltro: string;
@@ -120,20 +125,18 @@ export type UseEquipeModuleReturn = {
   funcionariosDestinoMesmoPdv: Funcionario[];
   abaAtiva: "colaboradores" | "pdvs";
   setAbaAtiva: (aba: "colaboradores" | "pdvs") => void;
-  instanciasWhatsapp: WhatsappInstanciaResumo[];
   carregandoPdvs: boolean;
-  carregandoInstanciasWhatsapp: boolean;
   criandoPdv: boolean;
-  criandoInstanciaWhatsapp: boolean;
-  salvandoInstanciaWhatsappId: string | null;
-  excluindoInstanciaWhatsappId: string | null;
-  salvandoInstanciaPdvId: string | null;
+  pdvEmEdicao: PdvEmEdicao | null;
+  setPdvEmEdicao: (pdv: PdvEmEdicao | null) => void;
+  pdvParaExcluir: PdvParaExcluir | null;
+  setPdvParaExcluir: (pdv: PdvParaExcluir | null) => void;
+  salvandoPdvId: string | null;
+  excluindoPdvId: string | null;
   erroGestaoPdvs: string | null;
   criarPdv: (nome: string) => Promise<void>;
-  criarInstanciaWhatsapp: (nome: string) => Promise<void>;
-  salvarInstanciaWhatsapp: (id: string, nome: string) => Promise<boolean>;
-  excluirInstanciaWhatsapp: (id: string) => Promise<void>;
-  atualizarInstanciaPadraoPdv: (idPdv: string, idInstancia: string | null) => Promise<void>;
+  editarPdv: (id: string, nome: string) => Promise<boolean>;
+  excluirPdv: (id: string) => Promise<void>;
   funcionariosDestinoInativacao: FuncionarioDestinoInativacao | null;
   destinoInativacaoIndividual: string;
   setDestinoInativacaoIndividual: (destino: string) => void;
@@ -165,4 +168,10 @@ export type UseEquipeModuleReturn = {
   setErroLista: (erro: string | null) => void;
   todosDaPaginaSelecionados: boolean;
   carregarFuncionarios: () => Promise<void>;
+  contadoresFiltro: {
+    status: Record<string, number>;
+    cargo: Record<string, number>;
+  };
+  temAlteracoesNaoSalvas: boolean;
+  limparFiltros: () => void;
 };

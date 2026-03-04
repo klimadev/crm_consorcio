@@ -356,7 +356,6 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
             telefone: lead.telefone,
             valor_consorcio: Number(lead.valor_consorcio),
             documento_aprovacao_url: docUrl || null,
-            id_whatsapp_instancia: lead.id_whatsapp_instancia,
           }),
         });
 
@@ -445,7 +444,6 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
         id: idTemporario,
         id_estagio,
         id_funcionario,
-        id_whatsapp_instancia: null,
         nome,
         telefone,
         valor_consorcio,

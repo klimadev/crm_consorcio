@@ -14,7 +14,6 @@ type LeadComAcesso = {
   id_empresa: string;
   telefone: string;
   nome: string;
-  id_whatsapp_instancia: string | null;
 };
 
 type InstanciaResolvida = {
@@ -162,7 +161,6 @@ export async function buscarLeadComAcesso(sessao: SessaoToken, leadId: string): 
       id_empresa: true,
       telefone: true,
       nome: true,
-      id_whatsapp_instancia: true,
     },
   });
 }
@@ -174,11 +172,19 @@ export async function resolverInstanciaDoLead(idEmpresa: string, leadId: string)
       id_empresa: idEmpresa,
     },
     select: {
-      id_whatsapp_instancia: true,
+      funcionario: {
+        select: {
+          pdv: {
+            select: {
+              id_whatsapp_instancia: true,
+            },
+          },
+        },
+      },
     },
   });
 
-  const instanciaId = lead?.id_whatsapp_instancia;
+  const instanciaId = lead?.funcionario.pdv.id_whatsapp_instancia;
   if (!instanciaId) return null;
 
   const instancia = await prisma.whatsappInstancia.findFirst({

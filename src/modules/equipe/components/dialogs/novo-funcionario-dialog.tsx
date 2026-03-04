@@ -11,6 +11,16 @@ type NovoFuncionarioDialogProps = {
 };
 
 export function NovoFuncionarioDialog({ vm }: NovoFuncionarioDialogProps) {
+  // GERENTE só pode adicionar COLABORADOR no próprio PDV
+  const isGerente = vm.podeAdicionarFuncionario && !vm.podeGerenciarEmpresa;
+  const cargosDisponiveis = isGerente
+    ? [{ value: "COLABORADOR", label: "Colaborador" }]
+    : [
+        { value: "COLABORADOR", label: "Colaborador" },
+        { value: "GERENTE", label: "Gerente" },
+        { value: "ADMINISTRADOR", label: "Administrador" },
+      ];
+
   return (
     <Dialog
       open={vm.dialogNovoFuncionarioAberto}
@@ -57,33 +67,49 @@ export function NovoFuncionarioDialog({ vm }: NovoFuncionarioDialogProps) {
               <SelectValue placeholder="Cargo" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="COLABORADOR">Colaborador</SelectItem>
-              <SelectItem value="GERENTE">Gerente</SelectItem>
-              <SelectItem value="ADMINISTRADOR">Administrador</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select
-            name="id_pdv"
-            value={vm.pdvSelecionado}
-            onValueChange={vm.setPdvSelecionado}
-          >
-            <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-slate-50/80 text-sm font-medium text-slate-600">
-              <SelectValue placeholder="PDV" />
-            </SelectTrigger>
-            <SelectContent>
-              {vm.pdvs.map((pdv) => (
-                <SelectItem key={pdv.id} value={pdv.id}>
-                  {pdv.nome}
+              {cargosDisponiveis.map((cargo) => (
+                <SelectItem key={cargo.value} value={cargo.value}>
+                  {cargo.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
+          {isGerente ? (
+            <input type="hidden" name="id_pdv" value={vm.pdvSelecionado} />
+          ) : (
+            <Select
+              name="id_pdv"
+              value={vm.pdvSelecionado}
+              onValueChange={vm.setPdvSelecionado}
+            >
+              <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-slate-50/80 text-sm font-medium text-slate-600">
+                <SelectValue placeholder="PDV" />
+              </SelectTrigger>
+              <SelectContent>
+                {vm.pdvs.map((pdv) => (
+                  <SelectItem key={pdv.id} value={pdv.id}>
+                    {pdv.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
           {vm.erroCadastro ? <p className="text-sm font-medium text-rose-600">{vm.erroCadastro}</p> : null}
 
-          <Button className="w-full rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700" type="submit">
-            Cadastrar
+          <Button className="w-full rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700" type="submit" disabled={vm.carregandoCadastro}>
+            {vm.carregandoCadastro ? (
+              <span className="flex items-center gap-2">
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Cadastrando...
+              </span>
+            ) : (
+              "Cadastrar"
+            )}
           </Button>
         </form>
       </DialogContent>

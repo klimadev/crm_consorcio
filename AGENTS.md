@@ -1,192 +1,43 @@
-# AGENTS.md — CRM Consórcio
+# Constituição do Projeto: MC CRM Consórcio
+**Contexto:** Este é um CRM multi-tenant focado na venda de consórcios. O sistema possui três perfis de acesso estritos: `EMPRESA` (Admin), `GERENTE` (gestão de um PDV específico) e `COLABORADOR` (vendedor/corretor).
 
-Agentic coding guidelines for this CRM application.
+A IA deve atuar como uma Desenvolvedora Sênior (Full Stack Next.js 15, React, TypeScript, Prisma, Tailwind). Ao gerar ou refatorar código, siga estritamente as regras abaixo. NUNCA desvie desta arquitetura sem perguntar antes.
 
-## Tech Stack
+## 1. Arquitetura Modular e Padrão MVVM (Frontend)
+O projeto usa uma abordagem Feature-Sliced/Modular. O código não fica solto na pasta `app`.
+- **Rotas (`src/app`):** Servem APENAS para roteamento e verificação inicial de sessão (`obterSessaoNoServidor`). Elas importam o módulo correspondente (ex: `<ModuloEquipe perfil={sessao.perfil} />`).
+- **Módulos (`src/modules/[nome-do-modulo]`):** Toda a lógica de negócio visual vive aqui.
+  - `page.tsx`: O componente principal do módulo. Ele NÃO deve ter estados complexos. Ele invoca o hook principal (ex: `const vm = useEquipeModule()`) e repassa o objeto `vm` (ViewModel) para os subcomponentes.
+  - `hooks/use-[modulo].ts`: O "Cérebro" da tela. Contém todos os `useState`, `useEffect`, chamadas de API (`fetch`) e funções de manipulação. Retorna tipagens estritas definidas em `types.ts`.
+  - `components/`: Componentes visuais burros ou semi-burros que recebem `vm` via props ou callbacks específicos.
+  - `types.ts`: Tipagens isoladas do módulo.
+  - `index.ts`: Exporta o módulo publicamente.
 
-- **Framework:** Next.js 16 (App Router)
-- **Language:** TypeScript
-- **Database:** Prisma ORM + SQLite (dev) / PostgreSQL (prod)
-- **Styling:** Tailwind CSS v4
-- **UI Components:** Radix UI + class-variance-authority
-- **Testing:** Vitest + React Testing Library
+## 2. Regras de Backend e API Routes (Next.js 15)
+- **Acesso assíncrono (Next 15):** Parâmetros dinâmicos (`params`) e `searchParams` DEVEM ser `await` (ex: `const { id } = await params;`).
+- **Segurança:** Toda rota em `src/app/api/` DEVE começar invocando `await exigirSessao(request)`. Se a rota for restrita, verificar em seguida (ex: `if (!podeGerenciarEmpresa(auth.sessao)) return respostaSemPermissao();`).
+- **Validação:** TODO e qualquer payload (`request.json()`) DEVE ser validado usando esquemas do `Zod` exportados de `src/lib/validacoes.ts`. Em caso de erro, retornar `NextResponse.json({ erro: mensagemErroValidacao(validacao.error) }, { status: 400 })`.
+- **Banco de Dados (Prisma):** 
+  - Mutações que envolvem mais de uma tabela ou dependem uma da outra DEVEM usar `prisma.$transaction`.
+  - Nunca exclua fisicamente (hard delete) se houver impacto em histórico. Use soft deletes (`ativo: false`, `deleted_at: Date`) ou realocação (como no caso de `inativarFuncionario`).
 
-## Commands
+## 3. Regras de UI, UX e Estilização
+- **Tailwind & Utilitários:** Use `cn()` (`clsx` + `tailwind-merge`) localizado em `@/lib/utils` para condicional de classes.
+- **Componentes Base:** Use os componentes da pasta `src/components/ui/` (baseados em Shadcn UI / Radix). Não crie botões ou inputs do zero sem usar `<Button>` ou `<Input>`.
+- **Cores Oficiais:** `slate` (neutro), `emerald` (sucesso/ação principal), `rose` (erros/destrutivo), `amber` (alertas), `blue/cyan` (informações/destaques).
+- **Feedback Visual:**
+  - Ações de mutação devem desabilitar botões e mostrar `Loader2` (Lucide) rodando (`animate-spin`).
+  - Ações otimistas (como adicionar item antes da API responder) devem envolver o item no componente `<OptimisticSync active={condicao}>`.
+  - Notificações de sucesso/erro DEVEM usar o hook `useToast` ou mensagens renderizadas em tela com ícones claros (`AlertCircle`, `CheckCircle2`).
 
-```bash
-# Development
-npm run dev                # Start dev server (port 3333)
+## 4. Regras de Negócio Específicas
+- **Automação/WhatsApp:** Lógica de agendamento (`jobs`) exige uso de chaves de *idempotência* para evitar disparos duplicados. Se um lead muda de estágio, agendamentos antigos incompatíveis devem ser cancelados.
+- **Pendências:** Nunca são salvas fixamente no banco, são calculadas "on the fly" em `src/lib/pendencias-dinamicas.ts` ou `calculo-pendencias.ts` baseado em regras de tempo (ex: `DIAS_ESTAGIO_PARADO`).
+- **Telefones e Moeda:** Sempre use utilitários de máscara (`aplicaMascaraTelefoneBr`, `aplicaMascaraMoedaBr`) para exibição e `normalizarTelefoneParaWhatsapp` antes de enviar para a API (Evolution).
 
-# Validate (USE LINT FIRST - faster)
-npm run lint               # ESLint (FAST - always run this first)
-npm run build              # Full build (only when needed)
-
-# Testing
-npm run test                           # Run all tests
-npm run test -- src/file.test.ts      # Single file
-npm run test -- --run -t "test name"  # Single test by name
-
-# Database
-npm run seed              # Seed database
-npx prisma studio         # Open Prisma GUI
-npx prisma db push        # Push schema changes
-npx prisma generate       # Regenerate client
-```
-
-## Test Credentials
-
-| Email | Password |
-|-------|----------|
-| liam@gmail.com | lima123 |
-| teste1@gmail.com | teste123 |
-
-## Project Structure
-
-```
-src/
-├── app/                    # Next.js App Router
-│   ├── (auth)/           # Auth pages (login, cadastro)
-│   ├── (dashboard)/      # Protected pages
-│   └── api/              # API routes
-├── components/ui/         # Reusable UI components
-├── modules/               # Modular architecture
-│   ├── equipe/           # Team module (funcionários)
-│   ├── kanban/           # Kanban module (leads pipeline)
-│   ├── configs/          # Settings module (estágios)
-│   └── whatsapp/         # WhatsApp module
-│       ├── components/   # UI components
-│       ├── hooks/       # Module hooks
-│       └── types.ts     # Module types
-└── lib/                  # Utilities
-```
-
-## Largest Files (Complexity Indicators)
-
-| Lines | File | Purpose |
-|-------|------|---------|
-| 624 | `automation-form-dialog.tsx` | WhatsApp automation form |
-| 594 | `whatsapp-automations.ts` | Automation logic |
-| 587 | `use-equipe-module.ts` | Team module hook |
-| 511 | `use-kanban-module.ts` | Kanban module hook |
-| 449 | `jobs-table.tsx` | WhatsApp jobs/agendamentos |
-
-## Code Style
-
-### Naming Conventions
-- **Files:** kebab-case (`modulo-equipe.tsx`)
-- **Components:** PascalCase (`ModuloEquipe`)
-- **Hooks:** `use-nome-module.ts`
-- **Types:** PascalCase (`Lead`, `WhatsappAutomacao`)
-
-### Imports (use @/*)
-```tsx
-import { Button } from "@/components/ui/button";
-import { cn, formataMoeda } from "@/lib/utils";
-import type { Lead } from "@/types";
-```
-
-### Component Pattern
-```tsx
-"use client";
-import { useState, useMemo } from "react";
-import { cn } from "@/lib/utils";
-
-export function ModuloExemplo({ perfil }: Props) {
-  const [state, setState] = useState("");
-  const filtered = useMemo(() => items.filter(i => i.active), [items]);
-  return <div className={cn("base", condition && "active")}>{filtered}</div>;
-}
-```
-
-## Error Handling
-
-```tsx
-// API responses - always handle JSON parse errors
-const json = await resposta.json().catch(() => ({}));
-
-// Async - always try/catch
-try {
-  await executarAutomacao(data);
-} catch (erro) {
-  console.error("Erro ao executar automacao:", erro);
-}
-
-// Context - throw if used outside provider
-export function useMyContext() {
-  const context = useContext(MyContext);
-  if (!context) throw new Error("useMyContext must be used within MyProvider");
-  return context;
-}
-```
-
-## Key Patterns
-
-### Synchronous State Sync Bug (AVOID)
-```tsx
-// WRONG - stale data!
-setLeads(newLeads);
-sincronizarPendencias();
-
-// CORRECT - use useEffect
-useEffect(() => {
-  sincronizarPendencias();
-}, [leads, estagios]);
-```
-
-### Optimistic UI with Rollback
-```tsx
-const idTemp = `temp-${Date.now()}`;
-setItems(prev => [{ ...item, id: idTemp }, ...prev]);
-const res = await fetch("/api/items", { method: "POST", body: JSON.stringify(item) });
-if (!res.ok) setItems(prev => prev.filter(i => i.id !== idTemp));
-```
-
-### Controlled Dialog
-```tsx
-<Dialog open={open} onOpenChange={o => { setOpen(o); if (!o) setErro(null); }}>
-```
-
-## Tailwind Classes
-```tsx
-className="space-y-3"              // vertical spacing
-className="flex items-center gap-2" // alignment
-className="text-sm text-slate-500"  // secondary text
-className={cn("base", condition && "conditional")}
-```
-
-## Testing
-```tsx
-import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
-
-describe("Component", () => {
-  it("should render", () => {
-    render(<Componente prop="value" />);
-    expect(screen.getByText("label")).toBeInTheDocument();
-  });
-});
-```
-
-## Validation Pipeline (ALWAYS RUN)
-
-After ANY code change, run in order:
-1. `npm run lint` - Fastest, catch syntax errors
-2. `npm run build` - Full type check + build
-3. Manual logic review - Verify flows, edge cases
-
-## Critical Rules
-
-1. **Use LINT over BUILD** - `npm run lint` is faster, use always
-2. **Verify Consolidation** - After changes, check other parts need updating (hooks, types, API routes)
-3. **Rollback on Fail** - Always implement rollback for optimistic updates
-4. **Context + useEffect** - For cross-component sync, use Context + useEffect (NOT sync calls)
-5. **Event-Driven** - For automations: trigger → find rules → execute action
-6. **Multi-tenant** - Always include `id_empresa` in queries for tenant isolation
-7. **Never Block** - Never run dev server or processes that require human interaction
-
-## Editing Strategy
-
-1. **Maximum First** - Edit entire files when possible
-2. **Multi-file** - Edit all related files in same iteration
-3. **Fail Fast** - If lint/build fails, fix all related errors before continuing
-4. **Loop** - Repeat validation until passing
+## 5. Fluxo de Pensamento da IA
+Antes de gerar código:
+1. Analise o contexto e os arquivos envolvidos.
+2. Identifique se a mudança é no Banco, na API, no Hook (VM) ou na View.
+3. Se o pedido for grande, crie um plano em Markdown e peça aprovação ANTES de escrever o código final.
+4. Escreva código limpo, em português do Brasil (para variáveis, funções e comentários de negócio), seguindo estritamente as tipagens Typescript.

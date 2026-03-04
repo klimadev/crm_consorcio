@@ -21,15 +21,18 @@ model Empresa {
 }
 
 model Pdv {
-  id            String        @id @default(uuid())
-  id_empresa    String
-  nome          String
-  criado_em     DateTime      @default(now())
-  atualizado_em DateTime      @default(now()) @updatedAt
-  funcionarios  Funcionario[]
-  empresa       Empresa       @relation(fields: [id_empresa], references: [id])
+  id                    String             @id @default(uuid())
+  id_empresa            String
+  id_whatsapp_instancia String?
+  nome                  String
+  criado_em             DateTime           @default(now())
+  atualizado_em         DateTime           @default(now()) @updatedAt
+  funcionarios          Funcionario[]
+  empresa               Empresa            @relation(fields: [id_empresa], references: [id])
+  whatsapp_instancia    WhatsappInstancia? @relation(fields: [id_whatsapp_instancia], references: [id], onDelete: SetNull)
 
   @@index([id_empresa])
+  @@index([id_empresa, id_whatsapp_instancia])
 }
 
 model Funcionario {
@@ -102,30 +105,27 @@ model EstagioFunil {
 }
 
 model Lead {
-  id                      String       @id @default(uuid())
+  id                      String             @id @default(uuid())
   id_empresa              String
   id_funcionario          String
   id_estagio              String
-  id_whatsapp_instancia   String?
   nome                    String
   telefone                String
   valor_consorcio         Float
   observacoes             String?
   motivo_perda            String?
-  criado_em               DateTime     @default(now())
-  atualizado_em           DateTime     @default(now()) @updatedAt
+  criado_em               DateTime           @default(now())
+  atualizado_em           DateTime           @default(now()) @updatedAt
   documento_aprovacao_url String?
-  estagio                 EstagioFunil @relation(fields: [id_estagio], references: [id])
-  funcionario             Funcionario  @relation(fields: [id_funcionario], references: [id])
-  empresa                 Empresa      @relation(fields: [id_empresa], references: [id])
-  whatsapp_instancia      WhatsappInstancia? @relation(fields: [id_whatsapp_instancia], references: [id], onDelete: SetNull)
+  estagio                 EstagioFunil       @relation(fields: [id_estagio], references: [id])
+  funcionario             Funcionario        @relation(fields: [id_funcionario], references: [id])
+  empresa                 Empresa            @relation(fields: [id_empresa], references: [id])
   pendencias              Pendencia[]
   whatsapp_mensagens      WhatsappMensagem[]
 
   @@index([id_empresa])
   @@index([id_funcionario])
   @@index([id_estagio])
-  @@index([id_empresa, id_whatsapp_instancia])
 }
 
 model Pendencia {
@@ -146,26 +146,26 @@ model Pendencia {
 }
 
 model WhatsappInstancia {
-  id            String   @id @default(uuid())
+  id            String             @id @default(uuid())
   id_empresa    String
   id_criador    String
   nome          String
-  instance_name String   @unique
+  instance_name String             @unique
   status        String
   phone         String?
-  criado_em     DateTime @default(now())
-  atualizado_em DateTime @default(now()) @updatedAt
+  criado_em     DateTime           @default(now())
+  atualizado_em DateTime           @default(now()) @updatedAt
   profile_name  String?
   profile_pic   String?
   mensagens     WhatsappMensagem[]
-  leads         Lead[]
+  pdvs          Pdv[]
 
   @@index([id_empresa])
   @@index([id_criador])
 }
 
 model WhatsappMensagem {
-  id                    String   @id @default(uuid())
+  id                    String @id @default(uuid())
   id_empresa            String
   id_lead               String
   id_whatsapp_instancia String
@@ -173,9 +173,9 @@ model WhatsappMensagem {
   mensagem_id    String
   remote_jid     String
   from_me        Boolean
-  tipo           String   @default("text")
+  tipo           String    @default("text")
   conteudo       String?
-  status         String   @default("PENDING")
+  status         String    @default("PENDING")
   timestamp      Int
   lida_no_crm_em DateTime?
   erro           String?
@@ -184,7 +184,7 @@ model WhatsappMensagem {
   criado_em     DateTime @default(now())
   atualizado_em DateTime @default(now()) @updatedAt
 
-  lead      Lead             @relation(fields: [id_lead], references: [id], onDelete: Cascade)
+  lead      Lead              @relation(fields: [id_lead], references: [id], onDelete: Cascade)
   instancia WhatsappInstancia @relation(fields: [id_whatsapp_instancia], references: [id], onDelete: Cascade)
 
   @@unique([id_whatsapp_instancia, mensagem_id])

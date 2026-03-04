@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   exigirSessao,
+  podeAdicionarFuncionario,
   podeExecutarAcoesEmLote,
   podeGerenciarEmpresa,
   podeVerEquipe,
@@ -44,10 +45,15 @@ export async function GET(request: NextRequest) {
   const filtros = validacaoQuery.data;
   const busca = normalizarBuscaFuncionarios(filtros.busca);
 
+  // GERENTE: filtra apenas pelo PDV da sessão
+  const idPdvSessao = auth.sessao.perfil === "GERENTE" && auth.sessao.id_pdv ? auth.sessao.id_pdv : null;
+
   const whereBase = {
     id_empresa: auth.sessao.id_empresa,
     ...(filtros.cargo !== "TODOS" ? { cargo: filtros.cargo } : {}),
-    ...(filtros.id_pdv ? { id_pdv: filtros.id_pdv } : {}),
+    // Se for GERENTE, força filtro pelo PDV da sessão (a menos que explicitamente busque por outro PDV e seja EMPRESA)
+    ...(idPdvSessao && !filtros.id_pdv ? { id_pdv: idPdvSessao } : {}),
+    ...(filtros.id_pdv && auth.sessao.perfil === "EMPRESA" ? { id_pdv: filtros.id_pdv } : {}),
     ...(busca
       ? {
           OR: [
@@ -69,6 +75,8 @@ export async function GET(request: NextRequest) {
     nome: { nome: filtros.direcao },
     email: { email: filtros.direcao },
     cargo: { cargo: filtros.direcao },
+    status: { ativo: filtros.direcao === "asc" ? "desc" : "asc" }, // Inverte: ativos primeiro (desc) ou inativos primeiro (asc)
+    pdv: { pdv: { nome: filtros.direcao } },
     criado_em: { criado_em: filtros.direcao },
   } as const;
 
@@ -120,7 +128,8 @@ export async function POST(request: NextRequest) {
     return respostaSemPermissao();
   }
 
-  if (!podeGerenciarEmpresa(auth.sessao)) {
+  const permissao = podeAdicionarFuncionario(auth.sessao);
+  if (!permissao.pode) {
     return respostaSemPermissao();
   }
 
@@ -136,10 +145,25 @@ export async function POST(request: NextRequest) {
   const email = body.email?.trim().toLowerCase();
   const senha = body.senha;
   const cargo = body.cargo;
-  const id_pdv = body.id_pdv;
+  let id_pdv = body.id_pdv;
 
   if (!nome || !email || !senha || !cargo || !id_pdv) {
     return NextResponse.json({ erro: "Preencha todos os campos." }, { status: 400 });
+  }
+
+  // GERENTE só pode criar COLABORADOR
+  if (permissao.idPdvPermitido && cargo !== "COLABORADOR") {
+    return NextResponse.json({ erro: "Gerentes podem adicionar apenas colaboradores." }, { status: 403 });
+  }
+
+  // GERENTE só pode adicionar no próprio PDV
+  if (permissao.idPdvPermitido && id_pdv !== permissao.idPdvPermitido) {
+    return NextResponse.json({ erro: "Você só pode adicionar colaboradores no seu PDV." }, { status: 403 });
+  }
+
+  // Se não tem restrição de PDV, usa o enviado; senão força o PDV do gerente
+  if (permissao.idPdvPermitido) {
+    id_pdv = permissao.idPdvPermitido;
   }
 
   if (!["COLABORADOR", "GERENTE", "ADMINISTRADOR"].includes(cargo)) {

@@ -45,6 +45,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       id: true,
       nome: true,
       ativo: true,
+      id_pdv: true,
     },
   });
 
@@ -56,6 +57,16 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ erro: "Funcionario ja esta inativo." }, { status: 400 });
   }
 
+  // Validação de PDV para GERENTE
+  if (auth.sessao.perfil === "GERENTE" && auth.sessao.id_pdv) {
+    if (funcionarioOrigem.id_pdv !== auth.sessao.id_pdv) {
+      return NextResponse.json(
+        { erro: "Voce só pode inativar colaboradores do seu PDV." },
+        { status: 403 }
+      );
+    }
+  }
+
   const funcionarioDestino = await prisma.funcionario.findFirst({
     where: {
       id: id_funcionario_destino,
@@ -65,11 +76,19 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     select: {
       id: true,
       nome: true,
+      id_pdv: true,
     },
   });
 
   if (!funcionarioDestino) {
     return NextResponse.json({ erro: "Colaborador de destino invalido ou inativo." }, { status: 400 });
+  }
+
+  if (funcionarioDestino.id_pdv !== funcionarioOrigem.id_pdv) {
+    return NextResponse.json(
+      { erro: "O colaborador de destino precisa ser ativo e pertencer ao mesmo PDV." },
+      { status: 400 },
+    );
   }
 
   const quantidadeLeads = await prisma.lead.count({

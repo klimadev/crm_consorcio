@@ -12,11 +12,19 @@ export type PendenciaDinamica = {
 
 export async function detectarPendenciasDinamicas(
   idEmpresa: string,
-  idFuncionario?: string
+  idFuncionario?: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  whereAdicional?: any
 ): Promise<PendenciaDinamica[]> {
-  const whereLead: { id_empresa: string; id_funcionario?: string } = { id_empresa: idEmpresa };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const whereLead: any = { id_empresa: idEmpresa };
+  
   if (idFuncionario) {
     whereLead.id_funcionario = idFuncionario;
+  }
+  
+  if (whereAdicional?.id_funcionario) {
+    whereLead.id_funcionario = whereAdicional.id_funcionario;
   }
 
   const leads = await prisma.lead.findMany({

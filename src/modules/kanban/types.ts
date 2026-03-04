@@ -14,7 +14,6 @@ export type Lead = {
   id: string;
   id_estagio: string;
   id_funcionario: string;
-  id_whatsapp_instancia: string | null;
   nome: string;
   telefone: string;
   valor_consorcio: number;

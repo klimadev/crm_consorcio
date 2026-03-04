@@ -1,6 +1,6 @@
 "use client";
 
-import { Users, UserPlus, Shield, ShieldUser, TrendingUp, UserCheck, UserX } from "lucide-react";
+import { Users, UserPlus, Shield, ShieldUser, UserCheck, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { UseEquipeModuleReturn } from "../types";
@@ -10,10 +10,9 @@ type KpiCardProps = {
   valor: number;
   icone: React.ElementType;
   cor: { bg: string; text: string; ring: string };
-  tendencia?: { valor: number; positiva: boolean };
 };
 
-function KpiCard({ titulo, valor, icone: Icone, cor, tendencia }: KpiCardProps) {
+function KpiCard({ titulo, valor, icone: Icone, cor }: KpiCardProps) {
   return (
     <div className="group relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white/80 p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
       <div className={cn("absolute right-0 top-0 h-24 w-24 -translate-y-8 translate-x-8 rounded-full opacity-50", cor.bg)} />
@@ -26,12 +25,6 @@ function KpiCard({ titulo, valor, icone: Icone, cor, tendencia }: KpiCardProps) 
         </div>
         <div className="mt-4 flex items-end justify-between">
           <p className="text-4xl font-bold text-slate-800">{valor}</p>
-          {tendencia && (
-            <div className={cn("flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium", tendencia.positiva ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600")}>
-              {tendencia.positiva ? <TrendingUp className="h-3 w-3" /> : <TrendingUp className="h-3 w-3 rotate-180" />}
-              {tendencia.valor}%
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -57,8 +50,8 @@ export function EquipeHeader({ vm }: EquipeHeaderProps) {
         </div>
       </div>
 
-      {vm.podeGerenciarEmpresa ? (
-        <Button className="w-full rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700 md:w-auto" onClick={() => vm.setDialogNovoFuncionarioAberto(true)}>
+      {vm.podeAdicionarFuncionario ? (
+        <Button className="w-full rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700 md:w-auto" onClick={() => vm.abrirDialogNovoFuncionario(true)}>
           <UserPlus className="mr-2 h-4 w-4" />
           Adicionar colaborador
         </Button>
@@ -72,12 +65,17 @@ type EquipeKpiGridProps = {
 };
 
 export function EquipeKpiGrid({ vm }: EquipeKpiGridProps) {
+  const temFiltrosAtivos = vm.busca || vm.statusFiltro !== "TODOS" || vm.cargoFiltro !== "TODOS";
+  
+  // Se há filtros ativos, mostra KPIs filtrados. Se não, mostra totais
+  const kpisExibir = temFiltrosAtivos ? vm.kpis : vm.kpisTotais;
+
   const itensKpi = [
-    { titulo: "Total", valor: vm.kpis.total, icone: Users, cor: { bg: "bg-slate-100", text: "text-slate-600", ring: "ring-slate-200" }, tendencia: { valor: 12, positiva: true } },
-    { titulo: "Ativos", valor: vm.kpis.ativos, icone: UserCheck, cor: { bg: "bg-emerald-100", text: "text-emerald-600", ring: "ring-emerald-200" }, tendencia: { valor: 8, positiva: true } },
-    { titulo: "Inativos", valor: vm.kpis.inativos, icone: UserX, cor: { bg: "bg-rose-100", text: "text-rose-600", ring: "ring-rose-200" }, tendencia: { valor: 3, positiva: false } },
-    { titulo: "Gerentes", valor: vm.kpis.gerentes, icone: ShieldUser, cor: { bg: "bg-violet-100", text: "text-violet-600", ring: "ring-violet-200" }, tendencia: { valor: 5, positiva: true } },
-    { titulo: "Colaboradores", valor: vm.kpis.colaboradores, icone: Shield, cor: { bg: "bg-blue-100", text: "text-blue-600", ring: "ring-blue-200" }, tendencia: { valor: 2, positiva: true } },
+    { titulo: temFiltrosAtivos ? "Encontrados" : "Total", valor: kpisExibir.total, icone: Users, cor: { bg: "bg-slate-100", text: "text-slate-600", ring: "ring-slate-200" } },
+    { titulo: "Ativos", valor: kpisExibir.ativos, icone: UserCheck, cor: { bg: "bg-emerald-100", text: "text-emerald-600", ring: "ring-emerald-200" } },
+    { titulo: "Inativos", valor: kpisExibir.inativos, icone: UserX, cor: { bg: "bg-rose-100", text: "text-rose-600", ring: "ring-rose-200" } },
+    { titulo: "Gerentes", valor: kpisExibir.gerentes, icone: ShieldUser, cor: { bg: "bg-violet-100", text: "text-violet-600", ring: "ring-violet-200" } },
+    { titulo: "Colaboradores", valor: kpisExibir.colaboradores, icone: Shield, cor: { bg: "bg-blue-100", text: "text-blue-600", ring: "ring-blue-200" } },
   ] as const;
 
   if (vm.carregandoLista) {
@@ -85,33 +83,44 @@ export function EquipeKpiGrid({ vm }: EquipeKpiGridProps) {
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-      {itensKpi.map((item) => (
-        <KpiCard
-          key={item.titulo}
-          titulo={item.titulo}
-          valor={item.valor}
-          icone={item.icone}
-          cor={item.cor}
-          tendencia={item.tendencia}
-        />
-      ))}
+    <div className="space-y-2">
+      {temFiltrosAtivos && (
+        <p className="text-xs text-slate-500 ml-1">
+          Mostrando {kpisExibir.total} de {vm.kpisTotais.total} colaboradores
+        </p>
+      )}
+      {/* Mobile: scroll horizontal, Desktop: grid fixo */}
+      <div className="-mx-4 px-4 overflow-x-auto md:mx-0 md:px-0 md:overflow-visible">
+        <div className="flex gap-3 min-w-max md:grid md:grid-cols-2 md:gap-3 sm:grid-cols-3 sm:min-w-0 md:lg:grid-cols-5 lg:gap-4">
+          {itensKpi.map((item) => (
+            <KpiCard
+              key={item.titulo}
+              titulo={item.titulo}
+              valor={item.valor}
+              icone={item.icone}
+              cor={item.cor}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
 function SkeletonKpiGrid() {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="animate-pulse rounded-2xl border border-slate-200/60 bg-white/80 p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-          <div className="flex items-center justify-between">
-            <div className="h-3 w-12 rounded bg-slate-200" />
-            <div className="h-10 w-10 rounded-xl bg-slate-200" />
+    <div className="-mx-4 px-4 overflow-x-auto md:mx-0 md:px-0 md:overflow-visible">
+      <div className="flex gap-3 min-w-max md:grid md:grid-cols-2 md:gap-3 sm:grid-cols-3 sm:min-w-0 md:lg:grid-cols-5 lg:gap-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="w-36 md:w-auto animate-pulse rounded-2xl border border-slate-200/60 bg-white/80 p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+            <div className="flex items-center justify-between">
+              <div className="h-3 w-12 rounded bg-slate-200" />
+              <div className="h-10 w-10 rounded-xl bg-slate-200" />
+            </div>
+            <div className="mt-4 h-9 w-16 rounded bg-slate-200" />
           </div>
-          <div className="mt-4 h-9 w-16 rounded bg-slate-200" />
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }

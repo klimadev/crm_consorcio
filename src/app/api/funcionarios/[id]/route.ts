@@ -46,6 +46,16 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ erro: "Funcionario nao encontrado." }, { status: 404 });
   }
 
+  // Validação de PDV para GERENTE
+  if (auth.sessao.perfil === "GERENTE" && auth.sessao.id_pdv) {
+    if (funcionarioAtual.id_pdv !== auth.sessao.id_pdv) {
+      return NextResponse.json(
+        { erro: "Voce só pode editar colaboradores do seu PDV." },
+        { status: 403 }
+      );
+    }
+  }
+
   const pdv = await prisma.pdv.findFirst({
     where: {
       id: id_pdv,

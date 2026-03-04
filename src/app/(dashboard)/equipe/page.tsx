@@ -8,5 +8,5 @@ export default async function PaginaEquipe() {
     return null;
   }
 
-  return <ModuloEquipe perfil={sessao.perfil} />;
+  return <ModuloEquipe perfil={sessao.perfil} id_pdv={sessao.id_pdv} />;
 }

@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertCircle, X, Phone, FileText, Trash2, Send, MessageCircle } from "lucide-react";
 import {
   aplicaMascaraMoedaBr,
@@ -16,7 +15,6 @@ import {
 import type { Lead, PendenciaDinamica } from "../types";
 import { useWhatsappChat } from "@/modules/whatsapp/hooks/use-whatsapp-chat";
 import { WhatsappChatPanel } from "@/modules/whatsapp/components/chat/whatsapp-chat-panel";
-import type { WhatsappInstancia } from "@/modules/whatsapp/types";
 
 const LABELS_PENDENCIA: Record<string, string> = {
   DOCUMENTO_APROVACAO_PENDENTE: "Documento de Aprovação (Pdf/Link) Pendente",
@@ -64,9 +62,6 @@ export function LeadDetailsDrawer({
   const [fecharConfirmado, setFecharConfirmado] = useState(false);
   const [confirmarExclusaoAberta, setConfirmarExclusaoAberta] = useState(false);
   const [tabAtiva, setTabAtiva] = useState("detalhes");
-  const [instancias, setInstancias] = useState<WhatsappInstancia[]>([]);
-  const [carregandoInstancias, setCarregandoInstancias] = useState(false);
-  const [erroInstancias, setErroInstancias] = useState<string | null>(null);
 
   const initialUrl = leadSelecionado?.documento_aprovacao_url ?? "";
   const urlEhAlterado = documentoAprovacaoUrl !== initialUrl;
@@ -101,45 +96,16 @@ export function LeadDetailsDrawer({
     }
   };
 
-  const chatConfigurado = Boolean(leadSelecionado?.id_whatsapp_instancia);
-
-  useEffect(() => {
-    if (!leadSelecionado || (perfil !== "EMPRESA" && perfil !== "GERENTE")) return;
-
-    const carregarInstancias = async () => {
-      setCarregandoInstancias(true);
-      setErroInstancias(null);
-      try {
-        const resposta = await fetch("/api/whatsapp/instances", { cache: "no-store" });
-        const json = (await resposta.json().catch(() => ({}))) as {
-          instancias?: WhatsappInstancia[];
-          erro?: string;
-        };
-
-        if (!resposta.ok) {
-          setErroInstancias(json.erro ?? "Erro ao carregar instancias WhatsApp.");
-          setInstancias([]);
-          return;
-        }
-
-        setInstancias(json.instancias ?? []);
-      } catch {
-        setErroInstancias("Erro ao carregar instancias WhatsApp.");
-        setInstancias([]);
-      } finally {
-        setCarregandoInstancias(false);
-      }
-    };
-
-    void carregarInstancias();
-  }, [leadSelecionado?.id, perfil]);
-
   const whatsappChat = useWhatsappChat({
     leadId: leadSelecionado?.id,
-    enabled: Boolean(leadSelecionado) && chatConfigurado,
-    markReadEnabled: tabAtiva === "chat" && Boolean(leadSelecionado) && chatConfigurado,
+    enabled: Boolean(leadSelecionado),
+    markReadEnabled: tabAtiva === "chat" && Boolean(leadSelecionado),
     pollMs: 30000,
   });
+
+  const chatBloqueadoPorPdv = whatsappChat.error?.includes("configurada no PDV")
+    ? "Lead sem instancia WhatsApp configurada no PDV."
+    : null;
 
   return (
     <>
@@ -199,41 +165,6 @@ export function LeadDetailsDrawer({
               </div>
 
               <TabsContent value="detalhes" className="flex-1 overflow-y-auto p-4 m-0 space-y-4">
-                {(perfil === "EMPRESA" || perfil === "GERENTE") ? (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
-                      <MessageCircle className="h-4 w-4 text-emerald-600" />
-                      Instância WhatsApp do lead
-                    </label>
-                    <Select
-                      value={leadSelecionado.id_whatsapp_instancia ?? "none"}
-                      onValueChange={(value) =>
-                        handleMudarLead({
-                          ...leadSelecionado,
-                          id_whatsapp_instancia: value === "none" ? null : value,
-                        })
-                      }
-                      disabled={carregandoInstancias}
-                    >
-                      <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-white text-sm text-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20">
-                        <SelectValue placeholder="Selecione uma instância" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Sem instância</SelectItem>
-                        {instancias.map((instancia) => (
-                          <SelectItem key={instancia.id} value={instancia.id}>
-                            {instancia.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {erroInstancias ? <p className="text-xs text-rose-600">{erroInstancias}</p> : null}
-                    <p className="text-xs text-slate-500">
-                      Sem instância configurada, o chat WhatsApp deste lead fica bloqueado.
-                    </p>
-                  </div>
-                ) : null}
-
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
                     <Phone className="h-4 w-4 text-emerald-600" />
@@ -423,7 +354,7 @@ export function LeadDetailsDrawer({
                   sending={whatsappChat.sending}
                   canSend={whatsappChat.canSend}
                   error={whatsappChat.error}
-                  blockedReason={chatConfigurado ? null : "Lead sem instância WhatsApp configurada pela empresa."}
+                  blockedReason={chatBloqueadoPorPdv}
                   onSendMessage={whatsappChat.sendMessage}
                   onRetryMessage={whatsappChat.retryMessage}
                 />

@@ -22,16 +22,44 @@ export function podeGerenciarEmpresa(sessao: SessaoToken) {
   return sessao.perfil === "EMPRESA";
 }
 
+export function podeAdicionarFuncionario(sessao: SessaoToken) {
+  // EMPRESA pode adicionar qualquer funcionário em qualquer PDV
+  if (sessao.perfil === "EMPRESA") {
+    return { pode: true, idPdvPermitido: null };
+  }
+  // GERENTE pode adicionar apenas COLABORADOR no próprio PDV
+  if (sessao.perfil === "GERENTE" && sessao.id_pdv) {
+    return { pode: true, idPdvPermitido: sessao.id_pdv };
+  }
+  return { pode: false, idPdvPermitido: null };
+}
+
 export function podeVerEquipe(sessao: SessaoToken) {
   return sessao.perfil === "EMPRESA" || sessao.perfil === "GERENTE";
 }
 
 export function podeEditarEquipe(sessao: SessaoToken) {
-  return sessao.perfil === "EMPRESA" || sessao.perfil === "GERENTE";
+  // EMPRESA pode editar qualquer funcionário
+  if (sessao.perfil === "EMPRESA") {
+    return true;
+  }
+  // GERENTE pode editar (mas a API deve validar o PDV)
+  if (sessao.perfil === "GERENTE" && sessao.id_pdv) {
+    return true;
+  }
+  return false;
 }
 
 export function podeInativarComReatribuicao(sessao: SessaoToken) {
-  return sessao.perfil === "EMPRESA" || sessao.perfil === "GERENTE";
+  // EMPRESA pode inativar qualquer funcionário
+  if (sessao.perfil === "EMPRESA") {
+    return true;
+  }
+  // GERENTE pode inativar apenas funcionários do próprio PDV (validação adicional na API)
+  if (sessao.perfil === "GERENTE" && sessao.id_pdv) {
+    return true;
+  }
+  return false;
 }
 
 export function podeExecutarAcoesEmLote(sessao: SessaoToken) {

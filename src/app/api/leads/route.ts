@@ -21,8 +21,11 @@ export async function GET(request: NextRequest) {
       where: whereLeads,
       orderBy: { atualizado_em: "desc" },
     }),
+    // Filter employees by PDV for GERENTE
     prisma.funcionario.findMany({
-      where: { id_empresa: auth.sessao.id_empresa, ativo: true },
+      where: auth.sessao.perfil === "GERENTE" && auth.sessao.id_pdv
+        ? { id_empresa: auth.sessao.id_empresa, ativo: true, id_pdv: auth.sessao.id_pdv }
+        : { id_empresa: auth.sessao.id_empresa, ativo: true },
       select: { id: true, nome: true },
       orderBy: { nome: "asc" },
     }),
@@ -43,7 +46,6 @@ export async function POST(request: NextRequest) {
     valor_consorcio?: number;
     id_estagio?: string;
     id_funcionario?: string;
-    id_whatsapp_instancia?: string | null;
   };
 
   const nome = body.nome?.trim();
@@ -60,7 +62,6 @@ export async function POST(request: NextRequest) {
     valor_consorcio,
     id_estagio,
     id_funcionario,
-    id_whatsapp_instancia: body.id_whatsapp_instancia ?? null,
   });
 
   if (!validacao.success) {
@@ -69,32 +70,17 @@ export async function POST(request: NextRequest) {
 
   const dadosValidados = validacao.data;
 
-  const idWhatsappInstancia = dadosValidados.id_whatsapp_instancia ?? null;
-  if (idWhatsappInstancia && auth.sessao.perfil !== "EMPRESA" && auth.sessao.perfil !== "GERENTE") {
-    return NextResponse.json({ erro: "Apenas a empresa ou gerente pode definir a instancia do lead." }, { status: 403 });
-  }
-
-  const [estagio, funcionario, instancia] = await Promise.all([
+  const [estagio, funcionario] = await Promise.all([
     prisma.estagioFunil.findFirst({
       where: { id: dadosValidados.id_estagio, id_empresa: auth.sessao.id_empresa },
     }),
     prisma.funcionario.findFirst({
       where: { id: dadosValidados.id_funcionario, id_empresa: auth.sessao.id_empresa, ativo: true },
     }),
-    idWhatsappInstancia
-      ? prisma.whatsappInstancia.findFirst({
-          where: { id: idWhatsappInstancia, id_empresa: auth.sessao.id_empresa },
-          select: { id: true },
-        })
-      : Promise.resolve(null),
   ]);
 
   if (!estagio || !funcionario) {
     return NextResponse.json({ erro: "Estagio ou funcionario invalido." }, { status: 400 });
-  }
-
-  if (idWhatsappInstancia && !instancia) {
-    return NextResponse.json({ erro: "Instancia WhatsApp invalida para a empresa." }, { status: 400 });
   }
 
   try {
@@ -103,12 +89,11 @@ export async function POST(request: NextRequest) {
         id_empresa: auth.sessao.id_empresa,
         id_estagio: dadosValidados.id_estagio,
         id_funcionario: dadosValidados.id_funcionario,
-          nome: dadosValidados.nome,
-          telefone: dadosValidados.telefone,
-          valor_consorcio: dadosValidados.valor_consorcio,
-          id_whatsapp_instancia: idWhatsappInstancia,
-        },
-      });
+        nome: dadosValidados.nome,
+        telefone: dadosValidados.telefone,
+        valor_consorcio: dadosValidados.valor_consorcio,
+      },
+    });
 
     return NextResponse.json({ lead });
   } catch (erro) {

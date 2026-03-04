@@ -9,6 +9,8 @@ import { EquipeBulkActions } from "./components/equipe-bulk-actions";
 import { EquipeDesktopTable } from "./components/equipe-desktop-table";
 import { EquipeMobileList } from "./components/equipe-mobile-list";
 import { EquipePagination } from "./components/equipe-pagination";
+import { EquipeTabs } from "./components/equipe-tabs";
+import { PdvManagementPanel } from "./components/pdv-management-panel";
 import { NovoFuncionarioDialog } from "./components/dialogs/novo-funcionario-dialog";
 import { InativacaoDialog } from "./components/dialogs/inativacao-dialog";
 import type { Props } from "./types";
@@ -36,7 +38,7 @@ export function ModuloEquipe({ perfil }: Props) {
   }
 
   return (
-    <section className="space-y-5 rounded-2xl bg-slate-50/50 p-4 pb-6 md:p-6">
+    <section className="space-y-5 rounded-2xl bg-slate-50/50 p-4 pb-28 md:p-6 md:pb-28">
       <EquipeHeader vm={vm} />
       
       {vm.erroLista ? (
@@ -49,11 +51,18 @@ export function ModuloEquipe({ perfil }: Props) {
       ) : null}
 
       <EquipeKpiGrid vm={vm} />
-      <EquipeFilters vm={vm} />
-      <EquipeBulkActions vm={vm} />
-      <EquipeMobileList vm={vm} />
-      <EquipeDesktopTable vm={vm} />
-      <EquipePagination vm={vm} />
+      <EquipeTabs vm={vm} />
+      {vm.abaAtiva === "colaboradores" ? (
+        <>
+          <EquipeFilters vm={vm} />
+          <EquipeBulkActions vm={vm} />
+          <EquipeMobileList vm={vm} />
+          <EquipeDesktopTable vm={vm} />
+          <EquipePagination vm={vm} />
+        </>
+      ) : (
+        <PdvManagementPanel vm={vm} />
+      )}
       <NovoFuncionarioDialog vm={vm} />
       <InativacaoDialog vm={vm} />
     </section>

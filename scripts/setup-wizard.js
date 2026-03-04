@@ -65,9 +65,9 @@ async function main() {
       process.exit(1);
     }
 
-    log('\n3/5 - Criando banco de dados...', 'blue');
-    if (!run('npx prisma db push')) {
-      log('✗ Falha ao criar banco de dados', 'yellow');
+    log('\n3/5 - Aplicando migracoes Prisma...', 'blue');
+    if (!run('npx prisma migrate deploy')) {
+      log('✗ Falha ao aplicar migracoes Prisma', 'yellow');
       process.exit(1);
     }
 
@@ -99,9 +99,9 @@ async function main() {
       process.exit(1);
     }
 
-    log('\n3/4 - Sincronizando banco de dados...', 'blue');
-    if (!run('npx prisma db push')) {
-      log('✗ Falha ao sincronizar banco', 'yellow');
+    log('\n3/4 - Aplicando migracoes Prisma...', 'blue');
+    if (!run('npx prisma migrate deploy')) {
+      log('✗ Falha ao aplicar migracoes Prisma', 'yellow');
       process.exit(1);
     }
 
