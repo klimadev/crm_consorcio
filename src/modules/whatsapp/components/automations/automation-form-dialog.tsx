@@ -49,7 +49,7 @@ export function AutomationFormDialog({
   const [currentStep, setCurrentStep] = useState<Step>("trigger");
   const [enviando, setEnviando] = useState(false);
 
-  const form = useAutomationForm(mode, estagios);
+  const form = useAutomationForm(mode);
   const hasLoadedRef = React.useRef(false);
 
   useEffect(() => {

@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { OptimisticSync } from "@/components/ui/optimistic-sync";
 import { Card, CardContent } from "@/components/ui/card";
-import { RefreshCw, Trash2, Smartphone, Clock, Wifi, WifiOff, QrCode, Loader2, Zap, AlertCircle } from "lucide-react";
+import { RefreshCw, Trash2, Smartphone, Clock, Wifi, WifiOff, QrCode, Loader2, Zap } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { WhatsappInstancia } from "../types";
 
@@ -178,9 +179,9 @@ function QrCodeDisplay({
       </p>
       <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
         {qrAtual?.startsWith("http") ? (
-          <img src={qrAtual} alt="QR Code" className="h-64 w-64" />
+          <Image src={qrAtual} alt="QR Code" width={256} height={256} className="h-64 w-64" unoptimized />
         ) : (
-          <img src={qrAtual ?? ""} alt="QR Code" className="h-64 w-64" />
+          <Image src={qrAtual ?? ""} alt="QR Code" width={256} height={256} className="h-64 w-64" unoptimized />
         )}
       </div>
 
@@ -272,12 +273,15 @@ function InstanceCard({
           <div className="flex items-start gap-4">
             <div className="relative">
               {instancia.profile_pic ? (
-                <img
+                <Image
                   src={instancia.profile_pic}
                   alt="Foto de perfil"
+                  width={56}
+                  height={56}
                   className={`h-14 w-14 rounded-xl object-cover shadow-sm ${
                     isConnected ? "ring-2 ring-emerald-500 ring-offset-2 ring-offset-zinc-900" : ""
                   }`}
+                  unoptimized
                 />
               ) : (
                 <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl shadow-sm ${

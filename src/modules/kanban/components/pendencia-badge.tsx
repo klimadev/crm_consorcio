@@ -18,12 +18,6 @@ const coresGravidade: Record<PendenciaGravidade, string> = {
   info: "bg-blue-500",
 };
 
-const labelGravidade: Record<PendenciaGravidade, string> = {
-  critica: "crítica",
-  alerta: "alerta",
-  info: "pendente",
-};
-
 export function PendenciaBadge({ resumo, tamanho = "sm", modoExpansivo = false, className }: PendenciaBadgeProps) {
   if (!resumo || resumo.total === 0) {
     if (modoExpansivo) {

@@ -18,7 +18,7 @@ import type {
   UseEquipeModuleReturn,
   WhatsappInstancia,
 } from "../types";
-import { CARGOS_EQUIPE, PASTEL_COLORS } from "../constants";
+import { CARGOS_EQUIPE } from "../constants";
 
 function extrairDadosEdicao(funcionario: Funcionario): DadosEdicao {
   return {
@@ -420,7 +420,9 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
           return false;
         }
 
-        setUltimoSnapshot({ id, dados: extrairDadosEdicao(funcionarioAnterior) });
+        if (funcionarioAnterior) {
+          setUltimoSnapshot({ id, dados: extrairDadosEdicao(funcionarioAnterior) });
+        }
         setStatusSalvamento({ id, estado: "saved", mensagem: "Alteracoes salvas." });
         setTemAlteracoesNaoSalvas(false);
 
@@ -463,14 +465,6 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
       setDrawerEdicaoAberto(true);
     },
     [limparTimerAutoSave],
-  );
-
-  const abrirDrawerEdicao = useCallback(
-    (funcionario: Funcionario) => {
-      setEditandoFuncionario(funcionario);
-      setDrawerEdicaoAberto(true);
-    },
-    [],
   );
 
   const fecharDrawerEdicao = useCallback(() => {
@@ -589,7 +583,7 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     const nomeNormalizado = nome.trim();
     if (!nomeNormalizado) {
       setErroGestaoPdvs("Nome do PDV e obrigatorio.");
-      return;
+      return false;
     }
 
     setErroGestaoPdvs(null);
@@ -605,12 +599,14 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
       const json = (await resposta.json().catch(() => ({}))) as { erro?: string };
       if (!resposta.ok) {
         setErroGestaoPdvs(json.erro ?? "Erro ao criar PDV.");
-        return;
+        return false;
       }
 
       await carregarPdvs();
+      return true;
     } catch {
       setErroGestaoPdvs("Erro ao criar PDV.");
+      return false;
     } finally {
       setCriandoPdv(false);
     }
@@ -861,7 +857,7 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
   }, [idsSelecionados, acaoLote, cargoLote, pdvLote, destinoInativacaoLote, observacaoLote, carregarFuncionarios]);
 
   const adicionarFuncionario = useCallback(
-    async (evento: React.FormEvent<HTMLFormElement>) => {
+    async (evento: React.FormEvent<HTMLFormElement>): Promise<boolean> => {
       evento.preventDefault();
       setErroCadastro(null);
       setCarregandoCadastro(true);
@@ -885,10 +881,9 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
         if (!resposta.ok) {
           const json = await resposta.json().catch(() => null);
           setErroCadastro(json?.erro ?? "Erro ao cadastrar funcionario");
-          return;
+          return false;
         }
 
-        // Feedback de sucesso
         addToast({
           type: "success",
           title: "Colaborador cadastrado",
@@ -900,12 +895,13 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
         setCargoSelecionado("COLABORADOR");
         setPdvSelecionado("");
         setDialogNovoFuncionarioAberto(false);
-        void carregarFuncionarios();
+        void Promise.all([carregarFuncionarios(), carregarPdvs()]);
+        return true;
       } finally {
         setCarregandoCadastro(false);
       }
     },
-    [carregarFuncionarios, addToast],
+    [carregarFuncionarios, carregarPdvs, addToast],
   );
 
   useEffect(() => {

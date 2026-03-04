@@ -1,23 +1,17 @@
 "use client";
 
 import { Shield, X } from "lucide-react";
+import { useState } from "react";
 import { useEquipeModule } from "./hooks/use-equipe-module";
 import { EquipeHeader } from "./components/equipe-header";
-import { EquipeKpiGrid } from "./components/equipe-header";
-import { EquipeFilters } from "./components/equipe-filters";
-import { EquipeBulkActions } from "./components/equipe-bulk-actions";
-import { EquipeDesktopTable } from "./components/equipe-desktop-table";
-import { EquipeMobileList } from "./components/equipe-mobile-list";
-import { EquipePagination } from "./components/equipe-pagination";
-import { EquipePdvOverview } from "./components/equipe-pdv-overview";
 import { PdvManagementPanel } from "./components/pdv-management-panel";
 import { NovoFuncionarioDialog } from "./components/dialogs/novo-funcionario-dialog";
 import { InativacaoDialog } from "./components/dialogs/inativacao-dialog";
-import { FuncionarioEditarDrawer } from "./components/funcionario-editar-drawer";
 import type { Props } from "./types";
 
 export function ModuloEquipe({ perfil }: Props) {
   const vm = useEquipeModule({ perfil });
+  const [drawerNovoPdvAberto, setDrawerNovoPdvAberto] = useState(false);
 
   if (perfil === "COLABORADOR") {
     return (
@@ -39,8 +33,8 @@ export function ModuloEquipe({ perfil }: Props) {
   }
 
   return (
-    <section className="space-y-5 rounded-2xl bg-slate-50/50 p-4 pb-28 md:p-6 md:pb-28">
-      <EquipeHeader vm={vm} />
+    <section className="space-y-4 rounded-2xl bg-slate-50/50 p-4 pb-28 md:p-6 md:pb-28">
+      <EquipeHeader vm={vm} onAbrirNovoPdv={() => setDrawerNovoPdvAberto(true)} />
       
       {vm.erroLista ? (
         <div className="flex items-center gap-3 rounded-xl border border-rose-200/60 bg-rose-50/50 px-4 py-3 shadow-sm">
@@ -51,24 +45,14 @@ export function ModuloEquipe({ perfil }: Props) {
         </div>
       ) : null}
 
-      <EquipeKpiGrid vm={vm} />
-      <EquipePdvOverview vm={vm} />
+      {vm.podeGerenciarEmpresa ? (
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-3 shadow-[0_2px_8px_rgba(0,0,0,0.04)] md:p-4">
+          <PdvManagementPanel vm={vm} drawerNovoPdvAberto={drawerNovoPdvAberto} setDrawerNovoPdvAberto={setDrawerNovoPdvAberto} />
+        </div>
+      ) : null}
 
-      <EquipeFilters vm={vm} />
-      <EquipeBulkActions vm={vm} />
-      <EquipeMobileList vm={vm} />
-      <EquipeDesktopTable vm={vm} />
-      <EquipePagination vm={vm} />
-
-      {vm.podeGerenciarEmpresa ? <PdvManagementPanel vm={vm} /> : null}
       <NovoFuncionarioDialog vm={vm} />
       <InativacaoDialog vm={vm} />
-      <FuncionarioEditarDrawer 
-        vm={vm} 
-        funcionario={vm.editandoFuncionario} 
-        aberto={vm.drawerEdicaoAberto} 
-        onFechar={vm.fecharDrawerEdicao} 
-      />
     </section>
   );
 }

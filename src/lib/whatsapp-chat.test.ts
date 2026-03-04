@@ -197,7 +197,6 @@ describe("buscarMensagensEvolution", () => {
     const mockFetch = vi.fn();
     vi.stubGlobal("fetch", mockFetch);
 
-    const abortSpy = vi.fn();
     mockFetch.mockImplementation(() => new Promise((resolve) => {
       setTimeout(() => resolve(new Response("[]")), 100);
       return {

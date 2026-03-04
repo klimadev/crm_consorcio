@@ -5,12 +5,12 @@ import { Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { Funcionario, UseEquipeModuleReturn, DadosEdicao } from "../types";
 
 type FuncionarioEditarDrawerProps = {
   vm: UseEquipeModuleReturn;
- funcionario: Funcionario | null;
+  funcionario: Funcionario | null;
   aberto: boolean;
   onFechar: () => void;
 };
@@ -50,10 +50,10 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
       novosErros.nome = "Nome deve ter ao menos 2 caracteres.";
     }
     if (!dados.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dados.email.trim())) {
-      novosErros.email = "E-mail inválido.";
+      novosErros.email = "E-mail invalido.";
     }
     if (!dados.id_pdv.trim()) {
-      novosErros.id_pdv = "PDV obrigatório.";
+      novosErros.id_pdv = "PDV obrigatorio.";
     }
 
     if (Object.keys(novosErros).length > 0) {
@@ -70,16 +70,14 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
   const salvando = vm.statusSalvamento.id === funcionario?.id && vm.statusSalvamento.estado === "saving";
 
   return (
-    <Drawer open={aberto} onClose={onFechar}>
-      <DrawerContent className="mx-auto max-w-md">
-        <DrawerHeader>
-          <DrawerTitle>Editar colaborador</DrawerTitle>
-          <DrawerDescription>
-            Altere os dados do colaborador {funcionario?.nome}.
-          </DrawerDescription>
-        </DrawerHeader>
+    <Sheet open={aberto} onOpenChange={(proximoAberto) => { if (!proximoAberto) onFechar(); }}>
+      <SheetContent side="right" className="w-full max-w-lg overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Editar colaborador</SheetTitle>
+          <SheetDescription>Altere os dados do colaborador {funcionario?.nome}.</SheetDescription>
+        </SheetHeader>
 
-        <div className="space-y-4 px-4">
+        <div className="space-y-4 px-4 pb-4">
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700">Nome</label>
             <Input
@@ -136,24 +134,22 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
           </div>
 
           {vm.statusSalvamento.id === funcionario?.id && vm.statusSalvamento.estado === "error" && (
-            <div className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
-              {vm.statusSalvamento.mensagem}
-            </div>
+            <div className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{vm.statusSalvamento.mensagem}</div>
           )}
         </div>
 
-        <DrawerFooter>
+        <SheetFooter>
           <Button className="w-full" onClick={handleSalvar} disabled={salvando}>
             {salvando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            {salvando ? "Salvando..." : "Salvar alterações"}
+            {salvando ? "Salvando..." : "Salvar alteracoes"}
           </Button>
-          <DrawerClose asChild>
+          <SheetClose asChild>
             <Button variant="outline" onClick={onFechar} disabled={salvando}>
               Cancelar
             </Button>
-          </DrawerClose>
-        </DrawerFooter>
-      </DrawerContent>
-    </Drawer>
+          </SheetClose>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }

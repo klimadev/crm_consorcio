@@ -21,10 +21,8 @@ type Props = {
   automacoes: WhatsappAutomacao[];
   instancias: WhatsappInstancia[];
   carregando: boolean;
-  erro: string | null;
   onCriar: (data: WhatsappAutomacaoCreateInput) => Promise<void>;
   onAtualizar: (id: string, data: WhatsappAutomacaoUpdateInput) => Promise<void>;
-  onPreview: (mensagem: string) => Promise<string | null>;
   onDispararDispatch: (limite?: number) => Promise<WhatsappFollowUpDispatchResultado | null>;
   onAlternar: (id: string, ativo: boolean) => Promise<void>;
   onExcluir: (id: string) => Promise<void>;
@@ -34,10 +32,8 @@ export function AutomacoesList({
   automacoes,
   instancias,
   carregando,
-  erro,
   onCriar,
   onAtualizar,
-  onPreview,
   onDispararDispatch,
   onAlternar,
   onExcluir,

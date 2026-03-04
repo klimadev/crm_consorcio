@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { exigirSessao } from "@/lib/permissoes";
+import { esquemaAtualizarLead, mensagemErroValidacao } from "@/lib/validacoes";
 
 
 type Params = {
@@ -14,13 +15,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   const { id } = await params;
-  const body = (await request.json()) as {
-    observacoes?: string;
-    telefone?: string;
-    valor_consorcio?: number;
-    motivo_perda?: string | null;
-    documento_aprovacao_url?: string | null;
-  };
+  const body = await request.json();
+  const validacao = esquemaAtualizarLead.safeParse(body);
+  if (!validacao.success) {
+    return NextResponse.json({ erro: mensagemErroValidacao(validacao.error) }, { status: 400 });
+  }
+
+  const dadosValidados = validacao.data;
 
   const lead = await prisma.lead.findFirst({
     where: {
@@ -49,14 +50,43 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     }
   }
 
+  let idFuncionarioDestino = dadosValidados.id_funcionario;
+
+  if (auth.sessao.perfil === "COLABORADOR") {
+    idFuncionarioDestino = auth.sessao.id_usuario;
+  }
+
+  if (idFuncionarioDestino && idFuncionarioDestino !== lead.id_funcionario) {
+    const funcionarioDestino = await prisma.funcionario.findFirst({
+      where: {
+        id: idFuncionarioDestino,
+        id_empresa: auth.sessao.id_empresa,
+        ativo: true,
+      },
+      select: { id: true, id_pdv: true },
+    });
+
+    if (!funcionarioDestino) {
+      return NextResponse.json({ erro: "Funcionario invalido." }, { status: 400 });
+    }
+
+    if (auth.sessao.perfil === "GERENTE" && auth.sessao.id_pdv && funcionarioDestino.id_pdv !== auth.sessao.id_pdv) {
+      return NextResponse.json(
+        { erro: "Voce só pode transferir para funcionarios do seu PDV." },
+        { status: 403 }
+      );
+    }
+  }
+
   const atualizado = await prisma.lead.update({
     where: { id: lead.id },
     data: {
-      observacoes: body.observacoes,
-      telefone: body.telefone,
-      valor_consorcio: body.valor_consorcio,
-      motivo_perda: body.motivo_perda,
-      documento_aprovacao_url: body.documento_aprovacao_url ?? undefined,
+      observacoes: dadosValidados.observacoes,
+      telefone: dadosValidados.telefone,
+      valor_consorcio: dadosValidados.valor_consorcio,
+      motivo_perda: dadosValidados.motivo_perda,
+      documento_aprovacao_url: dadosValidados.documento_aprovacao_url ?? undefined,
+      id_funcionario: idFuncionarioDestino,
     },
   });
 

@@ -144,7 +144,7 @@ export type UseEquipeModuleReturn = {
   salvandoPdvId: string | null;
   excluindoPdvId: string | null;
   erroGestaoPdvs: string | null;
-  criarPdv: (nome: string) => Promise<void>;
+  criarPdv: (nome: string) => Promise<boolean>;
   editarPdv: (id: string, nome: string, id_whatsapp_instancia?: string | null) => Promise<boolean>;
   excluirPdv: (id: string) => Promise<void>;
   instancias: WhatsappInstancia[];
@@ -173,7 +173,7 @@ export type UseEquipeModuleReturn = {
   alternarSelecao: (id: string, marcado: boolean) => void;
   alternarSelecaoPagina: (marcado: boolean) => void;
   executarAcaoLote: () => Promise<void>;
-  adicionarFuncionario: (evento: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  adicionarFuncionario: (evento: React.FormEvent<HTMLFormElement>) => Promise<boolean>;
   setAcaoLote: (acao: AcaoLote) => void;
   setCargoLote: (cargo: string) => void;
   setPdvLote: (pdv: string) => void;

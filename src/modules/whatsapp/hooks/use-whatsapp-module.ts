@@ -32,17 +32,11 @@ export function useWhatsappModule(): UseWhatsappModuleReturn {
   }, []);
 
   useEffect(() => {
-    let ativo = true;
-
     const carregar = async () => {
       await carregarInstancias();
     };
 
     void carregar();
-
-    return () => {
-      ativo = false;
-    };
   }, [carregarInstancias]);
 
   const buscarQrCode = useCallback(async (id: string): Promise<string | null> => {
@@ -127,7 +121,8 @@ export function useWhatsappModule(): UseWhatsappModuleReturn {
 
     setInstancias((atual) => atual.filter((i) => i.id !== id));
     setQrCodes((antigo) => {
-      const { [id]: _, ...resto } = antigo;
+      const resto = { ...antigo };
+      delete resto[id];
       return resto;
     });
 

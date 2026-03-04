@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Loader2, CheckCircle2, Zap, MessageCircle, TrendingUp, Activity, Wifi } from "lucide-react";
+import { Plus, Loader2, CheckCircle2, MessageCircle, TrendingUp, Activity, Wifi } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useWhatsappModule } from "./hooks/use-whatsapp-module";
 import { useWhatsappAutomations } from "./hooks/use-whatsapp-automations";
@@ -253,10 +253,8 @@ export function ModuloWhatsapp() {
           automacoes={automacoesVm.automacoes}
           instancias={vm.instancias}
           carregando={automacoesVm.carregando}
-          erro={automacoesVm.erro}
           onCriar={automacoesVm.criarAutomacao}
           onAtualizar={automacoesVm.atualizarAutomacao}
-          onPreview={automacoesVm.previewMensagem}
           onDispararDispatch={automacoesVm.dispararDispatchFollowUp}
           onAlternar={automacoesVm.alternarAutomacao}
           onExcluir={automacoesVm.excluirAutomacao}

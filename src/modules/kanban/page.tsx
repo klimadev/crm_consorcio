@@ -41,7 +41,6 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         estagioAberto={vm.estagioAberto}
         estagioNovoLead={vm.estagioNovoLead}
         setEstagioNovoLead={vm.setEstagioNovoLead}
-        cargoNovoLead={vm.cargoNovoLead}
         setCargoNovoLead={vm.setCargoNovoLead}
         filtros={vm.filtros}
         setFiltros={vm.setFiltros}
@@ -84,12 +83,12 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         pendenciasLead={vm.pendenciasLead}
         onOpenChange={handleDrawerOpenChange}
         perfil={perfil}
+        funcionarios={vm.funcionarios}
         onMudarLead={vm.aoMudarLead}
         documentoAprovacaoUrl={vm.documentoAprovacaoUrl}
         setDocumentoAprovacaoUrl={vm.setDocumentoAprovacaoUrl}
         arquivoSelecionado={vm.arquivoSelecionado}
         setArquivoSelecionado={vm.setArquivoSelecionado}
-        uploadando={vm.uploadando}
         salvando={vm.salvando}
         salvo={vm.salvo}
         erroDetalhesLead={vm.erroDetalhesLead}

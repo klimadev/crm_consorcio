@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { normalizarTelefoneParaWhatsapp } from "@/lib/phone";
-import { parseHorarioTexto, MENSAGENS_ERRO, type HorarioErrorCode } from "@/lib/parse-horario-texto";
+import { parseHorarioTexto, MENSAGENS_ERRO } from "@/lib/parse-horario-texto";
 
 // ============================================
 // Constantes de Status de Automação
@@ -111,6 +111,32 @@ export const esquemaMoverLead = z.object({
   ),
   motivo_perda: z.string().trim().optional(),
 });
+
+export const esquemaAtualizarLead = z
+  .object({
+    observacoes: z.string().trim().max(5000, "Observacoes muito longas.").nullable().optional(),
+    telefone: z
+      .string()
+      .trim()
+      .refine((valor) => valor.replace(/\D/g, "").length >= 10, "Telefone invalido.")
+      .optional(),
+    valor_consorcio: z.number().positive("Valor do consorcio deve ser maior que zero.").optional(),
+    motivo_perda: z.string().trim().max(1000, "Motivo da perda muito longo.").nullable().optional(),
+    documento_aprovacao_url: z.string().trim().url("URL do documento invalida.").nullable().optional(),
+    id_funcionario: z.string().trim().min(1, "Funcionario obrigatorio.").optional(),
+  })
+  .refine(
+    (dados) =>
+      dados.observacoes !== undefined ||
+      dados.telefone !== undefined ||
+      dados.valor_consorcio !== undefined ||
+      dados.motivo_perda !== undefined ||
+      dados.documento_aprovacao_url !== undefined ||
+      dados.id_funcionario !== undefined,
+    {
+      message: "Informe ao menos um campo para atualizar.",
+    },
+  );
 
 export const EVENTOS_AUTOMACAO_WHATSAPP = ["LEAD_STAGE_CHANGED", "LEAD_FOLLOW_UP"] as const;
 export const TIPOS_DESTINO_AUTOMACAO_WHATSAPP = ["FIXO", "LEAD_TELEFONE"] as const;

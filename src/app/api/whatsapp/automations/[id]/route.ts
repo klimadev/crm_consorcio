@@ -138,7 +138,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   const automacao = await prisma.$transaction(async (tx) => {
     // Atualizar automação principal
-    const atualizada = await tx.whatsappAutomacao.update({
+    await tx.whatsappAutomacao.update({
       where: { id: automacaoExistente.id },
       data: dadosUpdate,
     });

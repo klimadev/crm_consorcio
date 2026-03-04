@@ -5,7 +5,6 @@ import {
   exigirSessao,
   podeAdicionarFuncionario,
   podeExecutarAcoesEmLote,
-  podeGerenciarEmpresa,
   podeVerEquipe,
   respostaSemPermissao,
 } from "@/lib/permissoes";

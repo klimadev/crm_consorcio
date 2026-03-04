@@ -1,29 +1,117 @@
 "use client";
 
-import { useState } from "react";
-import { AlertCircle, Loader2, Pencil, Trash2, Users } from "lucide-react";
+import { useMemo, useState, useEffect, type FormEvent } from "react";
+import { AlertCircle, ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, Building2, CheckCircle2, Loader2, MoreHorizontal, Pencil, Plus, Save, Search, Trash2, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 import type { UseEquipeModuleReturn } from "../types";
+import { Avatar } from "./shared/avatar";
+import { StatusBadge } from "./shared/status-badge";
 
 type PdvManagementPanelProps = {
   vm: UseEquipeModuleReturn;
+  drawerNovoPdvAberto: boolean;
+  setDrawerNovoPdvAberto: (aberto: boolean) => void;
 };
 
-export function PdvManagementPanel({ vm }: PdvManagementPanelProps) {
+export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAberto }: PdvManagementPanelProps) {
   const VALOR_SEM_INSTANCIA = "__SEM_INSTANCIA__";
   const [nomeEdicao, setNomeEdicao] = useState("");
   const [instanciaEdicao, setInstanciaEdicao] = useState<string>("");
+  const [drawerColaboradoresAberto, setDrawerColaboradoresAberto] = useState(false);
+  const [pdvColaboradoresId, setPdvColaboradoresId] = useState<string | null>(null);
+  const [buscaColaboradoresDrawer, setBuscaColaboradoresDrawer] = useState("");
+  const [ordenacaoDrawer, setOrdenacaoDrawer] = useState<"nome" | "email" | "cargo" | "status">("nome");
+  const [direcaoDrawer, setDirecaoDrawer] = useState<"asc" | "desc">("asc");
+  const [nomeNovoPdv, setNomeNovoPdv] = useState("");
+  const [menuAbertoId, setMenuAbertoId] = useState<string | null>(null);
+  const [menuColaboradorAbertoId, setMenuColaboradorAbertoId] = useState<string | null>(null);
+  const [editandoFuncionarioNoDrawer, setEditandoFuncionarioNoDrawer] = useState<string | null>(null);
+  const [novoColaboradorExpandido, setNovoColaboradorExpandido] = useState(false);
+  const [cadastroSucesso, setCadastroSucesso] = useState(false);
+  const [errosLocal, setErrosLocal] = useState<{ nome?: string; email?: string; senha?: string }>({});
+  const [dadosEdicaoFuncionario, setDadosEdicaoFuncionario] = useState<{ nome: string; email: string; cargo: string; id_pdv: string } | null>(null);
+  const [errosEdicao, setErrosEdicao] = useState<Record<string, string>>({});
 
-  const aoCriarPdv = async (evento: React.FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    if (!menuAbertoId && !menuColaboradorAbertoId) return;
+    const handleClickOutside = () => {
+      setMenuAbertoId(null);
+      setMenuColaboradorAbertoId(null);
+    };
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [menuAbertoId, menuColaboradorAbertoId]);
+
+  const pdvSelecionadoNoDrawer = useMemo(() => vm.pdvs.find((pdv) => pdv.id === pdvColaboradoresId) ?? null, [vm.pdvs, pdvColaboradoresId]);
+  const colaboradoresDrawer = useMemo(() => {
+    const termo = buscaColaboradoresDrawer.trim().toLowerCase();
+    const base = pdvSelecionadoNoDrawer?.funcionarios ?? [];
+
+    const enriquecidos = base.map((funcionarioResumo) => {
+      const completo = vm.funcionarios.find((funcionario) => funcionario.id === funcionarioResumo.id);
+
+      return {
+        id: funcionarioResumo.id,
+        nome: funcionarioResumo.nome,
+        cargo: funcionarioResumo.cargo,
+        email: completo?.email ?? "-",
+        ativo: completo?.ativo ?? true,
+      };
+    });
+
+    if (!termo) {
+      return enriquecidos;
+    }
+
+    return enriquecidos.filter((funcionario) => {
+      const alvo = `${funcionario.nome} ${funcionario.email} ${funcionario.cargo}`.toLowerCase();
+      return alvo.includes(termo);
+    });
+  }, [buscaColaboradoresDrawer, pdvSelecionadoNoDrawer, vm.funcionarios]);
+  const colaboradoresDrawerOrdenados = useMemo(() => {
+    const lista = [...colaboradoresDrawer];
+    lista.sort((a, b) => {
+      const valorA = ordenacaoDrawer === "status" ? (a.ativo ? "ATIVO" : "INATIVO") : (a[ordenacaoDrawer] ?? "");
+      const valorB = ordenacaoDrawer === "status" ? (b.ativo ? "ATIVO" : "INATIVO") : (b[ordenacaoDrawer] ?? "");
+      const comparacao = String(valorA).localeCompare(String(valorB), "pt-BR", { sensitivity: "base" });
+      return direcaoDrawer === "asc" ? comparacao : -comparacao;
+    });
+    return lista;
+  }, [colaboradoresDrawer, direcaoDrawer, ordenacaoDrawer]);
+  const todosSelecionadosNoDrawer =
+    colaboradoresDrawerOrdenados.length > 0 &&
+    colaboradoresDrawerOrdenados.every((funcionario) => vm.idsSelecionados.includes(funcionario.id));
+
+  function alternarOrdenacaoDrawer(campo: "nome" | "email" | "cargo" | "status") {
+    if (ordenacaoDrawer === campo) {
+      setDirecaoDrawer((atual) => (atual === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setOrdenacaoDrawer(campo);
+    setDirecaoDrawer("asc");
+  }
+
+  function iconeOrdenacaoDrawer(campo: "nome" | "email" | "cargo" | "status") {
+    if (ordenacaoDrawer !== campo) {
+      return <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />;
+    }
+    return direcaoDrawer === "asc" ? <ArrowUp className="h-3.5 w-3.5 text-slate-700" /> : <ArrowDown className="h-3.5 w-3.5 text-slate-700" />;
+  }
+
+  const aoCriarPdv = async (evento: FormEvent<HTMLFormElement>) => {
     evento.preventDefault();
-    const form = evento.currentTarget;
-    const dados = new FormData(form);
-    const nome = String(dados.get("nome") ?? "");
-    await vm.criarPdv(nome);
-    form.reset();
+    const nome = nomeNovoPdv.trim();
+    const criou = await vm.criarPdv(nome);
+
+    if (criou) {
+      setNomeNovoPdv("");
+      setDrawerNovoPdvAberto(false);
+    }
   };
 
   const iniciarEdicaoPdv = (id: string, nome: string, id_whatsapp_instancia?: string | null) => {
@@ -58,9 +146,102 @@ export function PdvManagementPanel({ vm }: PdvManagementPanelProps) {
     vm.setPdvParaExcluir(null);
   };
 
+  const abrirDrawerColaboradores = (id: string) => {
+    setPdvColaboradoresId(id);
+    setBuscaColaboradoresDrawer("");
+    setNovoColaboradorExpandido(false);
+    setCadastroSucesso(false);
+    setErrosLocal({});
+    setDrawerColaboradoresAberto(true);
+  };
+
+  const handleSubmitCadastroRapido = async (evento: React.FormEvent<HTMLFormElement>) => {
+    evento.preventDefault();
+    setErrosLocal({});
+    setCadastroSucesso(false);
+
+    const dados = new FormData(evento.currentTarget);
+    const nome = (dados.get("nome") as string)?.trim() ?? "";
+    const email = (dados.get("email") as string)?.trim() ?? "";
+    const senha = (dados.get("senha") as string) ?? "";
+
+    const novosErros: { nome?: string; email?: string; senha?: string } = {};
+    if (!nome || nome.length < 2) {
+      novosErros.nome = "Nome deve ter ao menos 2 caracteres";
+    }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      novosErros.email = "E-mail inválido";
+    }
+    if (!senha || senha.length < 4) {
+      novosErros.senha = "Senha deve ter ao menos 4 caracteres";
+    }
+
+    if (Object.keys(novosErros).length > 0) {
+      setErrosLocal(novosErros);
+      return;
+    }
+
+    const sucesso = await vm.adicionarFuncionario(evento);
+    if (sucesso) {
+      setCadastroSucesso(true);
+      setNovoColaboradorExpandido(false);
+      setTimeout(() => setCadastroSucesso(false), 3000);
+    }
+  };
+
+  const iniciarEdicaoFuncionarioDrawer = (id: string) => {
+    const func = vm.funcionarios.find((item) => item.id === id);
+    if (!func) {
+      return;
+    }
+    setDadosEdicaoFuncionario({
+      nome: func.nome,
+      email: func.email,
+      cargo: func.cargo,
+      id_pdv: func.pdv?.id ?? "",
+    });
+    setErrosEdicao({});
+    setEditandoFuncionarioNoDrawer(id);
+  };
+
+  const cancelarEdicaoFuncionarioDrawer = () => {
+    setEditandoFuncionarioNoDrawer(null);
+    setDadosEdicaoFuncionario(null);
+    setErrosEdicao({});
+  };
+
+  const salvarEdicaoFuncionarioDrawer = async () => {
+    if (!dadosEdicaoFuncionario || !editandoFuncionarioNoDrawer) return;
+
+    const novosErros: Record<string, string> = {};
+    if (!dadosEdicaoFuncionario.nome.trim() || dadosEdicaoFuncionario.nome.trim().length < 2) {
+      novosErros.nome = "Nome deve ter ao menos 2 caracteres.";
+    }
+    if (!dadosEdicaoFuncionario.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dadosEdicaoFuncionario.email.trim())) {
+      novosErros.email = "E-mail inválido.";
+    }
+    if (!dadosEdicaoFuncionario.id_pdv.trim()) {
+      novosErros.id_pdv = "PDV obrigatório.";
+    }
+
+    if (Object.keys(novosErros).length > 0) {
+      setErrosEdicao(novosErros);
+      return;
+    }
+
+    const func = vm.funcionarios.find((f) => f.id === editandoFuncionarioNoDrawer);
+    if (!func) return;
+
+    vm.iniciarEdicao(func);
+    const ok = await vm.salvarEdicaoAtual(dadosEdicaoFuncionario);
+    if (ok) {
+      cancelarEdicaoFuncionarioDrawer();
+    }
+  };
+
   if (vm.carregandoPdvs) {
     return (
-      <div className="flex items-center justify-center rounded-2xl border border-slate-200/60 bg-white p-6 text-sm text-slate-600">
+      <div className="flex items-center justify-center rounded-xl border border-slate-200/70 bg-slate-50/70 p-6 text-sm text-slate-600">
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         Carregando gestao de PDVs...
       </div>
@@ -69,6 +250,13 @@ export function PdvManagementPanel({ vm }: PdvManagementPanelProps) {
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">PDVs e operacao</p>
+          <p className="text-sm text-slate-600">Clique no card para abrir a gestao da equipe do PDV no drawer lateral.</p>
+        </div>
+      </div>
+
       {vm.erroGestaoPdvs ? (
         <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           <AlertCircle className="h-4 w-4" />
@@ -76,28 +264,24 @@ export function PdvManagementPanel({ vm }: PdvManagementPanelProps) {
         </div>
       ) : null}
 
-      <form onSubmit={aoCriarPdv} className="flex gap-2 rounded-2xl border border-slate-200/60 bg-white p-3 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-        <Input
-          name="nome"
-          placeholder="Nome do novo PDV"
-          required
-          disabled={vm.criandoPdv}
-          className="h-10"
-        />
-        <Button type="submit" disabled={vm.criandoPdv} className="rounded-xl bg-slate-800 text-white hover:bg-slate-700">
-          {vm.criandoPdv ? <Loader2 className="h-4 w-4 animate-spin" /> : "Adicionar PDV"}
-        </Button>
-      </form>
-
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         {vm.pdvs.map((pdv) => {
           const emEdicao = vm.pdvEmEdicao?.id === pdv.id;
           const salvando = vm.salvandoPdvId === pdv.id;
-          const excluindo = vm.excluindoPdvId === pdv.id;
           const temColaboradores = (pdv.funcionarios ?? []).length > 0;
+          const colaboradoresPreview = pdv.funcionarios?.slice(0, 4) ?? [];
+          const excedente = Math.max(0, (pdv.funcionarios?.length ?? 0) - 4);
 
           return (
-            <article key={pdv.id} className="space-y-3 rounded-2xl border border-slate-200/60 bg-white p-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+            <article
+              key={pdv.id}
+              className={cn(
+                "relative space-y-3 overflow-hidden rounded-2xl border bg-white p-4 transition-all duration-200",
+                "hover:-translate-y-0.5 hover:shadow-lg",
+                "border-slate-200/70 shadow-[0_8px_26px_rgba(15,23,42,0.08)]",
+              )}
+            >
+              <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-cyan-100/70 blur-2xl" />
               <div className="flex items-start justify-between">
                 {emEdicao ? (
                   <div className="flex flex-1 flex-col gap-2">
@@ -141,57 +325,85 @@ export function PdvManagementPanel({ vm }: PdvManagementPanelProps) {
                   </div>
                 ) : (
                   <>
-                    <div>
-                      <h3 className="text-sm font-semibold text-slate-800">{pdv.nome}</h3>
-                      <p className="mt-1 text-xs text-slate-500">{temColaboradores ? `${pdv.funcionarios?.length} colaborador(es)` : "Sem colaboradores"}</p>
+                    <button type="button" className="flex-1 text-left" onClick={() => abrirDrawerColaboradores(pdv.id)}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h3 className="text-sm font-semibold text-slate-800">{pdv.nome}</h3>
+                          {temColaboradores && (
+                            <div className="mt-2 flex items-center">
+                              <div className="flex -space-x-2">
+                                {colaboradoresPreview.map((func) => (
+                                  <Avatar key={func.id} nome={func.nome} tamanho="sm" />
+                                ))}
+                                {excedente > 0 && (
+                                  <div className="flex h-8 w-8 items-center justify-center rounded-xl border-2 border-white bg-slate-100 text-xs font-medium text-slate-600">
+                                    +{excedente}
+                                  </div>
+                                )}
+                              </div>
+                              <span className="ml-2 text-xs text-slate-500">{pdv.funcionarios?.length} colaborador(es)</span>
+                            </div>
+                          )}
+                          {!temColaboradores && <p className="mt-1 text-xs text-slate-400">Sem colaboradores</p>}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Building2 className="h-4 w-4 text-slate-400" />
+                        </div>
+                      </div>
                       {pdv.whatsapp_instancia && (
-                        <p className="mt-1 text-xs text-emerald-600">WhatsApp: {pdv.whatsapp_instancia.nome}</p>
+                        <p className="mt-2 text-xs text-emerald-600">WhatsApp: {pdv.whatsapp_instancia.nome}</p>
                       )}
-                    </div>
-                    <div className="flex gap-1">
+                    </button>
+                    <div className="ml-2 relative">
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="rounded-lg"
-                        disabled={excluindo}
-                        onClick={() => iniciarEdicaoPdv(pdv.id, pdv.nome, pdv.id_whatsapp_instancia)}
+                        className="rounded-lg h-8 w-8 p-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMenuAbertoId(menuAbertoId === pdv.id ? null : pdv.id);
+                        }}
                       >
-                        <Pencil className="mr-1 h-3.5 w-3.5" />
-                        Editar
+                        <MoreHorizontal className="h-4 w-4" />
                       </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="rounded-lg border-rose-200 text-rose-700 hover:bg-rose-50"
-                        disabled={excluindo || temColaboradores}
-                        onClick={() => vm.setPdvParaExcluir({ id: pdv.id, nome: pdv.nome })}
-                        title={temColaboradores ? "Nao e possivel excluir PDV com colaboradores vinculados" : "Excluir PDV"}
-                      >
-                        {excluindo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                      </Button>
+                      {menuAbertoId === pdv.id && (
+                        <div className="absolute right-0 top-9 z-10 w-36 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                          <button
+                            type="button"
+                            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              iniciarEdicaoPdv(pdv.id, pdv.nome, pdv.id_whatsapp_instancia);
+                              setMenuAbertoId(null);
+                            }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            className={cn(
+                              "flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50",
+                              temColaboradores ? "cursor-not-allowed text-slate-400" : "text-rose-600",
+                            )}
+                            disabled={temColaboradores}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!temColaboradores) {
+                                vm.setPdvParaExcluir({ id: pdv.id, nome: pdv.nome });
+                              }
+                              setMenuAbertoId(null);
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Excluir
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </>
                 )}
-              </div>
-
-              <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
-                <p className="mb-2 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  <Users className="h-3 w-3" />
-                  Colaboradores ativos
-                </p>
-                <ul className="space-y-1 text-sm text-slate-700">
-                  {(pdv.funcionarios ?? []).length === 0 ? (
-                    <li className="text-slate-500">Nenhum colaborador ativo neste PDV.</li>
-                  ) : (
-                    (pdv.funcionarios ?? []).map((funcionario) => (
-                      <li key={funcionario.id}>
-                        {funcionario.nome} - {funcionario.cargo}
-                      </li>
-                    ))
-                  )}
-                </ul>
               </div>
             </article>
           );
@@ -239,6 +451,443 @@ export function PdvManagementPanel({ vm }: PdvManagementPanelProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Sheet open={drawerNovoPdvAberto} onOpenChange={setDrawerNovoPdvAberto}>
+        <SheetContent side="right" className="w-full max-w-md">
+          <SheetHeader>
+            <SheetTitle>Novo PDV</SheetTitle>
+            <SheetDescription>Crie um novo ponto de venda para distribuir equipe e operacao.</SheetDescription>
+          </SheetHeader>
+
+          <form onSubmit={aoCriarPdv} className="mt-6 space-y-4 px-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Nome do PDV</label>
+              <Input
+                name="nome"
+                placeholder="Ex.: Centro Comercial"
+                required
+                value={nomeNovoPdv}
+                onChange={(evento) => setNomeNovoPdv(evento.target.value)}
+                disabled={vm.criandoPdv}
+                className="h-10"
+              />
+            </div>
+
+            <SheetFooter className="flex-col gap-2 sm:flex-col">
+              <Button type="submit" disabled={vm.criandoPdv || !nomeNovoPdv.trim()} className="w-full rounded-xl bg-slate-900 text-white hover:bg-slate-800">
+                {vm.criandoPdv ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                {vm.criandoPdv ? "Criando PDV..." : "Criar PDV"}
+              </Button>
+              <Button type="button" variant="outline" className="w-full rounded-xl" disabled={vm.criandoPdv} onClick={() => setDrawerNovoPdvAberto(false)}>
+                Cancelar
+              </Button>
+            </SheetFooter>
+          </form>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet
+        open={drawerColaboradoresAberto}
+        onOpenChange={(aberto) => {
+          setDrawerColaboradoresAberto(aberto);
+          if (!aberto) {
+            setPdvColaboradoresId(null);
+            setEditandoFuncionarioNoDrawer(null);
+            setNovoColaboradorExpandido(false);
+            setCadastroSucesso(false);
+            setErrosLocal({});
+          }
+        }}
+      >
+        <SheetContent side="right" className="w-full max-w-md overflow-y-auto">
+          {editandoFuncionarioNoDrawer ? (
+            <>
+              <SheetHeader>
+                <div className="flex items-center gap-3">
+                  <Button type="button" variant="outline" size="sm" className="h-8 w-8 rounded-lg p-0" onClick={cancelarEdicaoFuncionarioDrawer}>
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                  <div>
+                    <SheetTitle>Editar colaborador</SheetTitle>
+                    <SheetDescription>Altere os dados do colaborador.</SheetDescription>
+                  </div>
+                </div>
+              </SheetHeader>
+
+              <div className="mt-6 space-y-4 px-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700">Nome</label>
+                  <Input
+                    value={dadosEdicaoFuncionario?.nome ?? ""}
+                    onChange={(e) => setDadosEdicaoFuncionario((prev) => prev ? { ...prev, nome: e.target.value } : null)}
+                    placeholder="Nome completo"
+                    className={errosEdicao.nome ? "border-rose-300" : ""}
+                  />
+                  {errosEdicao.nome && <p className="text-xs text-rose-600">{errosEdicao.nome}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700">E-mail</label>
+                  <Input
+                    type="email"
+                    value={dadosEdicaoFuncionario?.email ?? ""}
+                    onChange={(e) => setDadosEdicaoFuncionario((prev) => prev ? { ...prev, email: e.target.value } : null)}
+                    placeholder="email@exemplo.com"
+                    className={errosEdicao.email ? "border-rose-300" : ""}
+                  />
+                  {errosEdicao.email && <p className="text-xs text-rose-600">{errosEdicao.email}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700">Cargo</label>
+                  <Select
+                    value={dadosEdicaoFuncionario?.cargo ?? ""}
+                    onValueChange={(valor) => setDadosEdicaoFuncionario((prev) => prev ? { ...prev, cargo: valor } : null)}
+                  >
+                    <SelectTrigger className={errosEdicao.cargo ? "border-rose-300" : ""}>
+                      <SelectValue placeholder="Selecione o cargo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="COLABORADOR">Colaborador</SelectItem>
+                      <SelectItem value="GERENTE">Gerente</SelectItem>
+                      <SelectItem value="ADMINISTRADOR">Administrador</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errosEdicao.cargo && <p className="text-xs text-rose-600">{errosEdicao.cargo}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700">PDV</label>
+                  <Select
+                    value={dadosEdicaoFuncionario?.id_pdv ?? ""}
+                    onValueChange={(valor) => setDadosEdicaoFuncionario((prev) => prev ? { ...prev, id_pdv: valor } : null)}
+                  >
+                    <SelectTrigger className={errosEdicao.id_pdv ? "border-rose-300" : ""}>
+                      <SelectValue placeholder="Selecione o PDV" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vm.pdvs.map((pdv) => (
+                        <SelectItem key={pdv.id} value={pdv.id}>
+                          {pdv.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errosEdicao.id_pdv && <p className="text-xs text-rose-600">{errosEdicao.id_pdv}</p>}
+                </div>
+
+                {vm.statusSalvamento.id === editandoFuncionarioNoDrawer && vm.statusSalvamento.estado === "error" && (
+                  <div className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{vm.statusSalvamento.mensagem}</div>
+                )}
+              </div>
+
+              <SheetFooter className="mt-6 px-4">
+                <Button
+                  className="w-full"
+                  onClick={salvarEdicaoFuncionarioDrawer}
+                  disabled={vm.statusSalvamento.id === editandoFuncionarioNoDrawer && vm.statusSalvamento.estado === "saving"}
+                >
+                  {vm.statusSalvamento.id === editandoFuncionarioNoDrawer && vm.statusSalvamento.estado === "saving" ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  {vm.statusSalvamento.id === editandoFuncionarioNoDrawer && vm.statusSalvamento.estado === "saving" ? "Salvando..." : "Salvar alterações"}
+                </Button>
+                <Button variant="outline" className="w-full" onClick={cancelarEdicaoFuncionarioDrawer}>
+                  Cancelar
+                </Button>
+              </SheetFooter>
+            </>
+          ) : (
+            <div className="mt-6 px-4">
+              <SheetHeader className="px-0">
+                <SheetTitle>{pdvSelecionadoNoDrawer ? `Colaboradores - ${pdvSelecionadoNoDrawer.nome}` : "Colaboradores do PDV"}</SheetTitle>
+                <SheetDescription>Gestao completa dos colaboradores deste PDV no mesmo fluxo da tabela principal.</SheetDescription>
+              </SheetHeader>
+              <div className="mb-4 mt-6 space-y-3">
+              <div className="rounded-xl border border-blue-200/70 bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Cadastro rapido no PDV</p>
+                    <p className="text-xs text-slate-600">Novo colaborador entra direto em {pdvSelecionadoNoDrawer?.nome ?? "este PDV"}.</p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-8 rounded-lg bg-blue-600 px-3 text-white hover:bg-blue-500"
+                    onClick={() => {
+                      vm.setCargoSelecionado("COLABORADOR");
+                      vm.setPdvSelecionado(pdvSelecionadoNoDrawer?.id ?? "");
+                      setNovoColaboradorExpandido((atual) => !atual);
+                    }}
+                  >
+                    <UserPlus className="mr-1.5 h-3.5 w-3.5" />
+                    {novoColaboradorExpandido ? "Ocultar" : "Adicionar"}
+                  </Button>
+                </div>
+
+                {novoColaboradorExpandido ? (
+                  <form className="mt-3 space-y-2" onSubmit={handleSubmitCadastroRapido}>
+                    <div className="relative">
+                      <Input 
+                        name="nome" 
+                        placeholder="Nome completo" 
+                        required 
+                        className={cn(
+                          "h-9 rounded-lg bg-white transition-all duration-200",
+                          errosLocal.nome ? "border-rose-300 bg-rose-50/50 focus:border-rose-400 focus:ring-rose-200" : "border-slate-200 focus:border-blue-400 focus:ring-blue-200"
+                        )} 
+                      />
+                      {errosLocal.nome && (
+                        <p className="mt-1 text-[10px] font-medium text-rose-500">{errosLocal.nome}</p>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <Input 
+                        name="email" 
+                        type="email" 
+                        placeholder="E-mail" 
+                        required 
+                        className={cn(
+                          "h-9 rounded-lg bg-white transition-all duration-200",
+                          errosLocal.email ? "border-rose-300 bg-rose-50/50 focus:border-rose-400 focus:ring-rose-200" : "border-slate-200 focus:border-blue-400 focus:ring-blue-200"
+                        )} 
+                      />
+                      {errosLocal.email && (
+                        <p className="mt-1 text-[10px] font-medium text-rose-500">{errosLocal.email}</p>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <Input 
+                        name="senha" 
+                        type="password" 
+                        placeholder="Senha temporaria" 
+                        required 
+                        className={cn(
+                          "h-9 rounded-lg bg-white transition-all duration-200",
+                          errosLocal.senha ? "border-rose-300 bg-rose-50/50 focus:border-rose-400 focus:ring-rose-200" : "border-slate-200 focus:border-blue-400 focus:ring-blue-200"
+                        )} 
+                      />
+                      {errosLocal.senha && (
+                        <p className="mt-1 text-[10px] font-medium text-rose-500">{errosLocal.senha}</p>
+                      )}
+                    </div>
+                    <input type="hidden" name="cargo" value="COLABORADOR" />
+                    <input type="hidden" name="id_pdv" value={pdvSelecionadoNoDrawer?.id ?? ""} />
+                    {vm.erroCadastro ? (
+                      <div className="flex items-center gap-1.5 rounded-lg bg-rose-50 border border-rose-200 px-2 py-1.5">
+                        <AlertCircle className="h-3.5 w-3.5 text-rose-500" />
+                        <p className="text-xs font-medium text-rose-600">{vm.erroCadastro}</p>
+                      </div>
+                    ) : null}
+                    <Button 
+                      type="submit" 
+                      className="h-9 w-full rounded-lg bg-gradient-to-r from-slate-900 to-slate-800 text-white hover:from-slate-800 hover:to-slate-700 shadow-sm transition-all duration-200 hover:shadow-md" 
+                      disabled={vm.carregandoCadastro}
+                    >
+                      {vm.carregandoCadastro ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <UserPlus className="mr-2 h-4 w-4" />
+                      )}
+                      {vm.carregandoCadastro ? "Cadastrando..." : "Cadastrar colaborador"}
+                    </Button>
+                  </form>
+                ) : null}
+
+              {cadastroSucesso && (
+                <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/80 px-3 py-2.5 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-emerald-700">Colaborador cadastrado!</p>
+                    <p className="text-[10px] text-emerald-600">Atualizando lista automaticamente...</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total</p>
+                <p className="text-sm font-semibold text-slate-700">{pdvSelecionadoNoDrawer?.funcionarios?.length ?? 0} colaborador(es)</p>
+              </div>
+
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  value={buscaColaboradoresDrawer}
+                  onChange={(evento) => setBuscaColaboradoresDrawer(evento.target.value)}
+                  placeholder="Buscar por nome, email ou cargo"
+                  className="pl-9"
+                />
+              </div>
+
+              {vm.podeExecutarAcoesLote ? (
+                <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Acoes em lote no PDV</p>
+                    <p className="text-xs text-slate-500">{vm.idsSelecionados.length} selecionado(s)</p>
+                  </div>
+                  <div className="grid gap-2 md:grid-cols-[1fr_auto]">
+                    <Select value={vm.acaoLote} onValueChange={(valor) => vm.setAcaoLote(valor as "ATIVAR" | "INATIVAR" | "ALTERAR_CARGO" | "ALTERAR_PDV")}>
+                      <SelectTrigger className="h-9 rounded-lg bg-white">
+                        <SelectValue placeholder="Acao" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ATIVAR">Ativar</SelectItem>
+                        <SelectItem value="INATIVAR">Inativar</SelectItem>
+                        <SelectItem value="ALTERAR_CARGO">Mudar cargo</SelectItem>
+                        <SelectItem value="ALTERAR_PDV">Mudar PDV</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button type="button" className="rounded-lg bg-slate-800 text-white hover:bg-slate-700" disabled={vm.executandoLote || vm.idsSelecionados.length === 0} onClick={() => void vm.executarAcaoLote()}>
+                      {vm.executandoLote ? "Processando..." : "Aplicar"}
+                    </Button>
+                  </div>
+                  {vm.acaoLote === "ALTERAR_CARGO" ? (
+                    <Select value={vm.cargoLote} onValueChange={vm.setCargoLote}>
+                      <SelectTrigger className="h-9 rounded-lg bg-white">
+                        <SelectValue placeholder="Novo cargo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="COLABORADOR">COLABORADOR</SelectItem>
+                        <SelectItem value="GERENTE">GERENTE</SelectItem>
+                        <SelectItem value="ADMINISTRADOR">ADMINISTRADOR</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : null}
+                  {vm.acaoLote === "ALTERAR_PDV" ? (
+                    <Select value={vm.pdvLote} onValueChange={vm.setPdvLote}>
+                      <SelectTrigger className="h-9 rounded-lg bg-white">
+                        <SelectValue placeholder="Novo PDV" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {vm.pdvs.map((pdv) => (
+                          <SelectItem key={pdv.id} value={pdv.id}>
+                            {pdv.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2">
+              {vm.podeExecutarAcoesLote ? (
+                <label className="mr-1 flex items-center gap-2 rounded-lg bg-white px-2 py-1 text-xs text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={todosSelecionadosNoDrawer}
+                    onChange={(evento) => {
+                      colaboradoresDrawerOrdenados.forEach((funcionario) => vm.alternarSelecao(funcionario.id, evento.target.checked));
+                    }}
+                    className="h-4 w-4 rounded border-slate-300 text-slate-600 focus:ring-slate-400"
+                  />
+                  Selecionar todos
+                </label>
+              ) : null}
+              <Button type="button" size="sm" variant="outline" className="h-8 rounded-lg" onClick={() => alternarOrdenacaoDrawer("nome")}>
+                Nome {iconeOrdenacaoDrawer("nome")}
+              </Button>
+              <Button type="button" size="sm" variant="outline" className="h-8 rounded-lg" onClick={() => alternarOrdenacaoDrawer("email")}>
+                Email {iconeOrdenacaoDrawer("email")}
+              </Button>
+              <Button type="button" size="sm" variant="outline" className="h-8 rounded-lg" onClick={() => alternarOrdenacaoDrawer("cargo")}>
+                Cargo {iconeOrdenacaoDrawer("cargo")}
+              </Button>
+              <Button type="button" size="sm" variant="outline" className="h-8 rounded-lg" onClick={() => alternarOrdenacaoDrawer("status")}>
+                Status {iconeOrdenacaoDrawer("status")}
+              </Button>
+            </div>
+
+            {colaboradoresDrawerOrdenados.length === 0 ? (
+              <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Nenhum colaborador ativo neste PDV.</div>
+            ) : (
+              <ul className="space-y-2">
+                {colaboradoresDrawerOrdenados.map((funcionario) => (
+                  <li key={funcionario.id} className="rounded-xl border border-slate-200 bg-white px-3 py-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex min-w-0 flex-1 items-start gap-2">
+                        <Avatar nome={funcionario.nome} tamanho="sm" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-slate-800">{funcionario.nome}</p>
+                          <p className="truncate text-xs text-slate-500">{funcionario.email}</p>
+                          <p className="mt-1 text-xs uppercase tracking-wide text-slate-500">{funcionario.cargo}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {vm.podeExecutarAcoesLote ? (
+                          <input
+                            type="checkbox"
+                            checked={vm.idsSelecionados.includes(funcionario.id)}
+                            onChange={(evento) => vm.alternarSelecao(funcionario.id, evento.target.checked)}
+                            className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-600 focus:ring-slate-400"
+                          />
+                        ) : null}
+                        <StatusBadge ativo={funcionario.ativo} />
+                      </div>
+                    </div>
+                    <div className="mt-3 flex justify-end">
+                      <div className="relative">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 rounded-lg p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMenuColaboradorAbertoId(menuColaboradorAbertoId === funcionario.id ? null : funcionario.id);
+                          }}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                        {menuColaboradorAbertoId === funcionario.id ? (
+                          <div className="absolute right-0 top-9 z-10 w-40 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                            <button
+                              type="button"
+                              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                iniciarEdicaoFuncionarioDrawer(funcionario.id);
+                                setMenuColaboradorAbertoId(null);
+                              }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              Editar
+                            </button>
+                            {funcionario.ativo && vm.podeInativar ? (
+                              <button
+                                type="button"
+                                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const alvo = vm.funcionarios.find((item) => item.id === funcionario.id);
+                                  if (alvo) {
+                                    vm.abrirModalInativacao(alvo);
+                                  }
+                                  setMenuColaboradorAbertoId(null);
+                                }}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Inativar
+                              </button>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

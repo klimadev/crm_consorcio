@@ -1,30 +1,31 @@
 "use client";
 
-import { Users, UserPlus, Shield, ShieldUser, UserCheck, UserX } from "lucide-react";
+import { BriefcaseBusiness, Plus, ShieldCheck, UserMinus, Users } from "lucide-react";
+import type { ComponentType } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { UseEquipeModuleReturn } from "../types";
 
-type KpiCardProps = {
-  titulo: string;
+type KpiChipProps = {
+  rotulo: string;
   valor: number;
-  icone: React.ElementType;
-  cor: { bg: string; text: string; ring: string };
+  subtitulo: string;
+  gradiente: string;
+  icon: ComponentType<{ className?: string }>;
 };
 
-function KpiCard({ titulo, valor, icone: Icone, cor }: KpiCardProps) {
+function KpiChip({ rotulo, valor, subtitulo, gradiente, icon: Icon }: KpiChipProps) {
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white/80 p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
-      <div className={cn("absolute right-0 top-0 h-24 w-24 -translate-y-8 translate-x-8 rounded-full opacity-50", cor.bg)} />
-      <div className="relative">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-medium uppercase tracking-wider text-slate-500">{titulo}</p>
-          <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl border border-slate-100 bg-white/60 backdrop-blur-sm shadow-sm", cor.bg)}>
-            <Icone className={cn("h-5 w-5", cor.text)} />
-          </div>
+    <div className={cn("relative overflow-hidden rounded-xl border px-3 py-2 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md", gradiente)}>
+      <div className="absolute -right-4 -top-4 h-12 w-12 rounded-full bg-white/20 blur-xl" />
+      <div className="relative flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-600">{rotulo}</p>
+          <p className="text-lg font-bold text-slate-900">{valor}</p>
+          <p className="text-[11px] text-slate-500">{subtitulo}</p>
         </div>
-        <div className="mt-4 flex items-end justify-between">
-          <p className="text-4xl font-bold text-slate-800">{valor}</p>
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/50 bg-white/60">
+          <Icon className="h-4 w-4 text-slate-700" />
         </div>
       </div>
     </div>
@@ -33,13 +34,16 @@ function KpiCard({ titulo, valor, icone: Icone, cor }: KpiCardProps) {
 
 type EquipeHeaderProps = {
   vm: UseEquipeModuleReturn;
+  onAbrirNovoPdv?: () => void;
 };
 
-export function EquipeHeader({ vm }: EquipeHeaderProps) {
-  const coberturaAtiva = `${vm.kpis.ativos} ${vm.kpis.ativos === 1 ? "ativo" : "ativos"}`;
+export function EquipeHeader({ vm, onAbrirNovoPdv }: EquipeHeaderProps) {
+  const temFiltrosAtivos = vm.busca || vm.idPdvFiltro || vm.statusFiltro !== "TODOS" || vm.cargoFiltro !== "TODOS";
+  const kpisExibir = temFiltrosAtivos ? vm.kpis : vm.kpisTotais;
+  const coberturaAtiva = `${kpisExibir.ativos} ${kpisExibir.ativos === 1 ? "ativo" : "ativos"}`;
 
   return (
-    <header className="flex flex-col gap-4 rounded-2xl border border-slate-200/60 bg-white px-6 py-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] md:flex-row md:items-center md:justify-between">
+    <header className="flex flex-col gap-4 rounded-2xl border border-slate-200/60 bg-white px-4 py-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)] md:flex-row md:items-center md:justify-between md:px-6 md:py-5">
       <div className="flex items-center gap-4">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200">
           <Users className="h-6 w-6 text-slate-600" />
@@ -50,77 +54,26 @@ export function EquipeHeader({ vm }: EquipeHeaderProps) {
         </div>
       </div>
 
-      {vm.podeAdicionarFuncionario ? (
-        <Button className="w-full rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700 md:w-auto" onClick={() => vm.abrirDialogNovoFuncionario(true)}>
-          <UserPlus className="mr-2 h-4 w-4" />
-          Adicionar colaborador
-        </Button>
-      ) : null}
-    </header>
-  );
-}
-
-type EquipeKpiGridProps = {
-  vm: UseEquipeModuleReturn;
-};
-
-export function EquipeKpiGrid({ vm }: EquipeKpiGridProps) {
-  const temFiltrosAtivos = vm.busca || vm.idPdvFiltro || vm.statusFiltro !== "TODOS" || vm.cargoFiltro !== "TODOS";
-  
-  // Se há filtros ativos, mostra KPIs filtrados. Se não, mostra totais
-  const kpisExibir = temFiltrosAtivos ? vm.kpis : vm.kpisTotais;
-
-  const itensKpi = [
-    { titulo: temFiltrosAtivos ? "Encontrados" : "Total", valor: kpisExibir.total, icone: Users, cor: { bg: "bg-slate-100", text: "text-slate-600", ring: "ring-slate-200" } },
-    { titulo: "Ativos", valor: kpisExibir.ativos, icone: UserCheck, cor: { bg: "bg-emerald-100", text: "text-emerald-600", ring: "ring-emerald-200" } },
-    { titulo: "Inativos", valor: kpisExibir.inativos, icone: UserX, cor: { bg: "bg-rose-100", text: "text-rose-600", ring: "ring-rose-200" } },
-    { titulo: "Gerentes", valor: kpisExibir.gerentes, icone: ShieldUser, cor: { bg: "bg-violet-100", text: "text-violet-600", ring: "ring-violet-200" } },
-    { titulo: "Colaboradores", valor: kpisExibir.colaboradores, icone: Shield, cor: { bg: "bg-blue-100", text: "text-blue-600", ring: "ring-blue-200" } },
-  ] as const;
-
-  if (vm.carregandoLista) {
-    return <SkeletonKpiGrid />;
-  }
-
-  return (
-    <div className="space-y-2">
-      {temFiltrosAtivos && (
-        <p className="text-xs text-slate-500 ml-1">
-          Mostrando {kpisExibir.total} de {vm.kpisTotais.total} colaboradores
-        </p>
-      )}
-      {/* Mobile: scroll horizontal, Desktop: grid fixo */}
-      <div className="-mx-4 px-4 overflow-x-auto md:mx-0 md:px-0 md:overflow-visible">
-        <div className="flex gap-3 min-w-max md:grid md:grid-cols-2 md:gap-3 sm:grid-cols-3 sm:min-w-0 md:lg:grid-cols-5 lg:gap-4">
-          {itensKpi.map((item) => (
-            <KpiCard
-              key={item.titulo}
-              titulo={item.titulo}
-              valor={item.valor}
-              icone={item.icone}
-              cor={item.cor}
-            />
-          ))}
+      <div className="flex flex-wrap items-center gap-2 md:gap-3">
+        <div className="grid w-full gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <KpiChip rotulo="Total" valor={kpisExibir.total} subtitulo="Time cadastrado" gradiente="border-slate-200 bg-gradient-to-br from-white via-slate-50 to-slate-100/80" icon={Users} />
+          <KpiChip rotulo="Ativos" valor={kpisExibir.ativos} subtitulo="Em operacao" gradiente="border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-emerald-100/70" icon={ShieldCheck} />
+          <KpiChip rotulo="Inativos" valor={kpisExibir.inativos} subtitulo="Fora da escala" gradiente="border-rose-200 bg-gradient-to-br from-rose-50 via-white to-rose-100/70" icon={UserMinus} />
+          <KpiChip rotulo="Gerentes" valor={kpisExibir.gerentes} subtitulo={`${kpisExibir.colaboradores} colaboradores`} gradiente="border-cyan-200 bg-gradient-to-br from-cyan-50 via-white to-blue-100/70" icon={BriefcaseBusiness} />
         </div>
-      </div>
-    </div>
-  );
-}
 
-function SkeletonKpiGrid() {
-  return (
-    <div className="-mx-4 px-4 overflow-x-auto md:mx-0 md:px-0 md:overflow-visible">
-      <div className="flex gap-3 min-w-max md:grid md:grid-cols-2 md:gap-3 sm:grid-cols-3 sm:min-w-0 md:lg:grid-cols-5 lg:gap-4">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="w-36 md:w-auto animate-pulse rounded-2xl border border-slate-200/60 bg-white/80 p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-            <div className="flex items-center justify-between">
-              <div className="h-3 w-12 rounded bg-slate-200" />
-              <div className="h-10 w-10 rounded-xl bg-slate-200" />
-            </div>
-            <div className="mt-4 h-9 w-16 rounded bg-slate-200" />
-          </div>
-        ))}
+        {!vm.podeGerenciarEmpresa && vm.podeAdicionarFuncionario ? (
+          <Button className="rounded-xl bg-blue-600 font-medium text-white hover:bg-blue-500" onClick={() => vm.abrirDialogNovoFuncionario(true)}>
+            Novo Colaborador
+          </Button>
+        ) : null}
+        {vm.podeGerenciarEmpresa && onAbrirNovoPdv ? (
+          <Button type="button" variant="outline" className="rounded-xl" onClick={onAbrirNovoPdv}>
+            <Plus className="mr-2 h-4 w-4" />
+            Novo PDV
+          </Button>
+        ) : null}
       </div>
-    </div>
+    </header>
   );
 }

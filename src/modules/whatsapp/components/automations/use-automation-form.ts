@@ -5,7 +5,6 @@ import type {
   WhatsappAutomacao,
   WhatsappAutomacaoCreateInput,
   WhatsappAutomacaoUpdateInput,
-  EstagioFunilOption,
 } from "../../types";
 
 export type FormMode = "create" | "edit";
@@ -77,22 +76,10 @@ function delayToTexto(horas: number, minutos: number): string {
 
 export function useAutomationForm(
   mode: FormMode,
-  estagios: EstagioFunilOption[]
 ): UseAutomationFormReturn {
   const [formState, setFormState] = useState<FormState>(createEmptyFormState);
   const [formErro, setFormErro] = useState<string | null>(null);
   const [previewServidor, setPreviewServidor] = useState<string | null>(null);
-
-  const contextoPreview = useMemo(
-    () => ({
-      lead_nome: "João Silva",
-      lead_telefone: "+5511999999999",
-      lead_id: "12345",
-      estagio_anterior: "Novo",
-      estagio_novo: estagios.find((e) => e.id === formState.idEstagioDestino)?.nome ?? "FollowUp",
-    }),
-    [estagios, formState.idEstagioDestino]
-  );
 
   const limparFeedback = useCallback(() => {
     setPreviewServidor(null);

@@ -22,13 +22,12 @@ function SheetContent({
       <DrawerPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50" />
       <DrawerPrimitive.Content
         className={cn(
-          "fixed top-0 bottom-0 z-50 flex flex-col border bg-white shadow-xl transition-transform duration-300",
-          isRight ? "right-0 w-full max-w-md rounded-l-2xl" : "left-0 w-full max-w-md rounded-r-2xl",
+          "fixed top-0 bottom-0 z-50 flex flex-col border bg-white shadow-xl transition-transform duration-300 ease-out",
+          isRight
+            ? "right-0 w-full max-w-md rounded-l-2xl data-[state=closed]:translate-x-full data-[state=open]:translate-x-0"
+            : "left-0 w-full max-w-md rounded-r-2xl data-[state=closed]:-translate-x-full data-[state=open]:translate-x-0",
           className,
         )}
-        style={{
-          transform: undefined,
-        }}
         {...props}
       />
     </SheetPortal>

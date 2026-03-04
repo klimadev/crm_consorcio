@@ -5,14 +5,15 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, X, Phone, FileText, Trash2, Send, MessageCircle } from "lucide-react";
+import { AlertCircle, X, Phone, FileText, Trash2, MessageCircle } from "lucide-react";
 import {
   aplicaMascaraMoedaBr,
   aplicaMascaraTelefoneBr,
   converteMoedaBrParaNumero,
 } from "@/lib/utils";
-import type { Lead, PendenciaDinamica } from "../types";
+import type { Funcionario, Lead, PendenciaDinamica } from "../types";
 import { useWhatsappChat } from "@/modules/whatsapp/hooks/use-whatsapp-chat";
 import { WhatsappChatPanel } from "@/modules/whatsapp/components/chat/whatsapp-chat-panel";
 
@@ -26,12 +27,12 @@ type LeadDetailsDrawerProps = {
   pendenciasLead: PendenciaDinamica[];
   onOpenChange: (aberto: boolean) => void;
   perfil: "EMPRESA" | "GERENTE" | "COLABORADOR";
+  funcionarios: Funcionario[];
   onMudarLead: (leadAtualizado: Lead) => void;
   documentoAprovacaoUrl: string;
   setDocumentoAprovacaoUrl: (url: string) => void;
   arquivoSelecionado: File | null;
   setArquivoSelecionado: (file: File | null) => void;
-  uploadando: boolean;
   salvando: boolean;
   salvo: boolean;
   erroDetalhesLead: string | null;
@@ -45,12 +46,12 @@ export function LeadDetailsDrawer({
   pendenciasLead,
   onOpenChange,
   perfil,
+  funcionarios,
   onMudarLead,
   documentoAprovacaoUrl,
   setDocumentoAprovacaoUrl,
   arquivoSelecionado,
   setArquivoSelecionado,
-  uploadando,
   salvando,
   salvo,
   erroDetalhesLead,
@@ -211,6 +212,32 @@ export function LeadDetailsDrawer({
                     }
                   />
                 </div>
+
+                {perfil !== "COLABORADOR" ? (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700">Responsavel</label>
+                    <Select
+                      value={leadSelecionado.id_funcionario}
+                      onValueChange={(idFuncionario) =>
+                        handleMudarLead({
+                          ...leadSelecionado,
+                          id_funcionario: idFuncionario,
+                        })
+                      }
+                    >
+                      <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-white text-sm text-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20">
+                        <SelectValue placeholder="Selecione o responsavel" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {funcionarios.map((funcionario) => (
+                          <SelectItem key={funcionario.id} value={funcionario.id}>
+                            {funcionario.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
 
                 <div className="space-y-3">
                   <label className="text-sm font-medium text-slate-700 flex items-center gap-2">

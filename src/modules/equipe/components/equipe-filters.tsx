@@ -38,7 +38,7 @@ export function EquipeFilters({ vm }: EquipeFiltersProps) {
   }, [buscaTempoReal, vm.busca, vm]);
 
   return (
-    <section className="rounded-2xl border border-slate-200/60 bg-white px-5 py-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+    <section className="rounded-xl border border-slate-200/70 bg-slate-50/70 px-4 py-3">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="relative w-full md:max-w-sm">
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />

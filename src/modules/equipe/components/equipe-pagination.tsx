@@ -1,6 +1,6 @@
 "use client";
 
-import { Users, ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { UseEquipeModuleReturn } from "../types";
 
@@ -10,7 +10,7 @@ type EquipePaginationProps = {
 
 export function EquipePagination({ vm }: EquipePaginationProps) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-slate-200/60 bg-white px-4 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+    <div className="flex items-center justify-between rounded-xl border border-slate-200/70 bg-slate-50/80 px-4 py-3">
       <p className="text-sm font-medium text-slate-500">{vm.carregandoLista ? "Atualizando registros..." : `${vm.paginacao.total} registros no resultado atual.`}</p>
       
       <div className="flex items-center gap-2">

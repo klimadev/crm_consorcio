@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { SendHorizonal, Mic, Paperclip, Smile, Send } from "lucide-react";
+import { Mic, Paperclip, Smile, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Props = {

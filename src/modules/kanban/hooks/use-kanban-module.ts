@@ -2,12 +2,8 @@
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { DropResult } from "@hello-pangea/dnd";
-import {
-  aplicaMascaraMoedaBr,
-  aplicaMascaraTelefoneBr,
-  converteMoedaBrParaNumero,
-} from "@/lib/utils";
-import type { Estagio, Lead, Funcionario, PendenciaDinamica, UseKanbanModuleReturn, Props, KanbanFilters, PendenciaLeadInfo } from "../types";
+import { converteMoedaBrParaNumero } from "@/lib/utils";
+import type { Estagio, Lead, Funcionario, UseKanbanModuleReturn, Props, KanbanFilters, PendenciaLeadInfo } from "../types";
 import { usePendenciasGlobais, getGravidadePendencia } from "./use-pendencias-globais";
 import type { PendenciaInfo } from "./use-pendencias-globais";
 import { calcularPendenciasLead, type PendenciaCalculada } from "@/lib/calculo-pendencias";
@@ -85,14 +81,10 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
   }, []);
 
   useEffect(() => {
-    let ativo = true;
     const carregarInicial = async () => {
       await bootstrap();
     };
     void carregarInicial();
-    return () => {
-      ativo = false;
-    };
   }, [bootstrap]);
 
   const pendenciasPorLead = useMemo((): Record<string, PendenciaLeadInfo> => {
@@ -357,6 +349,7 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
             telefone: lead.telefone,
             valor_consorcio: Number(lead.valor_consorcio),
             documento_aprovacao_url: docUrl || null,
+            id_funcionario: lead.id_funcionario,
           }),
         });
 

@@ -31,7 +31,6 @@ type KanbanHeaderProps = {
   estagioAberto: string;
   estagioNovoLead: string;
   setEstagioNovoLead: (estagio: string) => void;
-  cargoNovoLead: { id_funcionario: string } | null;
   setCargoNovoLead: (cargo: { id_funcionario: string } | null) => void;
   filtros: KanbanFilters;
   setFiltros: (filtros: KanbanFilters) => void;
@@ -65,7 +64,6 @@ export function KanbanHeader({
   estagioAberto,
   estagioNovoLead,
   setEstagioNovoLead,
-  cargoNovoLead,
   setCargoNovoLead,
   filtros,
   setFiltros,

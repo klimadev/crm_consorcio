@@ -25,7 +25,7 @@ const run = (cmd, opts = {}) => {
   try {
     execSync(cmd, { stdio: 'inherit', ...opts });
     return true;
-  } catch (e) {
+  } catch {
     log(`✗ Erro ao executar: ${cmd}`, 'yellow');
     return false;
   }
@@ -36,8 +36,6 @@ const question = (q) => new Promise((resolve) => {
 });
 
 const hasNodeModules = fs.existsSync(path.join(process.cwd(), 'node_modules'));
-const hasPrismaDb = fs.existsSync(path.join(process.cwd(), 'prisma', 'dev.db'));
-
 async function main() {
   log('\n🚀 Wizard de Configuração - CRM Consórcio\n', 'green');
   log('=' .repeat(50), 'blue');
