@@ -95,52 +95,47 @@ export function EquipeDesktopTable({ vm }: EquipeDesktopTableProps) {
                 />
               </TableHead>
             )}
-            <TableHead>
+            <TableHead aria-sort={campoOrdenacao === "nome" ? (vm.direcao === "asc" ? "ascending" : "descending") : "none"}>
               <button 
                 type="button" 
                 className="flex items-center gap-1 font-medium" 
                 onClick={() => alternarOrdenacao("nome")}
-                aria-sort={campoOrdenacao === "nome" ? (vm.direcao === "asc" ? "ascending" : "descending") : "none"}
               >
                 Nome {iconeOrdenacao("nome")}
               </button>
             </TableHead>
-            <TableHead>
+            <TableHead aria-sort={campoOrdenacao === "email" ? (vm.direcao === "asc" ? "ascending" : "descending") : "none"}>
               <button 
                 type="button" 
                 className="flex items-center gap-1 font-medium" 
                 onClick={() => alternarOrdenacao("email")}
-                aria-sort={campoOrdenacao === "email" ? (vm.direcao === "asc" ? "ascending" : "descending") : "none"}
               >
                 Email {iconeOrdenacao("email")}
               </button>
             </TableHead>
-            <TableHead>
+            <TableHead aria-sort={campoOrdenacao === "cargo" ? (vm.direcao === "asc" ? "ascending" : "descending") : "none"}>
               <button 
                 type="button" 
                 className="flex items-center gap-1 font-medium" 
                 onClick={() => alternarOrdenacao("cargo")}
-                aria-sort={campoOrdenacao === "cargo" ? (vm.direcao === "asc" ? "ascending" : "descending") : "none"}
               >
                 Cargo {iconeOrdenacao("cargo")}
               </button>
             </TableHead>
-            <TableHead>
+            <TableHead aria-sort={campoOrdenacao === "pdv" ? (vm.direcao === "asc" ? "ascending" : "descending") : "none"}>
               <button 
                 type="button" 
                 className="flex items-center gap-1 font-medium" 
                 onClick={() => alternarOrdenacao("pdv")}
-                aria-sort={campoOrdenacao === "pdv" ? (vm.direcao === "asc" ? "ascending" : "descending") : "none"}
               >
                 PDV {iconeOrdenacao("pdv")}
               </button>
             </TableHead>
-            <TableHead>
+            <TableHead aria-sort={campoOrdenacao === "status" ? (vm.direcao === "asc" ? "ascending" : "descending") : "none"}>
               <button 
                 type="button" 
                 className="flex items-center gap-1 font-medium" 
                 onClick={() => alternarOrdenacao("status")}
-                aria-sort={campoOrdenacao === "status" ? (vm.direcao === "asc" ? "ascending" : "descending") : "none"}
               >
                 Status {iconeOrdenacao("status")}
               </button>

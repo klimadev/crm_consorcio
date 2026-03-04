@@ -61,8 +61,7 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
       return;
     }
 
-    vm.setDadosEdicao(dados);
-    const ok = await vm.salvarEdicaoAtual();
+    const ok = await vm.salvarEdicaoAtual(dados);
     if (ok) {
       onFechar();
     }

@@ -150,7 +150,7 @@ function QrCodeDisplay({
     };
 
     carregarQr();
-  }, [instanciaId, phone]);
+  }, [instanciaId, phone, qrAtual, buscarQrCode]);
 
   if (phone) return null;
 

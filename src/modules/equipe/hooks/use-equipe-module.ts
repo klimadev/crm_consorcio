@@ -550,12 +550,17 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     await salvarFuncionario(editandoId, ultimoSnapshot.dados);
   }, [editandoId, ultimoSnapshot, limparTimerAutoSave, salvarFuncionario]);
 
-  const salvarEdicaoAtual = useCallback(async () => {
-    if (!editandoId || !dadosEdicao) {
+  const salvarEdicaoAtual = useCallback(async (dadosOverride?: DadosEdicao) => {
+    if (!editandoId) {
       return false;
     }
 
-    const ok = await salvarFuncionario(editandoId, dadosEdicao);
+    const dadosParaSalvar = dadosOverride ?? dadosEdicao;
+    if (!dadosParaSalvar) {
+      return false;
+    }
+
+    const ok = await salvarFuncionario(editandoId, dadosParaSalvar);
     if (ok) {
       fecharDrawerEdicao();
     }

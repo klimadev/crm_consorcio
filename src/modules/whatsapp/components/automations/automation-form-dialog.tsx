@@ -66,7 +66,7 @@ export function AutomationFormDialog({
       form.resetForm();
       hasLoadedRef.current = true;
     }
-  }, [open, mode, automacao]);
+  }, [open, mode, automacao, form]);
 
   const handleClose = () => {
     setCurrentStep("trigger");

@@ -99,7 +99,7 @@ export function KanbanHeader({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [setBusca]);
 
   const limparFiltros = () => {
     setFiltros({ status: "todos", gravidade: "todas", tipo: "todos" });

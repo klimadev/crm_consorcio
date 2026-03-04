@@ -544,7 +544,7 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     if (leadSelecionado) {
       setDocumentoAprovacaoUrl(leadSelecionado.documento_aprovacao_url ?? "");
     }
-  }, [leadSelecionado?.id]);
+  }, [leadSelecionado]);
 
   return {
     estagios,
