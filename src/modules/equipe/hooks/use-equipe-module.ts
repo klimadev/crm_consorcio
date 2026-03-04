@@ -14,6 +14,7 @@ import type {
   ResultadoLote,
   FuncionarioDestinoInativacao,
   AcaoLote,
+  WhatsappInstanciaResumo,
   UseEquipeModuleReturn,
 } from "../types";
 import { CARGOS_EQUIPE, PASTEL_COLORS } from "../constants";
@@ -71,6 +72,16 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
 
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
   const [pdvs, setPdvs] = useState<Pdv[]>([]);
+  const [instanciasWhatsapp, setInstanciasWhatsapp] = useState<WhatsappInstanciaResumo[]>([]);
+  const [abaAtiva, setAbaAtiva] = useState<"colaboradores" | "pdvs">("colaboradores");
+  const [carregandoPdvs, setCarregandoPdvs] = useState(false);
+  const [carregandoInstanciasWhatsapp, setCarregandoInstanciasWhatsapp] = useState(false);
+  const [criandoPdv, setCriandoPdv] = useState(false);
+  const [criandoInstanciaWhatsapp, setCriandoInstanciaWhatsapp] = useState(false);
+  const [salvandoInstanciaWhatsappId, setSalvandoInstanciaWhatsappId] = useState<string | null>(null);
+  const [excluindoInstanciaWhatsappId, setExcluindoInstanciaWhatsappId] = useState<string | null>(null);
+  const [salvandoInstanciaPdvId, setSalvandoInstanciaPdvId] = useState<string | null>(null);
+  const [erroGestaoPdvs, setErroGestaoPdvs] = useState<string | null>(null);
   const [paginacao, setPaginacao] = useState<Paginacao>({
     pagina: 1,
     por_pagina: 20,
@@ -212,25 +223,64 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
     }
   }, [searchParams]);
 
+  const carregarPdvs = useCallback(async () => {
+    setCarregandoPdvs(true);
+    setErroGestaoPdvs(null);
+    try {
+      const resposta = await fetch("/api/pdvs", { cache: "no-store" });
+      const json = (await resposta.json().catch(() => ({}))) as {
+        pdvs?: Pdv[];
+        erro?: string;
+      };
+      if (!resposta.ok) {
+        setErroGestaoPdvs(json.erro ?? "Erro ao carregar PDVs.");
+        return;
+      }
+      setPdvs(json.pdvs ?? []);
+    } finally {
+      setCarregandoPdvs(false);
+    }
+  }, []);
+
+  const carregarInstanciasWhatsapp = useCallback(async () => {
+    setCarregandoInstanciasWhatsapp(true);
+    setErroGestaoPdvs(null);
+    try {
+      const resposta = await fetch("/api/whatsapp/instances", { cache: "no-store" });
+      const json = (await resposta.json().catch(() => ({}))) as {
+        instancias?: Array<{ id: string; nome: string; status: string }>;
+        erro?: string;
+      };
+      if (!resposta.ok) {
+        setErroGestaoPdvs(json.erro ?? "Erro ao carregar instancias WhatsApp.");
+        return;
+      }
+      setInstanciasWhatsapp(
+        (json.instancias ?? []).map((instancia) => ({
+          id: instancia.id,
+          nome: instancia.nome,
+          status: instancia.status,
+        })),
+      );
+    } finally {
+      setCarregandoInstanciasWhatsapp(false);
+    }
+  }, []);
+
   useEffect(() => {
     let ativo = true;
 
-    const carregarPdvs = async () => {
-      const resposta = await fetch("/api/pdvs");
-      if (!ativo || !resposta.ok) {
-        return;
-      }
-
-      const json = await resposta.json();
-      setPdvs(json.pdvs ?? []);
+    const carregarRecursos = async () => {
+      if (!ativo) return;
+      await Promise.all([carregarPdvs(), carregarInstanciasWhatsapp()]);
     };
 
-    void carregarPdvs();
+    void carregarRecursos();
 
     return () => {
       ativo = false;
     };
-  }, []);
+  }, [carregarPdvs, carregarInstanciasWhatsapp]);
 
   useEffect(() => {
     void carregarFuncionarios();
@@ -395,6 +445,242 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
     [funcionarios],
   );
 
+  const funcionariosDestinoMesmoPdv = useMemo(() => {
+    if (!funcionarioDestinoInativacao) return [];
+    const origem = funcionarios.find((funcionario) => funcionario.id === funcionarioDestinoInativacao.id);
+    if (!origem?.pdv?.id) return [];
+
+    return funcionarios.filter(
+      (funcionario) =>
+        funcionario.ativo &&
+        funcionario.id !== funcionarioDestinoInativacao.id &&
+        funcionario.pdv?.id === origem.pdv.id,
+    );
+  }, [funcionarios, funcionarioDestinoInativacao]);
+
+  const atualizarInstanciaPadraoPdv = useCallback(async (idPdv: string, idInstancia: string | null) => {
+    setErroGestaoPdvs(null);
+    setSalvandoInstanciaPdvId(idPdv);
+
+    const pdvAnterior = pdvs.find((item) => item.id === idPdv);
+    if (!pdvAnterior) {
+      setSalvandoInstanciaPdvId(null);
+      return;
+    }
+
+    const instanciaSelecionada = idInstancia
+      ? instanciasWhatsapp.find((instancia) => instancia.id === idInstancia) ?? null
+      : null;
+
+    setPdvs((atual) =>
+      atual.map((item) =>
+        item.id === idPdv
+          ? {
+              ...item,
+              id_whatsapp_instancia: idInstancia,
+              whatsapp_instancia: instanciaSelecionada
+                ? {
+                    id: instanciaSelecionada.id,
+                    nome: instanciaSelecionada.nome,
+                    status: instanciaSelecionada.status,
+                  }
+                : null,
+            }
+          : item,
+      ),
+    );
+
+    try {
+      const resposta = await fetch(`/api/pdvs/${idPdv}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_whatsapp_instancia: idInstancia }),
+      });
+
+      if (!resposta.ok) {
+        const json = (await resposta.json().catch(() => ({}))) as { erro?: string };
+        setErroGestaoPdvs(json.erro ?? "Erro ao salvar instancia padrao do PDV.");
+        setPdvs((atual) => atual.map((item) => (item.id === idPdv ? pdvAnterior : item)));
+      }
+    } catch {
+      setErroGestaoPdvs("Erro ao salvar instancia padrao do PDV.");
+      setPdvs((atual) => atual.map((item) => (item.id === idPdv ? pdvAnterior : item)));
+    } finally {
+      setSalvandoInstanciaPdvId(null);
+    }
+  }, [pdvs, instanciasWhatsapp]);
+
+  const criarPdv = useCallback(async (nome: string) => {
+    const nomeNormalizado = nome.trim();
+    if (!nomeNormalizado) {
+      setErroGestaoPdvs("Nome do PDV e obrigatorio.");
+      return;
+    }
+
+    setErroGestaoPdvs(null);
+    setCriandoPdv(true);
+
+    try {
+      const resposta = await fetch("/api/pdvs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome: nomeNormalizado }),
+      });
+
+      const json = (await resposta.json().catch(() => ({}))) as { erro?: string };
+      if (!resposta.ok) {
+        setErroGestaoPdvs(json.erro ?? "Erro ao criar PDV.");
+        return;
+      }
+
+      await carregarPdvs();
+    } catch {
+      setErroGestaoPdvs("Erro ao criar PDV.");
+    } finally {
+      setCriandoPdv(false);
+    }
+  }, [carregarPdvs]);
+
+  const criarInstanciaWhatsapp = useCallback(async (nome: string) => {
+    const nomeNormalizado = nome.trim();
+    if (nomeNormalizado.length < 3) {
+      setErroGestaoPdvs("Nome da instancia deve ter ao menos 3 caracteres.");
+      return;
+    }
+
+    setErroGestaoPdvs(null);
+    setCriandoInstanciaWhatsapp(true);
+
+    try {
+      const resposta = await fetch("/api/whatsapp/instances", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome: nomeNormalizado }),
+      });
+
+      const json = (await resposta.json().catch(() => ({}))) as { erro?: string };
+      if (!resposta.ok) {
+        setErroGestaoPdvs(json.erro ?? "Erro ao criar instancia WhatsApp.");
+        return;
+      }
+
+      await carregarInstanciasWhatsapp();
+    } catch {
+      setErroGestaoPdvs("Erro ao criar instancia WhatsApp.");
+    } finally {
+      setCriandoInstanciaWhatsapp(false);
+    }
+  }, [carregarInstanciasWhatsapp]);
+
+  const salvarInstanciaWhatsapp = useCallback(async (id: string, nome: string) => {
+    const nomeNormalizado = nome.trim();
+    if (nomeNormalizado.length < 3) {
+      setErroGestaoPdvs("Nome da instancia deve ter ao menos 3 caracteres.");
+      return false;
+    }
+
+    const anterior = instanciasWhatsapp.find((instancia) => instancia.id === id);
+    if (!anterior) {
+      return false;
+    }
+
+    setErroGestaoPdvs(null);
+    setSalvandoInstanciaWhatsappId(id);
+    setInstanciasWhatsapp((atual) =>
+      atual.map((instancia) =>
+        instancia.id === id ? { ...instancia, nome: nomeNormalizado } : instancia,
+      ),
+    );
+
+    setPdvs((atual) =>
+      atual.map((pdv) =>
+        pdv.id_whatsapp_instancia === id && pdv.whatsapp_instancia
+          ? {
+              ...pdv,
+              whatsapp_instancia: { ...pdv.whatsapp_instancia, nome: nomeNormalizado },
+            }
+          : pdv,
+      ),
+    );
+
+    try {
+      const resposta = await fetch(`/api/whatsapp/instances/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome: nomeNormalizado }),
+      });
+
+      if (!resposta.ok) {
+        const json = (await resposta.json().catch(() => ({}))) as { erro?: string };
+        setErroGestaoPdvs(json.erro ?? "Erro ao atualizar instancia WhatsApp.");
+        setInstanciasWhatsapp((atual) => atual.map((instancia) => (instancia.id === id ? anterior : instancia)));
+        setPdvs((atual) =>
+          atual.map((pdv) =>
+            pdv.id_whatsapp_instancia === id && pdv.whatsapp_instancia
+              ? {
+                  ...pdv,
+                  whatsapp_instancia: { ...pdv.whatsapp_instancia, nome: anterior.nome },
+                }
+              : pdv,
+          ),
+        );
+        return false;
+      }
+      return true;
+    } catch {
+      setErroGestaoPdvs("Erro ao atualizar instancia WhatsApp.");
+      setInstanciasWhatsapp((atual) => atual.map((instancia) => (instancia.id === id ? anterior : instancia)));
+      setPdvs((atual) =>
+        atual.map((pdv) =>
+          pdv.id_whatsapp_instancia === id && pdv.whatsapp_instancia
+            ? {
+                ...pdv,
+                whatsapp_instancia: { ...pdv.whatsapp_instancia, nome: anterior.nome },
+              }
+            : pdv,
+        ),
+      );
+      return false;
+    } finally {
+      setSalvandoInstanciaWhatsappId(null);
+    }
+  }, [instanciasWhatsapp]);
+
+  const excluirInstanciaWhatsapp = useCallback(async (id: string) => {
+    const anteriorInstancias = instanciasWhatsapp;
+    const anteriorPdvs = pdvs;
+
+    setErroGestaoPdvs(null);
+    setExcluindoInstanciaWhatsappId(id);
+    setInstanciasWhatsapp((atual) => atual.filter((instancia) => instancia.id !== id));
+    setPdvs((atual) =>
+      atual.map((pdv) =>
+        pdv.id_whatsapp_instancia === id
+          ? { ...pdv, id_whatsapp_instancia: null, whatsapp_instancia: null }
+          : pdv,
+      ),
+    );
+
+    try {
+      const resposta = await fetch(`/api/whatsapp/instances/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!resposta.ok) {
+        const json = (await resposta.json().catch(() => ({}))) as { erro?: string };
+        setErroGestaoPdvs(json.erro ?? "Erro ao excluir instancia WhatsApp.");
+        setInstanciasWhatsapp(anteriorInstancias);
+        setPdvs(anteriorPdvs);
+      }
+    } catch {
+      setErroGestaoPdvs("Erro ao excluir instancia WhatsApp.");
+      setInstanciasWhatsapp(anteriorInstancias);
+      setPdvs(anteriorPdvs);
+    } finally {
+      setExcluindoInstanciaWhatsappId(null);
+    }
+  }, [instanciasWhatsapp, pdvs]);
+
   const inativarFuncionario = useCallback(
     async (id: string, destino: string, obs?: string) => {
       if (!destino) {
@@ -439,12 +725,15 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
 
   const abrirModalInativacao = useCallback(
     (funcionario: Funcionario) => {
-      const destinoAutomatico = funcionariosAtivosParaDestino.find((item) => item.id !== funcionario.id);
+      const destinoMesmoPdv = funcionariosAtivosParaDestino.filter(
+        (item) => item.id !== funcionario.id && item.pdv?.id === funcionario.pdv?.id,
+      );
+      const destinoAutomatico = destinoMesmoPdv[0];
 
       setFuncionarioDestinoInativacao({ id: funcionario.id, nome: funcionario.nome });
       setDestinoInativacaoIndividual(destinoAutomatico?.id ?? "");
       setObservacaoInativacaoIndividual("");
-      setErroLista(destinoAutomatico ? null : "Nao ha outro colaborador ativo para receber os leads.");
+      setErroLista(destinoAutomatico ? null : "Nenhum colaborador no mesmo PDV. Atribua a um gerente geral.");
       setDialogInativacaoAberto(true);
     },
     [funcionariosAtivosParaDestino],
@@ -647,6 +936,23 @@ export function useEquipeModule({ perfil }: Props): UseEquipeModuleReturn {
     pagina,
     porPagina,
     funcionariosAtivosParaDestino,
+    funcionariosDestinoMesmoPdv,
+    abaAtiva,
+    setAbaAtiva,
+    instanciasWhatsapp,
+    carregandoPdvs,
+    carregandoInstanciasWhatsapp,
+    criandoPdv,
+    criandoInstanciaWhatsapp,
+    salvandoInstanciaWhatsappId,
+    excluindoInstanciaWhatsappId,
+    salvandoInstanciaPdvId,
+    erroGestaoPdvs,
+    criarPdv,
+    criarInstanciaWhatsapp,
+    salvarInstanciaWhatsapp,
+    excluirInstanciaWhatsapp,
+    atualizarInstanciaPadraoPdv,
     funcionariosDestinoInativacao: funcionarioDestinoInativacao,
     destinoInativacaoIndividual,
     setDestinoInativacaoIndividual,

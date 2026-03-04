@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { exigirSessao } from "@/lib/permissoes";
-import { criarInstancia, gerarQrCode } from "@/lib/evolution-api";
+import { exigirSessao, podeVerEquipe, respostaSemPermissao } from "@/lib/permissoes";
+import { criarInstancia } from "@/lib/evolution-api";
+import { esquemaCriarWhatsappInstancia, mensagemErroValidacao } from "@/lib/validacoes";
 
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL ?? "http://localhost:8080";
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY ?? "";
@@ -10,6 +11,9 @@ export async function GET(request: NextRequest) {
   const auth = await exigirSessao(request);
   if (auth.erro) {
     return auth.erro;
+  }
+  if (!podeVerEquipe(auth.sessao)) {
+    return respostaSemPermissao();
   }
 
   const instanciasDb = await prisma.whatsappInstancia.findMany({
@@ -81,17 +85,16 @@ export async function POST(request: NextRequest) {
   if (auth.erro) {
     return auth.erro;
   }
-
-  const body = (await request.json()) as { nome?: string };
-  const nome = body.nome?.trim();
-
-  if (!nome) {
-    return NextResponse.json({ erro: "Nome da instância é obrigatório." }, { status: 400 });
+  if (!podeVerEquipe(auth.sessao)) {
+    return respostaSemPermissao();
   }
 
-  if (nome.length < 3) {
-    return NextResponse.json({ erro: "Nome precisa ter pelo menos 3 caracteres." }, { status: 400 });
+  const body = (await request.json().catch(() => ({}))) as unknown;
+  const validacao = esquemaCriarWhatsappInstancia.safeParse(body);
+  if (!validacao.success) {
+    return NextResponse.json({ erro: mensagemErroValidacao(validacao.error) }, { status: 400 });
   }
+  const nome = validacao.data.nome;
 
   const instanceName = `crm_${auth.sessao.id_usuario.slice(0, 8)}_${Date.now()}`;
 

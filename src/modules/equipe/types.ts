@@ -1,6 +1,28 @@
 export type Pdv = {
   id: string;
   nome: string;
+  id_whatsapp_instancia?: string | null;
+  whatsapp_instancia?: {
+    id: string;
+    nome: string;
+    status: string;
+  } | null;
+  funcionarios?: Array<{
+    id: string;
+    nome: string;
+    cargo: string;
+  }>;
+};
+
+export type WhatsappInstanciaResumo = {
+  id: string;
+  nome: string;
+  status: string;
+};
+
+export type WhatsappInstanciaEmEdicao = {
+  id: string;
+  nome: string;
 };
 
 export type Funcionario = {
@@ -95,6 +117,23 @@ export type UseEquipeModuleReturn = {
   pagina: number;
   porPagina: number;
   funcionariosAtivosParaDestino: Funcionario[];
+  funcionariosDestinoMesmoPdv: Funcionario[];
+  abaAtiva: "colaboradores" | "pdvs";
+  setAbaAtiva: (aba: "colaboradores" | "pdvs") => void;
+  instanciasWhatsapp: WhatsappInstanciaResumo[];
+  carregandoPdvs: boolean;
+  carregandoInstanciasWhatsapp: boolean;
+  criandoPdv: boolean;
+  criandoInstanciaWhatsapp: boolean;
+  salvandoInstanciaWhatsappId: string | null;
+  excluindoInstanciaWhatsappId: string | null;
+  salvandoInstanciaPdvId: string | null;
+  erroGestaoPdvs: string | null;
+  criarPdv: (nome: string) => Promise<void>;
+  criarInstanciaWhatsapp: (nome: string) => Promise<void>;
+  salvarInstanciaWhatsapp: (id: string, nome: string) => Promise<boolean>;
+  excluirInstanciaWhatsapp: (id: string) => Promise<void>;
+  atualizarInstanciaPadraoPdv: (idPdv: string, idInstancia: string | null) => Promise<void>;
   funcionariosDestinoInativacao: FuncionarioDestinoInativacao | null;
   destinoInativacaoIndividual: string;
   setDestinoInativacaoIndividual: (destino: string) => void;

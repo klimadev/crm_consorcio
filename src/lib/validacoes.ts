@@ -80,7 +80,28 @@ export const esquemaCriarLead = z.object({
   valor_consorcio: z.number().positive("Valor do consorcio deve ser maior que zero."),
   id_estagio: z.string().trim().min(1, "Estagio obrigatorio."),
   id_funcionario: z.string().trim().min(1, "Funcionario obrigatorio."),
-  id_whatsapp_instancia: z.string().trim().min(1, "Instancia invalida.").nullable().optional(),
+});
+
+export const esquemaCriarPdv = z.object({
+  nome: z.string().trim().min(1, "Nome do PDV e obrigatorio."),
+  id_whatsapp_instancia: z.string().trim().min(1, "Instancia invalida.").optional(),
+});
+
+export const esquemaCriarWhatsappInstancia = z.object({
+  nome: z.string().trim().min(3, "Nome da instancia precisa ter pelo menos 3 caracteres."),
+});
+
+export const esquemaAtualizarWhatsappInstancia = z.object({
+  nome: z.string().trim().min(3, "Nome da instancia precisa ter pelo menos 3 caracteres."),
+});
+
+export const esquemaAtualizarPdv = z.object({
+  nome: z.string().trim().min(1, "Nome do PDV e obrigatorio.").optional(),
+  id_whatsapp_instancia: z
+    .union([z.string().trim().min(1, "Instancia invalida."), z.null()])
+    .optional(),
+}).refine((dados) => dados.nome !== undefined || dados.id_whatsapp_instancia !== undefined, {
+  message: "Informe ao menos um campo para atualizar.",
 });
 
 export const esquemaMoverLead = z.object({
