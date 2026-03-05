@@ -7,6 +7,7 @@ import type { Estagio, Lead, Funcionario, UseKanbanModuleReturn, Props, KanbanFi
 import { usePendenciasGlobais, getGravidadePendencia } from "./use-pendencias-globais";
 import type { PendenciaInfo } from "./use-pendencias-globais";
 import { calcularPendenciasLead, type PendenciaCalculada } from "@/lib/calculo-pendencias";
+import { useToast } from "@/components/ui/toast";
 
 function leadPassaFiltros(lead: Lead, pendenciaInfo: PendenciaLeadInfo | undefined, filtros: KanbanFilters): boolean {
   if (filtros.status === "com_pendencia" && !pendenciaInfo) return false;
@@ -24,6 +25,7 @@ function leadPassaFiltros(lead: Lead, pendenciaInfo: PendenciaLeadInfo | undefin
 }
 
 export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleReturn {
+  const { addToast } = useToast();
   const [estagios, setEstagios] = useState<Estagio[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
@@ -234,21 +236,35 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
       });
 
       if (!resposta.ok) {
+        const jsonErro = (await resposta.json().catch(() => ({}))) as { erro?: string };
         setLeads((atual) =>
           atual.map((item) => (item.id === idLead ? leadAnterior : item)),
         );
+        addToast({
+          type: "error",
+          title: "Movimentação não permitida",
+          description: jsonErro.erro ?? "Não foi possível mover o lead.",
+        });
         return false;
       }
 
-      const json = (await resposta.json()) as { lead?: Lead };
+      const json = (await resposta.json()) as { lead?: Lead; mensagem?: string };
       if (json.lead) {
         const leadAtualizado = json.lead;
         setLeads((atual) => atual.map((item) => (item.id === idLead ? leadAtualizado : item)));
       }
 
+      if (json.mensagem) {
+        addToast({
+          type: "warning",
+          title: "Lead com pendência de análise",
+          description: json.mensagem,
+        });
+      }
+
       return true;
     },
-    [leads],
+    [leads, addToast],
   );
 
   const aoDragEnd = useCallback(
@@ -290,12 +306,11 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     [movimentoPendente, motivoPerda, moverLead],
   );
 
-  const handleUploadArquivo = useCallback(async (): Promise<string | null> => {
-    if (!arquivoSelecionado) return null;
+  const handleUploadArquivo = useCallback(async (arquivo: File): Promise<string | null> => {
 
     setUploadando(true);
     const formData = new FormData();
-    formData.append("arquivo", arquivoSelecionado);
+    formData.append("arquivo", arquivo);
 
     try {
       const resposta = await fetch("/api/upload", {
@@ -319,11 +334,16 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     } finally {
       setUploadando(false);
     }
-  }, [arquivoSelecionado]);
+  }, []);
 
   const salvarDetalhesLead = useCallback(
-    async (lead: Lead, urlDocumento?: string, opcoes?: { atualizarSelecionado?: boolean }) => {
+    async (
+      lead: Lead,
+      urlDocumento?: string,
+      opcoes?: { atualizarSelecionado?: boolean; arquivoUpload?: File | null }
+    ) => {
       const atualizarSelecionado = opcoes?.atualizarSelecionado ?? true;
+      const arquivoParaUpload = opcoes?.arquivoUpload ?? arquivoSelecionado;
       setSalvando(true);
       setSalvo(false);
       setErroDetalhesLead(null);
@@ -331,8 +351,8 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
       try {
         let docUrl = urlDocumento ?? documentoAprovacaoUrl.trim();
 
-        if (arquivoSelecionado) {
-          const urlUpload = await handleUploadArquivo();
+        if (arquivoParaUpload) {
+          const urlUpload = await handleUploadArquivo(arquivoParaUpload);
           if (!urlUpload) {
             setSalvando(false);
             return;
@@ -406,17 +426,6 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     };
   }, []);
 
-  useEffect(() => {
-    if (leadSelecionado && documentoAprovacaoUrl !== (leadSelecionado.documento_aprovacao_url ?? "")) {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      timeoutRef.current = setTimeout(() => {
-        salvarDetalhesLead(leadSelecionado, documentoAprovacaoUrl);
-      }, 1000);
-    }
-  }, [documentoAprovacaoUrl, leadSelecionado, salvarDetalhesLead]);
-
   const criarLead = useCallback(
     async (evento: React.FormEvent<HTMLFormElement>) => {
       evento.preventDefault();
@@ -444,6 +453,8 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
         observacoes: null,
         motivo_perda: null,
         documento_aprovacao_url: null,
+        aprovado_em: null,
+        aprovado_por: null,
         atualizado_em: new Date().toISOString(),
       };
 

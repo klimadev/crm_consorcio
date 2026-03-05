@@ -122,7 +122,19 @@ export const esquemaAtualizarLead = z
       .optional(),
     valor_consorcio: z.number().positive("Valor do consorcio deve ser maior que zero.").optional(),
     motivo_perda: z.string().trim().max(1000, "Motivo da perda muito longo.").nullable().optional(),
-    documento_aprovacao_url: z.string().trim().url("URL do documento invalida.").nullable().optional(),
+    documento_aprovacao_url: z
+      .string()
+      .trim()
+      .refine(
+        (valor) => {
+          if (!valor) return false;
+          if (valor.startsWith("/")) return true;
+          return z.string().url().safeParse(valor).success;
+        },
+        "URL do documento invalida.",
+      )
+      .nullable()
+      .optional(),
     id_funcionario: z.string().trim().min(1, "Funcionario obrigatorio.").optional(),
   })
   .refine(
@@ -305,6 +317,7 @@ export const TIPOS_PENDENCIA = [
   "QUEDA_RESERVA",                 // Reserva expirada
   "ALTO_VALOR",                    // Valor alto que precisa aprovação
   "DOCUMENTO_APROVACAO_PENDENTE", // Documento de aprovação não anexado
+  "APROVACAO_GERENCIA_PENDENTE",  // Documento anexado mas aguardando analise da EMPRESA
   "ESTAGIO_PARADO",                // Lead parado em um estágio há muito tempo
 ] as const;
 
@@ -317,6 +330,7 @@ export const LABELS_PENDENCIA: Record<TipoPendencia, string> = {
   QUEDA_RESERVA: "Queda de Reserva",
   ALTO_VALOR: "Alto Valor - Aprovação Necessária",
   DOCUMENTO_APROVACAO_PENDENTE: "Documento de Aprovação (PDF/Link) Pendente",
+  APROVACAO_GERENCIA_PENDENTE: "Pendência de Análise da EMPRESA",
   ESTAGIO_PARADO: "Lead Parado no Estágio",
 };
 

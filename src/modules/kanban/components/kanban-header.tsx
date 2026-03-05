@@ -112,8 +112,8 @@ export function KanbanHeader({
           </svg>
         </div>
         <div>
-          <h1 className="text-xl font-bold text-slate-800 md:text-2xl">Kanban</h1>
-          <p className="text-sm text-slate-500">Funil de vendas com arrastar e soltar.</p>
+          <h1 className="text-xl font-bold text-slate-800 md:text-2xl">Leads</h1>
+          <p className="text-sm text-slate-500">Gestão de leads com arrastar e soltar.</p>
         </div>
       </div>
 

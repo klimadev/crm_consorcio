@@ -3,11 +3,11 @@ import type { TourStep } from "@/modules/onboarding/types";
 
 export const onboardingKanbanSteps: TourStep[] = [
   {
-    id: "sidebar-kanban",
+    id: "sidebar-leads",
     selector: TOUR_SELECTORS.sidebarKanban,
     position: "right",
     stepInteraction: true,
-    title: "Kanban",
-    content: "Gerencie sua pipeline de vendas com drag-and-drop. Acompanhe pendencias (leads estagnados, documentos faltando) e receba alertas.",
+    title: "Leads",
+    content: "Gerencie sua pipeline de leads com drag-and-drop. Acompanhe pendências, documentos e aprovações, e receba alertas.",
   },
 ];

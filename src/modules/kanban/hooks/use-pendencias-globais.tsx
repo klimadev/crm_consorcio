@@ -24,6 +24,8 @@ export function getGravidadePendencia(tipo: TipoPendencia): PendenciaGravidade {
   switch (tipo) {
     case "DOCUMENTO_APROVACAO_PENDENTE":
       return "critica";
+    case "APROVACAO_GERENCIA_PENDENTE":
+      return "alerta";
     case "ESTAGIO_PARADO":
       return "alerta";
     case "SEM_RESPOSTA":
@@ -31,6 +33,8 @@ export function getGravidadePendencia(tipo: TipoPendencia): PendenciaGravidade {
     case "DOCUMENTOS_PENDENTES":
     case "QUEDA_RESERVA":
     case "ALTO_VALOR":
+      return "info";
+    default:
       return "info";
   }
 }
@@ -162,10 +166,20 @@ const PendenciasContext = createContext<PendenciasContextValue | null>(null);
 export function usePendenciasProvider() {
   const [pendencias, setPendencias] = useState<PendenciaInfo[]>([]);
   const [carregando, setCarregando] = useState(true);
-  const [notificacoesAtivadas, setNotificacoesAtivadasState] = useState(getNotificacoesAtivadas);
-  const jaNotificadasRef = useRef<Set<string>>(getJaNotificadas());
-  const pendenciasAnterioresRef = useRef<PendenciaInfo[]>(getPendenciasAnteriores());
+  const [notificacoesAtivadas, setNotificacoesAtivadasState] = useState(false);
+  const jaNotificadasRef = useRef<Set<string>>(new Set());
+  const pendenciasAnterioresRef = useRef<PendenciaInfo[]>([]);
   const ultimoUpdateLocalRef = useRef<number>(0);
+
+  useEffect(() => {
+    const notificacoesPersistidas = getNotificacoesAtivadas();
+    const notificadasPersistidas = getJaNotificadas();
+    const pendenciasPersistidas = getPendenciasAnteriores();
+
+    setNotificacoesAtivadasState(notificacoesPersistidas);
+    jaNotificadasRef.current = notificadasPersistidas;
+    pendenciasAnterioresRef.current = pendenciasPersistidas;
+  }, []);
 
   const buscarPendencias = useCallback(async () => {
     const agora = Date.now();
@@ -307,6 +321,7 @@ export function usePendenciasProvider() {
       QUEDA_RESERVA: 0,
       ALTO_VALOR: 0,
       DOCUMENTO_APROVACAO_PENDENTE: 0,
+      APROVACAO_GERENCIA_PENDENTE: 0,
       ESTAGIO_PARADO: 0,
     };
     const porGravidade: Record<PendenciaGravidade, number> = {

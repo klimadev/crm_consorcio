@@ -8,8 +8,10 @@ const ESTAGIOS_PADRAO = [
   { nome: "Indefinido", tipo: "ABERTO", ordem: 1 },
   { nome: "Em Atendimento", tipo: "ABERTO", ordem: 2 },
   { nome: "Proposta", tipo: "ABERTO", ordem: 3 },
-  { nome: "Fechado", tipo: "GANHO", ordem: 4 },
-  { nome: "Perdido", tipo: "PERDIDO", ordem: 5 },
+  { nome: "Pré Aprovação", tipo: "ABERTO", ordem: 4 },
+  { nome: "Fechado", tipo: "GANHO", ordem: 5 },
+  { nome: "Pós Vendas", tipo: "GANHO", ordem: 6 },
+  { nome: "Perdido", tipo: "PERDIDO", ordem: 7 },
 ];
 
 async function limparEmpresaExistente(idEmpresa) {

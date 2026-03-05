@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { exigirSessao, podeEditarEquipe, respostaSemPermissao } from "@/lib/permissoes";
+import {
+  exigirSessao,
+  podeEditarEquipe,
+  podeEditarFuncionarioNoPdv,
+  respostaSemPermissao,
+} from "@/lib/permissoes";
 import { mensagemErroValidacao, schemaAtualizarFuncionario } from "@/lib/validacoes";
 
 type Params = {
@@ -46,14 +51,19 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ erro: "Funcionario nao encontrado." }, { status: 404 });
   }
 
-  // Validação de PDV para GERENTE
-  if (auth.sessao.perfil === "GERENTE" && auth.sessao.id_pdv) {
-    if (funcionarioAtual.id_pdv !== auth.sessao.id_pdv) {
-      return NextResponse.json(
-        { erro: "Voce só pode editar colaboradores do seu PDV." },
-        { status: 403 }
-      );
-    }
+  if (
+    !podeEditarFuncionarioNoPdv(
+      auth.sessao,
+      funcionarioAtual.id_pdv,
+      funcionarioAtual.cargo,
+      cargo,
+      id_pdv,
+    )
+  ) {
+    return NextResponse.json(
+      { erro: "Sem permissao para editar este colaborador com os dados informados." },
+      { status: 403 },
+    );
   }
 
   const pdv = await prisma.pdv.findFirst({

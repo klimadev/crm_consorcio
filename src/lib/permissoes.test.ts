@@ -1,5 +1,10 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { whereLeadsPorPerfil } from "@/lib/permissoes";
+import {
+  podeAdicionarColaboradorNoPdv,
+  podeEditarFuncionarioNoPdv,
+  podeGerenciarRecursoNoPdv,
+  whereLeadsPorPerfil,
+} from "@/lib/permissoes";
 import { prisma } from "@/lib/prisma";
 
 describe("whereLeadsPorPerfil", () => {
@@ -39,5 +44,39 @@ describe("whereLeadsPorPerfil", () => {
       id_empresa: "emp-1", 
       id_funcionario: { in: ["func-1", "func-2"] } 
     });
+  });
+});
+
+describe("permissoes PDV para gerente", () => {
+  const sessaoGerente = {
+    id_usuario: "ger-1",
+    id_empresa: "emp-1",
+    perfil: "GERENTE" as const,
+    id_pdv: "pdv-1",
+  };
+
+  it("impede gerente de criar GERENTE ou ADMINISTRADOR", () => {
+    expect(podeAdicionarColaboradorNoPdv(sessaoGerente, "GERENTE", "pdv-1")).toBe(false);
+    expect(podeAdicionarColaboradorNoPdv(sessaoGerente, "ADMINISTRADOR", "pdv-1")).toBe(false);
+    expect(podeAdicionarColaboradorNoPdv(sessaoGerente, "COLABORADOR", "pdv-1")).toBe(true);
+  });
+
+  it("impede gerente de acessar recurso em outro PDV", () => {
+    expect(podeGerenciarRecursoNoPdv(sessaoGerente, "pdv-2")).toBe(false);
+    expect(podeGerenciarRecursoNoPdv(sessaoGerente, "pdv-1")).toBe(true);
+  });
+
+  it("impede gerente de alterar cargo ou PDV de colaborador", () => {
+    expect(
+      podeEditarFuncionarioNoPdv(sessaoGerente, "pdv-1", "COLABORADOR", "COLABORADOR", "pdv-1"),
+    ).toBe(true);
+
+    expect(
+      podeEditarFuncionarioNoPdv(sessaoGerente, "pdv-1", "COLABORADOR", "GERENTE", "pdv-1"),
+    ).toBe(false);
+
+    expect(
+      podeEditarFuncionarioNoPdv(sessaoGerente, "pdv-1", "COLABORADOR", "COLABORADOR", "pdv-2"),
+    ).toBe(false);
   });
 });

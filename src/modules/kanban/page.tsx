@@ -83,12 +83,14 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         pendenciasLead={vm.pendenciasLead}
         onOpenChange={handleDrawerOpenChange}
         perfil={perfil}
+        estagios={vm.estagios}
         funcionarios={vm.funcionarios}
         onMudarLead={vm.aoMudarLead}
         documentoAprovacaoUrl={vm.documentoAprovacaoUrl}
         setDocumentoAprovacaoUrl={vm.setDocumentoAprovacaoUrl}
         arquivoSelecionado={vm.arquivoSelecionado}
         setArquivoSelecionado={vm.setArquivoSelecionado}
+        uploadando={vm.uploadando}
         salvando={vm.salvando}
         salvo={vm.salvo}
         erroDetalhesLead={vm.erroDetalhesLead}

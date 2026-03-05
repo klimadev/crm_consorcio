@@ -1,6 +1,6 @@
 export const TOUR_TARGETS = {
   sidebarResumo: "sidebar-resumo",
-  sidebarKanban: "sidebar-kanban",
+  sidebarKanban: "sidebar-leads",
   sidebarEquipe: "sidebar-equipe",
   sidebarWhatsapp: "sidebar-whatsapp",
   sidebarConfigs: "sidebar-configs",

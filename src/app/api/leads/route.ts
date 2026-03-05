@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { exigirSessao, whereLeadsPorPerfil } from "@/lib/permissoes";
+import { exigirSessao, podeGerenciarRecursoNoPdv, whereLeadsPorPerfil } from "@/lib/permissoes";
 import { esquemaCriarLead, mensagemErroValidacao } from "@/lib/validacoes";
 import { garantirEstagiosFixosEmpresa } from "@/lib/estagios-fixos";
 
@@ -84,6 +84,10 @@ export async function POST(request: NextRequest) {
 
   if (!estagio || !funcionario) {
     return NextResponse.json({ erro: "Estagio ou funcionario invalido." }, { status: 400 });
+  }
+
+  if (!podeGerenciarRecursoNoPdv(auth.sessao, funcionario.id_pdv)) {
+    return NextResponse.json({ erro: "Sem permissao para atribuir lead a este colaborador." }, { status: 403 });
   }
 
   try {

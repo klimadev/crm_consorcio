@@ -63,7 +63,65 @@ export function podeInativarComReatribuicao(sessao: SessaoToken) {
 }
 
 export function podeExecutarAcoesEmLote(sessao: SessaoToken) {
-  return sessao.perfil === "EMPRESA";
+  return sessao.perfil === "EMPRESA" || (sessao.perfil === "GERENTE" && Boolean(sessao.id_pdv));
+}
+
+export function podeAprovarLead(sessao: SessaoToken) {
+  return sessao.perfil === "EMPRESA" || sessao.perfil === "GERENTE";
+}
+
+export function podeGerenciarRecursoNoPdv(sessao: SessaoToken, idPdvRecurso?: string | null) {
+  if (sessao.perfil !== "GERENTE") {
+    return true;
+  }
+
+  if (!sessao.id_pdv || !idPdvRecurso) {
+    return false;
+  }
+
+  return sessao.id_pdv === idPdvRecurso;
+}
+
+export function podeAdicionarColaboradorNoPdv(
+  sessao: SessaoToken,
+  cargo: string,
+  idPdv: string,
+) {
+  if (sessao.perfil === "EMPRESA") {
+    return true;
+  }
+
+  if (sessao.perfil !== "GERENTE") {
+    return false;
+  }
+
+  return cargo === "COLABORADOR" && Boolean(sessao.id_pdv) && sessao.id_pdv === idPdv;
+}
+
+export function podeEditarFuncionarioNoPdv(
+  sessao: SessaoToken,
+  idPdvFuncionario: string,
+  cargoFuncionario: string,
+  cargoNovo: string,
+  idPdvNovo: string,
+) {
+  if (sessao.perfil === "EMPRESA") {
+    return true;
+  }
+
+  if (sessao.perfil !== "GERENTE") {
+    return false;
+  }
+
+  if (!sessao.id_pdv || sessao.id_pdv !== idPdvFuncionario) {
+    return false;
+  }
+
+  if (cargoFuncionario !== "COLABORADOR") {
+    return false;
+  }
+
+  return cargoNovo === "COLABORADOR" && idPdvNovo === idPdvFuncionario;
 }
 
 export function podeVerAuditoriaEquipe(sessao: SessaoToken) {

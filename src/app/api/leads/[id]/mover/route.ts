@@ -40,6 +40,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         select: {
           id: true,
           nome: true,
+          tipo: true,
         },
       },
       funcionario: {
@@ -79,8 +80,33 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ erro: "Motivo de perda e obrigatorio." }, { status: 400 });
   }
 
+  const isMovingToGanho = estagioDestino.tipo === "GANHO";
+  const hasAprovacao = Boolean(lead.aprovado_em && lead.aprovado_por);
+  let estagioEfetivo = estagioDestino;
+  let mensagemMovimentacao: string | undefined;
+
+  if (isMovingToGanho && !hasAprovacao) {
+    const estagioPreAprovacao = await prisma.estagioFunil.findFirst({
+      where: {
+        id_empresa: auth.sessao.id_empresa,
+        nome: "Pré Aprovação",
+        tipo: "ABERTO",
+      },
+    });
+
+    if (!estagioPreAprovacao) {
+      return NextResponse.json(
+        { erro: "Estágio Pré Aprovação não configurado para esta empresa." },
+        { status: 400 },
+      );
+    }
+
+    estagioEfetivo = estagioPreAprovacao;
+    mensagemMovimentacao = "Lead enviado para Pré Aprovação com pendência de análise da EMPRESA. Aprovação da EMPRESA é obrigatória antes de Fechado.";
+  }
+
   // Same-stage no-op guard: skip automation scheduling if lead is already in destination stage
-  if (lead.estagio.id === estagioDestino.id) {
+  if (lead.estagio.id === estagioEfetivo.id) {
     console.info(`[LEAD_MOVE] leadId=${lead.id} status=NOOP motivo=mesmo_estagio`);
     return NextResponse.json({ 
       lead, 
@@ -92,8 +118,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const leadAtualizado = await prisma.lead.update({
     where: { id: lead.id },
     data: {
-      id_estagio: estagioDestino.id,
-      motivo_perda: estagioDestino.tipo === "PERDIDO" ? dadosValidados.motivo_perda?.trim() : null,
+      id_estagio: estagioEfetivo.id,
+      motivo_perda: estagioEfetivo.tipo === "PERDIDO" ? dadosValidados.motivo_perda?.trim() : null,
+      aprovado_em: estagioEfetivo.tipo === "ABERTO" ? null : undefined,
+      aprovado_por: estagioEfetivo.tipo === "ABERTO" ? null : undefined,
     },
   });
 
@@ -121,8 +149,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         nome: lead.estagio.nome,
       },
       estagioNovo: {
-        id: estagioDestino.id,
-        nome: estagioDestino.nome,
+        id: estagioEfetivo.id,
+        nome: estagioEfetivo.nome,
       },
       referenciaEvento,
     });
@@ -130,5 +158,5 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     console.error("Erro ao executar automacoes WhatsApp para lead:", erro);
   }
 
-  return NextResponse.json({ lead: leadAtualizado });
+  return NextResponse.json({ lead: leadAtualizado, mensagem: mensagemMovimentacao });
 }

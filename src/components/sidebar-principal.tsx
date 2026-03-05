@@ -25,6 +25,30 @@ type Props = {
   dadosUsuario: DadosUsuarioLogado | null;
 };
 
+const SIGLA_PERFIL: Record<SessaoToken["perfil"], string> = {
+  EMPRESA: "ADM",
+  GERENTE: "GTE",
+  COLABORADOR: "CLB",
+};
+
+const LABEL_PERFIL: Record<SessaoToken["perfil"], string> = {
+  EMPRESA: "Administrador",
+  GERENTE: "Gerente",
+  COLABORADOR: "Colaborador",
+};
+
+function gerarIniciais(nome: string | undefined, perfil: SessaoToken["perfil"]) {
+  const nomeTratado = nome?.trim();
+  if (!nomeTratado) return SIGLA_PERFIL[perfil];
+
+  const partesNome = nomeTratado.split(/\s+/).filter(Boolean);
+  if (partesNome.length === 1) {
+    return partesNome[0].slice(0, 2).toUpperCase();
+  }
+
+  return `${partesNome[0][0] ?? ""}${partesNome[partesNome.length - 1][0] ?? ""}`.toUpperCase();
+}
+
 function MenuItemComBadge({
   href,
   label,
@@ -86,9 +110,9 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
       itens: [{ href: "/resumo", label: "Resumo", icon: BarChart3, tourTarget: TOUR_TARGETS.sidebarResumo }],
     },
     {
-      titulo: "OPERACAO",
+      titulo: "OPERAÇÃO",
       itens: [
-        { href: "/kanban", label: "Kanban", icon: LayoutGrid, tourTarget: TOUR_TARGETS.sidebarKanban },
+        { href: "/kanban", label: "Leads", icon: LayoutGrid, tourTarget: TOUR_TARGETS.sidebarKanban },
         ...(sessao.perfil !== "COLABORADOR"
           ? [{ href: "/equipe", label: "Equipe", icon: Users, tourTarget: TOUR_TARGETS.sidebarEquipe }]
           : []),
@@ -101,13 +125,15 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
           ? [{ href: "/whatsapp", label: "WhatsApp", icon: MessageCircle, tourTarget: TOUR_TARGETS.sidebarWhatsapp }]
           : []),
         ...(sessao.perfil === "EMPRESA"
-          ? [{ href: "/configs", label: "Configuracoes", icon: Settings2, tourTarget: TOUR_TARGETS.sidebarConfigs }]
+          ? [{ href: "/configs", label: "Configurações", icon: Settings2, tourTarget: TOUR_TARGETS.sidebarConfigs }]
           : []),
       ],
     },
   ];
 
-  const iniciaisNome = dadosUsuario?.nome.slice(0, 2).toUpperCase() ?? sessao.perfil.slice(0, 2);
+  const nomeExibicao = dadosUsuario?.nome?.trim() || "Sem nome";
+  const cargoExibicao = dadosUsuario?.cargo?.trim() || LABEL_PERFIL[sessao.perfil];
+  const iniciaisNome = gerarIniciais(dadosUsuario?.nome, sessao.perfil);
 
   const conteudoSidebar = (
     <div className="flex h-full flex-col gap-4 rounded-2xl border border-slate-200/80 bg-[#F8F9FA] p-4 shadow-[0_14px_40px_-28px_rgba(15,23,42,0.55)] lg:min-h-[calc(100vh-2rem)]">
@@ -143,9 +169,10 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
                       icon={Icone}
                       ativo={ativo}
                       resumo={resumo ?? undefined}
-                       tourTarget={item.tourTarget}
-                     />
-                   );
+                      tourTarget={item.tourTarget}
+                      onClick={() => setSidebarAberta(false)}
+                      />
+                    );
                 }
 
                 return (
@@ -182,11 +209,14 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
 
           <div className="min-w-0 flex-1">
             <p className="truncate text-[14px] font-medium tracking-[-0.01em] text-slate-900">
-              {dadosUsuario?.nome ?? "Usuario"}
+              {nomeExibicao}
             </p>
-            <p className="truncate text-xs uppercase tracking-wide text-slate-500">
-              {dadosUsuario?.cargo ?? sessao.perfil}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="truncate text-xs uppercase tracking-wide text-slate-500">{cargoExibicao}</p>
+              <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                {SIGLA_PERFIL[sessao.perfil]}
+              </span>
+            </div>
           </div>
 
           <BotaoSair apenasIcone className="h-9 w-9 rounded-lg" />
@@ -206,7 +236,7 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
         <Menu className="h-5 w-5 text-slate-600" />
       </button>
 
-      <aside className="w-full lg:w-72 lg:shrink-0 lg:p-4">
+      <aside className="w-full lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:w-72 lg:shrink-0 lg:self-start lg:p-4">
         <div className="hidden lg:block">{conteudoSidebar}</div>
 
         {sidebarAberta && (

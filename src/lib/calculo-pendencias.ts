@@ -12,6 +12,7 @@ export type LeadParaCalculo = {
   id: string;
   atualizado_em: Date | string;
   documento_aprovacao_url: string | null;
+  aprovado_em: Date | string | null;
 };
 
 export type EstagioParaCalculo = {
@@ -33,16 +34,27 @@ export function calcularPendenciasLead(
   dataLimiteEstagioParado.setDate(dataLimiteEstagioParado.getDate() - DIAS_ESTAGIO_PARADO);
 
   const isFechadoOuGanho = estagio.tipo === "FECHADO" || estagio.tipo === "GANHO";
+  const isPreAprovacao = estagio.nome === "Pré Aprovação";
   const isGanhoOuPerdido = estagio.tipo === "GANHO" || estagio.tipo === "PERDIDO";
   const hasDocumento = !!lead.documento_aprovacao_url;
   const isEstagioParado = new Date(lead.atualizado_em || Date.now()) < dataLimiteEstagioParado;
 
-  if (isFechadoOuGanho && !hasDocumento) {
+  if ((isFechadoOuGanho || isPreAprovacao) && !hasDocumento) {
     pendencias.push({
       id: gerarIdPendencia(lead.id, "DOCUMENTO_APROVACAO_PENDENTE"),
       id_lead: lead.id,
       tipo: "DOCUMENTO_APROVACAO_PENDENTE",
       descricao: LABELS_PENDENCIA.DOCUMENTO_APROVACAO_PENDENTE,
+      resolvida: false,
+    });
+  }
+
+  if (isPreAprovacao && hasDocumento && !lead.aprovado_em) {
+    pendencias.push({
+      id: gerarIdPendencia(lead.id, "APROVACAO_GERENCIA_PENDENTE"),
+      id_lead: lead.id,
+      tipo: "APROVACAO_GERENCIA_PENDENTE",
+      descricao: LABELS_PENDENCIA.APROVACAO_GERENCIA_PENDENTE,
       resolvida: false,
     });
   }

@@ -33,6 +33,7 @@ export async function detectarPendenciasDinamicas(
       id: true,
       atualizado_em: true,
       documento_aprovacao_url: true,
+      aprovado_em: true,
       estagio: {
         select: {
           tipo: true,
@@ -58,6 +59,7 @@ export async function detectarPendenciasDinamicasLead(idLead: string): Promise<P
       id: true,
       atualizado_em: true,
       documento_aprovacao_url: true,
+      aprovado_em: true,
       estagio: {
         select: {
           tipo: true,

@@ -3,8 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   exigirSessao,
+  podeAdicionarColaboradorNoPdv,
   podeAdicionarFuncionario,
   podeExecutarAcoesEmLote,
+  podeGerenciarRecursoNoPdv,
   podeVerEquipe,
   respostaSemPermissao,
 } from "@/lib/permissoes";
@@ -44,14 +46,22 @@ export async function GET(request: NextRequest) {
   const filtros = validacaoQuery.data;
   const busca = normalizarBuscaFuncionarios(filtros.busca);
 
-  // GERENTE: filtra apenas pelo PDV da sessão
-  const idPdvSessao = auth.sessao.perfil === "GERENTE" && auth.sessao.id_pdv ? auth.sessao.id_pdv : null;
+  const idPdvSessao = auth.sessao.perfil === "GERENTE" ? auth.sessao.id_pdv : null;
+  if (auth.sessao.perfil === "GERENTE") {
+    if (!idPdvSessao) {
+      return respostaSemPermissao();
+    }
+
+    if (filtros.id_pdv && filtros.id_pdv !== idPdvSessao) {
+      return respostaSemPermissao();
+    }
+  }
 
   const whereBase = {
     id_empresa: auth.sessao.id_empresa,
     ...(filtros.cargo !== "TODOS" ? { cargo: filtros.cargo } : {}),
     // Se for GERENTE, força filtro pelo PDV da sessão (a menos que explicitamente busque por outro PDV e seja EMPRESA)
-    ...(idPdvSessao && !filtros.id_pdv ? { id_pdv: idPdvSessao } : {}),
+    ...(idPdvSessao ? { id_pdv: idPdvSessao } : {}),
     ...(filtros.id_pdv && auth.sessao.perfil === "EMPRESA" ? { id_pdv: filtros.id_pdv } : {}),
     ...(busca
       ? {
@@ -150,14 +160,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ erro: "Preencha todos os campos." }, { status: 400 });
   }
 
-  // GERENTE só pode criar COLABORADOR
-  if (permissao.idPdvPermitido && cargo !== "COLABORADOR") {
-    return NextResponse.json({ erro: "Gerentes podem adicionar apenas colaboradores." }, { status: 403 });
-  }
-
-  // GERENTE só pode adicionar no próprio PDV
-  if (permissao.idPdvPermitido && id_pdv !== permissao.idPdvPermitido) {
-    return NextResponse.json({ erro: "Você só pode adicionar colaboradores no seu PDV." }, { status: 403 });
+  // GERENTE só pode criar COLABORADOR no próprio PDV
+  if (auth.sessao.perfil === "GERENTE") {
+    if (!auth.sessao.id_pdv || !podeAdicionarColaboradorNoPdv(auth.sessao, cargo, id_pdv)) {
+      return NextResponse.json(
+        { erro: "Gerentes podem adicionar apenas colaboradores no proprio PDV." },
+        { status: 403 },
+      );
+    }
   }
 
   // Se não tem restrição de PDV, usa o enviado; senão força o PDV do gerente
@@ -260,7 +270,7 @@ export async function PATCH(request: NextRequest) {
           id_empresa: auth.sessao.id_empresa,
           ativo: true,
         },
-        select: { id: true, nome: true },
+        select: { id: true, nome: true, id_pdv: true, cargo: true },
       })
     : null;
 
@@ -282,6 +292,33 @@ export async function PATCH(request: NextRequest) {
     },
   });
 
+  if (auth.sessao.perfil === "GERENTE") {
+    if (!auth.sessao.id_pdv) {
+      return respostaSemPermissao();
+    }
+
+    if (payload.acao === "ALTERAR_PDV" && payload.id_pdv && payload.id_pdv !== auth.sessao.id_pdv) {
+      return NextResponse.json(
+        { erro: "Gerentes nao podem mover colaboradores para outro PDV." },
+        { status: 403 },
+      );
+    }
+
+    if (payload.acao === "ALTERAR_CARGO" && payload.cargo !== "COLABORADOR") {
+      return NextResponse.json(
+        { erro: "Gerentes podem definir apenas o cargo COLABORADOR." },
+        { status: 403 },
+      );
+    }
+
+    if (payload.acao === "INATIVAR" && destinoInativacao && !podeGerenciarRecursoNoPdv(auth.sessao, destinoInativacao.id_pdv)) {
+      return NextResponse.json(
+        { erro: "Destino de inativacao precisa estar no mesmo PDV do gerente." },
+        { status: 403 },
+      );
+    }
+  }
+
   const funcionarioPorId = new Map(funcionarios.map((item) => [item.id, item]));
   const resultado = {
     processados: ids.length,
@@ -295,6 +332,18 @@ export async function PATCH(request: NextRequest) {
     if (!atual) {
       resultado.falhas.push({ id, motivo: "Funcionario nao encontrado." });
       continue;
+    }
+
+    if (auth.sessao.perfil === "GERENTE") {
+      if (!podeGerenciarRecursoNoPdv(auth.sessao, atual.id_pdv)) {
+        resultado.falhas.push({ id, motivo: "Sem permissao para colaborar fora do proprio PDV." });
+        continue;
+      }
+
+      if (atual.cargo !== "COLABORADOR") {
+        resultado.falhas.push({ id, motivo: "Gerente so pode alterar colaboradores." });
+        continue;
+      }
     }
 
     if (payload.acao === "INATIVAR" && payload.id_funcionario_destino === id) {
@@ -349,6 +398,11 @@ export async function PATCH(request: NextRequest) {
       }
 
       if (payload.acao === "ALTERAR_PDV" && payload.id_pdv) {
+        if (auth.sessao.perfil === "GERENTE" && payload.id_pdv !== atual.id_pdv) {
+          resultado.falhas.push({ id, motivo: "Gerente nao pode alterar PDV de colaborador." });
+          continue;
+        }
+
         await prisma.funcionario.update({
           where: { id: atual.id },
           data: { id_pdv: payload.id_pdv },

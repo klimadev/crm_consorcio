@@ -105,7 +105,7 @@ export function EquipeBulkActions({ vm }: EquipeBulkActionsProps) {
                     <SelectItem value="ATIVAR">Ativar</SelectItem>
                     <SelectItem value="INATIVAR">Inativar</SelectItem>
                     <SelectItem value="ALTERAR_CARGO">Mudar cargo</SelectItem>
-                    <SelectItem value="ALTERAR_PDV">Mudar PDV</SelectItem>
+                    {vm.podeGerenciarEmpresa ? <SelectItem value="ALTERAR_PDV">Mudar PDV</SelectItem> : null}
                   </SelectContent>
                 </Select>
 
@@ -126,8 +126,8 @@ export function EquipeBulkActions({ vm }: EquipeBulkActionsProps) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="COLABORADOR">COLABORADOR</SelectItem>
-                    <SelectItem value="GERENTE">GERENTE</SelectItem>
-                    <SelectItem value="ADMINISTRADOR">ADMINISTRADOR</SelectItem>
+                    {vm.podeGerenciarEmpresa ? <SelectItem value="GERENTE">GERENTE</SelectItem> : null}
+                    {vm.podeGerenciarEmpresa ? <SelectItem value="ADMINISTRADOR">ADMINISTRADOR</SelectItem> : null}
                   </SelectContent>
                 </Select>
               ) : null}

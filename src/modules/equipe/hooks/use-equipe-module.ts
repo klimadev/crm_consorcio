@@ -164,7 +164,7 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
   const pagina = Number(searchParams.get("pagina") ?? "1");
   const porPagina = Number(searchParams.get("por_pagina") ?? "20");
   const podeGerenciarEmpresa = perfil === "EMPRESA";
-  const podeExecutarAcoesLote = perfil === "EMPRESA";
+  const podeExecutarAcoesLote = perfil === "EMPRESA" || perfil === "GERENTE";
   const podeInativar = perfil === "EMPRESA" || perfil === "GERENTE";
   const podeAdicionarFuncionario = perfil === "EMPRESA" || perfil === "GERENTE";
 

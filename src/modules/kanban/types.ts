@@ -20,6 +20,8 @@ export type Lead = {
   observacoes: string | null;
   motivo_perda: string | null;
   documento_aprovacao_url: string | null;
+  aprovado_em: string | null;
+  aprovado_por: string | null;
   origem?: "MANUAL" | "SINCRONIZACAO_WHATSAPP" | string;
   atualizado_em: string;
 };
@@ -93,7 +95,11 @@ export type UseKanbanModuleReturn = {
   salvo: boolean;
   erroDetalhesLead: string | null;
   setErroDetalhesLead: (erro: string | null) => void;
-  salvarDetalhesLead: (lead: Lead, urlDocumento?: string, opcoes?: { atualizarSelecionado?: boolean }) => Promise<void>;
+  salvarDetalhesLead: (
+    lead: Lead,
+    urlDocumento?: string,
+    opcoes?: { atualizarSelecionado?: boolean; arquivoUpload?: File | null }
+  ) => Promise<void>;
   setLeadSelecionado: (lead: Lead | null) => void;
   criarLead: (evento: React.FormEvent<HTMLFormElement>) => Promise<void>;
   sincronizandoWhatsapp: boolean;
