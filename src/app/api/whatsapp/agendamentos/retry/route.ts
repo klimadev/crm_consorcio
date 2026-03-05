@@ -1,42 +1,43 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { exigirSessao } from "@/lib/permissoes";
+import { withSessao } from "@/lib/api/route-guards";
+import { parseJson } from "@/lib/api/route-validation";
+import { ok, badRequest, notFound } from "@/lib/api/http";
 
 export async function POST(request: NextRequest) {
-  const auth = await exigirSessao(request);
-  if (auth.erro) {
-    return auth.erro;
-  }
+  return withSessao(request, async ({ sessao }) => {
+    const parseResult = await parseJson(request);
+    if (!parseResult.ok) return parseResult.response;
 
-  const body = await request.json();
-  const { jobId } = body;
+    const { jobId } = parseResult.data as { jobId?: string };
 
-  if (!jobId) {
-    return NextResponse.json({ erro: "ID do job é obrigatório" }, { status: 400 });
-  }
+    if (!jobId) {
+      return badRequest("ID do job é obrigatório");
+    }
 
-  const job = await prisma.whatsappAutomacaoAgendamento.findFirst({
-    where: {
-      id: jobId,
-      id_empresa: auth.sessao.id_empresa,
-    },
+    const job = await prisma.whatsappAutomacaoAgendamento.findFirst({
+      where: {
+        id: jobId,
+        id_empresa: sessao.id_empresa,
+      },
+    });
+
+    if (!job) {
+      return notFound("Job não encontrado");
+    }
+
+    if (job.status !== "FALHA") {
+      return badRequest("Apenas jobs com falha podem ser retentados");
+    }
+
+    const atualizado = await prisma.whatsappAutomacaoAgendamento.update({
+      where: { id: jobId },
+      data: {
+        status: "PENDENTE",
+        agendado_para: new Date(),
+      },
+    });
+
+    return ok({ sucesso: true, job: atualizado });
   });
-
-  if (!job) {
-    return NextResponse.json({ erro: "Job não encontrado" }, { status: 404 });
-  }
-
-  if (job.status !== "FALHA") {
-    return NextResponse.json({ erro: "Apenas jobs com falha podem ser retentados" }, { status: 400 });
-  }
-
-  const atualizado = await prisma.whatsappAutomacaoAgendamento.update({
-    where: { id: jobId },
-    data: {
-      status: "PENDENTE",
-      agendado_para: new Date(),
-    },
-  });
-
-  return NextResponse.json({ sucesso: true, job: atualizado });
 }

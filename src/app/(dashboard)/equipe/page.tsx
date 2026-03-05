@@ -1,4 +1,4 @@
-import { ModuloEquipe } from "@/components/modulo-equipe";
+import { ModuloEquipe } from "@/modules/equipe";
 import { obterSessaoNoServidor } from "@/lib/autenticacao";
 
 export default async function PaginaEquipe() {

@@ -1,6 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import {
+  atualizarStatusInstanciaWhatsapp,
+  criarInstanciaWhatsapp,
+  excluirInstanciaWhatsapp,
+  listarInstanciasWhatsapp,
+  obterQrCodeWhatsapp,
+} from "@/lib/api/whatsapp";
 import type { WhatsappInstancia, UseWhatsappModuleReturn } from "../types";
 
 export function useWhatsappModule(): UseWhatsappModuleReturn {
@@ -14,16 +21,14 @@ export function useWhatsappModule(): UseWhatsappModuleReturn {
     setErro(null);
 
     try {
-      const resposta = await fetch("/api/whatsapp/instances");
+      const resultado = await listarInstanciasWhatsapp();
 
-      if (!resposta.ok) {
-        const json = await resposta.json();
-        setErro(json.erro ?? "Erro ao carregar instâncias.");
+      if (!resultado.ok) {
+        setErro(resultado.erro);
         return;
       }
 
-      const json = await resposta.json();
-      setInstancias(json.instancias ?? []);
+      setInstancias(resultado.dados.instancias);
     } catch {
       setErro("Erro ao conectar com o servidor.");
     } finally {
@@ -41,20 +46,13 @@ export function useWhatsappModule(): UseWhatsappModuleReturn {
 
   const buscarQrCode = useCallback(async (id: string): Promise<string | null> => {
     try {
-      const resposta = await fetch(`/api/whatsapp/instances/${id}/qrcode`, {
-        method: "GET",
-      });
-
-      if (!resposta.ok) {
+      const resultado = await obterQrCodeWhatsapp(id);
+      if (!resultado.ok || !resultado.dados.qrCode) {
         return null;
       }
-
-      const json = await resposta.json();
-      if (json.qrCode) {
-        setQrCodes((antigo) => ({ ...antigo, [id]: json.qrCode }));
-        return json.qrCode;
-      }
-      return null;
+      const qrCode = resultado.dados.qrCode;
+      setQrCodes((antigo) => ({ ...antigo, [id]: qrCode }));
+      return qrCode;
     } catch {
       return null;
     }
@@ -85,26 +83,20 @@ export function useWhatsappModule(): UseWhatsappModuleReturn {
     setInstancias((atual) => [instanciaTemp, ...atual]);
 
     try {
-      const resposta = await fetch("/api/whatsapp/instances", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nome }),
-      });
+      const resultado = await criarInstanciaWhatsapp(nome);
 
-      if (!resposta.ok) {
-        const json = await resposta.json();
-        setErro(json.erro ?? "Erro ao criar instância.");
+      if (!resultado.ok) {
+        setErro(resultado.erro);
         setInstancias((atual) => atual.filter((i) => i.id !== idTemporario));
         return;
       }
 
-      const json = await resposta.json();
-      if (json.instancia) {
-        setInstancias((atual) =>
-          atual.map((i) => (i.id === idTemporario ? json.instancia : i))
-        );
-        if (json.qrCode) {
-          setQrCodes((antigo) => ({ ...antigo, [json.instancia.id]: json.qrCode }));
+      if (resultado.dados.instancia) {
+        const instanciaCriada = resultado.dados.instancia;
+        setInstancias((atual) => atual.map((i) => (i.id === idTemporario ? instanciaCriada : i)));
+        if (resultado.dados.qrCode) {
+          const qrCode = resultado.dados.qrCode;
+          setQrCodes((antigo) => ({ ...antigo, [instanciaCriada.id]: qrCode }));
         }
       }
     } catch {
@@ -127,13 +119,10 @@ export function useWhatsappModule(): UseWhatsappModuleReturn {
     });
 
     try {
-      const resposta = await fetch(`/api/whatsapp/instances/${id}`, {
-        method: "DELETE",
-      });
+      const resultado = await excluirInstanciaWhatsapp(id);
 
-      if (!resposta.ok) {
-        const json = await resposta.json();
-        setErro(json.erro ?? "Erro ao excluir instância.");
+      if (!resultado.ok) {
+        setErro(resultado.erro);
         setInstancias((atual) => [...atual, instanciaAnterior]);
       }
     } catch {
@@ -146,18 +135,12 @@ export function useWhatsappModule(): UseWhatsappModuleReturn {
     if (id.startsWith("temp-")) return;
 
     try {
-      const resposta = await fetch(`/api/whatsapp/instances/${id}`, {
-        method: "PATCH",
-      });
+      const resultado = await atualizarStatusInstanciaWhatsapp(id);
 
-      if (!resposta.ok) return;
+      if (!resultado.ok || !resultado.dados.instancia) return;
 
-      const json = await resposta.json();
-      if (json.instancia) {
-        setInstancias((atual) =>
-          atual.map((i) => (i.id === id ? json.instancia : i))
-        );
-      }
+      const instanciaAtualizada = resultado.dados.instancia;
+      setInstancias((atual) => atual.map((i) => (i.id === id ? instanciaAtualizada : i)));
     } catch {
       // Silencioso
     }

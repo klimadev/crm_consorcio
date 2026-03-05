@@ -11,11 +11,12 @@ import {
   respostaSemPermissao,
 } from "@/lib/permissoes";
 import {
-  mensagemErroValidacao,
   normalizarBuscaFuncionarios,
   schemaAcaoLoteFuncionarios,
   schemaListarFuncionarios,
 } from "@/lib/validacoes";
+import { badRequest, notFound } from "@/lib/api/http";
+import { parseJson, validateBody, validateQuery } from "@/lib/api/route-validation";
 
 export async function GET(request: NextRequest) {
   const auth = await exigirSessao(request);
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
   }
 
   const params = request.nextUrl.searchParams;
-  const validacaoQuery = schemaListarFuncionarios.safeParse({
+  const validacaoQuery = validateQuery(schemaListarFuncionarios, {
     busca: params.get("busca") ?? undefined,
     status: (params.get("status") ?? "TODOS").toUpperCase(),
     cargo: (params.get("cargo") ?? "TODOS").toUpperCase(),
@@ -39,8 +40,8 @@ export async function GET(request: NextRequest) {
     por_pagina: params.get("por_pagina") ?? undefined,
   });
 
-  if (!validacaoQuery.success) {
-    return NextResponse.json({ erro: "Parametros de busca invalidos." }, { status: 400 });
+  if (!validacaoQuery.ok) {
+    return validacaoQuery.response;
   }
 
   const filtros = validacaoQuery.data;
@@ -142,13 +143,17 @@ export async function POST(request: NextRequest) {
     return respostaSemPermissao();
   }
 
-  const body = (await request.json()) as {
+  const bodyResult = await parseJson<{
     nome?: string;
     email?: string;
     senha?: string;
     cargo?: string;
     id_pdv?: string;
-  };
+  }>(request);
+  if (!bodyResult.ok) {
+    return bodyResult.response;
+  }
+  const body = bodyResult.data;
 
   const nome = body.nome?.trim();
   const email = body.email?.trim().toLowerCase();
@@ -157,7 +162,7 @@ export async function POST(request: NextRequest) {
   let id_pdv = body.id_pdv;
 
   if (!nome || !email || !senha || !cargo || !id_pdv) {
-    return NextResponse.json({ erro: "Preencha todos os campos." }, { status: 400 });
+    return badRequest("Preencha todos os campos.");
   }
 
   // GERENTE só pode criar COLABORADOR no próprio PDV
@@ -184,7 +189,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (!pdv) {
-    return NextResponse.json({ erro: "PDV nao encontrado." }, { status: 404 });
+    return notFound("PDV nao encontrado.");
   }
 
   const emailExistente = await prisma.funcionario.findFirst({
@@ -230,26 +235,29 @@ export async function PATCH(request: NextRequest) {
     return respostaSemPermissao();
   }
 
-  const body = await request.json();
-  const validacao = schemaAcaoLoteFuncionarios.safeParse(body);
+  const bodyResult = await parseJson<unknown>(request);
+  if (!bodyResult.ok) {
+    return bodyResult.response;
+  }
+  const validacao = validateBody(schemaAcaoLoteFuncionarios, bodyResult.data);
 
-  if (!validacao.success) {
-    return NextResponse.json({ erro: mensagemErroValidacao(validacao.error) }, { status: 400 });
+  if (!validacao.ok) {
+    return validacao.response;
   }
 
   const payload = validacao.data;
   const ids = [...new Set(payload.ids)];
 
   if (payload.acao === "ALTERAR_CARGO" && !payload.cargo) {
-    return NextResponse.json({ erro: "Cargo obrigatorio para esta acao." }, { status: 400 });
+    return badRequest("Cargo obrigatorio para esta acao.");
   }
 
   if (payload.acao === "ALTERAR_PDV" && !payload.id_pdv) {
-    return NextResponse.json({ erro: "PDV obrigatorio para esta acao." }, { status: 400 });
+    return badRequest("PDV obrigatorio para esta acao.");
   }
 
   if (payload.acao === "INATIVAR" && !payload.id_funcionario_destino) {
-    return NextResponse.json({ erro: "Destino obrigatorio para inativacao em lote." }, { status: 400 });
+    return badRequest("Destino obrigatorio para inativacao em lote.");
   }
 
   if (payload.id_pdv) {
@@ -259,7 +267,7 @@ export async function PATCH(request: NextRequest) {
     });
 
     if (!pdvExiste) {
-      return NextResponse.json({ erro: "PDV nao encontrado." }, { status: 404 });
+      return notFound("PDV nao encontrado.");
     }
   }
 
@@ -275,7 +283,7 @@ export async function PATCH(request: NextRequest) {
     : null;
 
   if (payload.acao === "INATIVAR" && !destinoInativacao) {
-    return NextResponse.json({ erro: "Destino invalido para reatribuicao." }, { status: 400 });
+    return badRequest("Destino invalido para reatribuicao.");
   }
 
   const funcionarios = await prisma.funcionario.findMany({

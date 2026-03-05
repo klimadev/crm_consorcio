@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { exigirSessao, podeGerenciarEmpresa } from "@/lib/permissoes";
-import { esquemaCriarPdv, mensagemErroValidacao } from "@/lib/validacoes";
+import { esquemaCriarPdv } from "@/lib/validacoes";
+import { badRequest, forbidden } from "@/lib/api/http";
+import { handleRouteError } from "@/lib/api/route-errors";
+import { parseJson, validateBody } from "@/lib/api/route-validation";
 
 export async function GET(request: NextRequest) {
   const auth = await exigirSessao(request);
@@ -48,13 +51,16 @@ export async function POST(request: NextRequest) {
   }
 
   if (!podeGerenciarEmpresa(auth.sessao)) {
-    return NextResponse.json({ erro: "Somente EMPRESA pode alterar PDVs." }, { status: 403 });
+    return forbidden("Somente EMPRESA pode alterar PDVs.");
   }
 
-  const payload = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-  const validacao = esquemaCriarPdv.safeParse(payload);
-  if (!validacao.success) {
-    return NextResponse.json({ erro: mensagemErroValidacao(validacao.error) }, { status: 400 });
+  const body = await parseJson<unknown>(request);
+  if (!body.ok) {
+    return body.response;
+  }
+  const validacao = validateBody(esquemaCriarPdv, body.data);
+  if (!validacao.ok) {
+    return validacao.response;
   }
 
   const { nome, id_whatsapp_instancia } = validacao.data;
@@ -69,7 +75,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!instancia) {
-      return NextResponse.json({ erro: "Instancia WhatsApp invalida para a empresa." }, { status: 400 });
+      return badRequest("Instancia WhatsApp invalida para a empresa.");
     }
   }
 
@@ -84,7 +90,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ pdv });
   } catch (erro) {
-    console.error("Erro ao criar PDV:", erro);
-    return NextResponse.json({ erro: "Erro ao criar PDV." }, { status: 500 });
+    return handleRouteError(erro, "Erro ao criar PDV.", "Erro ao criar PDV:");
   }
 }

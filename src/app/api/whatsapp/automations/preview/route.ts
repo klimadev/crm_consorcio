@@ -1,37 +1,35 @@
-import { NextRequest, NextResponse } from "next/server";
-import { exigirSessao, podeGerenciarEmpresa, respostaSemPermissao } from "@/lib/permissoes";
+import { NextRequest } from "next/server";
+import { withPerfis } from "@/lib/api/route-guards";
+import { parseJson } from "@/lib/api/route-validation";
+import { ok, badRequest } from "@/lib/api/http";
 import { criarContextoPreviewWhatsapp, renderizarTemplateWhatsapp } from "@/lib/whatsapp-template";
 
 export async function POST(request: NextRequest) {
-  const auth = await exigirSessao(request);
-  if (auth.erro) {
-    return auth.erro;
-  }
+  return withPerfis(request, ["EMPRESA"], async () => {
+    const parseResult = await parseJson(request);
+    if (!parseResult.ok) return parseResult.response;
 
-  if (!podeGerenciarEmpresa(auth.sessao)) {
-    return respostaSemPermissao();
-  }
-
-  const body = (await request.json().catch(() => ({}))) as {
-    mensagem?: string;
-    contexto?: {
-      lead_nome?: string;
-      lead_telefone?: string;
-      lead_id?: string;
-      estagio_anterior?: string;
-      estagio_novo?: string;
+    const body = parseResult.data as {
+      mensagem?: string;
+      contexto?: {
+        lead_nome?: string;
+        lead_telefone?: string;
+        lead_id?: string;
+        estagio_anterior?: string;
+        estagio_novo?: string;
+      };
     };
-  };
 
-  const mensagem = body.mensagem?.trim() ?? "";
-  if (!mensagem) {
-    return NextResponse.json({ erro: "Mensagem obrigatoria." }, { status: 400 });
-  }
+    const mensagem = body.mensagem?.trim() ?? "";
+    if (!mensagem) {
+      return badRequest("Mensagem obrigatoria.");
+    }
 
-  const preview = renderizarTemplateWhatsapp(
-    mensagem,
-    criarContextoPreviewWhatsapp(body.contexto),
-  );
+    const preview = renderizarTemplateWhatsapp(
+      mensagem,
+      criarContextoPreviewWhatsapp(body.contexto),
+    );
 
-  return NextResponse.json({ preview });
+    return ok({ preview });
+  });
 }

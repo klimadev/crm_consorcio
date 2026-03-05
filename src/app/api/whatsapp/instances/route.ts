@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { exigirSessao, podeVerEquipe, respostaSemPermissao } from "@/lib/permissoes";
 import { criarInstancia } from "@/lib/evolution-api";
-import { esquemaCriarWhatsappInstancia, mensagemErroValidacao } from "@/lib/validacoes";
+import { esquemaCriarWhatsappInstancia } from "@/lib/validacoes";
+import { handleRouteError } from "@/lib/api/route-errors";
+import { parseJson, validateBody } from "@/lib/api/route-validation";
 
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL ?? "http://localhost:8080";
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY ?? "";
@@ -89,10 +91,13 @@ export async function POST(request: NextRequest) {
     return respostaSemPermissao();
   }
 
-  const body = (await request.json().catch(() => ({}))) as unknown;
-  const validacao = esquemaCriarWhatsappInstancia.safeParse(body);
-  if (!validacao.success) {
-    return NextResponse.json({ erro: mensagemErroValidacao(validacao.error) }, { status: 400 });
+  const body = await parseJson<unknown>(request);
+  if (!body.ok) {
+    return body.response;
+  }
+  const validacao = validateBody(esquemaCriarWhatsappInstancia, body.data);
+  if (!validacao.ok) {
+    return validacao.response;
   }
   const nome = validacao.data.nome;
 
@@ -116,10 +121,9 @@ export async function POST(request: NextRequest) {
       qrCode: resultado.base64,
     });
   } catch (erro) {
-    console.error("Erro ao criar instância WhatsApp:", erro);
-    return NextResponse.json(
-      { erro: erro instanceof Error ? erro.message : "Erro ao criar instância." },
-      { status: 500 }
-    );
+    if (erro instanceof Error && erro.message) {
+      return NextResponse.json({ erro: erro.message }, { status: 500 });
+    }
+    return handleRouteError(erro, "Erro ao criar instância.", "Erro ao criar instância WhatsApp:");
   }
 }

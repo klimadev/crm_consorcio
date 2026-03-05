@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { exigirSessao } from "@/lib/permissoes";
-import { esquemaMoverLead, mensagemErroValidacao } from "@/lib/validacoes";
+import { esquemaMoverLead } from "@/lib/validacoes";
 import { executarAutomacoesLeadStageChanged, cancelarAgendamentosPorLead } from "@/lib/whatsapp-automations";
+import { badRequest, forbidden, notFound } from "@/lib/api/http";
+import { parseJson, validateBody } from "@/lib/api/route-validation";
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -15,14 +17,14 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   const { id } = await params;
-  const body = (await request.json()) as {
-    id_estagio?: string;
-    motivo_perda?: string;
-  };
+  const body = await parseJson<unknown>(request);
+  if (!body.ok) {
+    return body.response;
+  }
 
-  const validacao = esquemaMoverLead.safeParse(body);
-  if (!validacao.success) {
-    return NextResponse.json({ erro: mensagemErroValidacao(validacao.error) }, { status: 400 });
+  const validacao = validateBody(esquemaMoverLead, body.data);
+  if (!validacao.ok) {
+    return validacao.response;
   }
 
   const dadosValidados = validacao.data;
@@ -52,16 +54,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   });
 
   if (!lead) {
-    return NextResponse.json({ erro: "Lead nao encontrado." }, { status: 404 });
+    return notFound("Lead nao encontrado.");
   }
 
   // Validação de PDV para GERENTE
   if (auth.sessao.perfil === "GERENTE" && auth.sessao.id_pdv) {
     if (lead.funcionario.id_pdv !== auth.sessao.id_pdv) {
-      return NextResponse.json(
-        { erro: "Voce só pode mover leads do seu PDV." },
-        { status: 403 }
-      );
+      return forbidden("Voce só pode mover leads do seu PDV.");
     }
   }
 
@@ -73,11 +72,11 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   });
 
   if (!estagioDestino) {
-    return NextResponse.json({ erro: "Estagio destino invalido." }, { status: 400 });
+    return badRequest("Estagio destino invalido.");
   }
 
   if (estagioDestino.tipo === "PERDIDO" && !dadosValidados.motivo_perda?.trim()) {
-    return NextResponse.json({ erro: "Motivo de perda e obrigatorio." }, { status: 400 });
+    return badRequest("Motivo de perda e obrigatorio.");
   }
 
   const isMovingToGanho = estagioDestino.tipo === "GANHO";

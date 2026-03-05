@@ -13,6 +13,7 @@ import {
   aplicaMascaraTelefoneBr,
   converteMoedaBrParaNumero,
 } from "@/lib/utils";
+import { aprovarLeadKanban } from "@/lib/api/kanban";
 import type { Estagio, Funcionario, Lead, PendenciaDinamica } from "../types";
 import { useWhatsappChat } from "@/modules/whatsapp/hooks/use-whatsapp-chat";
 import { WhatsappChatPanel } from "@/modules/whatsapp/components/chat/whatsapp-chat-panel";
@@ -178,19 +179,15 @@ export function LeadDetailsDrawer({
     setErroDetalhesLead(null);
 
     try {
-      const resposta = await fetch(`/api/leads/${leadSelecionado.id}/aprovar`, {
-        method: "POST",
-      });
+      const resultado = await aprovarLeadKanban(leadSelecionado.id);
 
-      const json = (await resposta.json().catch(() => ({}))) as { erro?: string; lead?: Lead };
-
-      if (!resposta.ok) {
-        setErroDetalhesLead(json.erro ?? "Erro ao aprovar lead.");
+      if (!resultado.ok) {
+        setErroDetalhesLead(resultado.erro);
         return;
       }
 
-      if (json.lead) {
-        onMudarLead(json.lead);
+      if (resultado.dados.lead) {
+        onMudarLead(resultado.dados.lead);
       }
     } catch {
       setErroDetalhesLead("Erro ao aprovar lead.");

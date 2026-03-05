@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { listarJobsWhatsapp } from "@/lib/api/whatsapp";
 import type { UseWhatsappJobsReturn, WhatsappJobsResumo, WhatsappJobItem } from "../types";
 
 const RESUMO_INICIAL: WhatsappJobsResumo = {
@@ -19,31 +20,28 @@ export function useWhatsappJobs(): UseWhatsappJobsReturn {
 
   const recarregar = useCallback(async () => {
     try {
-      const resposta = await fetch("/api/whatsapp/agendamentos?lista=true&limite=50");
-      const json = await resposta.json().catch(() => ({}));
+      const resultado = await listarJobsWhatsapp();
 
-      if (!resposta.ok) {
-        setErro(json.erro ?? "Erro ao carregar jobs do WhatsApp.");
+      if (!resultado.ok) {
+        setErro(resultado.erro);
         return;
       }
 
       setResumo({
-        pendentes: typeof json.resumo?.pendentes === "number" ? json.resumo.pendentes : 0,
-        processando: typeof json.resumo?.processando === "number" ? json.resumo.processando : 0,
-        falhas: typeof json.resumo?.falhas === "number" ? json.resumo.falhas : 0,
-        enviadosHoje: typeof json.resumo?.enviadosHoje === "number" ? json.resumo.enviadosHoje : 0,
-        atualizadoEm: typeof json.resumo?.atualizadoEm === "string" ? json.resumo.atualizadoEm : "",
+        pendentes: resultado.dados.resumo.pendentes,
+        processando: resultado.dados.resumo.processando,
+        falhas: resultado.dados.resumo.falhas,
+        enviadosHoje: resultado.dados.resumo.enviadosHoje,
+        atualizadoEm: resultado.dados.resumo.atualizadoEm,
       });
 
       setJobs(
-        Array.isArray(json.agendamentos)
-          ? json.agendamentos.map((j: WhatsappJobItem) => ({
+        resultado.dados.agendamentos.map((j: WhatsappJobItem) => ({
               ...j,
               agendado_para: j.agendado_para,
               criado_em: j.criado_em,
               enviado_em: j.enviado_em,
             }))
-          : []
       );
       setErro(null);
     } catch {

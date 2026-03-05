@@ -16,10 +16,6 @@ export function formataData(data: Date | string) {
   return new Intl.DateTimeFormat("pt-BR").format(new Date(data));
 }
 
-export function normalizaTelefoneParaWhatsapp(telefone: string) {
-  return telefone.replace(/\D/g, "");
-}
-
 export function aplicaMascaraTelefoneBr(valor: string) {
   const digitos = valor.replace(/\D/g, "").slice(0, 11);
 

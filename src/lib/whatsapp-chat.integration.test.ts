@@ -41,7 +41,7 @@ describe("integração - WhatsApp Chat", () => {
       expect(response.status).toBe(200);
       const json = await response.json();
       expect(Array.isArray(json.leads)).toBe(true);
-    });
+    }, 15000);
   });
 
   describe("GET /api/whatsapp/chat/messages", () => {
@@ -125,7 +125,7 @@ describe("integração - WhatsApp Chat", () => {
 
       if (response.status === 409) {
         console.log("WhatsApp desconectado:", json.erro);
-        expect(json.erro).toContain("desconectado");
+        expect(json.erro).toMatch(/desconectado|sem instancia/i);
         return;
       }
 

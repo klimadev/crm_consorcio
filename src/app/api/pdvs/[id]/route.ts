@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { exigirSessao, podeGerenciarEmpresa } from "@/lib/permissoes";
-import { esquemaAtualizarPdv, mensagemErroValidacao } from "@/lib/validacoes";
+import { esquemaAtualizarPdv } from "@/lib/validacoes";
+import { badRequest, forbidden, notFound } from "@/lib/api/http";
+import { parseJson, validateBody } from "@/lib/api/route-validation";
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -14,13 +16,16 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   if (!podeGerenciarEmpresa(auth.sessao)) {
-    return NextResponse.json({ erro: "Somente EMPRESA pode alterar PDVs." }, { status: 403 });
+    return forbidden("Somente EMPRESA pode alterar PDVs.");
   }
 
-  const payload = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-  const validacao = esquemaAtualizarPdv.safeParse(payload);
-  if (!validacao.success) {
-    return NextResponse.json({ erro: mensagemErroValidacao(validacao.error) }, { status: 400 });
+  const body = await parseJson<unknown>(request);
+  if (!body.ok) {
+    return body.response;
+  }
+  const validacao = validateBody(esquemaAtualizarPdv, body.data);
+  if (!validacao.ok) {
+    return validacao.response;
   }
 
   const { id } = await params;
@@ -36,7 +41,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     });
 
     if (!instancia) {
-      return NextResponse.json({ erro: "Instancia WhatsApp invalida para a empresa." }, { status: 400 });
+      return badRequest("Instancia WhatsApp invalida para a empresa.");
     }
   }
 
@@ -50,7 +55,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   });
 
   if (atualizados.count === 0) {
-    return NextResponse.json({ erro: "PDV nao encontrado." }, { status: 404 });
+    return notFound("PDV nao encontrado.");
   }
 
   return NextResponse.json({ ok: true });
@@ -63,7 +68,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   }
 
   if (!podeGerenciarEmpresa(auth.sessao)) {
-    return NextResponse.json({ erro: "Somente EMPRESA pode alterar PDVs." }, { status: 403 });
+    return forbidden("Somente EMPRESA pode alterar PDVs.");
   }
 
   const { id } = await params;
@@ -76,10 +81,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   });
 
   if (funcionariosVinculados > 0) {
-    return NextResponse.json(
-      { erro: "Nao e possivel excluir PDV com colaboradores vinculados. Realoque-os antes de excluir." },
-      { status: 400 },
-    );
+    return badRequest("Nao e possivel excluir PDV com colaboradores vinculados. Realoque-os antes de excluir.");
   }
 
   const deletados = await prisma.pdv.deleteMany({
@@ -87,7 +89,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   });
 
   if (deletados.count === 0) {
-    return NextResponse.json({ erro: "PDV nao encontrado." }, { status: 404 });
+    return notFound("PDV nao encontrado.");
   }
 
   return NextResponse.json({ ok: true });

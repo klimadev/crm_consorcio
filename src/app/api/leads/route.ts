@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { exigirSessao, podeGerenciarRecursoNoPdv, whereLeadsPorPerfil } from "@/lib/permissoes";
 import { esquemaCriarLead, mensagemErroValidacao } from "@/lib/validacoes";
 import { garantirEstagiosFixosEmpresa } from "@/lib/estagios-fixos";
+import { badRequest, forbidden } from "@/lib/api/http";
+import { handleRouteError } from "@/lib/api/route-errors";
 
 
 export async function GET(request: NextRequest) {
@@ -68,7 +70,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (!validacao.success) {
-    return NextResponse.json({ erro: mensagemErroValidacao(validacao.error) }, { status: 400 });
+    return badRequest(mensagemErroValidacao(validacao.error));
   }
 
   const dadosValidados = validacao.data;
@@ -83,11 +85,11 @@ export async function POST(request: NextRequest) {
   ]);
 
   if (!estagio || !funcionario) {
-    return NextResponse.json({ erro: "Estagio ou funcionario invalido." }, { status: 400 });
+    return badRequest("Estagio ou funcionario invalido.");
   }
 
   if (!podeGerenciarRecursoNoPdv(auth.sessao, funcionario.id_pdv)) {
-    return NextResponse.json({ erro: "Sem permissao para atribuir lead a este colaborador." }, { status: 403 });
+    return forbidden("Sem permissao para atribuir lead a este colaborador.");
   }
 
   try {
@@ -105,7 +107,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ lead });
   } catch (erro) {
-    console.error("Erro ao criar lead:", erro);
-    return NextResponse.json({ erro: "Erro ao criar lead." }, { status: 500 });
+    return handleRouteError(erro, "Erro ao criar lead.", "Erro ao criar lead:");
   }
 }

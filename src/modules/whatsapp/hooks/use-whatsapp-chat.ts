@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { enviarMensagemWhatsapp, listarMensagensWhatsapp, marcarMensagensComoLidas } from "@/lib/api/whatsapp";
 import type { ChatConnectionStatus, ChatMessageStatus, WhatsappChatMessage } from "@/modules/whatsapp/types";
 
 type UseWhatsappChatParams = {
@@ -8,12 +9,6 @@ type UseWhatsappChatParams = {
   enabled: boolean;
   markReadEnabled: boolean;
   pollMs?: number;
-};
-
-type ChatApiResponse = {
-  messages: WhatsappChatMessage[];
-  connectionStatus: ChatConnectionStatus;
-  unreadCount: number;
 };
 
 const statusWeight: Record<ChatMessageStatus, number> = {
@@ -95,16 +90,15 @@ export function useWhatsappChat({ leadId, enabled, markReadEnabled, pollMs = 300
     }
 
     try {
-      const response = await fetch(`/api/whatsapp/chat/messages?leadId=${leadId}`, { signal, cache: "no-store" });
-      const json = (await response.json().catch(() => ({}))) as Partial<ChatApiResponse> & { erro?: string };
-      if (!response.ok) {
-        throw new Error(json.erro ?? "Erro ao carregar mensagens.");
+      const resultado = await listarMensagensWhatsapp(leadId, signal);
+      if (!resultado.ok) {
+        throw new Error(resultado.erro);
       }
       if (!mountedRef.current || currentSeq !== requestSeqRef.current) return;
 
-      setMessages((prev) => mergeMessages(prev, json.messages ?? []));
-      setConnectionStatus(json.connectionStatus ?? "unknown");
-      setUnreadCount(json.unreadCount ?? 0);
+      setMessages((prev) => mergeMessages(prev, resultado.dados.messages));
+      setConnectionStatus(resultado.dados.connectionStatus);
+      setUnreadCount(resultado.dados.unreadCount);
       backoffMsRef.current = pollMs;
     } catch (err) {
       if (!mountedRef.current || signal.aborted) return;
@@ -160,27 +154,21 @@ export function useWhatsappChat({ leadId, enabled, markReadEnabled, pollMs = 300
       });
 
       try {
-        const response = await fetch("/api/whatsapp/chat/send-message", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ leadId, text: normalizedText, clientTempId: tempId }),
+        const resultado = await enviarMensagemWhatsapp({
+          leadId,
+          text: normalizedText,
+          clientTempId: tempId,
         });
 
-        const json = (await response.json().catch(() => ({}))) as {
-          message?: WhatsappChatMessage;
-          clientTempId?: string;
-          erro?: string;
-        };
-
-        if (!response.ok || !json.message) {
-          throw new Error(json.erro ?? "Erro ao enviar mensagem.");
+        if (!resultado.ok) {
+          throw new Error(resultado.erro);
         }
 
-        const serverMessage = json.message;
+        const serverMessage = resultado.dados.message;
 
         setMessages((prev) => {
           const replaced = prev.map((message) =>
-            message.id === (json.clientTempId ?? tempId) ? { ...serverMessage, optimistic: false } : message,
+            message.id === (resultado.dados.clientTempId ?? tempId) ? { ...serverMessage, optimistic: false } : message,
           );
           return mergeMessages(replaced, [serverMessage]);
         });
@@ -215,14 +203,9 @@ export function useWhatsappChat({ leadId, enabled, markReadEnabled, pollMs = 300
     if (!leadId || !markReadEnabled || markReadInFlightRef.current) return;
     markReadInFlightRef.current = true;
     try {
-      const response = await fetch("/api/whatsapp/chat/mark-read", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leadId }),
-      });
-      const json = (await response.json().catch(() => ({}))) as { unreadCount?: number };
-      if (response.ok && mountedRef.current) {
-        setUnreadCount(json.unreadCount ?? 0);
+      const resultado = await marcarMensagensComoLidas(leadId);
+      if (resultado.ok && mountedRef.current) {
+        setUnreadCount(resultado.dados.unreadCount);
         setMessages((prev) =>
           prev.map((message) =>
             !message.fromMe && !message.readAtIso

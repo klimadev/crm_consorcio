@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { useKanbanModule } from "./hooks/use-kanban-module";
+import { ModulePageShell } from "@/components/shared/module-page-shell";
 import { KanbanHeader } from "./components/kanban-header";
 import { KanbanBoard } from "./components/kanban-board";
 import { PerdaDialog } from "./components/perda-dialog";
@@ -24,7 +25,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
   };
 
   return (
-    <section className="space-y-5 rounded-2xl bg-slate-50/50 p-4 pb-6 md:p-6">
+    <ModulePageShell>
       <KanbanHeader
         dialogNovoLeadAberto={vm.dialogNovoLeadAberto}
         setDialogNovoLeadAberto={vm.setDialogNovoLeadAberto}
@@ -98,6 +99,6 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         onExcluirLead={vm.excluirLead}
         onSalvarDetalhesLead={vm.salvarDetalhesLead}
       />
-    </section>
+    </ModulePageShell>
   );
 }

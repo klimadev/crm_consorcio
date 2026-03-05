@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { listarEstagiosFunil } from "@/lib/api/whatsapp";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Zap, Send, Plus } from "lucide-react";
@@ -52,10 +53,9 @@ export function AutomacoesList({
   const instanciaPorId = new Map(instancias.map((i) => [i.id, i]));
 
   const loadEstagios = async () => {
-    const resposta = await fetch("/api/estagios");
-    const json = await resposta.json().catch(() => ({}));
-    if (resposta.ok) {
-      setEstagios(Array.isArray(json.estagios) ? json.estagios : []);
+    const resultado = await listarEstagiosFunil();
+    if (resultado.ok) {
+      setEstagios(resultado.dados.estagios);
     }
   };
 

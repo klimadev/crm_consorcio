@@ -1,4 +1,4 @@
-import { ModuloWhatsapp } from "@/components/modulo-whatsapp";
+import { ModuloWhatsapp } from "@/modules/whatsapp";
 import { obterSessaoNoServidor } from "@/lib/autenticacao";
 import { redirect } from "next/navigation";
 

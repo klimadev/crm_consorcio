@@ -6,7 +6,9 @@ import {
   podeEditarFuncionarioNoPdv,
   respostaSemPermissao,
 } from "@/lib/permissoes";
-import { mensagemErroValidacao, schemaAtualizarFuncionario } from "@/lib/validacoes";
+import { schemaAtualizarFuncionario } from "@/lib/validacoes";
+import { notFound, serverError } from "@/lib/api/http";
+import { parseJson, validateBody } from "@/lib/api/route-validation";
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -23,11 +25,14 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   const { id } = await params;
-  const body = await request.json();
-  const validacao = schemaAtualizarFuncionario.safeParse(body);
+  const body = await parseJson<unknown>(request);
+  if (!body.ok) {
+    return body.response;
+  }
+  const validacao = validateBody(schemaAtualizarFuncionario, body.data);
 
-  if (!validacao.success) {
-    return NextResponse.json({ erro: mensagemErroValidacao(validacao.error) }, { status: 400 });
+  if (!validacao.ok) {
+    return validacao.response;
   }
 
   const { nome, cargo, id_pdv } = validacao.data;
@@ -48,7 +53,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   });
 
   if (!funcionarioAtual) {
-    return NextResponse.json({ erro: "Funcionario nao encontrado." }, { status: 404 });
+    return notFound("Funcionario nao encontrado.");
   }
 
   if (
@@ -75,7 +80,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   });
 
   if (!pdv) {
-    return NextResponse.json({ erro: "PDV nao encontrado." }, { status: 404 });
+    return notFound("PDV nao encontrado.");
   }
 
   try {
@@ -118,6 +123,6 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ ok: true });
   } catch {
-    return NextResponse.json({ erro: "Erro ao atualizar funcionario." }, { status: 500 });
+    return serverError("Erro ao atualizar funcionario.");
   }
 }

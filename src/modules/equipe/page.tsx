@@ -1,7 +1,9 @@
 "use client";
 
-import { Shield, X } from "lucide-react";
 import { useState } from "react";
+import { ModulePageShell } from "@/components/shared/module-page-shell";
+import { InlineStatusAlert } from "@/components/shared/inline-status-alert";
+import { AccessDeniedCard } from "@/components/shared/access-denied-card";
 import { useEquipeModule } from "./hooks/use-equipe-module";
 import { EquipeHeader } from "./components/equipe-header";
 import { PdvManagementPanel } from "./components/pdv-management-panel";
@@ -15,35 +17,18 @@ export function ModuloEquipe({ perfil }: Props) {
 
   if (perfil === "COLABORADOR") {
     return (
-      <section className="rounded-2xl border border-amber-200/50 bg-amber-50/50 p-8 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100">
-            <Shield className="h-6 w-6 text-amber-600" />
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">Acesso restrito</p>
-            <h2 className="mt-1 text-xl font-semibold text-slate-800">Sem permissao para acessar equipe</h2>
-          </div>
-        </div>
-        <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-600">
-          Este modulo e visivel apenas para perfis de gestao. Solicite ao administrador da empresa a elevacao de permissao.
-        </p>
-      </section>
+      <AccessDeniedCard
+        title="Sem permissao para acessar equipe"
+        description="Este modulo e visivel apenas para perfis de gestao. Solicite ao administrador da empresa a elevacao de permissao."
+      />
     );
   }
 
   return (
-    <section className="space-y-4 rounded-2xl bg-slate-50/50 p-4 pb-28 md:p-6 md:pb-28">
+    <ModulePageShell className="space-y-4 pb-28 md:pb-28">
       <EquipeHeader vm={vm} onAbrirNovoPdv={() => setDrawerNovoPdvAberto(true)} />
-      
-      {vm.erroLista ? (
-        <div className="flex items-center gap-3 rounded-xl border border-rose-200/60 bg-rose-50/50 px-4 py-3 shadow-sm">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-100">
-            <X className="h-4 w-4 text-rose-600" />
-          </div>
-          <p className="text-sm font-medium text-rose-700">{vm.erroLista}</p>
-        </div>
-      ) : null}
+
+      <InlineStatusAlert variant="error" message={vm.erroLista} />
 
       {vm.podeGerenciarEmpresa ? (
         <div className="rounded-2xl border border-slate-200/70 bg-white p-3 shadow-[0_2px_8px_rgba(0,0,0,0.04)] md:p-4">
@@ -53,6 +38,6 @@ export function ModuloEquipe({ perfil }: Props) {
 
       <NovoFuncionarioDialog vm={vm} />
       <InativacaoDialog vm={vm} />
-    </section>
+    </ModulePageShell>
   );
 }

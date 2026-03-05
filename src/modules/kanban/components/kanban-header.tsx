@@ -14,6 +14,7 @@ import { PendenciaBadge } from "./pendencia-badge";
 import { cn } from "@/lib/utils";
 import { Filter, X, Bell, BellOff, Search, ArrowUpDown, RefreshCw } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
+import { ModulePageHeader } from "@/components/shared/module-page-header";
 
 type KanbanHeaderProps = {
   dialogNovoLeadAberto: boolean;
@@ -104,20 +105,15 @@ export function KanbanHeader({
   };
 
   return (
-    <header className="flex flex-col gap-4 rounded-2xl border border-slate-200/60 bg-white px-6 py-5 shadow-[0_2px_8px_rgba(0,0.0,0,04)] md:flex-row md:items-center md:justify-between">
-      <div className="flex items-center gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200">
-          <svg className="h-6 w-6 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
-          </svg>
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-slate-800 md:text-2xl">Leads</h1>
-          <p className="text-sm text-slate-500">Gestão de leads com arrastar e soltar.</p>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
+    <ModulePageHeader
+      title="Leads"
+      subtitle="Gestão de leads com arrastar e soltar."
+      icon={(
+        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+        </svg>
+      )}
+      actions={<div className="flex flex-wrap items-center gap-3">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
@@ -358,7 +354,7 @@ if (permissao === "denied") {
           <RefreshCw className={cn("mr-2 h-4 w-4", sincronizandoWhatsapp && "animate-spin")} />
           {sincronizandoWhatsapp ? "Sincronizando..." : "Sincronizar WhatsApp"}
         </Button>
-      </div>
-    </header>
+      </div>}
+    />
   );
 }

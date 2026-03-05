@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { TipoPendencia, LABELS_PENDENCIA } from "@/lib/validacoes";
+import { listarPendenciasGlobaisKanban } from "@/lib/api/kanban";
 
 export type PendenciaInfo = {
   id: string;
@@ -189,10 +190,9 @@ export function usePendenciasProvider() {
     }
 
     try {
-      const res = await fetch("/api/pendencias");
-      if (res.ok) {
-        const json = await res.json();
-        const novasPendencias: PendenciaInfo[] = json.pendencias ?? [];
+      const resultado = await listarPendenciasGlobaisKanban();
+      if (resultado.ok) {
+        const novasPendencias = resultado.dados.pendencias as PendenciaInfo[];
         
         const ehPrimeiraCarga = isPrimeiraCarga();
         const jaNotificadas = jaNotificadasRef.current;
@@ -239,6 +239,9 @@ export function usePendenciasProvider() {
         pendenciasAnterioresRef.current = novasPendencias;
         setPendenciasAnteriores(novasPendencias);
         setPendencias(novasPendencias);
+      }
+      if (!resultado.ok) {
+        console.error("Erro ao buscar pendências:", resultado.erro);
       }
     } catch (erro) {
       console.error("Erro ao buscar pendências:", erro);

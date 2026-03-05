@@ -1,32 +1,30 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { exigeSessao } from "../../permissoes";
+import { withSessao } from "@/lib/api/route-guards";
+import { ok, notFound, forbidden } from "@/lib/api/http";
 import { detectarPendenciasDinamicasLead } from "@/lib/pendencias-dinamicas";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ leadId: string }> }
 ) {
-  const auth = await exigeSessao(request);
-  if (auth.erro) {
-    return auth.erro;
-  }
+  return withSessao(request, async ({ sessao }) => {
+    const { leadId } = await params;
 
-  const { leadId } = await params;
+    const lead = await prisma.lead.findFirst({
+      where: { id: leadId, id_empresa: sessao.id_empresa },
+    });
 
-  const lead = await prisma.lead.findFirst({
-    where: { id: leadId, id_empresa: auth.sessao.id_empresa },
+    if (!lead) {
+      return notFound("Lead não encontrado.");
+    }
+
+    if (sessao.perfil === "COLABORADOR" && lead.id_funcionario !== sessao.id_usuario) {
+      return forbidden("Você não tem acesso a este lead.");
+    }
+
+    const pendencias = await detectarPendenciasDinamicasLead(leadId);
+
+    return ok({ pendencias });
   });
-
-  if (!lead) {
-    return NextResponse.json({ erro: "Lead não encontrado." }, { status: 404 });
-  }
-
-  if (auth.sessao.perfil === "COLABORADOR" && lead.id_funcionario !== auth.sessao.id_usuario) {
-    return NextResponse.json({ erro: "Você não tem acesso a este lead." }, { status: 403 });
-  }
-
-  const pendencias = await detectarPendenciasDinamicasLead(leadId);
-
-  return NextResponse.json({ pendencias });
 }

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { exigirSessao } from "@/lib/permissoes";
-import { esquemaAtualizarLead, mensagemErroValidacao } from "@/lib/validacoes";
+import { esquemaAtualizarLead } from "@/lib/validacoes";
+import { badRequest, forbidden, notFound } from "@/lib/api/http";
+import { parseJson, validateBody } from "@/lib/api/route-validation";
 
 
 type Params = {
@@ -15,10 +17,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   const { id } = await params;
-  const body = await request.json();
-  const validacao = esquemaAtualizarLead.safeParse(body);
-  if (!validacao.success) {
-    return NextResponse.json({ erro: mensagemErroValidacao(validacao.error) }, { status: 400 });
+  const body = await parseJson<unknown>(request);
+  if (!body.ok) {
+    return body.response;
+  }
+  const validacao = validateBody(esquemaAtualizarLead, body.data);
+  if (!validacao.ok) {
+    return validacao.response;
   }
 
   const dadosValidados = validacao.data;
@@ -37,7 +42,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   });
 
   if (!lead) {
-    return NextResponse.json({ erro: "Lead nao encontrado." }, { status: 404 });
+    return notFound("Lead nao encontrado.");
   }
 
   // Validação de PDV para GERENTE
@@ -67,14 +72,11 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     });
 
     if (!funcionarioDestino) {
-      return NextResponse.json({ erro: "Funcionario invalido." }, { status: 400 });
+      return badRequest("Funcionario invalido.");
     }
 
     if (auth.sessao.perfil === "GERENTE" && auth.sessao.id_pdv && funcionarioDestino.id_pdv !== auth.sessao.id_pdv) {
-      return NextResponse.json(
-        { erro: "Voce só pode transferir para funcionarios do seu PDV." },
-        { status: 403 }
-      );
+      return forbidden("Voce só pode transferir para funcionarios do seu PDV.");
     }
   }
 
@@ -115,16 +117,13 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   });
 
   if (!lead) {
-    return NextResponse.json({ erro: "Lead nao encontrado." }, { status: 404 });
+    return notFound("Lead nao encontrado.");
   }
 
   // Validação de PDV para GERENTE
   if (auth.sessao.perfil === "GERENTE" && auth.sessao.id_pdv) {
     if (lead.funcionario.id_pdv !== auth.sessao.id_pdv) {
-      return NextResponse.json(
-        { erro: "Voce só pode excluir leads do seu PDV." },
-        { status: 403 }
-      );
+      return forbidden("Voce só pode excluir leads do seu PDV.");
     }
   }
 

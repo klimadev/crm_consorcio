@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { verificarBootstrapConfigs } from "@/lib/api/configs";
 import type { UseConfigsReturn } from "../types";
 
 export function useConfigsModule(): UseConfigsReturn {
@@ -9,12 +10,12 @@ export function useConfigsModule(): UseConfigsReturn {
   const INATIVA_POLLING_MS = 15000;
 
   const bootstrap = useCallback(async () => {
-    const resEstagios = await fetch("/api/estagios");
+    const resultado = await verificarBootstrapConfigs();
 
-    if (resEstagios.ok) {
+    if (resultado.ok) {
       return;
     }
-    setErro("Erro ao carregar configuracoes.");
+    setErro(resultado.erro);
   }, []);
 
   useEffect(() => {

@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { exigirSessao, podeVerEquipe, respostaSemPermissao } from "@/lib/permissoes";
 import { deletarInstancia } from "@/lib/evolution-api";
-import { esquemaAtualizarWhatsappInstancia, mensagemErroValidacao } from "@/lib/validacoes";
+import { esquemaAtualizarWhatsappInstancia } from "@/lib/validacoes";
+import { notFound } from "@/lib/api/http";
+import { handleRouteError } from "@/lib/api/route-errors";
+import { validateBody } from "@/lib/api/route-validation";
 
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL ?? "http://localhost:8080";
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY ?? "";
@@ -27,7 +30,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   });
 
   if (!instancia) {
-    return NextResponse.json({ erro: "Instância não encontrada ou acesso negado." }, { status: 404 });
+    return notFound("Instância não encontrada ou acesso negado.");
   }
 
   try {
@@ -48,11 +51,10 @@ export async function DELETE(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ ok: true });
   } catch (erro) {
-    console.error("Erro ao excluir instância WhatsApp:", erro);
-    return NextResponse.json(
-      { erro: erro instanceof Error ? erro.message : "Erro ao excluir instância." },
-      { status: 500 }
-    );
+    if (erro instanceof Error && erro.message) {
+      return NextResponse.json({ erro: erro.message }, { status: 500 });
+    }
+    return handleRouteError(erro, "Erro ao excluir instância.", "Erro ao excluir instância WhatsApp:");
   }
 }
 
@@ -72,15 +74,23 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   });
 
   if (!instancia) {
-    return NextResponse.json({ erro: "Instância não encontrada ou acesso negado." }, { status: 404 });
+    return notFound("Instância não encontrada ou acesso negado.");
   }
 
-  const body = (await request.json().catch(() => null)) as { nome?: unknown } | null;
+  const rawBody = await request.text();
+  let body: { nome?: unknown } | null = null;
+  if (rawBody) {
+    try {
+      body = (JSON.parse(rawBody) as { nome?: unknown } | null) ?? null;
+    } catch {
+      body = null;
+    }
+  }
 
   if (body && body.nome !== undefined) {
-    const validacao = esquemaAtualizarWhatsappInstancia.safeParse(body);
-    if (!validacao.success) {
-      return NextResponse.json({ erro: mensagemErroValidacao(validacao.error) }, { status: 400 });
+    const validacao = validateBody(esquemaAtualizarWhatsappInstancia, body);
+    if (!validacao.ok) {
+      return validacao.response;
     }
 
     const atualizada = await prisma.whatsappInstancia.update({

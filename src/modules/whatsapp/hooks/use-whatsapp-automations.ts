@@ -1,6 +1,14 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import {
+  atualizarAutomacaoWhatsapp,
+  criarAutomacaoWhatsapp,
+  dispararDispatchFollowUpWhatsapp,
+  excluirAutomacaoWhatsapp,
+  gerarPreviewAutomacaoWhatsapp,
+  listarAutomacoesWhatsapp,
+} from "@/lib/api/whatsapp";
 import type {
   WhatsappAutomacao,
   UseWhatsappAutomationsReturn,
@@ -19,17 +27,15 @@ export function useWhatsappAutomations(): UseWhatsappAutomationsReturn {
     setErro(null);
 
     try {
-      const resposta = await fetch("/api/whatsapp/automations");
+      const resultado = await listarAutomacoesWhatsapp();
 
-      if (!resposta.ok) {
-        const json = await resposta.json().catch(() => ({}));
-        setErro(json.erro ?? "Erro ao carregar automações.");
+      if (!resultado.ok) {
+        setErro(resultado.erro);
         setAutomacoes([]);
         return;
       }
 
-      const json = await resposta.json();
-      setAutomacoes(json.automacoes ?? []);
+      setAutomacoes(resultado.dados.automacoes);
     } catch {
       setErro("Erro ao conectar com o servidor.");
       setAutomacoes([]);
@@ -47,21 +53,16 @@ export function useWhatsappAutomations(): UseWhatsappAutomationsReturn {
       setErro(null);
 
       try {
-        const resposta = await fetch("/api/whatsapp/automations", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
+        const resultado = await criarAutomacaoWhatsapp(data);
 
-        const json = await resposta.json().catch(() => ({}));
-
-        if (!resposta.ok) {
-          setErro(json.erro ?? "Erro ao criar automação.");
+        if (!resultado.ok) {
+          setErro(resultado.erro);
           return;
         }
 
-        if (json.automacao) {
-          setAutomacoes((atual) => [json.automacao, ...atual]);
+        if (resultado.dados.automacao) {
+          const automacao = resultado.dados.automacao;
+          setAutomacoes((atual) => [automacao, ...atual]);
         }
       } catch {
         setErro("Erro ao conectar com o servidor.");
@@ -77,22 +78,17 @@ export function useWhatsappAutomations(): UseWhatsappAutomationsReturn {
       if (!automacaoAnterior) return;
 
       try {
-        const resposta = await fetch(`/api/whatsapp/automations/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
+        const resultado = await atualizarAutomacaoWhatsapp(id, data);
 
-        const json = await resposta.json().catch(() => ({}));
-
-        if (!resposta.ok) {
-          setErro(json.erro ?? "Erro ao atualizar automação.");
+        if (!resultado.ok) {
+          setErro(resultado.erro);
           return;
         }
 
-        if (json.automacao) {
+        if (resultado.dados.automacao) {
+          const automacao = resultado.dados.automacao;
           setAutomacoes((atual) =>
-            atual.map((a) => (a.id === id ? json.automacao : a))
+            atual.map((a) => (a.id === id ? automacao : a))
           );
         }
       } catch {
@@ -104,19 +100,13 @@ export function useWhatsappAutomations(): UseWhatsappAutomationsReturn {
 
   const previewMensagem = useCallback(async (mensagem: string) => {
     try {
-      const resposta = await fetch("/api/whatsapp/automations/preview", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mensagem }),
-      });
-
-      const json = await resposta.json().catch(() => ({}));
-      if (!resposta.ok) {
-        setErro(json.erro ?? "Erro ao gerar preview.");
+      const resultado = await gerarPreviewAutomacaoWhatsapp(mensagem);
+      if (!resultado.ok) {
+        setErro(resultado.erro);
         return null;
       }
 
-      return typeof json.preview === "string" ? json.preview : null;
+      return resultado.dados.preview;
     } catch {
       setErro("Erro ao gerar preview.");
       return null;
@@ -127,25 +117,13 @@ export function useWhatsappAutomations(): UseWhatsappAutomationsReturn {
     setErro(null);
 
     try {
-      const resposta = await fetch("/api/whatsapp/automations/follow-up/dispatch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ limite }),
-      });
-
-      const json = await resposta.json().catch(() => ({}));
-      if (!resposta.ok) {
-        setErro(json.erro ?? "Erro ao processar follow-ups.");
+      const resultado = await dispararDispatchFollowUpWhatsapp(limite);
+      if (!resultado.ok) {
+        setErro(resultado.erro);
         return null;
       }
 
-      return {
-        runId: typeof json.runId === "string" ? json.runId : "dispatch-sem-id",
-        processados: typeof json.processados === "number" ? json.processados : 0,
-        enviados: typeof json.enviados === "number" ? json.enviados : 0,
-        falhas: typeof json.falhas === "number" ? json.falhas : 0,
-        detalhes: Array.isArray(json.detalhes) ? json.detalhes : [],
-      };
+      return resultado.dados;
     } catch {
       setErro("Erro ao processar follow-ups.");
       return null;
@@ -161,18 +139,13 @@ export function useWhatsappAutomations(): UseWhatsappAutomationsReturn {
     );
 
     try {
-      const resposta = await fetch(`/api/whatsapp/automations/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ativo }),
-      });
+      const resultado = await atualizarAutomacaoWhatsapp(id, { ativo });
 
-      if (!resposta.ok) {
+      if (!resultado.ok) {
         setAutomacoes((atual) =>
           atual.map((a) => (a.id === id ? automacaoAnterior : a))
         );
-        const json = await resposta.json().catch(() => ({}));
-        setErro(json.erro ?? "Erro ao alternar automação.");
+        setErro(resultado.erro);
       }
     } catch {
       setAutomacoes((atual) =>
@@ -188,14 +161,11 @@ export function useWhatsappAutomations(): UseWhatsappAutomationsReturn {
     setAutomacoes((atual) => atual.filter((a) => a.id !== id));
 
     try {
-      const resposta = await fetch(`/api/whatsapp/automations/${id}`, {
-        method: "DELETE",
-      });
+      const resultado = await excluirAutomacaoWhatsapp(id);
 
-      if (!resposta.ok) {
+      if (!resultado.ok) {
         setAutomacoes((atual) => [...atual, automacaoAnterior]);
-        const json = await resposta.json().catch(() => ({}));
-        setErro(json.erro ?? "Erro ao excluir automação.");
+        setErro(resultado.erro);
       }
     } catch {
       setAutomacoes((atual) => [...atual, automacaoAnterior]);

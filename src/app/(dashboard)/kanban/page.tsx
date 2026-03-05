@@ -1,4 +1,4 @@
-import { ModuloKanban } from "@/components/modulo-kanban";
+import { ModuloKanban } from "@/modules/kanban";
 import { obterSessaoNoServidor } from "@/lib/autenticacao";
 
 export default async function PaginaKanban() {

@@ -1,4 +1,4 @@
-import { ModuloConfigs } from "@/components/modulo-configs";
+import { ModuloConfigs } from "@/modules/configs";
 import { obterSessaoNoServidor } from "@/lib/autenticacao";
 
 export default async function PaginaConfigs() {
