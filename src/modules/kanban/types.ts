@@ -103,7 +103,18 @@ export type UseKanbanModuleReturn = {
   setLeadSelecionado: (lead: Lead | null) => void;
   criarLead: (evento: React.FormEvent<HTMLFormElement>) => Promise<void>;
   sincronizandoWhatsapp: boolean;
+  redistribuindoEmAtendimento: boolean;
   sincronizarWhatsapp: () => Promise<{ ok: boolean; erro?: string; criados?: number }>;
+  redistribuirLeadsEmAtendimento: () => Promise<
+    | { ok: false; erro: string }
+    | {
+      ok: true;
+      avaliados: number;
+      elegiveis: number;
+      reatribuidos: number;
+      ignoradosSemDestino: number;
+    }
+  >;
   confirmarPerda: (evento: React.FormEvent<HTMLFormElement>) => Promise<void>;
   aoDragEnd: (resultado: import("@hello-pangea/dnd").DropResult) => Promise<void>;
   aoMudarLead: (leadAtualizado: Lead) => void;

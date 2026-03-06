@@ -35,6 +35,13 @@ export type PayloadAtualizarLeadKanban = {
   id_funcionario: Lead["id_funcionario"];
 };
 
+export type PayloadRedistribuirEmAtendimentoKanban = {
+  minutosSemAtendimento?: number;
+  limite?: number;
+  id_pdv?: string;
+  nomeEstagio?: string;
+};
+
 async function lerJsonSeguro<T>(resposta: Response): Promise<T> {
   return (await resposta.json().catch(() => ({}))) as T;
 }
@@ -208,4 +215,42 @@ export async function listarPendenciasGlobaisKanban(): Promise<ResultadoApi<{ pe
   }
 
   return { ok: true, dados: { pendencias: json.pendencias ?? [] } };
+}
+
+export async function redistribuirLeadsEmAtendimentoKanban(
+  payload: PayloadRedistribuirEmAtendimentoKanban = {},
+): Promise<
+  ResultadoApi<{
+    avaliados: number;
+    elegiveis: number;
+    reatribuidos: number;
+    ignoradosSemDestino: number;
+  }>
+> {
+  const resposta = await fetch("/api/leads/redistribuir-em-atendimento", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const json = await lerJsonSeguro<{
+    avaliados?: number;
+    elegiveis?: number;
+    reatribuidos?: number;
+    ignoradosSemDestino?: number;
+  } & ApiErro>(resposta);
+
+  if (!resposta.ok) {
+    return { ok: false, erro: json.erro ?? "Erro ao redistribuir leads em atendimento." };
+  }
+
+  return {
+    ok: true,
+    dados: {
+      avaliados: json.avaliados ?? 0,
+      elegiveis: json.elegiveis ?? 0,
+      reatribuidos: json.reatribuidos ?? 0,
+      ignoradosSemDestino: json.ignoradosSemDestino ?? 0,
+    },
+  };
 }

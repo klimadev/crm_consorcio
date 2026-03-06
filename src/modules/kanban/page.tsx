@@ -57,6 +57,8 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         permissaoNotificacao={vm.permissaoNotificacao}
         sincronizandoWhatsapp={vm.sincronizandoWhatsapp}
         sincronizarWhatsapp={vm.sincronizarWhatsapp}
+        redistribuindoEmAtendimento={vm.redistribuindoEmAtendimento}
+        redistribuirLeadsEmAtendimento={vm.redistribuirLeadsEmAtendimento}
       />
 
       <KanbanBoard

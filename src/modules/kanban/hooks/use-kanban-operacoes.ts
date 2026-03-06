@@ -2,7 +2,12 @@ import { useCallback, useState } from "react";
 import type { Dispatch, FormEvent, SetStateAction } from "react";
 import { converteMoedaBrParaNumero } from "@/lib/utils";
 import type { Lead, Props } from "../types";
-import { criarLeadKanban, excluirLeadKanban, sincronizarWhatsappKanban } from "@/lib/api/kanban";
+import {
+  criarLeadKanban,
+  excluirLeadKanban,
+  redistribuirLeadsEmAtendimentoKanban,
+  sincronizarWhatsappKanban,
+} from "@/lib/api/kanban";
 
 type UseKanbanOperacoesParams = {
   perfil: Props["perfil"];
@@ -39,6 +44,7 @@ export function useKanbanOperacoes({
 }: UseKanbanOperacoesParams) {
   const [erroNovoLead, setErroNovoLead] = useState<string | null>(null);
   const [sincronizandoWhatsapp, setSincronizandoWhatsapp] = useState(false);
+  const [redistribuindoEmAtendimento, setRedistribuindoEmAtendimento] = useState(false);
 
   const criarLead = useCallback(
     async (evento: FormEvent<HTMLFormElement>) => {
@@ -152,12 +158,39 @@ export function useKanbanOperacoes({
     [setLeads, setLeadSelecionado, setErroDetalhesLead],
   );
 
+  const redistribuirLeadsEmAtendimento = useCallback(async () => {
+    if (redistribuindoEmAtendimento) {
+      return { ok: false as const, erro: "Redistribuicao ja em andamento." };
+    }
+
+    setRedistribuindoEmAtendimento(true);
+    try {
+      const resposta = await redistribuirLeadsEmAtendimentoKanban({});
+      if (!resposta.ok) {
+        return { ok: false as const, erro: resposta.erro };
+      }
+
+      await bootstrap();
+
+      return {
+        ok: true as const,
+        ...resposta.dados,
+      };
+    } catch {
+      return { ok: false as const, erro: "Erro ao redistribuir leads em atendimento." };
+    } finally {
+      setRedistribuindoEmAtendimento(false);
+    }
+  }, [bootstrap, redistribuindoEmAtendimento]);
+
   return {
     erroNovoLead,
     setErroNovoLead,
     sincronizandoWhatsapp,
+    redistribuindoEmAtendimento,
     criarLead,
     sincronizarWhatsapp,
+    redistribuirLeadsEmAtendimento,
     excluirLead,
   };
 }

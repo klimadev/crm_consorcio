@@ -47,6 +47,17 @@ type KanbanHeaderProps = {
   permissaoNotificacao: () => NotificationPermission | "unknown";
   sincronizandoWhatsapp: boolean;
   sincronizarWhatsapp: () => Promise<{ ok: boolean; erro?: string; criados?: number }>;
+  redistribuindoEmAtendimento: boolean;
+  redistribuirLeadsEmAtendimento: () => Promise<
+    | { ok: false; erro: string }
+    | {
+      ok: true;
+      avaliados: number;
+      elegiveis: number;
+      reatribuidos: number;
+      ignoradosSemDestino: number;
+    }
+  >;
 };
 
 export function KanbanHeader({
@@ -80,6 +91,8 @@ export function KanbanHeader({
   permissaoNotificacao,
   sincronizandoWhatsapp,
   sincronizarWhatsapp,
+  redistribuindoEmAtendimento,
+  redistribuirLeadsEmAtendimento,
 }: KanbanHeaderProps) {
   const { addToast } = useToast();
   const filtrosAtivos = filtros.status !== "todos" || filtros.gravidade !== "todas" || filtros.tipo !== "todos";
@@ -353,6 +366,32 @@ if (permissao === "denied") {
         >
           <RefreshCw className={cn("mr-2 h-4 w-4", sincronizandoWhatsapp && "animate-spin")} />
           {sincronizandoWhatsapp ? "Sincronizando..." : "Sincronizar WhatsApp"}
+        </Button>
+
+        <Button
+          variant="outline"
+          className="rounded-xl border-slate-200"
+          disabled={redistribuindoEmAtendimento}
+          onClick={async () => {
+            const resultado = await redistribuirLeadsEmAtendimento();
+            if (!resultado.ok) {
+              addToast({
+                type: "error",
+                title: "Falha na redistribuicao",
+                description: resultado.erro,
+              });
+              return;
+            }
+
+            addToast({
+              type: "success",
+              title: "Redistribuicao concluida",
+              description: `${resultado.reatribuidos} lead(s) reatribuido(s) de ${resultado.elegiveis} elegivel(is).`,
+            });
+          }}
+        >
+          <RefreshCw className={cn("mr-2 h-4 w-4", redistribuindoEmAtendimento && "animate-spin")} />
+          {redistribuindoEmAtendimento ? "Redistribuindo..." : "Redistribuir em Atendimento"}
         </Button>
       </div>}
     />

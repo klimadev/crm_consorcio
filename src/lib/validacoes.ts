@@ -112,6 +112,13 @@ export const esquemaMoverLead = z.object({
   motivo_perda: z.string().trim().optional(),
 });
 
+export const esquemaRedistribuirLeadsEmAtendimento = z.object({
+  minutosSemAtendimento: z.coerce.number().int().min(1, "Minutos deve ser maior que zero.").max(24 * 60, "Minutos maximo de 24 horas.").default(30),
+  limite: z.coerce.number().int().min(1, "Limite minimo de 1 lead.").max(200, "Limite maximo de 200 leads por execucao.").default(50),
+  id_pdv: z.string().trim().min(1, "PDV invalido.").optional(),
+  nomeEstagio: z.string().trim().min(1, "Nome do estagio invalido.").optional(),
+});
+
 export const esquemaAtualizarLead = z
   .object({
     observacoes: z.string().trim().max(5000, "Observacoes muito longas.").nullable().optional(),
