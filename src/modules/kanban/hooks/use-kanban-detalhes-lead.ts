@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import type { Lead } from "../types";
 import { atualizarLeadKanban, uploadDocumentoKanban } from "@/lib/api/kanban";
+import type { Lead, StatusSalvamentoDetalhesLead } from "../types";
+import { obterMensagemErroKanban } from "../utils/erro";
+import { useToast } from "@/components/ui/toast";
+import { useAutoSave } from "./use-auto-save";
 
 type UseKanbanDetalhesLeadParams = {
   leadSelecionado: Lead | null;
@@ -14,13 +17,16 @@ export function useKanbanDetalhesLead({
   setLeadSelecionado,
   setLeads,
 }: UseKanbanDetalhesLeadParams) {
+  const { addToast } = useToast();
   const [erroDetalhesLead, setErroDetalhesLead] = useState<string | null>(null);
   const [documentoAprovacaoUrl, setDocumentoAprovacaoUrl] = useState("");
   const [arquivoSelecionado, setArquivoSelecionado] = useState<File | null>(null);
   const [uploadando, setUploadando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [salvo, setSalvo] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [salvandoAutomaticamente, setSalvandoAutomaticamente] = useState(false);
+  const [ultimaAtualizacaoSalvaEm, setUltimaAtualizacaoSalvaEm] = useState<Date | null>(null);
+  const salvarAutomaticamenteRef = useRef<(leadAtualizado: Lead) => Promise<void>>(async () => {});
 
   const handleUploadArquivo = useCallback(async (arquivo: File): Promise<string | null> => {
     setUploadando(true);
@@ -34,8 +40,8 @@ export function useKanbanDetalhesLead({
       }
 
       return resposta.dados.url;
-    } catch {
-      setErroDetalhesLead("Erro ao fazer upload.");
+    } catch (erro) {
+      setErroDetalhesLead(obterMensagemErroKanban(erro, "Erro ao fazer upload."));
       setArquivoSelecionado(null);
       return null;
     } finally {
@@ -43,15 +49,30 @@ export function useKanbanDetalhesLead({
     }
   }, []);
 
+  const { autoSavePendente, agendarAutoSave, cancelarAutoSave } = useAutoSave<Lead>({
+    delayMs: 1000,
+    enabled: Boolean(leadSelecionado),
+    onSave: async (leadAtualizado) => {
+      await salvarAutomaticamenteRef.current(leadAtualizado);
+    },
+  });
+
   const salvarDetalhesLead = useCallback(
     async (
       lead: Lead,
       urlDocumento?: string,
-      opcoes?: { atualizarSelecionado?: boolean; arquivoUpload?: File | null },
+      opcoes?: { atualizarSelecionado?: boolean; arquivoUpload?: File | null; origem?: "manual" | "automatica" },
     ) => {
       const atualizarSelecionado = opcoes?.atualizarSelecionado ?? true;
       const arquivoParaUpload = opcoes?.arquivoUpload ?? arquivoSelecionado;
+      const origem = opcoes?.origem ?? "manual";
+
+      if (origem === "manual") {
+        cancelarAutoSave();
+      }
+
       setSalvando(true);
+      setSalvandoAutomaticamente(origem === "automatica");
       setSalvo(false);
       setErroDetalhesLead(null);
 
@@ -62,8 +83,10 @@ export function useKanbanDetalhesLead({
           const urlUpload = await handleUploadArquivo(arquivoParaUpload);
           if (!urlUpload) {
             setSalvando(false);
+            setSalvandoAutomaticamente(false);
             return;
           }
+
           docUrl = urlUpload;
           setArquivoSelecionado(null);
         }
@@ -79,56 +102,86 @@ export function useKanbanDetalhesLead({
         if (!resposta.ok) {
           setErroDetalhesLead(resposta.erro);
           setSalvando(false);
+          setSalvandoAutomaticamente(false);
           return;
         }
 
         if (resposta.dados.lead) {
           const leadAtualizado = resposta.dados.lead;
           setLeads((atual) => atual.map((item) => (item.id === leadAtualizado.id ? leadAtualizado : item)));
+
           if (atualizarSelecionado) {
             setLeadSelecionado((atual) => (atual && atual.id === leadAtualizado.id ? leadAtualizado : atual));
           }
         }
 
         setSalvando(false);
+        setSalvandoAutomaticamente(false);
         setSalvo(true);
+        setUltimaAtualizacaoSalvaEm(new Date());
+
+        if (origem === "manual") {
+          addToast({
+            type: "success",
+            title: "Lead atualizado",
+            description: "As alteracoes do lead foram salvas com sucesso.",
+          });
+        }
+
         setTimeout(() => setSalvo(false), 2000);
-      } catch {
-        setErroDetalhesLead("Erro ao salvar lead.");
+      } catch (erro) {
+        setErroDetalhesLead(obterMensagemErroKanban(erro, "Erro ao salvar lead."));
         setSalvando(false);
+        setSalvandoAutomaticamente(false);
       }
     },
-    [arquivoSelecionado, documentoAprovacaoUrl, handleUploadArquivo, setLeads, setLeadSelecionado],
+    [addToast, arquivoSelecionado, cancelarAutoSave, documentoAprovacaoUrl, handleUploadArquivo, setLeads, setLeadSelecionado],
   );
+
+  useEffect(() => {
+    salvarAutomaticamenteRef.current = async (leadAtualizado) => {
+      await salvarDetalhesLead(leadAtualizado, undefined, { origem: "automatica" });
+    };
+  }, [salvarDetalhesLead]);
 
   const aoMudarLead = useCallback(
     (leadAtualizado: Lead) => {
       setLeadSelecionado(leadAtualizado);
 
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
+      if (erroDetalhesLead) {
+        setErroDetalhesLead(null);
       }
 
-      timeoutRef.current = setTimeout(() => {
-        void salvarDetalhesLead(leadAtualizado);
-      }, 1000);
+      setSalvo(false);
+      agendarAutoSave(leadAtualizado);
     },
-    [salvarDetalhesLead, setLeadSelecionado],
+    [agendarAutoSave, erroDetalhesLead, setLeadSelecionado],
   );
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     if (leadSelecionado) {
       setDocumentoAprovacaoUrl(leadSelecionado.documento_aprovacao_url ?? "");
+      return;
     }
-  }, [leadSelecionado]);
+
+    cancelarAutoSave();
+    setArquivoSelecionado(null);
+    setDocumentoAprovacaoUrl("");
+    setErroDetalhesLead(null);
+    setSalvando(false);
+    setSalvandoAutomaticamente(false);
+    setSalvo(false);
+  }, [cancelarAutoSave, leadSelecionado]);
+
+  const statusSalvamentoDetalhes = useMemo<StatusSalvamentoDetalhesLead>(() => {
+    if (erroDetalhesLead) return "erro";
+    if (uploadando) return "uploadando";
+    if (salvandoAutomaticamente) return "salvando_automaticamente";
+    if (salvando) return "salvando_manual";
+    if (salvo) return "salvo";
+    if (autoSavePendente) return "pendente";
+    return "ocioso";
+  }, [autoSavePendente, erroDetalhesLead, salvando, salvandoAutomaticamente, salvo, uploadando]);
 
   return {
     erroDetalhesLead,
@@ -140,6 +193,10 @@ export function useKanbanDetalhesLead({
     uploadando,
     salvando,
     salvo,
+    salvandoAutomaticamente,
+    salvamentoAutomaticoPendente: autoSavePendente,
+    ultimaAtualizacaoSalvaEm,
+    statusSalvamentoDetalhes,
     salvarDetalhesLead,
     aoMudarLead,
   };

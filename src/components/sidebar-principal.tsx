@@ -10,7 +10,6 @@ import {
   Settings2,
   Sparkles,
   Users,
-  Wallet,
   X,
   MessageCircle,
 } from "lucide-react";
@@ -114,7 +113,6 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
       titulo: "OPERAÇÃO",
       itens: [
         { href: "/kanban", label: "Leads", icon: LayoutGrid, tourTarget: TOUR_TARGETS.sidebarKanban },
-        { href: "/financeiro", label: "Financeiro", icon: Wallet },
         ...(sessao.perfil !== "COLABORADOR"
           ? [{ href: "/equipe", label: "Equipe", icon: Users, tourTarget: TOUR_TARGETS.sidebarEquipe }]
           : []),

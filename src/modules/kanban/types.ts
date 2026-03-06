@@ -63,6 +63,15 @@ export type Props = {
   idUsuario: string;
 };
 
+export type StatusSalvamentoDetalhesLead =
+  | "ocioso"
+  | "pendente"
+  | "salvando_manual"
+  | "salvando_automaticamente"
+  | "uploadando"
+  | "salvo"
+  | "erro";
+
 export type UseKanbanModuleReturn = {
   estagios: Estagio[];
   leads: Lead[];
@@ -86,6 +95,8 @@ export type UseKanbanModuleReturn = {
   setValorNovoLead: (valor: string) => void;
   erroNovoLead: string | null;
   setErroNovoLead: (erro: string | null) => void;
+  criandoLead: boolean;
+  cargoNovoLead: { id_funcionario: string } | null;
   documentoAprovacaoUrl: string;
   setDocumentoAprovacaoUrl: (url: string) => void;
   arquivoSelecionado: File | null;
@@ -93,6 +104,10 @@ export type UseKanbanModuleReturn = {
   uploadando: boolean;
   salvando: boolean;
   salvo: boolean;
+  salvandoAutomaticamente: boolean;
+  salvamentoAutomaticoPendente: boolean;
+  ultimaAtualizacaoSalvaEm: Date | null;
+  statusSalvamentoDetalhes: StatusSalvamentoDetalhesLead;
   erroDetalhesLead: string | null;
   setErroDetalhesLead: (erro: string | null) => void;
   salvarDetalhesLead: (
@@ -120,7 +135,6 @@ export type UseKanbanModuleReturn = {
   aoMudarLead: (leadAtualizado: Lead) => void;
   excluirLead: (id: string) => Promise<void>;
   estagioAberto: string;
-  cargoNovoLead: { id_funcionario: string } | null;
   setCargoNovoLead: (cargo: { id_funcionario: string } | null) => void;
   setEstagioNovoLead: (estagio: string) => void;
   estagioNovoLead: string;

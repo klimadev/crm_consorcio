@@ -1,14 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { AlertCircle, Banknote, FileText, MessageCircle, Phone, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { AlertCircle, Banknote, FileText, Loader2, MessageCircle, Phone, X } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/components/ui/toast";
 import { aprovarLeadKanban } from "@/lib/api/kanban";
 import { useWhatsappChat } from "@/modules/whatsapp/hooks/use-whatsapp-chat";
 import { WhatsappChatPanel } from "@/modules/whatsapp/components/chat/whatsapp-chat-panel";
-import type { Estagio, Funcionario, Lead, PendenciaDinamica } from "../types";
+import type { Estagio, Funcionario, Lead, PendenciaDinamica, StatusSalvamentoDetalhesLead } from "../types";
+import { obterMensagemErroKanban } from "../utils/erro";
+import { MENSAGENS_KANBAN } from "../utils/mensagens";
+import { EmptyState } from "./empty-state";
 import { LeadDeleteConfirmDialog } from "./lead-delete-confirm-dialog";
 import { LeadDetailsTabContent } from "./lead-details-tab-content";
 import { LeadParcelasTab } from "./lead-parcelas-tab";
@@ -28,6 +33,10 @@ type LeadDetailsDrawerProps = {
   uploadando: boolean;
   salvando: boolean;
   salvo: boolean;
+  salvandoAutomaticamente: boolean;
+  salvamentoAutomaticoPendente: boolean;
+  ultimaAtualizacaoSalvaEm: Date | null;
+  statusSalvamentoDetalhes: StatusSalvamentoDetalhesLead;
   erroDetalhesLead: string | null;
   setErroDetalhesLead: (erro: string | null) => void;
   onExcluirLead: (id: string) => Promise<void>;
@@ -39,6 +48,7 @@ type LeadDetailsDrawerProps = {
 };
 
 export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
+  const { addToast } = useToast();
   const {
     leadSelecionado,
     pendenciasLead,
@@ -54,6 +64,10 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
     uploadando,
     salvando,
     salvo,
+    salvandoAutomaticamente,
+    salvamentoAutomaticoPendente,
+    ultimaAtualizacaoSalvaEm,
+    statusSalvamentoDetalhes,
     erroDetalhesLead,
     setErroDetalhesLead,
     onExcluirLead,
@@ -65,11 +79,14 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
   const [confirmarExclusaoAberta, setConfirmarExclusaoAberta] = useState(false);
   const [tabAtiva, setTabAtiva] = useState("detalhes");
   const [aprovando, setAprovando] = useState(false);
+  const [excluindoLead, setExcluindoLead] = useState(false);
+  const [erroExclusaoLead, setErroExclusaoLead] = useState<string | null>(null);
   const [mostrarTrocaDocumento, setMostrarTrocaDocumento] = useState(false);
   const [modoDocumento, setModoDocumento] = useState<"arquivo" | "url">("arquivo");
 
   const initialUrl = leadSelecionado?.documento_aprovacao_url ?? "";
   const hasChanges = temAlteracoes || documentoAprovacaoUrl !== initialUrl;
+  const podeRenderizarConteudo = Boolean(leadSelecionado?.id && leadSelecionado.nome);
 
   const whatsappChat = useWhatsappChat({
     leadId: leadSelecionado?.id,
@@ -82,26 +99,113 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
     ? "Lead sem instancia WhatsApp configurada no PDV."
     : null;
 
-  const handleOpenChange = (aberto: boolean) => {
-    if (!aberto && !fecharConfirmado && hasChanges) {
-      const confirmar = window.confirm("Você tem alterações não salvas. Deseja descartar as alterações?");
-      if (!confirmar) return;
-      setFecharConfirmado(true);
+  const textoUltimaAtualizacao = useMemo(() => {
+    if (!ultimaAtualizacaoSalvaEm) return null;
+
+    return new Intl.DateTimeFormat("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(ultimaAtualizacaoSalvaEm);
+  }, [ultimaAtualizacaoSalvaEm]);
+
+  const atalhoSalvar = useMemo(() => {
+    if (typeof navigator !== "undefined" && navigator.platform.toLowerCase().includes("mac")) {
+      return "Cmd+S";
     }
 
-    if (aberto || !hasChanges || fecharConfirmado) {
+    return "Ctrl+S";
+  }, []);
+
+  const statusSalvar = useMemo(() => {
+    if (erroDetalhesLead) {
+      return {
+        texto: erroDetalhesLead,
+        classe: "text-rose-200",
+        icone: <AlertCircle className="h-3 w-3" />,
+      };
+    }
+
+    const mapaStatus: Record<StatusSalvamentoDetalhesLead, { texto: string; classe: string; icone?: ReactNode }> = {
+      erro: {
+        texto: erroDetalhesLead ?? MENSAGENS_KANBAN.erro.generico,
+        classe: "text-rose-200",
+        icone: <AlertCircle className="h-3 w-3" />,
+      },
+      uploadando: {
+        texto: "Enviando documento para o lead...",
+        classe: "text-amber-100",
+        icone: <Loader2 className="h-3 w-3 animate-spin" />,
+      },
+      salvando_automaticamente: {
+        texto: "Salvando alteracoes automaticamente...",
+        classe: "text-amber-100",
+        icone: <Loader2 className="h-3 w-3 animate-spin" />,
+      },
+      salvando_manual: {
+        texto: "Salvando alteracoes do lead...",
+        classe: "text-amber-100",
+        icone: <Loader2 className="h-3 w-3 animate-spin" />,
+      },
+      salvo: {
+        texto: textoUltimaAtualizacao ? `Ultima atualizacao salva as ${textoUltimaAtualizacao}.` : "Alteracoes salvas com sucesso.",
+        classe: "text-emerald-100",
+      },
+      pendente: {
+        texto: "Alteracoes detectadas. Salvamento automatico em instantes.",
+        classe: "text-amber-100",
+        icone: <AlertCircle className="h-3 w-3" />,
+      },
+      ocioso: {
+        texto: textoUltimaAtualizacao ? `Tudo salvo. Ultima atualizacao as ${textoUltimaAtualizacao}.` : `Edite os detalhes e use ${atalhoSalvar} para salvar na hora.`,
+        classe: "text-emerald-100",
+      },
+    };
+
+    const statusBase = mapaStatus[statusSalvamentoDetalhes];
+
+    if (!salvando && !salvandoAutomaticamente && !salvo && hasChanges && !salvamentoAutomaticoPendente) {
+      return {
+        texto: "Existem alteracoes locais aguardando salvamento.",
+        classe: "text-amber-100",
+        icone: <AlertCircle className="h-3 w-3" />,
+      };
+    }
+
+    return statusBase;
+  }, [atalhoSalvar, erroDetalhesLead, hasChanges, salvando, salvandoAutomaticamente, salvamentoAutomaticoPendente, salvo, statusSalvamentoDetalhes, textoUltimaAtualizacao]);
+
+  const handleOpenChange = useCallback((aberto: boolean) => {
+    if (aberto) {
+      onOpenChange(true);
+      return;
+    }
+
+    if (confirmarExclusaoAberta) {
+      return;
+    }
+
+    let fechamentoConfirmadoAgora = false;
+
+    if (!aberto && !fecharConfirmado && hasChanges) {
+      const confirmar = window.confirm(MENSAGENS_KANBAN.confirmacao.descartarAlteracoes);
+      if (!confirmar) return;
+      setFecharConfirmado(true);
+      fechamentoConfirmadoAgora = true;
+    }
+
+    if (!hasChanges || fecharConfirmado || fechamentoConfirmadoAgora) {
       onOpenChange(false);
       setFecharConfirmado(false);
       setTemAlteracoes(false);
       setTabAtiva("detalhes");
     }
-  };
+  }, [confirmarExclusaoAberta, fecharConfirmado, hasChanges, onOpenChange]);
 
-  const handleSalvar = async () => {
+  const handleSalvar = useCallback(async () => {
     if (!leadSelecionado) return;
     await onSalvarDetalhesLead(leadSelecionado, documentoAprovacaoUrl, { atualizarSelecionado: false });
     setTemAlteracoes(false);
-  };
+  }, [documentoAprovacaoUrl, leadSelecionado, onSalvarDetalhesLead]);
 
   const handleAprovarLead = async () => {
     if (!leadSelecionado) return;
@@ -115,8 +219,13 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
         return;
       }
       if (resultado.dados.lead) onMudarLead(resultado.dados.lead);
-    } catch {
-      setErroDetalhesLead("Erro ao aprovar lead.");
+      addToast({
+        type: "success",
+        title: "Lead aprovado",
+        description: "O lead esta liberado para avancar no funil.",
+      });
+    } catch (erro) {
+      setErroDetalhesLead(obterMensagemErroKanban(erro, MENSAGENS_KANBAN.erro.aprovarLead));
     } finally {
       setAprovando(false);
     }
@@ -133,13 +242,65 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
     if (!leadSelecionado) return;
     const url = documentoAprovacaoUrl.trim();
     if (!url) {
-      setErroDetalhesLead("Informe uma URL valida ou envie um arquivo PDF.");
+      setErroDetalhesLead(MENSAGENS_KANBAN.erro.urlDocumentoInvalida);
       return;
     }
+
+    try {
+      const urlValidada = new URL(url);
+      if (!["http:", "https:"].includes(urlValidada.protocol)) {
+        setErroDetalhesLead(MENSAGENS_KANBAN.erro.urlDocumentoInvalida);
+        return;
+      }
+    } catch {
+      setErroDetalhesLead(MENSAGENS_KANBAN.erro.urlDocumentoInvalida);
+      return;
+    }
+
     await onSalvarDetalhesLead(leadSelecionado, url);
     setTemAlteracoes(false);
     setMostrarTrocaDocumento(false);
   };
+
+  useEffect(() => {
+    if (!leadSelecionado) return;
+
+    const handleAtalhos = (event: KeyboardEvent) => {
+      const tecla = event.key.toLowerCase();
+
+      if ((event.ctrlKey || event.metaKey) && tecla === "s") {
+        if (!hasChanges || salvando || uploadando) return;
+        event.preventDefault();
+        void handleSalvar();
+        return;
+      }
+
+      if (event.key !== "Escape") return;
+
+      if (confirmarExclusaoAberta) {
+        event.preventDefault();
+        return;
+      }
+
+      event.preventDefault();
+      handleOpenChange(false);
+    };
+
+    window.addEventListener("keydown", handleAtalhos, true);
+    return () => window.removeEventListener("keydown", handleAtalhos, true);
+  }, [confirmarExclusaoAberta, handleOpenChange, handleSalvar, hasChanges, leadSelecionado, salvando, uploadando]);
+
+  useEffect(() => {
+    if (statusSalvamentoDetalhes === "salvo") {
+      setTemAlteracoes(false);
+    }
+
+    if (!leadSelecionado) {
+      setTemAlteracoes(false);
+      setErroExclusaoLead(null);
+      setConfirmarExclusaoAberta(false);
+    }
+  }, [leadSelecionado, statusSalvamentoDetalhes]);
 
   return (
     <>
@@ -157,19 +318,16 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
             </div>
             <SheetDescription className="flex items-center gap-2 text-emerald-100">
               <Phone className="h-3 w-3" />
-              {leadSelecionado?.telefone}
-              {salvando ? <span className="text-amber-200">• Salvando...</span> : null}
-              {salvo && !salvando ? <span className="text-emerald-200">• Salvo ✓</span> : null}
-              {!salvando && !salvo && hasChanges ? (
-                <span className="flex items-center gap-1 text-amber-200">
-                  <AlertCircle className="h-3 w-3" />
-                  Alterações não salvas
-                </span>
-              ) : null}
+              <span>{leadSelecionado?.telefone ?? "Sem telefone informado"}</span>
+              <span className={`inline-flex items-center gap-1 ${statusSalvar.classe}`}>
+                {statusSalvar.icone ?? null}
+                {statusSalvar.texto}
+              </span>
             </SheetDescription>
+            <p className="text-xs text-emerald-100/90">Atalhos: {atalhoSalvar} salva agora • Esc fecha o drawer</p>
           </SheetHeader>
 
-          {leadSelecionado ? (
+          {podeRenderizarConteudo && leadSelecionado ? (
             <Tabs value={tabAtiva} onValueChange={setTabAtiva} className="flex min-h-0 flex-1 flex-col">
               <div className="border-b bg-slate-50 px-4 py-2">
                 <TabsList className="grid w-full grid-cols-3 bg-slate-200">
@@ -212,7 +370,10 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
                   onEnviarArquivo={handleEnviarArquivo}
                   onSalvarUrlDocumento={handleSalvarUrlDocumento}
                   onAprovarLead={handleAprovarLead}
-                  onExcluir={() => setConfirmarExclusaoAberta(true)}
+                  onExcluir={() => {
+                    setErroExclusaoLead(null);
+                    setConfirmarExclusaoAberta(true);
+                  }}
                   hasChanges={hasChanges}
                   aprovando={aprovando}
                   mostrarTrocaDocumento={mostrarTrocaDocumento}
@@ -226,7 +387,7 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
 
               <TabsContent value="chat" className="m-0 flex-1 overflow-hidden">
                 <WhatsappChatPanel
-                  leadNome={leadSelecionado.nome}
+                  leadNome={leadSelecionado?.nome ?? "Lead"}
                   messages={whatsappChat.messages}
                   connectionStatus={whatsappChat.connectionStatus}
                   loading={whatsappChat.loading}
@@ -243,18 +404,38 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
                 <LeadParcelasTab leadId={leadSelecionado.id} />
               </TabsContent>
             </Tabs>
-          ) : null}
+          ) : (
+            <EmptyState
+              icone={<Loader2 className="h-6 w-6 animate-spin" />}
+              titulo="Preparando detalhes do lead"
+              descricao="Os dados do drawer ainda nao ficaram prontos para exibicao."
+            />
+          )}
         </SheetContent>
       </Sheet>
 
       <LeadDeleteConfirmDialog
         aberto={confirmarExclusaoAberta && Boolean(leadSelecionado)}
         nomeLead={leadSelecionado?.nome ?? ""}
-        onCancelar={() => setConfirmarExclusaoAberta(false)}
-        onConfirmar={async () => {
-          if (!leadSelecionado) return;
-          await onExcluirLead(leadSelecionado.id);
+        excluindo={excluindoLead}
+        erro={erroExclusaoLead}
+        onCancelar={() => {
+          if (excluindoLead) return;
+          setErroExclusaoLead(null);
           setConfirmarExclusaoAberta(false);
+        }}
+        onConfirmar={async () => {
+          if (!leadSelecionado || excluindoLead) return;
+          setExcluindoLead(true);
+          setErroExclusaoLead(null);
+          try {
+            await onExcluirLead(leadSelecionado.id);
+            setConfirmarExclusaoAberta(false);
+          } catch (error) {
+            setErroExclusaoLead(obterMensagemErroKanban(error, "Nao foi possivel excluir o lead. Tente novamente."));
+          } finally {
+            setExcluindoLead(false);
+          }
         }}
       />
     </>

@@ -1,10 +1,13 @@
-import { AlertCircle, FileText, Loader2, Phone, Trash2 } from "lucide-react";
+import { AlertCircle, FileText, Phone, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { aplicaMascaraMoedaBr, aplicaMascaraTelefoneBr, converteMoedaBrParaNumero } from "@/lib/utils";
 import type { Estagio, Funcionario, Lead, PendenciaDinamica } from "../types";
+import { ActionButton } from "./action-button";
+import { MENSAGENS_KANBAN } from "../utils/mensagens";
+import { validarArquivoDocumentoLead, validarDocumentoLeadUrl, validarTelefoneLead } from "../utils/validacoes";
 
 const LABELS_PENDENCIA: Record<string, string> = {
   DOCUMENTO_APROVACAO_PENDENTE: "Documento de Aprovação (Pdf/Link) Pendente",
@@ -89,6 +92,9 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
   const pendenciaAprovacao = pendenciasLead.some((p) => p.tipo === "APROVACAO_GERENCIA_PENDENTE");
   const emPreAprovacao = estagioAtual?.nome === "Pré Aprovação";
   const emAnalise = emPreAprovacao && !temPendenciaDocumento && (pendenciaAprovacao || !leadSelecionado.aprovado_em);
+  const mensagemTelefoneInvalido = validarTelefoneLead(leadSelecionado.telefone);
+  const mensagemUrlDocumento = modoDocumento === "url" ? validarDocumentoLeadUrl(documentoDigitado) : null;
+  const tamanhoArquivoSelecionado = arquivoSelecionado ? `${(arquivoSelecionado.size / (1024 * 1024)).toFixed(1)} MB` : null;
 
   const statusLead = temPendenciaDocumento
     ? { rotulo: "Pendência crítica", descricao: "Documento de aprovação pendente. Não pode avançar para Fechado.", classe: "border-rose-300 bg-rose-50 text-rose-800" }
@@ -117,6 +123,12 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
             value={leadSelecionado.telefone}
             onChange={(e) => onMudarLead({ ...leadSelecionado, telefone: aplicaMascaraTelefoneBr(e.target.value) })}
           />
+          {mensagemTelefoneInvalido ? (
+            <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{mensagemTelefoneInvalido}</span>
+            </div>
+          ) : null}
         </div>
 
         <div className="mt-3 space-y-2">
@@ -192,28 +204,39 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
                     onChange={(e) => {
                       const arquivo = e.target.files?.[0];
                       if (!arquivo) return;
-                      if (arquivo.type !== "application/pdf") {
-                        setErroDetalhesLead("Apenas arquivos PDF sao permitidos.");
-                        return;
-                      }
-                      if (arquivo.size > 10 * 1024 * 1024) {
-                        setErroDetalhesLead("Arquivo muito grande. Maximo 10MB.");
+                      const erroArquivo = validarArquivoDocumentoLead(arquivo);
+                      if (erroArquivo) {
+                        setErroDetalhesLead(erroArquivo);
                         return;
                       }
                       setArquivoSelecionado(arquivo);
                       setErroDetalhesLead(null);
                       setTemAlteracoes(true);
                     }}
-                  />
-                  <Button type="button" className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700" disabled={!arquivoSelecionado || uploadando || salvando} onClick={() => void onEnviarArquivo()}>
-                    {uploadando || salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enviar documento"}
-                  </Button>
+                   />
+                  {arquivoSelecionado ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                      <p className="font-medium text-slate-700">Arquivo pronto para envio</p>
+                      <p className="mt-1 truncate">{arquivoSelecionado.name}</p>
+                      <p>{tamanhoArquivoSelecionado}</p>
+                    </div>
+                  ) : null}
+                  <ActionButton
+                    type="button"
+                    className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700"
+                    disabled={!arquivoSelecionado || uploadando || salvando}
+                    loading={uploadando || salvando}
+                    loadingText="Enviando documento..."
+                    onClick={() => void onEnviarArquivo()}
+                  >
+                    Enviar documento
+                  </ActionButton>
                 </>
               ) : (
                 <>
                   <Input
                     className="h-10 rounded-xl border-slate-200"
-                    placeholder="https://..."
+                    placeholder={MENSAGENS_KANBAN.placeholders.urlDocumento}
                     value={documentoAprovacaoUrl}
                     onChange={(e) => {
                       setDocumentoAprovacaoUrl(e.target.value);
@@ -221,9 +244,22 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
                       if (e.target.value) setArquivoSelecionado(null);
                     }}
                   />
-                  <Button type="button" className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700" disabled={salvando || uploadando || !documentoAprovacaoUrl.trim()} onClick={() => void onSalvarUrlDocumento()}>
-                    {salvando ? "Salvando URL..." : "Salvar URL do documento"}
-                  </Button>
+                  {mensagemUrlDocumento ? (
+                    <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <span>{mensagemUrlDocumento}</span>
+                    </div>
+                  ) : null}
+                  <ActionButton
+                    type="button"
+                    className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700"
+                    disabled={salvando || uploadando || !documentoAprovacaoUrl.trim() || Boolean(mensagemUrlDocumento)}
+                    loading={salvando}
+                    loadingText="Salvando URL..."
+                    onClick={() => void onSalvarUrlDocumento()}
+                  >
+                    Salvar URL do documento
+                  </ActionButton>
                 </>
               )}
             </div>
@@ -234,9 +270,9 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
       {emPreAprovacao && leadSelecionado.documento_aprovacao_url && !leadSelecionado.aprovado_em && perfil !== "COLABORADOR" ? (
         <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4 shadow-sm">
           <p className="mb-2 text-sm font-semibold text-amber-800">Pendência de análise da EMPRESA (Pré Aprovação)</p>
-          <Button className="w-full rounded-xl bg-amber-500 font-medium text-white hover:bg-amber-600" onClick={() => void onAprovarLead()} disabled={aprovando}>
-            {aprovando ? <Loader2 className="h-4 w-4 animate-spin" /> : "Aprovar Lead"}
-          </Button>
+          <ActionButton className="w-full rounded-xl bg-amber-500 font-medium text-white hover:bg-amber-600" onClick={() => void onAprovarLead()} disabled={aprovando} loading={aprovando} loadingText="Aprovando lead...">
+            Aprovar Lead
+          </ActionButton>
         </div>
       ) : null}
 
@@ -269,13 +305,13 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
       ) : null}
 
       {hasChanges ? (
-        <Button className="w-full rounded-xl bg-emerald-600 text-sm font-medium hover:bg-emerald-700" onClick={() => void onSalvar()} disabled={salvando}>
-          {salvando ? "Salvando..." : "Salvar Alterações"}
-        </Button>
+        <ActionButton className="w-full rounded-xl bg-emerald-600 text-sm font-medium hover:bg-emerald-700" onClick={() => void onSalvar()} disabled={salvando} loading={salvando} loadingText="Salvando alteracoes...">
+          Salvar Alteracoes
+        </ActionButton>
       ) : null}
 
       <div className="border-t pt-4">
-        <Button variant="destructive" className="w-full rounded-xl text-sm font-medium" onClick={onExcluir}>
+        <Button variant="destructive" className="w-full rounded-xl text-sm font-medium" onClick={onExcluir} title="Abrir confirmacao de exclusao">
           <Trash2 className="mr-2 h-4 w-4" />
           Excluir Lead
         </Button>

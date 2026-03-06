@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { Filter, X, Bell, BellOff, Search, ArrowUpDown, RefreshCw } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { ModulePageHeader } from "@/components/shared/module-page-header";
+import { ActionButton } from "./action-button";
 
 type KanbanHeaderProps = {
   dialogNovoLeadAberto: boolean;
@@ -29,6 +30,8 @@ type KanbanHeaderProps = {
   setValorNovoLead: (valor: string) => void;
   erroNovoLead: string | null;
   setErroNovoLead: (erro: string | null) => void;
+  criandoLead: boolean;
+  cargoNovoLead: { id_funcionario: string } | null;
   estagioAberto: string;
   estagioNovoLead: string;
   setEstagioNovoLead: (estagio: string) => void;
@@ -73,6 +76,8 @@ export function KanbanHeader({
   setValorNovoLead,
   erroNovoLead,
   setErroNovoLead,
+  criandoLead,
+  cargoNovoLead,
   estagioAberto,
   estagioNovoLead,
   setEstagioNovoLead,
@@ -97,12 +102,29 @@ export function KanbanHeader({
   const { addToast } = useToast();
   const filtrosAtivos = filtros.status !== "todos" || filtros.gravidade !== "todas" || filtros.tipo !== "todos";
   const inputBuscaRef = useRef<HTMLInputElement>(null);
+  const inputNomeNovoLeadRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const alvo = e.target as HTMLElement | null;
+      const alvoEditavel =
+        alvo instanceof HTMLInputElement ||
+        alvo instanceof HTMLTextAreaElement ||
+        alvo instanceof HTMLSelectElement ||
+        alvo?.isContentEditable;
+
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault();
         inputBuscaRef.current?.focus();
+      }
+      if (!alvoEditavel && !dialogNovoLeadAberto && e.key === "/") {
+        e.preventDefault();
+        inputBuscaRef.current?.focus();
+      }
+      if (e.altKey && e.key.toLowerCase() === "n" && !dialogNovoLeadAberto) {
+        e.preventDefault();
+        setDialogNovoLeadAberto(true);
+        setErroNovoLead(null);
       }
       if (e.key === "Escape" && document.activeElement === inputBuscaRef.current) {
         setBusca("");
@@ -111,7 +133,19 @@ export function KanbanHeader({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [setBusca]);
+  }, [dialogNovoLeadAberto, setBusca, setDialogNovoLeadAberto, setErroNovoLead]);
+
+  useEffect(() => {
+    if (!dialogNovoLeadAberto) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      inputNomeNovoLeadRef.current?.focus();
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [dialogNovoLeadAberto]);
 
   const limparFiltros = () => {
     setFiltros({ status: "todos", gravidade: "todas", tipo: "todos" });
@@ -132,7 +166,7 @@ export function KanbanHeader({
           <input
             ref={inputBuscaRef}
             type="text"
-            placeholder="Buscar lead... (Ctrl+K)"
+            placeholder="Buscar lead... (Ctrl+K ou /)"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             className="h-9 w-48 rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200/50"
@@ -185,7 +219,7 @@ export function KanbanHeader({
           size="sm"
           onClick={async () => {
             const permissao = permissaoNotificacao();
-if (permissao === "denied") {
+            if (permissao === "denied") {
               addToast({ type: "warning", title: "Notificações bloqueadas", description: "Habilite nas configurações do navegador." });
               return;
             }
@@ -254,6 +288,10 @@ if (permissao === "denied") {
         <Dialog
           open={dialogNovoLeadAberto}
           onOpenChange={(aberto) => {
+            if (!aberto && criandoLead) {
+              return;
+            }
+
             setDialogNovoLeadAberto(aberto);
             if (!aberto) {
               setErroNovoLead(null);
@@ -261,7 +299,7 @@ if (permissao === "denied") {
           }}
         >
           <DialogTrigger asChild>
-            <Button className="w-full rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700 md:w-auto">
+            <Button className="w-full rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700 md:w-auto" title="Atalho: Alt+N">
               <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
@@ -275,9 +313,11 @@ if (permissao === "denied") {
 
             <form className="space-y-3" onSubmit={criarLead}>
               <Input
+                ref={inputNomeNovoLeadRef}
                 className="h-11 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
                 name="nome"
                 placeholder="Nome"
+                disabled={criandoLead}
                 required
               />
               <Input
@@ -286,6 +326,7 @@ if (permissao === "denied") {
                 placeholder="Telefone"
                 value={telefoneNovoLead}
                 onChange={(e) => setTelefoneNovoLead(aplicaMascaraTelefoneBr(e.target.value))}
+                disabled={criandoLead}
                 required
               />
               <Input
@@ -295,12 +336,14 @@ if (permissao === "denied") {
                 inputMode="numeric"
                 value={valorNovoLead}
                 onChange={(e) => setValorNovoLead(aplicaMascaraMoedaBr(e.target.value))}
+                disabled={criandoLead}
                 required
               />
 
               <input type="hidden" name="id_estagio" value={estagioNovoLead || estagioAberto} />
+              <input type="hidden" name="id_funcionario" value={cargoNovoLead?.id_funcionario ?? ""} />
 
-              <Select value={estagioNovoLead || estagioAberto} onValueChange={setEstagioNovoLead}>
+              <Select disabled={criandoLead} value={estagioNovoLead || estagioAberto} onValueChange={setEstagioNovoLead}>
                 <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-slate-50/80 text-sm font-medium text-slate-600">
                   <SelectValue placeholder="Estagio" />
                 </SelectTrigger>
@@ -315,6 +358,8 @@ if (permissao === "denied") {
 
               {perfil !== "COLABORADOR" ? (
                 <Select
+                  disabled={criandoLead}
+                  value={cargoNovoLead?.id_funcionario ?? undefined}
                   onValueChange={(valor) => setCargoNovoLead({ id_funcionario: valor })}
                 >
                   <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-slate-50/80 text-sm font-medium text-slate-600">
@@ -332,17 +377,24 @@ if (permissao === "denied") {
 
               {erroNovoLead ? <p className="text-sm font-medium text-red-600">{erroNovoLead}</p> : null}
 
-              <Button className="w-full rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700" type="submit">
+              <ActionButton
+                className="w-full rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700"
+                type="submit"
+                loading={criandoLead}
+                loadingText="Criando lead..."
+              >
                 Criar lead
-              </Button>
+              </ActionButton>
             </form>
           </DialogContent>
         </Dialog>
 
-        <Button
+        <ActionButton
           variant="outline"
           className="rounded-xl border-slate-200"
           disabled={sincronizandoWhatsapp}
+          loading={sincronizandoWhatsapp}
+          loadingText="Sincronizando..."
           onClick={async () => {
             const resultado = await sincronizarWhatsapp();
             if (!resultado.ok) {
@@ -363,15 +415,17 @@ if (permissao === "denied") {
                   : "Nenhum novo contato para importar.",
             });
           }}
+          iconeEsquerda={<RefreshCw className="h-4 w-4" />}
         >
-          <RefreshCw className={cn("mr-2 h-4 w-4", sincronizandoWhatsapp && "animate-spin")} />
-          {sincronizandoWhatsapp ? "Sincronizando..." : "Sincronizar WhatsApp"}
-        </Button>
+          Sincronizar WhatsApp
+        </ActionButton>
 
-        <Button
+        <ActionButton
           variant="outline"
           className="rounded-xl border-slate-200"
           disabled={redistribuindoEmAtendimento}
+          loading={redistribuindoEmAtendimento}
+          loadingText="Redistribuindo..."
           onClick={async () => {
             const resultado = await redistribuirLeadsEmAtendimento();
             if (!resultado.ok) {
@@ -389,10 +443,10 @@ if (permissao === "denied") {
               description: `${resultado.reatribuidos} lead(s) reatribuido(s) de ${resultado.elegiveis} elegivel(is).`,
             });
           }}
+          iconeEsquerda={<RefreshCw className="h-4 w-4" />}
         >
-          <RefreshCw className={cn("mr-2 h-4 w-4", redistribuindoEmAtendimento && "animate-spin")} />
-          {redistribuindoEmAtendimento ? "Redistribuindo..." : "Redistribuir em Atendimento"}
-        </Button>
+          Redistribuir em Atendimento
+        </ActionButton>
       </div>}
     />
   );

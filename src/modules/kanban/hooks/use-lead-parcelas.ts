@@ -36,7 +36,7 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [valorParcela, setValorParcela] = useState("");
+  const [valorTotal, setValorTotal] = useState("");
   const [quantidadeParcelas, setQuantidadeParcelas] = useState("");
   const [dataPrimeiroVencimento, setDataPrimeiroVencimento] = useState(hojeIso());
 
@@ -70,8 +70,8 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
     return () => clearTimeout(timer);
   }, [carregarParcelas]);
 
-  const atualizarValorParcela = useCallback((valor: string) => {
-    setValorParcela(aplicaMascaraMoedaBr(valor));
+  const atualizarValorTotal = useCallback((valor: string) => {
+    setValorTotal(aplicaMascaraMoedaBr(valor));
   }, []);
 
   const gerarPlano = useCallback(async () => {
@@ -79,10 +79,14 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
     setGerando(true);
     setError(null);
 
+    const valorTotalNumero = converteMoedaBrParaNumero(valorTotal);
+    const quantidade = Number(quantidadeParcelas);
+    const valorPorParcela = valorTotalNumero / quantidade;
+
     const resultado = await gerarParcelas({
       id_lead: leadId,
-      valor_parcela: converteMoedaBrParaNumero(valorParcela),
-      quantidade_parcelas: Number(quantidadeParcelas),
+      valor_parcela: valorPorParcela,
+      quantidade_parcelas: quantidade,
       data_primeiro_vencimento: dataPrimeiroVencimento,
     });
 
@@ -95,12 +99,14 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
     addToast({
       type: "success",
       title: "Plano de pagamento criado",
-      description: `${resultado.dados.parcelas_criadas} parcelas geradas para este lead.`,
+      description: `${quantidade} parcelas de ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valorPorParcela)} geradas.`,
     });
 
     setGerando(false);
+    setValorTotal("");
+    setQuantidadeParcelas("");
     await carregarParcelas();
-  }, [addToast, carregarParcelas, dataPrimeiroVencimento, leadId, quantidadeParcelas, valorParcela]);
+  }, [addToast, carregarParcelas, dataPrimeiroVencimento, leadId, quantidadeParcelas, valorTotal]);
 
   const pagarParcela = useCallback(
     async (idParcela: string, dataPagamento?: string) => {
@@ -132,8 +138,8 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
     parcelas,
     loading,
     error,
-    valorParcela,
-    setValorParcela: atualizarValorParcela,
+    valorTotal,
+    setValorTotal: atualizarValorTotal,
     quantidadeParcelas,
     setQuantidadeParcelas,
     dataPrimeiroVencimento,

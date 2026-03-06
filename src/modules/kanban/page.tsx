@@ -1,6 +1,4 @@
 "use client";
-
-import { useRef } from "react";
 import { useKanbanModule } from "./hooks/use-kanban-module";
 import { ModulePageShell } from "@/components/shared/module-page-shell";
 import { KanbanHeader } from "./components/kanban-header";
@@ -11,7 +9,6 @@ import type { Lead, Props } from "./types";
 
 export function ModuloKanban({ perfil, idUsuario }: Props) {
   const vm = useKanbanModule({ perfil, idUsuario });
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleLeadClick = (lead: Lead) => {
     vm.setLeadSelecionado(lead);
@@ -19,7 +16,6 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
 
   const handleDrawerOpenChange = (aberto: boolean) => {
     if (!aberto) {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
       vm.setLeadSelecionado(null);
     }
   };
@@ -39,6 +35,8 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         setValorNovoLead={vm.setValorNovoLead}
         erroNovoLead={vm.erroNovoLead}
         setErroNovoLead={vm.setErroNovoLead}
+        criandoLead={vm.criandoLead}
+        cargoNovoLead={vm.cargoNovoLead}
         estagioAberto={vm.estagioAberto}
         estagioNovoLead={vm.estagioNovoLead}
         setEstagioNovoLead={vm.setEstagioNovoLead}
@@ -96,6 +94,10 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         uploadando={vm.uploadando}
         salvando={vm.salvando}
         salvo={vm.salvo}
+        salvandoAutomaticamente={vm.salvandoAutomaticamente}
+        salvamentoAutomaticoPendente={vm.salvamentoAutomaticoPendente}
+        ultimaAtualizacaoSalvaEm={vm.ultimaAtualizacaoSalvaEm}
+        statusSalvamentoDetalhes={vm.statusSalvamentoDetalhes}
         erroDetalhesLead={vm.erroDetalhesLead}
         setErroDetalhesLead={vm.setErroDetalhesLead}
         onExcluirLead={vm.excluirLead}

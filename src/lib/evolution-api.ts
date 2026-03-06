@@ -186,7 +186,7 @@ export async function enviarMensagemTexto(params: EnviarMensagemTextoParams): Pr
 }
 
 export async function buscarContatos(instanceName: string): Promise<EvolutionContato[]> {
-  const resposta = await fetch(`${EVOLUTION_API_URL}/chat/findContacts/${instanceName}`, {
+  const resposta = await fetch(`${EVOLUTION_API_URL}/chat/findChats/${instanceName}`, {
     method: "POST",
     headers,
     body: JSON.stringify({}),
@@ -194,33 +194,22 @@ export async function buscarContatos(instanceName: string): Promise<EvolutionCon
 
   if (!resposta.ok) {
     const erro = await resposta.json().catch(() => ({}));
-    throw new Error(erro.message ?? "Erro ao buscar contatos na Evolution");
+    throw new Error(erro.message ?? "Erro ao buscar conversas na Evolution");
   }
 
-  const json = (await resposta.json().catch(() => ({}))) as {
-    contacts?: Array<{
-      id?: string;
-      remoteJid?: string;
-      pushName?: string;
-      name?: string;
-    }>;
-    data?: Array<{
-      id?: string;
-      remoteJid?: string;
-      pushName?: string;
-      name?: string;
-    }>;
-  };
+  const json = (await resposta.json().catch(() => ({}))) as Array<{
+    remoteJid?: string;
+    pushName?: string;
+  }>;
 
-  const bruto = json.contacts ?? json.data ?? [];
-
-  return bruto
-    .map((contato) => {
-      const id = (contato.remoteJid ?? contato.id ?? "").trim();
-      if (!id) return null;
+  return json
+    .map((chat) => {
+      const remoteJid = (chat.remoteJid ?? "").trim();
+      if (!remoteJid || remoteJid.includes("@g.us") || remoteJid.includes("@lid")) return null;
+      const numero = remoteJid.replace("@s.whatsapp.net", "");
       return {
-        id,
-        nome: (contato.pushName ?? contato.name ?? "").trim() || null,
+        id: remoteJid,
+        nome: (chat.pushName ?? "").trim() || null,
       };
     })
     .filter((item): item is EvolutionContato => item !== null);

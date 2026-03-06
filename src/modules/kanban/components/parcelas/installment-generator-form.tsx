@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 type InstallmentGeneratorFormProps = {
-  valorParcela: string;
-  onValorParcelaChange: (valor: string) => void;
+  valorTotal: string;
+  onValorTotalChange: (valor: string) => void;
   quantidadeParcelas: string;
   onQuantidadeParcelasChange: (valor: string) => void;
   dataPrimeiroVencimento: string;
@@ -14,8 +14,8 @@ type InstallmentGeneratorFormProps = {
 };
 
 export function InstallmentGeneratorForm({
-  valorParcela,
-  onValorParcelaChange,
+  valorTotal,
+  onValorTotalChange,
   quantidadeParcelas,
   onQuantidadeParcelasChange,
   dataPrimeiroVencimento,
@@ -23,17 +23,21 @@ export function InstallmentGeneratorForm({
   gerando,
   onGerarPlano,
 }: InstallmentGeneratorFormProps) {
+  const valorNumero = Number(valorTotal.replace(/\D/g, "")) / 100;
+  const qtdParcelas = Number(quantidadeParcelas) || 0;
+  const valorPorParcela = qtdParcelas > 0 && valorNumero > 0 ? valorNumero / qtdParcelas : 0;
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <h3 className="text-sm font-semibold text-slate-800">Gerar Plano de Pagamento</h3>
-      <p className="mt-1 text-xs text-slate-500">Defina valor, quantidade e data inicial para gerar as parcelas.</p>
+      <p className="mt-1 text-xs text-slate-500">Defina o valor total e quantidade de parcelas.</p>
 
       <div className="mt-4 space-y-3">
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-slate-600">Valor da Parcela</label>
+          <label className="text-xs font-medium text-slate-600">Valor Total</label>
           <Input
-            value={valorParcela}
-            onChange={(event) => onValorParcelaChange(event.target.value)}
+            value={valorTotal}
+            onChange={(event) => onValorTotalChange(event.target.value)}
             placeholder="0,00"
             inputMode="numeric"
             className="h-10 rounded-xl border-slate-200"
@@ -53,6 +57,15 @@ export function InstallmentGeneratorForm({
           />
         </div>
 
+        {valorPorParcela > 0 && qtdParcelas > 0 && (
+          <div className="rounded-xl bg-emerald-50 p-3 text-center">
+            <p className="text-xs text-emerald-600">Valor de cada parcela</p>
+            <p className="text-lg font-bold text-emerald-700">
+              {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valorPorParcela)}
+            </p>
+          </div>
+        )}
+
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-slate-600">Data do 1o Vencimento</label>
           <Input
@@ -66,7 +79,7 @@ export function InstallmentGeneratorForm({
         <Button
           type="button"
           onClick={onGerarPlano}
-          disabled={gerando}
+          disabled={gerando || !valorTotal || !quantidadeParcelas}
           className="w-full rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
         >
           {gerando ? (
