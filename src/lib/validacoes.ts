@@ -348,6 +348,25 @@ export const esquemaAtualizarPendencia = z.object({
   resolvida: z.boolean().optional(),
 });
 
+export const esquemaGerarParcelas = z.object({
+  id_lead: z.string().trim().min(1, "Lead obrigatorio."),
+  valor_parcela: z.number().positive("Valor da parcela deve ser maior que zero."),
+  quantidade_parcelas: z.number().int().min(1, "Quantidade minima de 1 parcela.").max(360, "Quantidade maxima de 360 parcelas."),
+  data_primeiro_vencimento: z
+    .string()
+    .trim()
+    .min(1, "Data do primeiro vencimento obrigatoria.")
+    .refine((valor) => !Number.isNaN(new Date(valor).getTime()), "Data do primeiro vencimento invalida."),
+});
+
+export const esquemaPagarParcela = z.object({
+  data_pagamento: z
+    .string()
+    .trim()
+    .min(1, "Data de pagamento obrigatoria.")
+    .refine((valor) => !Number.isNaN(new Date(valor).getTime()), "Data de pagamento invalida."),
+});
+
 export const CARGOS_EQUIPE = ["COLABORADOR", "GERENTE", "ADMINISTRADOR"] as const;
 
 export const schemaAtualizarFuncionario = z.object({

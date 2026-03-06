@@ -1,0 +1,1 @@
+export { ModuloFinanceiro } from "./page";

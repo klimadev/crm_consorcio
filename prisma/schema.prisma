@@ -18,6 +18,7 @@ model Empresa {
   funcionarios  Funcionario[]
   leads         Lead[]
   pdvs          Pdv[]
+  parcelas      Parcela[]
 }
 
 model Pdv {
@@ -124,11 +125,35 @@ model Lead {
   funcionario             Funcionario        @relation(fields: [id_funcionario], references: [id])
   empresa                 Empresa            @relation(fields: [id_empresa], references: [id])
   pendencias              Pendencia[]
+  parcelas                Parcela[]
   whatsapp_mensagens      WhatsappMensagem[]
 
   @@index([id_empresa])
   @@index([id_funcionario])
   @@index([id_estagio])
+}
+
+model Parcela {
+  id               String   @id @default(uuid())
+  id_empresa       String
+  id_lead          String
+  numero_parcela   Int
+  quantidade_total Int
+  valor            Float
+  data_vencimento  DateTime
+  data_pagamento   DateTime?
+  status           String   @default("PENDENTE")
+  criado_em        DateTime @default(now())
+  atualizado_em    DateTime @default(now()) @updatedAt
+
+  lead    Lead    @relation(fields: [id_lead], references: [id], onDelete: Cascade)
+  empresa Empresa @relation(fields: [id_empresa], references: [id])
+
+  @@unique([id_lead, numero_parcela])
+  @@index([id_empresa])
+  @@index([id_lead])
+  @@index([id_empresa, status])
+  @@index([id_empresa, data_vencimento])
 }
 
 model Pendencia {
