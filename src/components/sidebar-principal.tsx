@@ -7,6 +7,7 @@ import {
   BarChart3,
   LayoutGrid,
   Menu,
+  Package,
   Settings2,
   Sparkles,
   Users,
@@ -113,6 +114,9 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
       titulo: "OPERAÇÃO",
       itens: [
         { href: "/kanban", label: "Leads", icon: LayoutGrid, tourTarget: TOUR_TARGETS.sidebarKanban },
+        ...(sessao.perfil === "EMPRESA" || sessao.perfil === "GERENTE"
+          ? [{ href: "/produtos", label: "Produtos", icon: Package }]
+          : []),
         ...(sessao.perfil !== "COLABORADOR"
           ? [{ href: "/equipe", label: "Equipe", icon: Users, tourTarget: TOUR_TARGETS.sidebarEquipe }]
           : []),

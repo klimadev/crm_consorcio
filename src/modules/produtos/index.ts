@@ -1,0 +1,1 @@
+export { ModuloProdutos } from "./page";

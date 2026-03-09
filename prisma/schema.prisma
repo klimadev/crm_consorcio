@@ -17,6 +17,8 @@ model Empresa {
   estagios      EstagioFunil[]
   funcionarios  Funcionario[]
   leads         Lead[]
+  produtos      Produto[]
+  leads_produto LeadProduto[]
   pdvs          Pdv[]
   parcelas      Parcela[]
 }
@@ -124,6 +126,7 @@ model Lead {
   estagio                 EstagioFunil       @relation(fields: [id_estagio], references: [id])
   funcionario             Funcionario        @relation(fields: [id_funcionario], references: [id])
   empresa                 Empresa            @relation(fields: [id_empresa], references: [id])
+  produtos                LeadProduto[]
   pendencias              Pendencia[]
   parcelas                Parcela[]
   whatsapp_mensagens      WhatsappMensagem[]
@@ -131,6 +134,44 @@ model Lead {
   @@index([id_empresa])
   @@index([id_funcionario])
   @@index([id_estagio])
+}
+
+model Produto {
+  id             String       @id @default(uuid())
+  id_empresa     String
+  nome           String
+  slug           String
+  descricao      String?
+  ativo          Boolean      @default(true)
+  schema_layout  String
+  criado_em      DateTime     @default(now())
+  atualizado_em  DateTime     @default(now()) @updatedAt
+  empresa        Empresa      @relation(fields: [id_empresa], references: [id])
+  leads_produto  LeadProduto[]
+
+  @@unique([id_empresa, slug])
+  @@index([id_empresa])
+  @@index([id_empresa, ativo])
+}
+
+model LeadProduto {
+  id              String   @id @default(uuid())
+  id_empresa      String
+  id_lead         String
+  id_produto      String
+  nome_snapshot   String
+  schema_snapshot String
+  valores_layout  String
+  observacoes     String?
+  criado_em       DateTime @default(now())
+  atualizado_em   DateTime @default(now()) @updatedAt
+  empresa         Empresa  @relation(fields: [id_empresa], references: [id])
+  lead            Lead     @relation(fields: [id_lead], references: [id], onDelete: Cascade)
+  produto         Produto  @relation(fields: [id_produto], references: [id])
+
+  @@index([id_empresa])
+  @@index([id_lead])
+  @@index([id_produto])
 }
 
 model Parcela {
