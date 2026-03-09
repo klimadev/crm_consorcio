@@ -3,6 +3,13 @@ export type ConnectionDataSource = "evolution_live" | "db_cache" | "unavailable"
 export type ChatConnectionStatus = "online" | "offline" | "unknown";
 export type ChatMessageStatus = "PENDING" | "SENT" | "DELIVERED" | "READ" | "ERROR" | "DELETED" | "PLAYED";
 
+export type WhatsappChatBlockedState = {
+  type: "missing_pdv_instance";
+  message: string;
+  actionLabel?: string;
+  actionHref?: string;
+};
+
 export type WhatsappChatMessage = {
   id: string;
   messageId: string;

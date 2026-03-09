@@ -114,6 +114,7 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
   });
 
   const podeGerenciarEmpresa = perfil === "EMPRESA";
+  const pdvFocoEdicaoId = searchParams.get("editar_pdv");
   const podeExecutarAcoesLote = perfil === "EMPRESA" || perfil === "GERENTE";
   const podeInativar = perfil === "EMPRESA" || perfil === "GERENTE";
   const podeAdicionarFuncionario = perfil === "EMPRESA" || perfil === "GERENTE";
@@ -258,6 +259,7 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     cargoLote,
     pdvLote,
     podeGerenciarEmpresa,
+    idPdvGerenciado: id_pdv,
     podeExecutarAcoesLote,
     podeInativar,
     podeAdicionarFuncionario,
@@ -280,6 +282,7 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     salvandoPdvId,
     excluindoPdvId,
     erroGestaoPdvs,
+    pdvFocoEdicaoId,
     criarPdv,
     editarPdv,
     excluirPdv,

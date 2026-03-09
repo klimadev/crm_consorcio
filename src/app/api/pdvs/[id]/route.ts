@@ -15,8 +15,11 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return auth.erro;
   }
 
-  if (!podeGerenciarEmpresa(auth.sessao)) {
-    return forbidden("Somente EMPRESA pode alterar PDVs.");
+  const { id } = await params;
+  const podeEditarPdv = podeGerenciarEmpresa(auth.sessao) || (auth.sessao.perfil === "GERENTE" && auth.sessao.id_pdv === id);
+
+  if (!podeEditarPdv) {
+    return forbidden("Sem permissao para alterar este PDV.");
   }
 
   const body = await parseJson<unknown>(request);
@@ -28,7 +31,6 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return validacao.response;
   }
 
-  const { id } = await params;
   const { nome, id_whatsapp_instancia } = validacao.data;
 
   if (id_whatsapp_instancia !== undefined && id_whatsapp_instancia !== null) {

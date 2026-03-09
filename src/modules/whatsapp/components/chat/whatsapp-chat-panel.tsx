@@ -1,7 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef } from "react";
-import type { ChatConnectionStatus, WhatsappChatMessage } from "@/modules/whatsapp/types";
+import { MessageCircle, Settings2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { ChatConnectionStatus, WhatsappChatBlockedState, WhatsappChatMessage } from "@/modules/whatsapp/types";
 import { WhatsappConnectionBadge } from "./whatsapp-connection-badge";
 import { WhatsappMessageList } from "./whatsapp-message-list";
 import { WhatsappMessageInput } from "./whatsapp-message-input";
@@ -14,7 +17,7 @@ type Props = {
   sending: boolean;
   canSend: boolean;
   error: string | null;
-  blockedReason?: string | null;
+  blockedState?: WhatsappChatBlockedState | null;
   onSendMessage: (text: string) => Promise<void>;
   onRetryMessage: (message: WhatsappChatMessage) => Promise<void>;
 };
@@ -27,7 +30,7 @@ export function WhatsappChatPanel({
   sending,
   canSend,
   error,
-  blockedReason,
+  blockedState,
   onSendMessage,
   onRetryMessage,
 }: Props) {
@@ -76,15 +79,33 @@ export function WhatsappChatPanel({
         {error && (
           <p className="px-3 py-1 text-xs text-rose-600 bg-rose-50 rounded-lg mb-2">{error}</p>
         )}
-        {blockedReason && (
-          <p className="px-3 py-1 text-xs text-amber-700 bg-amber-50 rounded-lg mb-2">{blockedReason}</p>
+        {blockedState && (
+          <div className="mb-2 flex items-center justify-between gap-3 rounded-lg bg-amber-50 px-3 py-2">
+            <p className="text-xs text-amber-700">{blockedState.message}</p>
+            {blockedState.actionHref ? (
+              <Button asChild size="sm" variant="outline" className="h-8 rounded-lg border-amber-200 bg-white text-amber-800 hover:bg-amber-100">
+                <Link href={blockedState.actionHref}>
+                  <Settings2 className="mr-1 h-3.5 w-3.5" />
+                  {blockedState.actionLabel ?? "Configurar"}
+                </Link>
+              </Button>
+            ) : null}
+          </div>
         )}
-        {!blockedReason && !canSend && (
-          <p className="px-3 py-1 text-xs text-amber-700 bg-amber-50 rounded-lg mb-2">WhatsApp desconectado.</p>
+        {!blockedState && !canSend && (
+          <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2">
+            <p className="text-xs text-amber-700">WhatsApp desconectado.</p>
+            <Button asChild size="sm" variant="outline" className="h-7 rounded-lg border-amber-200 bg-white text-amber-800 hover:bg-amber-100 text-xs">
+              <Link href="/whatsapp">
+                <MessageCircle className="mr-1 h-3.5 w-3.5" />
+                Conectar
+              </Link>
+            </Button>
+          </div>
         )}
       </div>
 
-      <WhatsappMessageInput disabled={Boolean(blockedReason) || !canSend} sending={sending} onSend={onSendMessage} />
+      <WhatsappMessageInput disabled={Boolean(blockedState) || !canSend} sending={sending} onSend={onSendMessage} />
     </div>
   );
 }

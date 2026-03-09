@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { AlertCircle } from "lucide-react";
@@ -36,35 +36,8 @@ export function ConfirmDialog({
   icone,
 }: ConfirmDialogProps) {
   const botaoCancelarRef = useRef<HTMLButtonElement | null>(null);
-  const [montado, setMontado] = useState(false);
 
-  useEffect(() => {
-    setMontado(true);
-    return () => setMontado(false);
-  }, []);
-
-  useEffect(() => {
-    if (!aberto) return;
-
-    const timeout = window.setTimeout(() => {
-      botaoCancelarRef.current?.focus();
-    }, 0);
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || confirmando) return;
-      event.preventDefault();
-      onCancelar();
-    };
-
-    window.addEventListener("keydown", handleEscape, true);
-
-    return () => {
-      window.clearTimeout(timeout);
-      window.removeEventListener("keydown", handleEscape, true);
-    };
-  }, [aberto, confirmando, onCancelar]);
-
-  if (!aberto || !montado) return null;
+  if (!aberto) return null;
 
   const destrutivo = modo === "destrutivo";
 

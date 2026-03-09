@@ -6,7 +6,6 @@ import {
   ArrowUpDown,
   Pencil,
   Search,
-  Trash2,
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -145,7 +144,11 @@ export function EquipeDesktopTable({ vm }: EquipeDesktopTableProps) {
         </TableHeader>
         <TableBody>
           {vm.funcionarios.map((funcionario) => (
-            <TableRow key={funcionario.id} className="border-slate-100">
+            <TableRow 
+              key={funcionario.id} 
+              className="cursor-pointer border-slate-100 transition-all duration-200 hover:bg-slate-50/80 hover:shadow-sm"
+              onClick={() => vm.iniciarEdicao(funcionario)}
+            >
               {vm.podeExecutarAcoesLote && (
                 <TableCell className="py-5">
                   <input
@@ -158,10 +161,21 @@ export function EquipeDesktopTable({ vm }: EquipeDesktopTableProps) {
                 </TableCell>
               )}
               <TableCell className="py-5">
-                <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1 -mx-2 transition-all duration-200 hover:bg-slate-100 hover:shadow-sm"
+                  onClick={() => vm.iniciarEdicao(funcionario)}
+                  title="Clique para editar"
+                >
                   <Avatar nome={funcionario.nome} tamanho="md" />
-                  <p className="text-sm font-medium text-slate-800">{funcionario.nome}</p>
-                </div>
+                  <div className="flex flex-col items-start">
+                    <p className="text-sm font-medium text-slate-800">{funcionario.nome}</p>
+                    <span className="flex items-center gap-1 text-xs text-blue-600 opacity-0 transition-opacity hover:opacity-100">
+                      <Pencil className="h-3 w-3" />
+                      Editar
+                    </span>
+                  </div>
+                </button>
               </TableCell>
               <TableCell className="py-5">
                 <p className="text-sm text-slate-600">{funcionario.email}</p>
@@ -169,35 +183,11 @@ export function EquipeDesktopTable({ vm }: EquipeDesktopTableProps) {
               <TableCell className="py-5">
                 <span className="text-sm text-slate-600">{funcionario.cargo}</span>
               </TableCell>
-              <TableCell className="py-5">
-                <span className="text-sm text-slate-600">{funcionario.pdv?.nome}</span>
+              <TableCell className="py-5 text-slate-600">
+                <span className="text-sm">{funcionario.pdv?.nome}</span>
               </TableCell>
               <TableCell className="py-5">
                 <StatusBadge ativo={funcionario.ativo} />
-              </TableCell>
-              <TableCell className="py-5">
-                <div className="flex items-center justify-end gap-1">
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
-                    className="h-8 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-                    onClick={() => vm.iniciarEdicao(funcionario)}
-                  >
-                    <Pencil className="mr-1 h-4 w-4" />
-                    Editar
-                  </Button>
-                  {funcionario.ativo && vm.podeInativar && (
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      className="h-8 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-600"
-                      onClick={() => vm.abrirModalInativacao(funcionario)}
-                    >
-                      <Trash2 className="mr-1 h-4 w-4" />
-                      Deletar
-                    </Button>
-                  )}
-                </div>
               </TableCell>
             </TableRow>
           ))}

@@ -95,10 +95,6 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
     pollMs: 30000,
   });
 
-  const chatBloqueadoPorPdv = whatsappChat.error?.includes("configurada no PDV")
-    ? "Lead sem instancia WhatsApp configurada no PDV."
-    : null;
-
   const textoUltimaAtualizacao = useMemo(() => {
     if (!ultimaAtualizacaoSalvaEm) return null;
 
@@ -394,7 +390,7 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
                   sending={whatsappChat.sending}
                   canSend={whatsappChat.canSend}
                   error={whatsappChat.error}
-                  blockedReason={chatBloqueadoPorPdv}
+                  blockedState={whatsappChat.blockedState}
                   onSendMessage={whatsappChat.sendMessage}
                   onRetryMessage={whatsappChat.retryMessage}
                 />

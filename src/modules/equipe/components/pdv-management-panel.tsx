@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect, type FormEvent } from "react";
-import { AlertCircle, ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, Building2, CheckCircle2, Loader2, MoreHorizontal, Pencil, Plus, Save, Search, Trash2, UserPlus } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, Building2, CheckCircle2, Loader2, Pencil, Plus, Save, Search, Trash2, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -28,24 +28,12 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
   const [ordenacaoDrawer, setOrdenacaoDrawer] = useState<"nome" | "email" | "cargo" | "status">("nome");
   const [direcaoDrawer, setDirecaoDrawer] = useState<"asc" | "desc">("asc");
   const [nomeNovoPdv, setNomeNovoPdv] = useState("");
-  const [menuAbertoId, setMenuAbertoId] = useState<string | null>(null);
-  const [menuColaboradorAbertoId, setMenuColaboradorAbertoId] = useState<string | null>(null);
   const [editandoFuncionarioNoDrawer, setEditandoFuncionarioNoDrawer] = useState<string | null>(null);
   const [novoColaboradorExpandido, setNovoColaboradorExpandido] = useState(false);
   const [cadastroSucesso, setCadastroSucesso] = useState(false);
   const [errosLocal, setErrosLocal] = useState<{ nome?: string; email?: string; senha?: string }>({});
   const [dadosEdicaoFuncionario, setDadosEdicaoFuncionario] = useState<{ nome: string; email: string; cargo: string; id_pdv: string } | null>(null);
   const [errosEdicao, setErrosEdicao] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    if (!menuAbertoId && !menuColaboradorAbertoId) return;
-    const handleClickOutside = () => {
-      setMenuAbertoId(null);
-      setMenuColaboradorAbertoId(null);
-    };
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, [menuAbertoId, menuColaboradorAbertoId]);
 
   const pdvSelecionadoNoDrawer = useMemo(() => vm.pdvs.find((pdv) => pdv.id === pdvColaboradoresId) ?? null, [vm.pdvs, pdvColaboradoresId]);
   const colaboradoresDrawer = useMemo(() => {
@@ -276,12 +264,21 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
             <article
               key={pdv.id}
               className={cn(
-                "relative space-y-3 overflow-hidden rounded-2xl border bg-white p-4 transition-all duration-200",
-                "hover:-translate-y-0.5 hover:shadow-lg",
+                "group relative cursor-pointer space-y-3 overflow-hidden rounded-2xl border bg-white p-4 transition-all duration-200",
+                "hover:-translate-y-1 hover:shadow-xl hover:border-blue-300/50",
+                "active:scale-[0.99]",
                 "border-slate-200/70 shadow-[0_8px_26px_rgba(15,23,42,0.08)]",
               )}
             >
+              {/* Indicador visual de clique - ícone animado */}
               <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-cyan-100/70 blur-2xl" />
+              <div className="pointer-events-none absolute right-2 top-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100">
+                  <svg className="h-3 w-3 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
               <div className="flex items-start justify-between">
                 {emEdicao ? (
                   <div className="flex flex-1 flex-col gap-2">
@@ -325,10 +322,14 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
                   </div>
                 ) : (
                   <>
-                    <button type="button" className="flex-1 text-left" onClick={() => abrirDrawerColaboradores(pdv.id)}>
+                    <button 
+                      type="button" 
+                      className="flex-1 text-left group/btn"
+                      onClick={() => abrirDrawerColaboradores(pdv.id)}
+                    >
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <h3 className="text-sm font-semibold text-slate-800">{pdv.nome}</h3>
+                          <h3 className="text-sm font-semibold text-slate-800 group-hover/btn:text-blue-700 transition-colors duration-200">{pdv.nome}</h3>
                           {temColaboradores && (
                             <div className="mt-2 flex items-center">
                               <div className="flex -space-x-2">
@@ -354,54 +355,6 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
                         <p className="mt-2 text-xs text-emerald-600">WhatsApp: {pdv.whatsapp_instancia.nome}</p>
                       )}
                     </button>
-                    <div className="ml-2 relative">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="rounded-lg h-8 w-8 p-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setMenuAbertoId(menuAbertoId === pdv.id ? null : pdv.id);
-                        }}
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                      {menuAbertoId === pdv.id && (
-                        <div className="absolute right-0 top-9 z-10 w-36 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
-                          <button
-                            type="button"
-                            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              iniciarEdicaoPdv(pdv.id, pdv.nome, pdv.id_whatsapp_instancia);
-                              setMenuAbertoId(null);
-                            }}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                            Editar
-                          </button>
-                          <button
-                            type="button"
-                            className={cn(
-                              "flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50",
-                              temColaboradores ? "cursor-not-allowed text-slate-400" : "text-rose-600",
-                            )}
-                            disabled={temColaboradores}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!temColaboradores) {
-                                vm.setPdvParaExcluir({ id: pdv.id, nome: pdv.nome });
-                              }
-                              setMenuAbertoId(null);
-                            }}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            Excluir
-                          </button>
-                        </div>
-                      )}
-                    </div>
                   </>
                 )}
               </div>
@@ -602,8 +555,38 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
           ) : (
             <div className="mt-6 px-4">
               <SheetHeader className="px-0">
-                <SheetTitle>{pdvSelecionadoNoDrawer ? `Colaboradores - ${pdvSelecionadoNoDrawer.nome}` : "Colaboradores do PDV"}</SheetTitle>
-                <SheetDescription>Gestao completa dos colaboradores deste PDV no mesmo fluxo da tabela principal.</SheetDescription>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <SheetTitle>{pdvSelecionadoNoDrawer ? `Colaboradores - ${pdvSelecionadoNoDrawer.nome}` : "Colaboradores do PDV"}</SheetTitle>
+                    <SheetDescription>Gestao completa dos colaboradores deste PDV no mesmo fluxo da tabela principal.</SheetDescription>
+                  </div>
+                  {pdvSelecionadoNoDrawer && vm.podeGerenciarEmpresa && (
+                    <div className="flex gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-8 rounded-lg text-slate-600"
+                        onClick={() => iniciarEdicaoPdv(pdvSelecionadoNoDrawer.id, pdvSelecionadoNoDrawer.nome, pdvSelecionadoNoDrawer.id_whatsapp_instancia)}
+                      >
+                        <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                        Editar PDV
+                      </Button>
+                      {pdvSelecionadoNoDrawer.funcionarios?.length === 0 ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-8 rounded-lg text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                          onClick={() => vm.setPdvParaExcluir({ id: pdvSelecionadoNoDrawer.id, nome: pdvSelecionadoNoDrawer.nome })}
+                        >
+                          <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                          Excluir
+                        </Button>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
               </SheetHeader>
               <div className="mb-4 mt-6 space-y-3">
               <div className="rounded-xl border border-blue-200/70 bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-3">
@@ -830,55 +813,37 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
                         <StatusBadge ativo={funcionario.ativo} />
                       </div>
                     </div>
-                    <div className="mt-3 flex justify-end">
-                      <div className="relative">
+                    {vm.podeGerenciarEmpresa && (
+                      <div className="mt-3 flex justify-end gap-2">
                         <Button
                           type="button"
                           size="sm"
                           variant="outline"
-                          className="h-8 w-8 rounded-lg p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setMenuColaboradorAbertoId(menuColaboradorAbertoId === funcionario.id ? null : funcionario.id);
-                          }}
+                          className="h-8 rounded-lg text-slate-600"
+                          onClick={() => iniciarEdicaoFuncionarioDrawer(funcionario.id)}
                         >
-                          <MoreHorizontal className="h-4 w-4" />
+                          <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                          Editar
                         </Button>
-                        {menuColaboradorAbertoId === funcionario.id ? (
-                          <div className="absolute right-0 top-9 z-10 w-40 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
-                            <button
-                              type="button"
-                              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                iniciarEdicaoFuncionarioDrawer(funcionario.id);
-                                setMenuColaboradorAbertoId(null);
-                              }}
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                              Editar
-                            </button>
-                            {funcionario.ativo && vm.podeInativar ? (
-                              <button
-                                type="button"
-                                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const alvo = vm.funcionarios.find((item) => item.id === funcionario.id);
-                                  if (alvo) {
-                                    vm.abrirModalInativacao(alvo);
-                                  }
-                                  setMenuColaboradorAbertoId(null);
-                                }}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                                Inativar
-                              </button>
-                            ) : null}
-                          </div>
-                        ) : null}
+                        {funcionario.ativo && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8 rounded-lg text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                            onClick={() => {
+                              const alvo = vm.funcionarios.find((item) => item.id === funcionario.id);
+                              if (alvo) {
+                                vm.abrirModalInativacao(alvo);
+                              }
+                            }}
+                          >
+                            <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                            Inativar
+                          </Button>
+                        )}
                       </div>
-                    </div>
+                    )}
                   </li>
                 ))}
               </ul>

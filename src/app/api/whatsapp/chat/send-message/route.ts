@@ -1,10 +1,11 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withSessao } from "@/lib/api/route-guards";
 import { parseJson, validateBody } from "@/lib/api/route-validation";
 import { ok, badRequest, notFound, serverError, conflict } from "@/lib/api/http";
 import { esquemaWhatsappChatSendMessage } from "@/lib/validacoes";
 import {
+  buscarPdvDoLead,
   buscarConnectionStatus,
   buscarLeadComAcesso,
   enviarMensagemEvolution,
@@ -16,7 +17,7 @@ import {
 } from "@/lib/whatsapp-chat";
 
 export async function POST(request: NextRequest) {
-  return withSessao(request, async ({ sessao }) => {
+  return withSessao(request, async ({ sessao }): Promise<NextResponse> => {
     const parseResult = await parseJson(request);
     if (!parseResult.ok) return parseResult.response;
 
@@ -36,7 +37,19 @@ export async function POST(request: NextRequest) {
 
     const instancia = await resolverInstanciaDoLead(sessao.id_empresa, lead.id);
     if (!instancia) {
-      return conflict("Lead sem instancia WhatsApp configurada no PDV.");
+      const leadComPdv = await buscarPdvDoLead(sessao.id_empresa, lead.id);
+      const pdv = leadComPdv?.funcionario?.pdv;
+      const podeConfigurar = sessao.perfil === "EMPRESA" || (sessao.perfil === "GERENTE" && sessao.id_pdv === pdv?.id);
+
+      return NextResponse.json(
+        {
+          erro: "Lead sem instancia WhatsApp configurada no PDV.",
+          codigo: "PDV_SEM_INSTANCIA",
+          pdv: pdv ? { id: pdv.id, nome: pdv.nome } : null,
+          rotaConfiguracao: podeConfigurar && pdv ? `/equipe?id_pdv=${pdv.id}&editar_pdv=${pdv.id}` : null,
+        },
+        { status: 409 },
+      );
     }
 
     const connectionStatus = await buscarConnectionStatus(instancia.instanceName);

@@ -11,8 +11,8 @@ import { NovoFuncionarioDialog } from "./components/dialogs/novo-funcionario-dia
 import { InativacaoDialog } from "./components/dialogs/inativacao-dialog";
 import type { Props } from "./types";
 
-export function ModuloEquipe({ perfil }: Props) {
-  const vm = useEquipeModule({ perfil });
+export function ModuloEquipe({ perfil, id_pdv }: Props) {
+  const vm = useEquipeModule({ perfil, id_pdv });
   const [drawerNovoPdvAberto, setDrawerNovoPdvAberto] = useState(false);
 
   if (perfil === "COLABORADOR") {
@@ -30,7 +30,7 @@ export function ModuloEquipe({ perfil }: Props) {
 
       <InlineStatusAlert variant="error" message={vm.erroLista} />
 
-      {vm.podeGerenciarEmpresa ? (
+      {vm.podeAdicionarFuncionario ? (
         <div className="rounded-2xl border border-slate-200/70 bg-white p-3 shadow-[0_2px_8px_rgba(0,0,0,0.04)] md:p-4">
           <PdvManagementPanel vm={vm} drawerNovoPdvAberto={drawerNovoPdvAberto} setDrawerNovoPdvAberto={setDrawerNovoPdvAberto} />
         </div>

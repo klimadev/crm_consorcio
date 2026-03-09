@@ -17,6 +17,8 @@ type LeadComAcesso = {
 };
 
 type InstanciaResolvida = {
+  pdvId: string;
+  pdvNome: string;
   id: string;
   instanceName: string;
 };
@@ -174,11 +176,13 @@ export async function resolverInstanciaDoLead(idEmpresa: string, leadId: string)
     select: {
       funcionario: {
         select: {
-          pdv: {
-            select: {
-              id_whatsapp_instancia: true,
+            pdv: {
+              select: {
+                id: true,
+                nome: true,
+                id_whatsapp_instancia: true,
+              },
             },
-          },
         },
       },
     },
@@ -196,7 +200,34 @@ export async function resolverInstanciaDoLead(idEmpresa: string, leadId: string)
   });
 
   if (!instancia) return null;
-  return { id: instancia.id, instanceName: instancia.instance_name };
+  return {
+    pdvId: lead.funcionario.pdv.id,
+    pdvNome: lead.funcionario.pdv.nome,
+    id: instancia.id,
+    instanceName: instancia.instance_name,
+  };
+}
+
+export async function buscarPdvDoLead(idEmpresa: string, leadId: string) {
+  return prisma.lead.findFirst({
+    where: {
+      id: leadId,
+      id_empresa: idEmpresa,
+    },
+    select: {
+      funcionario: {
+        select: {
+          pdv: {
+            select: {
+              id: true,
+              nome: true,
+              id_whatsapp_instancia: true,
+            },
+          },
+        },
+      },
+    },
+  });
 }
 
 export function normalizarRemoteJidParaLead(telefone: string) {

@@ -1,12 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import {
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  Users,
-} from "lucide-react";
+import { Pencil, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "./shared/status-badge";
 import { Avatar } from "./shared/avatar";
@@ -17,7 +11,6 @@ type EquipeMobileListProps = {
 };
 
 export function EquipeMobileList({ vm }: EquipeMobileListProps) {
-  const [menuAberto, setMenuAberto] = useState<string | null>(null);
 
   const todosDaPaginaSelecionados = vm.funcionarios.length > 0 && vm.funcionarios.every((item) => vm.idsSelecionados.includes(item.id));
 
@@ -56,16 +49,21 @@ export function EquipeMobileList({ vm }: EquipeMobileListProps) {
         return (
           <div
             key={funcionario.id}
-            className={`relative rounded-xl border bg-white p-4 shadow-sm transition-all ${
+            className={`relative cursor-pointer rounded-xl border bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
               isSelected ? "border-blue-300 bg-blue-50/30" : "border-slate-200"
             }`}
+            onClick={() => vm.iniciarEdicao(funcionario)}
           >
             <div className="flex items-start gap-3">
               <input
                 type="checkbox"
                 checked={isSelected}
-                onChange={(e) => vm.alternarSelecao(funcionario.id, e.target.checked)}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  vm.alternarSelecao(funcionario.id, e.target.checked);
+                }}
                 className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-600 focus:ring-slate-400"
+                onClick={(e) => e.stopPropagation()}
               />
               
               <Avatar nome={funcionario.nome} tamanho="md" />
@@ -80,42 +78,11 @@ export function EquipeMobileList({ vm }: EquipeMobileListProps) {
                   <span className="font-medium">{funcionario.cargo}</span>
                   <span>{funcionario.pdv?.nome || "Sem PDV"}</span>
                 </div>
+                <div className="mt-2 flex items-center gap-1 text-xs text-blue-600 opacity-0 transition-opacity hover:opacity-100">
+                  <Pencil className="h-3 w-3" />
+                  <span>Clique para editar</span>
+                </div>
               </div>
-
-              <Button 
-                size="sm" 
-                variant="ghost" 
-                className="h-8 w-8 rounded-lg p-0 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                onClick={() => setMenuAberto(menuAberto === funcionario.id ? null : funcionario.id)}
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-
-              {menuAberto === funcionario.id && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setMenuAberto(null)} />
-                  <div className="absolute right-4 top-12 z-20 w-40 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
-                    <button 
-                      type="button" 
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
-                      onClick={() => { vm.iniciarEdicao(funcionario); setMenuAberto(null); }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                      Editar
-                    </button>
-                    {vm.podeGerenciarEmpresa && (
-                      <button 
-                        type="button" 
-                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"
-                        onClick={() => { vm.abrirModalInativacao(funcionario); setMenuAberto(null); }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Deletar
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
             </div>
           </div>
         );

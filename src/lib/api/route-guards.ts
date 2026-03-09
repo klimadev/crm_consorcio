@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { exigirSessao, respostaSemPermissao } from "@/lib/permissoes";
 import type { SessaoToken } from "@/lib/tipos";
 
-type HandlerComSessao = (ctx: { sessao: SessaoToken }) => Promise<NextResponse>;
+type HandlerComSessao = (ctx: { sessao: SessaoToken }) => Promise<Response>;
 
-export async function withSessao(request: NextRequest, handler: HandlerComSessao): Promise<NextResponse> {
+export async function withSessao(request: NextRequest, handler: HandlerComSessao): Promise<Response> {
   const auth = await exigirSessao(request);
   if (auth.erro) {
     return auth.erro;
@@ -16,7 +16,7 @@ export async function withPerfis(
   request: NextRequest,
   perfis: SessaoToken["perfil"][],
   handler: HandlerComSessao,
-): Promise<NextResponse> {
+): Promise<Response> {
   return withSessao(request, async ({ sessao }) => {
     if (!perfis.includes(sessao.perfil)) {
       return respostaSemPermissao();

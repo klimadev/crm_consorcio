@@ -12,6 +12,12 @@ import type {
 
 type ApiErro = { erro?: string };
 
+type ChatApiErro = ApiErro & {
+  codigo?: string;
+  pdv?: { id: string; nome: string } | null;
+  rotaConfiguracao?: string | null;
+};
+
 type ResultadoApi<T> =
   | { ok: true; dados: T }
   | { ok: false; erro: string };
@@ -96,12 +102,21 @@ type ChatApiResponse = {
 export async function listarMensagensWhatsapp(
   leadId: string,
   signal?: AbortSignal,
-): Promise<ResultadoApi<{ messages: WhatsappChatMessage[]; connectionStatus: ChatConnectionStatus; unreadCount: number }>> {
+) : Promise<
+  | { ok: true; dados: { messages: WhatsappChatMessage[]; connectionStatus: ChatConnectionStatus; unreadCount: number } }
+  | { ok: false; erro: string; codigo?: string; pdv?: { id: string; nome: string } | null; rotaConfiguracao?: string | null }
+> {
   const resposta = await fetch(`/api/whatsapp/chat/messages?leadId=${leadId}`, { signal, cache: "no-store" });
-  const json = await lerJsonSeguro<ChatApiResponse & ApiErro>(resposta);
+  const json = await lerJsonSeguro<ChatApiResponse & ChatApiErro>(resposta);
 
   if (!resposta.ok) {
-    return { ok: false, erro: json.erro ?? "Erro ao carregar mensagens." };
+    return {
+      ok: false,
+      erro: json.erro ?? "Erro ao carregar mensagens.",
+      codigo: json.codigo,
+      pdv: json.pdv,
+      rotaConfiguracao: json.rotaConfiguracao,
+    };
   }
 
   return {
@@ -118,16 +133,25 @@ export async function enviarMensagemWhatsapp(payload: {
   leadId: string;
   text: string;
   clientTempId: string;
-}): Promise<ResultadoApi<{ message: WhatsappChatMessage; clientTempId: string }>> {
+}): Promise<
+  | { ok: true; dados: { message: WhatsappChatMessage; clientTempId: string } }
+  | { ok: false; erro: string; codigo?: string; pdv?: { id: string; nome: string } | null; rotaConfiguracao?: string | null }
+> {
   const resposta = await fetch("/api/whatsapp/chat/send-message", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  const json = await lerJsonSeguro<{ message?: WhatsappChatMessage; clientTempId?: string } & ApiErro>(resposta);
+  const json = await lerJsonSeguro<{ message?: WhatsappChatMessage; clientTempId?: string } & ChatApiErro>(resposta);
 
   if (!resposta.ok || !json.message) {
-    return { ok: false, erro: json.erro ?? "Erro ao enviar mensagem." };
+    return {
+      ok: false,
+      erro: json.erro ?? "Erro ao enviar mensagem.",
+      codigo: json.codigo,
+      pdv: json.pdv,
+      rotaConfiguracao: json.rotaConfiguracao,
+    };
   }
 
   return {

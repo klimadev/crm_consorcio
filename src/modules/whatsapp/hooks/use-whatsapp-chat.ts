@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { enviarMensagemWhatsapp, listarMensagensWhatsapp, marcarMensagensComoLidas } from "@/lib/api/whatsapp";
-import type { ChatConnectionStatus, ChatMessageStatus, WhatsappChatMessage } from "@/modules/whatsapp/types";
+import type { ChatConnectionStatus, ChatMessageStatus, WhatsappChatBlockedState, WhatsappChatMessage } from "@/modules/whatsapp/types";
 
 type UseWhatsappChatParams = {
   leadId?: string;
@@ -51,6 +51,7 @@ export function useWhatsappChat({ leadId, enabled, markReadEnabled, pollMs = 300
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [blockedState, setBlockedState] = useState<WhatsappChatBlockedState | null>(null);
   const backoffMsRef = useRef(pollMs);
   const messagesRef = useRef<WhatsappChatMessage[]>([]);
 
@@ -92,10 +93,23 @@ export function useWhatsappChat({ leadId, enabled, markReadEnabled, pollMs = 300
     try {
       const resultado = await listarMensagensWhatsapp(leadId, signal);
       if (!resultado.ok) {
+        if (resultado.codigo === "PDV_SEM_INSTANCIA") {
+          setBlockedState({
+            type: "missing_pdv_instance",
+            message: resultado.erro,
+            actionLabel: resultado.rotaConfiguracao ? "Configurar WhatsApp deste PDV" : undefined,
+            actionHref: resultado.rotaConfiguracao ?? undefined,
+          });
+          setConnectionStatus("unknown");
+          setMessages([]);
+          setUnreadCount(0);
+          return;
+        }
         throw new Error(resultado.erro);
       }
       if (!mountedRef.current || currentSeq !== requestSeqRef.current) return;
 
+      setBlockedState(null);
       setMessages((prev) => mergeMessages(prev, resultado.dados.messages));
       setConnectionStatus(resultado.dados.connectionStatus);
       setUnreadCount(resultado.dados.unreadCount);
@@ -161,9 +175,18 @@ export function useWhatsappChat({ leadId, enabled, markReadEnabled, pollMs = 300
         });
 
         if (!resultado.ok) {
+          if (resultado.codigo === "PDV_SEM_INSTANCIA") {
+            setBlockedState({
+              type: "missing_pdv_instance",
+              message: resultado.erro,
+              actionLabel: resultado.rotaConfiguracao ? "Configurar WhatsApp deste PDV" : undefined,
+              actionHref: resultado.rotaConfiguracao ?? undefined,
+            });
+          }
           throw new Error(resultado.erro);
         }
 
+        setBlockedState(null);
         const serverMessage = resultado.dados.message;
 
         setMessages((prev) => {
@@ -234,6 +257,7 @@ export function useWhatsappChat({ leadId, enabled, markReadEnabled, pollMs = 300
     setMessages([]);
     setUnreadCount(0);
     setError(null);
+    setBlockedState(null);
     backoffMsRef.current = pollMs;
 
     if (!enabled || !leadId) {
@@ -261,6 +285,7 @@ export function useWhatsappChat({ leadId, enabled, markReadEnabled, pollMs = 300
     loading,
     sending,
     error,
+    blockedState,
     canSend,
     sendMessage,
     retryMessage,
