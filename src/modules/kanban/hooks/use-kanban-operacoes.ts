@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import type { Dispatch, FormEvent, SetStateAction } from "react";
-import type { Lead, Props } from "../types";
+import type { Lead, Props, Estagio } from "../types";
 import { obterMensagemErroKanban, MENSAGENS_FALLBACK_KANBAN } from "../utils/erro";
 import { validarNovoLead } from "../utils/validacoes";
 import { useToast } from "@/components/ui/toast";
@@ -232,6 +232,39 @@ export function useKanbanOperacoes({
     }
   }, [bootstrap, redistribuindoEmAtendimento]);
 
+  const excluirTodosIndefinidos = useCallback(
+    async (leads: Lead[], estagios: Estagio[]) => {
+      const estagioIndefinido = estagios.find((e) => e.nome === "Indefinido");
+      if (!estagioIndefinido) return;
+
+      const leadsIndefinidos = leads.filter((l) => l.id_estagio === estagioIndefinido.id);
+      if (leadsIndefinidos.length === 0) return;
+
+      const resultados = await Promise.allSettled(
+        leadsIndefinidos.map((lead) => excluirLeadKanban(lead.id))
+      );
+
+      const erros = resultados.filter((r) => r.status === "rejected" || r.value?.ok === false);
+      
+      setLeads((atual) => atual.filter((l) => l.id_estagio !== estagioIndefinido.id));
+      
+      if (erros.length === 0) {
+        addToast({
+          type: "success",
+          title: "Leads apagados",
+          description: `${leadsIndefinidos.length} leads indefinidos foram removidos.`,
+        });
+      } else {
+        addToast({
+          type: "warning",
+          title: "Leads parcialmente removidos",
+          description: `${leadsIndefinidos.length - erros.length} removidos, ${erros.length} falharam.`,
+        });
+      }
+    },
+    [addToast, setLeads],
+  );
+
   return {
     erroNovoLead,
     setErroNovoLead,
@@ -242,5 +275,6 @@ export function useKanbanOperacoes({
     sincronizarWhatsapp,
     redistribuirLeadsEmAtendimento,
     excluirLead,
+    excluirTodosIndefinidos,
   };
 }

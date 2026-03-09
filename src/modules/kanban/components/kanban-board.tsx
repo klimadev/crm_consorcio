@@ -9,6 +9,7 @@ import type { Estagio, Lead, PendenciaLeadInfo, Funcionario } from "../types";
 import { PendenciaBadge, getClasseBordaGravidade } from "./pendencia-badge";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { Trash2, Loader2 } from "lucide-react";
 
 type KanbanBoardProps = {
   estagios: Estagio[];
@@ -20,6 +21,7 @@ type KanbanBoardProps = {
   onLeadClick: (lead: Lead) => void;
   modoFocoPendencias?: boolean;
   funcionarios?: Funcionario[];
+  excluirTodosIndefinidos?: () => Promise<void>;
 };
 
 type LeadVisualCue = {
@@ -114,9 +116,20 @@ export function KanbanBoard({
   onLeadClick,
   modoFocoPendencias = false,
   funcionarios = [],
+  excluirTodosIndefinidos,
 }: KanbanBoardProps) {
   const usarFiltrados = leadsFiltradosPorEstagio && Object.values(leadsFiltradosPorEstagio).some(arr => arr.length > 0);
-  const [agoraMs, setAgoraMs] = useState<number | null>(() => (typeof window === "undefined" ? null : Date.now()));
+  const [agoraMs, setAgoraMs] = useState<number | null>(() => typeof window === "undefined" ? null : Date.now());
+  const [excluindoIndefinidos, setExcluindoIndefinidos] = useState(false);
+
+  const handleExcluirIndefinidos = async () => {
+    setExcluindoIndefinidos(true);
+    try {
+      await excluirTodosIndefinidos?.();
+    } finally {
+      setExcluindoIndefinidos(false);
+    }
+  };
 
   useEffect(() => {
     const intervalo = window.setInterval(() => setAgoraMs(Date.now()), 60000);
@@ -141,19 +154,32 @@ export function KanbanBoard({
                   ref={provided.innerRef}
                   {...provided.droppableProps}
                 >
-                  <div className="mb-3 flex items-center gap-2">
-                    <span
-                      className={cn(
-                        "h-2 w-2 rounded-full",
-                        estagio.tipo === "GANHO" && "bg-emerald-500",
-                        estagio.tipo === "PERDIDO" && "bg-slate-500",
-                        estagio.tipo === "ABERTO" && estagio.nome === "Pré Aprovação" && "bg-amber-400",
-                        estagio.tipo === "ABERTO" && estagio.nome !== "Pré Aprovação" && "bg-blue-400",
-                      )}
-                    />
-                    <p className="text-sm font-semibold text-slate-700">
-                      {estagio.nome} <span className="font-normal text-slate-400">({leads.length})</span>
-                    </p>
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "h-2 w-2 rounded-full",
+                          estagio.tipo === "GANHO" && "bg-emerald-500",
+                          estagio.tipo === "PERDIDO" && "bg-slate-500",
+                          estagio.tipo === "ABERTO" && estagio.nome === "Pré Aprovação" && "bg-amber-400",
+                          estagio.tipo === "ABERTO" && estagio.nome !== "Pré Aprovação" && "bg-blue-400",
+                        )}
+                      />
+                      <p className="text-sm font-semibold text-slate-700">
+                        {estagio.nome} <span className="font-normal text-slate-400">({leads.length})</span>
+                      </p>
+                    </div>
+                    {estagio.nome === "Indefinido" && leads.length > 0 && excluirTodosIndefinidos && (
+                      <Tooltip content={excluindoIndefinidos ? "Removendo..." : `Apagar ${leads.length} lead(s) indefinido(s)`}>
+                        <button
+                          onClick={handleExcluirIndefinidos}
+                          disabled={excluindoIndefinidos}
+                          className="rounded p-1 text-slate-400 hover:bg-rose-100 hover:text-rose-600 disabled:opacity-50"
+                        >
+                          {excluindoIndefinidos ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </button>
+                      </Tooltip>
+                    )}
                   </div>
 
                   <div className="space-y-2">

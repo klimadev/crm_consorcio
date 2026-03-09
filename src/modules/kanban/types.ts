@@ -134,6 +134,7 @@ export type UseKanbanModuleReturn = {
   aoDragEnd: (resultado: import("@hello-pangea/dnd").DropResult) => Promise<void>;
   aoMudarLead: (leadAtualizado: Lead) => void;
   excluirLead: (id: string) => Promise<void>;
+  excluirTodosIndefinidos: () => Promise<void>;
   estagioAberto: string;
   setCargoNovoLead: (cargo: { id_funcionario: string } | null) => void;
   setEstagioNovoLead: (estagio: string) => void;

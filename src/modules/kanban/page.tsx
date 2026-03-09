@@ -69,6 +69,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         onLeadClick={handleLeadClick}
         modoFocoPendencias={vm.modoFocoPendencias}
         funcionarios={vm.funcionarios}
+        excluirTodosIndefinidos={vm.excluirTodosIndefinidos}
       />
 
       <PerdaDialog

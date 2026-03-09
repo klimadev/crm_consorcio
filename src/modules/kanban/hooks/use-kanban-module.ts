@@ -98,6 +98,7 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     sincronizarWhatsapp,
     redistribuirLeadsEmAtendimento,
     excluirLead,
+    excluirTodosIndefinidos,
   } = useKanbanOperacoes({
     perfil,
     idUsuario,
@@ -163,6 +164,7 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     aoDragEnd,
     aoMudarLead,
     excluirLead,
+    excluirTodosIndefinidos: () => excluirTodosIndefinidos(leads, estagios),
     estagioAberto,
     cargoNovoLead,
     setCargoNovoLead,
