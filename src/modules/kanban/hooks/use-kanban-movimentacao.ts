@@ -8,6 +8,7 @@ type UseKanbanMovimentacaoParams = {
   leads: Lead[];
   estagios: Estagio[];
   setLeads: Dispatch<SetStateAction<Lead[]>>;
+  registrarMovimentoLocal: () => void;
   addToast: (params: {
     type: "success" | "error" | "warning";
     title: string;
@@ -19,6 +20,7 @@ export function useKanbanMovimentacao({
   leads,
   estagios,
   setLeads,
+  registrarMovimentoLocal,
   addToast,
 }: UseKanbanMovimentacaoParams) {
   const [movimentoPendente, setMovimentoPendente] = useState<{
@@ -43,6 +45,7 @@ export function useKanbanMovimentacao({
             : item,
         ),
       );
+      registrarMovimentoLocal();
 
       const resposta = await moverLeadKanban(idLead, {
         id_estagio: idEstagio,
@@ -74,7 +77,7 @@ export function useKanbanMovimentacao({
 
       return true;
     },
-    [leads, setLeads, addToast],
+    [leads, setLeads, registrarMovimentoLocal, addToast],
   );
 
   const aoDragEnd = useCallback(

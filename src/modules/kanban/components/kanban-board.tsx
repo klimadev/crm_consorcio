@@ -9,7 +9,8 @@ import type { Estagio, Lead, PendenciaLeadInfo, Funcionario } from "../types";
 import { PendenciaBadge, getClasseBordaGravidade } from "./pendencia-badge";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { Trash2, Loader2 } from "lucide-react";
+import { Trash2, Loader2, FileWarning, Clock, CheckCircle, AlertTriangle, Users, GripVertical, Inbox } from "lucide-react";
+import { EmptyState } from "./empty-state";
 
 type KanbanBoardProps = {
   estagios: Estagio[];
@@ -32,15 +33,15 @@ type LeadVisualCue = {
 
 function getColumnTint(estagio: Estagio): string {
   if (estagio.tipo === "GANHO") {
-    return "bg-gradient-to-b from-emerald-50/80 to-white";
+    return "bg-gradient-to-b from-emerald-50/90 to-white/80";
   }
   if (estagio.tipo === "PERDIDO") {
-    return "bg-gradient-to-b from-slate-100/80 to-white";
+    return "bg-gradient-to-b from-slate-100/90 to-white/80";
   }
   if (estagio.nome === "Pré Aprovação") {
-    return "bg-gradient-to-b from-amber-50/70 to-white";
+    return "bg-gradient-to-b from-amber-50/90 to-white/80";
   }
-  return "bg-white";
+  return "bg-gradient-to-b from-slate-50/50 to-white/90";
 }
 
 function getLeadVisualCue(lead: Lead, estagio: Estagio, pendencias?: PendenciaLeadInfo): LeadVisualCue {
@@ -50,40 +51,40 @@ function getLeadVisualCue(lead: Lead, estagio: Estagio, pendencias?: PendenciaLe
   if (estagio.nome === "Pré Aprovação") {
     if (hasPendenciaDocumento || !lead.documento_aprovacao_url) {
       return {
-        circle: "h-3 w-3 animate-pulse rounded-full bg-rose-600 shadow-[0_0_12px_rgba(225,29,72,0.9)]",
-        border: "border-rose-400 bg-rose-50/70",
-        emoji: "",
+        circle: "h-2.5 w-2.5 rounded-full bg-rose-500",
+        border: "border-rose-300 bg-rose-50/80",
+        emoji: null,
       };
     }
 
     if (hasPendenciaAprovacao || !lead.aprovado_em) {
       return {
-        circle: "h-3 w-3 animate-pulse rounded-full bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.9)]",
-        border: "border-amber-400 bg-amber-50/70",
-        emoji: "",
+        circle: "h-2.5 w-2.5 rounded-full bg-amber-500",
+        border: "border-amber-300 bg-amber-50/80",
+        emoji: null,
       };
     }
 
     return {
-      circle: "h-3 w-3 animate-pulse rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.85)]",
-      border: "border-emerald-300 bg-emerald-50/50",
-      emoji: "✅",
+      circle: "h-2.5 w-2.5 rounded-full bg-emerald-500",
+      border: "border-emerald-300 bg-emerald-50/80",
+      emoji: null,
     };
   }
 
   if (estagio.tipo === "GANHO") {
     return {
-      circle: "h-3 w-3 animate-pulse rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.85)]",
-      border: "border-emerald-200",
-      emoji: estagio.nome === "Fechado" ? "🎉" : "🤝",
+      circle: "h-2.5 w-2.5 rounded-full bg-emerald-500",
+      border: "border-emerald-200 bg-emerald-50/50",
+      emoji: null,
     };
   }
 
   if (estagio.tipo === "PERDIDO") {
     return {
-      circle: "h-2.5 w-2.5 rounded-full bg-slate-400",
-      border: "border-slate-300 opacity-70 grayscale-[20%]",
-      emoji: "",
+      circle: "h-2 w-2 rounded-full bg-slate-400",
+      border: "border-slate-200 bg-slate-100/50",
+      emoji: null,
     };
   }
 
@@ -147,9 +148,11 @@ export function KanbanBoard({
               {(provided, snapshot) => (
                 <div
                   className={cn(
-                    "rounded-2xl border border-slate-200/60 p-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all duration-200",
+                    "rounded-2xl border border-slate-200/60 p-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all duration-300",
                     getColumnTint(estagio),
-                    snapshot.isDraggingOver && "border-blue-300 bg-blue-50/50"
+                    snapshot.isDraggingOver 
+                      ? "border-blue-300 bg-blue-50/50 shadow-lg shadow-blue-100/50" 
+                      : "hover:shadow-md hover:-translate-y-0.5 hover:border-blue-200/50"
                   )}
                   ref={provided.innerRef}
                   {...provided.droppableProps}
@@ -184,9 +187,12 @@ export function KanbanBoard({
 
                   <div className="space-y-2">
                     {leads.length === 0 ? (
-                      <div className="py-8 text-center text-sm text-slate-400">
-                        {modoFocoPendencias ? "Sem pendências nesta coluna" : "Nenhum lead"}
-                      </div>
+                      <EmptyState 
+                        titulo={modoFocoPendencias ? "Sem pendências" : "Nenhum lead"}
+                        descricao={modoFocoPendencias ? "Esta coluna não tem pendências" : "Arraste leads para cá ou adicione novos"}
+                        variant="leads"
+                        className="py-8"
+                      />
                     ) : (
                       leads.map((lead, index) => (
                         <Draggable
@@ -195,10 +201,14 @@ export function KanbanBoard({
                           index={index}
                           isDragDisabled={lead.id.startsWith("temp-")}
                         >
-                          {(draggableProvided) => (
+                          {(draggableProvided, draggableSnapshot) => (
                             (() => {
                               const pendencias = pendenciasPorLead[lead.id];
                               const visualCue = getLeadVisualCue(lead, estagio, pendencias);
+                              const diasParados = agoraMs 
+                                ? Math.floor((agoraMs - new Date(lead.atualizado_em).getTime()) / (1000 * 60 * 60 * 24))
+                                : 0;
+                              
                               return (
                             <OptimisticSync active={lead.id.startsWith("temp-")} className="cursor-wait">
                               <Card
@@ -206,62 +216,88 @@ export function KanbanBoard({
                                 {...draggableProvided.draggableProps}
                                 {...draggableProvided.dragHandleProps}
                                 className={cn(
-                                  lead.id.startsWith("temp-") ? "bg-transparent" : "cursor-pointer rounded-xl border border-slate-200/60 shadow-sm transition-all duration-200 hover:shadow-md",
+                                  lead.id.startsWith("temp-") ? "bg-transparent" : "cursor-pointer rounded-2xl border border-slate-200/60 shadow-md transition-all duration-200 hover:shadow-xl hover:-translate-y-1",
                                   visualCue.border,
-                                  getClasseBordaGravidade(pendenciasPorLead[lead.id]?.gravidadeMaxima)
+                                  getClasseBordaGravidade(pendenciasPorLead[lead.id]?.gravidadeMaxima),
+                                  draggableSnapshot.isDragging && "shadow-2xl scale-[1.02] rotate-1 opacity-90"
                                 )}
                                 onClick={() => {
                                   if (lead.id.startsWith("temp-")) return;
                                   onLeadClick(lead);
                                 }}
                               >
-                                <CardContent className="p-3">
-                                  <div className="flex items-start justify-between">
-                                    <Tooltip content={`${lead.nome}\n${lead.telefone}\nValor: ${formataMoeda(lead.valor_consorcio)}`} side="right">
-                                      <div>
-                                        <p className="text-sm font-medium text-slate-800">{lead.nome}</p>
-                                        <p className="text-xs text-slate-500">{lead.telefone}</p>
-                                        <p className="mt-1 text-sm font-medium text-slate-700">
-                                          {formataMoeda(lead.valor_consorcio)}
-                                          {visualCue.emoji ? <span className="ml-1">{visualCue.emoji}</span> : null}
-                                        </p>
-                                         {estagio.nome === "Pré Aprovação" && pendencias?.tipos.includes("DOCUMENTO_APROVACAO_PENDENTE") ? (
-                                           <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700">
-                                             🚨 Pendência de documento
-                                           </span>
-                                         ) : null}
-                                         {estagio.nome === "Pré Aprovação" && !pendencias?.tipos.includes("DOCUMENTO_APROVACAO_PENDENTE") && !lead.aprovado_em ? (
-                                            <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                                              ⏳ Pendência de análise
-                                            </span>
-                                         ) : null}
-                                        {funcionarios.length > 0 && lead.id_funcionario && (
-                                          <p className="mt-1 text-xs text-slate-400">
-                                            {funcionarios.find(f => f.id === lead.id_funcionario)?.nome || "Responsável"}
-                                          </p>
+                                <CardContent className="p-4">
+                                  {/* Nome em destaque */}
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0 flex-1">
+                                      <h3 className="text-base font-bold text-slate-800 truncate flex items-center gap-1.5">
+                                        {!lead.id.startsWith("temp-") && draggableProvided.dragHandleProps && (
+                                          <GripVertical className="h-3.5 w-3.5 text-slate-300 flex-shrink-0" />
                                         )}
-                                         <p className="text-xs text-slate-400">
-                                          {agoraMs === null ? "" : formatarTempoRelativo(lead.atualizado_em, agoraMs)}
-                                         </p>
+                                        {lead.nome}
+                                      </h3>
+                                      
+                                      {/* Telefone */}
+                                      <p className="text-xs text-slate-500 mt-0.5">{lead.telefone}</p>
+                                      
+                                      {/* Valor em destaque */}
+                                      <p className="text-lg font-bold text-emerald-600 mt-2">
+                                        {formataMoeda(lead.valor_consorcio)}
+                                      </p>
+                                      
+                                      {/* Badges de indicadores */}
+                                      <div className="flex flex-wrap gap-1.5 mt-2.5">
+                                        {estagio.nome === "Pré Aprovação" && (pendencias?.tipos.includes("DOCUMENTO_APROVACAO_PENDENTE") || !lead.documento_aprovacao_url) ? (
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-xs font-medium border border-rose-200">
+                                            <FileWarning className="w-3 h-3" /> Documento
+                                          </span>
+                                        ) : null}
+                                        {estagio.nome === "Pré Aprovação" && !pendencias?.tipos.includes("DOCUMENTO_APROVACAO_PENDENTE") && !lead.aprovado_em ? (
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-medium border border-amber-200">
+                                            <Clock className="w-3 h-3" /> Análise
+                                          </span>
+                                        ) : null}
+                                        {estagio.nome === "Pré Aprovação" && lead.aprovado_em ? (
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium border border-emerald-200">
+                                            <CheckCircle className="w-3 h-3" /> Aprovado
+                                          </span>
+                                        ) : null}
+                                        {diasParados > 3 && estagio.tipo !== "GANHO" && estagio.tipo !== "PERDIDO" ? (
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-medium border border-amber-200">
+                                            <Clock className="w-3 h-3" /> {diasParados}d parado
+                                          </span>
+                                        ) : null}
+                                        {pendencias?.naoResolvidas && pendencias.naoResolvidas > 0 && !estagio.nome.includes("Pré Aprovação") ? (
+                                          <span className={cn(
+                                            "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border",
+                                            pendencias.gravidadeMaxima === "critica" && "bg-rose-100 text-rose-700 border-rose-200",
+                                            pendencias.gravidadeMaxima === "alerta" && "bg-amber-100 text-amber-700 border-amber-200",
+                                            pendencias.gravidadeMaxima === "info" && "bg-blue-100 text-blue-700 border-blue-200"
+                                          )}>
+                                            <AlertTriangle className="w-3 h-3" /> {pendencias.naoResolvidas} pendência{pendencias.naoResolvidas > 1 ? 's' : ''}
+                                          </span>
+                                        ) : null}
                                       </div>
-                                    </Tooltip>
+                                      
+                                      {/* Responsável e tempo */}
+                                      <div className="flex items-center gap-2 mt-2.5 text-xs text-slate-400">
+                                        {funcionarios.length > 0 && lead.id_funcionario ? (
+                                          <span className="flex items-center gap-1">
+                                            <Users className="w-3 h-3" />
+                                            {funcionarios.find(f => f.id === lead.id_funcionario)?.nome || "Responsável"}
+                                          </span>
+                                        ) : null}
+                                        {agoraMs !== null && (
+                                          <span className="flex items-center gap-1">
+                                            {agoraMs === null ? "" : formatarTempoRelativo(lead.atualizado_em, agoraMs)}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Indicador visual lateral */}
                                     <div className="flex flex-col items-end gap-1.5">
                                       {visualCue.circle ? <span className={visualCue.circle} /> : null}
-                                      {pendencias?.naoResolvidas ? (
-                                        <PendenciaBadge
-                                          resumo={{
-                                            total: pendencias.naoResolvidas,
-                                            totalLeads: 1,
-                                            porTipo: pendencias.tipos.reduce((acc, t) => ({ ...acc, [t]: (acc[t] || 0) + 1 }), {} as Record<string, number>),
-                                            porGravidade: {
-                                              [pendencias.gravidadeMaxima]: pendencias.naoResolvidas,
-                                              critica: pendencias.gravidadeMaxima === "critica" ? pendencias.naoResolvidas : 0,
-                                              alerta: pendencias.gravidadeMaxima === "alerta" ? pendencias.naoResolvidas : 0,
-                                              info: pendencias.gravidadeMaxima === "info" ? pendencias.naoResolvidas : 0,
-                                            },
-                                          }}
-                                        />
-                                      ) : null}
                                     </div>
                                   </div>
                                 </CardContent>

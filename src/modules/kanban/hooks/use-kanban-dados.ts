@@ -1,13 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { calcularPendenciasLead, type PendenciaCalculada } from "@/lib/calculo-pendencias";
 import type { Estagio, Funcionario, Lead } from "../types";
 import { usePendenciasGlobais, type PendenciaInfo } from "./use-pendencias-globais";
-import { listarKanban } from "@/lib/api/kanban";
+import { useKanbanRealtime } from "./use-kanban-realtime";
 
-export function useKanbanDados() {
+type UseKanbanDadosParams = {
+  addToast?: (params: {
+    type: "success" | "error" | "warning";
+    title: string;
+    description?: string;
+  }) => void;
+};
+
+export function useKanbanDados({ addToast }: UseKanbanDadosParams = {}) {
   const [estagios, setEstagios] = useState<Estagio[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
+  const leadsRef = useRef<Lead[]>([]);
 
   const {
     resumo: resumoPendencias,
@@ -18,7 +27,10 @@ export function useKanbanDados() {
     permissaoNotificacao,
   } = usePendenciasGlobais();
 
+  const bootstrapRef = useRef<() => Promise<void> | null>(null);
+
   const bootstrap = useCallback(async () => {
+    const { listarKanban } = await import("@/lib/api/kanban");
     const resposta = await listarKanban();
     if (!resposta.ok) return;
 
@@ -26,6 +38,24 @@ export function useKanbanDados() {
     setLeads(resposta.dados.leads);
     setFuncionarios(resposta.dados.funcionarios);
   }, []);
+
+  useEffect(() => {
+    bootstrapRef.current = bootstrap;
+  }, [bootstrap]);
+
+  const { registrarMovimentoLocal } = useKanbanRealtime({
+    leadsRef,
+    onSync: async ({ silencioso }) => {
+      if (silencioso && bootstrapRef.current) {
+        await bootstrapRef.current();
+      }
+    },
+    addToast,
+  });
+
+  useEffect(() => {
+    leadsRef.current = leads;
+  }, [leads]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -66,6 +96,7 @@ export function useKanbanDados() {
     funcionarios,
     setFuncionarios,
     bootstrap,
+    registrarMovimentoLocal,
     resumoPendencias,
     recarregarPendencias,
     notificacoesAtivadas,

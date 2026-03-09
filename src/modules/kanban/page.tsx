@@ -50,6 +50,8 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         modoFocoPendencias={vm.modoFocoPendencias}
         setModoFocoPendencias={vm.setModoFocoPendencias}
         resumoPendencias={vm.resumoPendencias}
+        totalLeads={vm.totalLeads}
+        pendenciasCriticas={vm.pendenciasCriticas}
         notificacoesAtivadas={vm.notificacoesAtivadas}
         alternarNotificacoes={vm.alternarNotificacoes}
         permissaoNotificacao={vm.permissaoNotificacao}

@@ -148,6 +148,8 @@ export type UseKanbanModuleReturn = {
   modoFocoPendencias: boolean;
   setModoFocoPendencias: (ativo: boolean) => void;
   recarregarPendencias: () => void;
+  totalLeads: number;
+  pendenciasCriticas: number;
   notificacoesAtivadas: boolean;
   alternarNotificacoes: () => Promise<boolean>;
   permissaoNotificacao: () => NotificationPermission | "unknown";

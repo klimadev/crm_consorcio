@@ -17,12 +17,13 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     setLeads,
     funcionarios,
     bootstrap,
+    registrarMovimentoLocal,
     resumoPendencias,
     recarregarPendencias,
     notificacoesAtivadas,
     alternarNotificacoes,
     permissaoNotificacao,
-  } = useKanbanDados();
+  } = useKanbanDados({ addToast });
 
   const [leadSelecionado, setLeadSelecionado] = useState<Lead | null>(null);
   const [dialogNovoLeadAberto, setDialogNovoLeadAberto] = useState(false);
@@ -63,6 +64,7 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     leads,
     estagios,
     setLeads,
+    registrarMovimentoLocal,
     addToast,
   });
 
@@ -179,6 +181,8 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     modoFocoPendencias,
     setModoFocoPendencias,
     recarregarPendencias,
+    totalLeads: leads.length,
+    pendenciasCriticas: resumoPendencias?.porGravidade.critica ?? 0,
     notificacoesAtivadas,
     alternarNotificacoes,
     permissaoNotificacao,

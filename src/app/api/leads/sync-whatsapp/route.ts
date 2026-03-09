@@ -4,10 +4,29 @@ import { buscarContatos } from "@/lib/evolution-api";
 import { normalizarTelefoneParaWhatsapp } from "@/lib/phone";
 import { exigirSessao } from "@/lib/permissoes";
 import { obterEstagioIndefinido } from "@/lib/estagios-fixos";
+import { aplicaMascaraTelefoneBr } from "@/lib/utils";
 
 function extrairNumeroWhatsapp(rawId: string) {
   const semDominio = rawId.split("@")[0] ?? "";
   return semDominio.replace(/\D/g, "");
+}
+
+function montarDadosContato(contatoNome: string | null, waNumber: string) {
+  const nomeOriginal = contatoNome?.trim() ?? "";
+  const telefoneFormatado = aplicaMascaraTelefoneBr(waNumber);
+
+  if (nomeOriginal) {
+    return {
+      nome: nomeOriginal,
+      observacoes: null as string | null,
+    };
+  }
+
+  return {
+    nome: telefoneFormatado || waNumber,
+    observacoes:
+      "Nome nao identificado na sincronizacao do WhatsApp. O contato foi cadastrado com o numero formatado porque a API nao retornou nome, pushname ou identificador utilizavel, possivelmente devido a politicas recentes do WhatsApp.",
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -126,7 +145,7 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      const nome = contato.nome?.trim() || "Indefinido";
+      const { nome, observacoes } = montarDadosContato(contato.nome, waNumber);
 
       await prisma.lead.create({
         data: {
@@ -136,6 +155,7 @@ export async function POST(request: NextRequest) {
           nome,
           telefone: waNumber,
           valor_consorcio: 0,
+          observacoes,
           origem: "SINCRONIZACAO_WHATSAPP",
         },
       });

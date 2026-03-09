@@ -45,6 +45,8 @@ type KanbanHeaderProps = {
   modoFocoPendencias: boolean;
   setModoFocoPendencias: (ativo: boolean) => void;
   resumoPendencias: ResumoPendencias | null;
+  totalLeads?: number;
+  pendenciasCriticas?: number;
   notificacoesAtivadas: boolean;
   alternarNotificacoes: () => Promise<boolean>;
   permissaoNotificacao: () => NotificationPermission | "unknown";
@@ -91,6 +93,8 @@ export function KanbanHeader({
   modoFocoPendencias,
   setModoFocoPendencias,
   resumoPendencias,
+  totalLeads = 0,
+  pendenciasCriticas = 0,
   notificacoesAtivadas,
   alternarNotificacoes,
   permissaoNotificacao,
@@ -154,7 +158,14 @@ export function KanbanHeader({
   return (
     <ModulePageHeader
       title="Leads"
-      subtitle="Gestão de leads com arrastar e soltar."
+      subtitle={(() => {
+        const partes = [];
+        partes.push(`${totalLeads} lead${totalLeads !== 1 ? 's' : ''}`);
+        if (pendenciasCriticas > 0) {
+          partes.push(`${pendenciasCriticas} crítica${pendenciasCriticas !== 1 ? 's' : ''}`);
+        }
+        return partes.join(" • ");
+      })()}
       icon={(
         <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
@@ -299,7 +310,7 @@ export function KanbanHeader({
           }}
         >
           <DialogTrigger asChild>
-            <Button className="w-full rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700 md:w-auto" title="Atalho: Alt+N">
+            <Button className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 font-medium text-white hover:from-emerald-600 hover:to-emerald-700 md:w-auto shadow-md hover:shadow-lg transition-all duration-200" title="Atalho: Alt+N">
               <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
