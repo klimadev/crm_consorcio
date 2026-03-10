@@ -206,7 +206,6 @@ export async function buscarContatos(instanceName: string): Promise<EvolutionCon
     .map((chat) => {
       const remoteJid = (chat.remoteJid ?? "").trim();
       if (!remoteJid || remoteJid.includes("@g.us") || remoteJid.includes("@lid")) return null;
-      const numero = remoteJid.replace("@s.whatsapp.net", "");
       return {
         id: remoteJid,
         nome: (chat.pushName ?? "").trim() || null,

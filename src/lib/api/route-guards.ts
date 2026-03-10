@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { exigirSessao, respostaSemPermissao } from "@/lib/permissoes";
 import type { SessaoToken } from "@/lib/tipos";
 

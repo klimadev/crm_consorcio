@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import {
@@ -9,7 +10,6 @@ import {
   Menu,
   Package,
   Settings2,
-  Sparkles,
   Users,
   X,
   MessageCircle,
@@ -143,8 +143,13 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
     <div className="flex h-full flex-col gap-4 rounded-2xl border border-slate-200/80 bg-[#F8F9FA] p-4 shadow-[0_14px_40px_-28px_rgba(15,23,42,0.55)] lg:min-h-[calc(100vh-2rem)]">
       <div className="space-y-4">
         <div className="flex items-center gap-3 px-1">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-sm">
-            <Sparkles className="h-4 w-4" />
+          <div className="relative h-9 w-9 overflow-hidden rounded-xl">
+            <Image
+              src="/logo.png"
+              alt="MC Consórcio"
+              fill
+              className="object-cover"
+            />
           </div>
           <div>
             <p className="text-[15px] font-semibold tracking-[-0.01em] text-slate-900">MC CRM Consórcio</p>

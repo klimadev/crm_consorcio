@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { withSessao, withPerfis } from "@/lib/api/route-guards";
-import { ok, forbidden } from "@/lib/api/http";
+import { ok } from "@/lib/api/http";
 import { detectarPendenciasDinamicas } from "@/lib/pendencias-dinamicas";
 import { prisma } from "@/lib/prisma";
 import { whereLeadsPorPerfil } from "@/lib/permissoes";

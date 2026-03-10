@@ -6,10 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { OptimisticSync } from "@/components/ui/optimistic-sync";
 import { formataMoeda } from "@/lib/utils";
 import type { Estagio, Lead, PendenciaLeadInfo, Funcionario } from "../types";
-import { PendenciaBadge, getClasseBordaGravidade } from "./pendencia-badge";
+import { getClasseBordaGravidade } from "./pendencia-badge";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { Trash2, Loader2, FileWarning, Clock, CheckCircle, AlertTriangle, Users, GripVertical, Inbox } from "lucide-react";
+import { Trash2, Loader2, FileWarning, Clock, CheckCircle, AlertTriangle, Users, GripVertical } from "lucide-react";
 import { EmptyState } from "./empty-state";
 
 type KanbanBoardProps = {

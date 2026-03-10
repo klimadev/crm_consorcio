@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Users, Inbox } from "lucide-react";
+import { Inbox } from "lucide-react";
 
 type EmptyStateProps = {
   icone?: ReactNode;

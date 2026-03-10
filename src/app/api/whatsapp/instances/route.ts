@@ -5,6 +5,7 @@ import { criarInstancia } from "@/lib/evolution-api";
 import { esquemaCriarWhatsappInstancia } from "@/lib/validacoes";
 import { handleRouteError } from "@/lib/api/route-errors";
 import { parseJson, validateBody } from "@/lib/api/route-validation";
+import { withRetry } from "@/lib/api/retry";
 
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL ?? "http://localhost:8080";
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY ?? "";
@@ -53,15 +54,19 @@ export async function GET(request: NextRequest) {
         const profilePic = (instanciaApi.profilePicUrl as string) ?? null;
 
         try {
-          await prisma.whatsappInstancia.update({
-            where: { id: inst.id },
-            data: {
-              status: estado,
-              phone: phone,
-              profile_name: profileName,
-              profile_pic: profilePic,
-            },
-          });
+          await withRetry(
+            () =>
+              prisma.whatsappInstancia.update({
+                where: { id: inst.id },
+                data: {
+                  status: estado,
+                  phone: phone,
+                  profile_name: profileName,
+                  profile_pic: profilePic,
+                },
+              }),
+            { maxAttempts: 3, delayMs: 1000 }
+          );
         } catch (erro) {
           console.error("Erro ao atualizar instância no DB:", erro);
         }

@@ -6,6 +6,7 @@ import { esquemaAtualizarWhatsappInstancia } from "@/lib/validacoes";
 import { notFound } from "@/lib/api/http";
 import { handleRouteError } from "@/lib/api/route-errors";
 import { validateBody } from "@/lib/api/route-validation";
+import { withRetry } from "@/lib/api/retry";
 
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL ?? "http://localhost:8080";
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY ?? "";
@@ -36,18 +37,22 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   try {
     await deletarInstancia(instancia.instance_name);
 
-    await prisma.$transaction([
-      prisma.pdv.updateMany({
-        where: {
-          id_empresa: auth.sessao.id_empresa,
-          id_whatsapp_instancia: instancia.id,
-        },
-        data: { id_whatsapp_instancia: null },
-      }),
-      prisma.whatsappInstancia.delete({
-        where: { id: instancia.id },
-      }),
-    ]);
+    await withRetry(
+      () =>
+        prisma.$transaction([
+          prisma.pdv.updateMany({
+            where: {
+              id_empresa: auth.sessao.id_empresa,
+              id_whatsapp_instancia: instancia.id,
+            },
+            data: { id_whatsapp_instancia: null },
+          }),
+          prisma.whatsappInstancia.delete({
+            where: { id: instancia.id },
+          }),
+        ]),
+      { maxAttempts: 3, delayMs: 1000 }
+    );
 
     return NextResponse.json({ ok: true });
   } catch (erro) {
@@ -93,10 +98,14 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       return validacao.response;
     }
 
-    const atualizada = await prisma.whatsappInstancia.update({
-      where: { id: instancia.id },
-      data: { nome: validacao.data.nome },
-    });
+    const atualizada = await withRetry(
+      () =>
+        prisma.whatsappInstancia.update({
+          where: { id: instancia.id },
+          data: { nome: validacao.data.nome },
+        }),
+      { maxAttempts: 3, delayMs: 1000 }
+    );
 
     return NextResponse.json({ instancia: atualizada });
   }
@@ -111,10 +120,14 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     });
 
     if (!resposta.ok) {
-      const atualizada = await prisma.whatsappInstancia.update({
-        where: { id: instancia.id },
-        data: { status: "disconnected" },
-      });
+      const atualizada = await withRetry(
+        () =>
+          prisma.whatsappInstancia.update({
+            where: { id: instancia.id },
+            data: { status: "disconnected" },
+          }),
+        { maxAttempts: 3, delayMs: 1000 }
+      );
       return NextResponse.json({ instancia: atualizada });
     }
 
@@ -123,21 +136,29 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const novoStatus = data.state ?? "unknown";
     const phone = data.owner?.replace("@s.whatsapp.net", "") ?? null;
 
-    const atualizada = await prisma.whatsappInstancia.update({
-      where: { id: instancia.id },
-      data: {
-        status: novoStatus,
-        phone: phone,
-      },
-    });
+    const atualizada = await withRetry(
+      () =>
+        prisma.whatsappInstancia.update({
+          where: { id: instancia.id },
+          data: {
+            status: novoStatus,
+            phone: phone,
+          },
+        }),
+      { maxAttempts: 3, delayMs: 1000 }
+    );
 
     return NextResponse.json({ instancia: atualizada });
   } catch (erro) {
     console.error("Erro ao verificar status:", erro);
-    const atualizada = await prisma.whatsappInstancia.update({
-      where: { id: instancia.id },
-      data: { status: "error" },
-    });
+    const atualizada = await withRetry(
+      () =>
+        prisma.whatsappInstancia.update({
+          where: { id: instancia.id },
+          data: { status: "error" },
+        }),
+      { maxAttempts: 3, delayMs: 1000 }
+    );
     return NextResponse.json({ instancia: atualizada });
   }
 }
