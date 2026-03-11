@@ -303,7 +303,7 @@ export async function enviarMensagemEvolution(instanceName: string, number: stri
   const response = await fetch(`${EVOLUTION_API_URL}/message/sendText/${instanceName}`, {
     method: "POST",
     headers: payloadHeaders(),
-    body: JSON.stringify({ number, text }),
+    body: JSON.stringify({ number: `+${number}`, text }),
   });
 
   if (!response.ok) {

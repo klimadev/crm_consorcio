@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { calcularPendenciasLead, type PendenciaCalculada } from "@/lib/calculo-pendencias";
-import type { Estagio, Funcionario, Lead } from "../types";
+import type { Estagio, Funcionario, Lead, Pdv } from "../types";
 import { usePendenciasGlobais, type PendenciaInfo } from "./use-pendencias-globais";
 import { useKanbanRealtime } from "./use-kanban-realtime";
 
@@ -16,6 +16,7 @@ export function useKanbanDados({ addToast }: UseKanbanDadosParams = {}) {
   const [estagios, setEstagios] = useState<Estagio[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
+  const [pdvs, setPdvs] = useState<Pdv[]>([]);
   const leadsRef = useRef<Lead[]>([]);
 
   const {
@@ -37,6 +38,7 @@ export function useKanbanDados({ addToast }: UseKanbanDadosParams = {}) {
     setEstagios(resposta.dados.estagios);
     setLeads(resposta.dados.leads);
     setFuncionarios(resposta.dados.funcionarios);
+    setPdvs(resposta.dados.pdvs);
   }, []);
 
   useEffect(() => {
@@ -95,6 +97,8 @@ export function useKanbanDados({ addToast }: UseKanbanDadosParams = {}) {
     setLeads,
     funcionarios,
     setFuncionarios,
+    pdvs,
+    setPdvs,
     bootstrap,
     registrarMovimentoLocal,
     resumoPendencias,

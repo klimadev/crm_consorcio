@@ -22,6 +22,24 @@ export type EvolutionInstance = {
 export type EvolutionContato = {
   id: string;
   nome: string | null;
+  pushName: string | null;
+  remoteJidAlt: string | null;
+  isGroup: boolean;
+};
+
+export type EvolutionConversa = {
+  remoteJid: string;
+  remoteJidAlt: string | null;
+  pushName: string | null;
+  isGroup: boolean;
+  lastMessage?: {
+    key: {
+      remoteJid: string;
+      remoteJidAlt?: string;
+      fromMe: boolean;
+    };
+    pushName?: string;
+  };
 };
 
 export async function listarInstancias(): Promise<EvolutionInstance[]> {
@@ -166,7 +184,7 @@ export async function enviarMensagemTexto(params: EnviarMensagemTextoParams): Pr
     method: "POST",
     headers,
     body: JSON.stringify({
-      number: numeroNormalizado.waNumber,
+      number: `+${numeroNormalizado.waNumber}`,
       text: params.mensagem,
     }),
   });
@@ -197,19 +215,74 @@ export async function buscarContatos(instanceName: string): Promise<EvolutionCon
     throw new Error(erro.message ?? "Erro ao buscar conversas na Evolution");
   }
 
+  const json = (await resposta.json().catch(() => ({}))) as EvolutionConversa[];
+
+  return json
+    .map((chat) => {
+      const remoteJid = (chat.remoteJid ?? "").trim();
+      if (!remoteJid || remoteJid.includes("@g.us")) return null;
+
+      const remoteJidAlt = chat.remoteJidAlt ?? chat.lastMessage?.key?.remoteJidAlt ?? null;
+      const pushName = chat.pushName ?? chat.lastMessage?.pushName ?? null;
+      const isGroup = remoteJid.includes("@g.us") || chat.isGroup === true;
+
+      return {
+        id: remoteJidAlt ?? remoteJid,
+        nome: pushName,
+        pushName: pushName,
+        remoteJidAlt: remoteJidAlt,
+        isGroup,
+      };
+    })
+    .filter((item): item is EvolutionContato => item !== null);
+}
+
+export async function buscarConversas(instanceName: string): Promise<EvolutionConversa[]> {
+  const resposta = await fetch(`${EVOLUTION_API_URL}/chat/findChats/${instanceName}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({}),
+  });
+
+  if (!resposta.ok) {
+    const erro = await resposta.json().catch(() => ({}));
+    throw new Error(erro.message ?? "Erro ao buscar conversas na Evolution");
+  }
+
   const json = (await resposta.json().catch(() => ({}))) as Array<{
     remoteJid?: string;
-    pushName?: string;
+    remoteJidAlt?: string;
+    pushName?: string | null;
+    isGroup?: boolean;
+    lastMessage?: {
+      key?: {
+        remoteJid?: string;
+        remoteJidAlt?: string;
+        fromMe?: boolean;
+      };
+      pushName?: string;
+    };
   }>;
 
   return json
     .map((chat) => {
       const remoteJid = (chat.remoteJid ?? "").trim();
-      if (!remoteJid || remoteJid.includes("@g.us") || remoteJid.includes("@lid")) return null;
+      if (!remoteJid || remoteJid.includes("@g.us")) return null;
+
+      const remoteJidAlt =
+        chat.remoteJidAlt ??
+        chat.lastMessage?.key?.remoteJidAlt ??
+        (remoteJid.includes("@lid") ? null : remoteJid);
+
+      const pushName = chat.pushName ?? chat.lastMessage?.pushName ?? null;
+      const isGroup = remoteJid.includes("@g.us") || chat.isGroup === true;
+
       return {
-        id: remoteJid,
-        nome: (chat.pushName ?? "").trim() || null,
+        remoteJid,
+        remoteJidAlt: remoteJidAlt && remoteJidAlt.includes("@s.whatsapp.net") ? remoteJidAlt : null,
+        pushName: pushName ?? null,
+        isGroup,
       };
     })
-    .filter((item): item is EvolutionContato => item !== null);
+    .filter((item): item is EvolutionConversa => item !== null);
 }

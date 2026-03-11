@@ -28,6 +28,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         criarLead={vm.criarLead}
         estagios={vm.estagios}
         funcionarios={vm.funcionarios}
+        pdvs={vm.pdvs}
         perfil={perfil}
         telefoneNovoLead={vm.telefoneNovoLead}
         setTelefoneNovoLead={vm.setTelefoneNovoLead}
@@ -72,6 +73,13 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         modoFocoPendencias={vm.modoFocoPendencias}
         funcionarios={vm.funcionarios}
         excluirTodosIndefinidos={vm.excluirTodosIndefinidos}
+        temFiltrosAtivos={
+          vm.filtros.status !== "todos" ||
+          vm.filtros.gravidade !== "todas" ||
+          vm.filtros.tipo !== "todos" ||
+          vm.filtros.pdv !== null ||
+          vm.busca !== ""
+        }
       />
 
       <PerdaDialog

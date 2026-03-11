@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
   const whereLeads = await whereLeadsPorPerfil(auth.sessao);
 
-  const [estagios, leads, funcionarios] = await Promise.all([
+  const [estagios, leads, funcionarios, pdvs] = await Promise.all([
     prisma.estagioFunil.findMany({
       where: { id_empresa: auth.sessao.id_empresa },
       orderBy: { ordem: "asc" },
@@ -25,18 +25,33 @@ export async function GET(request: NextRequest) {
     prisma.lead.findMany({
       where: whereLeads,
       orderBy: { atualizado_em: "desc" },
+      include: { funcionario: { select: { id_pdv: true } } },
     }),
     // Filter employees by PDV for GERENTE
     prisma.funcionario.findMany({
       where: auth.sessao.perfil === "GERENTE" && auth.sessao.id_pdv
         ? { id_empresa: auth.sessao.id_empresa, ativo: true, id_pdv: auth.sessao.id_pdv }
         : { id_empresa: auth.sessao.id_empresa, ativo: true },
-      select: { id: true, nome: true },
+      select: { id: true, nome: true, id_pdv: true },
       orderBy: { nome: "asc" },
     }),
+    // Only return PDVs for EMPRESA profile
+    auth.sessao.perfil === "EMPRESA"
+      ? prisma.pdv.findMany({
+          where: { id_empresa: auth.sessao.id_empresa },
+          select: { id: true, nome: true },
+          orderBy: { nome: "asc" },
+        })
+      : Promise.resolve([]),
   ]);
 
-  return NextResponse.json({ estagios, leads, funcionarios });
+  // Add id_pdv to leads response
+  const leadsComPdv = leads.map((lead: typeof leads[number]) => ({
+    ...lead,
+    id_pdv: lead.funcionario.id_pdv,
+  }));
+
+  return NextResponse.json({ estagios, leads: leadsComPdv, funcionarios, pdvs });
 }
 
 export async function POST(request: NextRequest) {

@@ -5,6 +5,7 @@ import { normalizarTelefoneParaWhatsapp } from "@/lib/phone";
 import { exigirSessao } from "@/lib/permissoes";
 import { obterEstagioIndefinido } from "@/lib/estagios-fixos";
 import { aplicaMascaraTelefoneBr } from "@/lib/utils";
+import type { EvolutionContato } from "@/lib/evolution-api";
 
 type InstanciaIgnorada = {
   id: string;
@@ -25,8 +26,15 @@ function extrairNumeroWhatsapp(rawId: string) {
   return semDominio.replace(/\D/g, "");
 }
 
-function montarDadosContato(contatoNome: string | null, waNumber: string) {
-  const nomeOriginal = contatoNome?.trim() ?? "";
+function extrairNumeroReal(contato: EvolutionContato): string | null {
+  if (contato.remoteJidAlt) {
+    return extrairNumeroWhatsapp(contato.remoteJidAlt);
+  }
+  return extrairNumeroWhatsapp(contato.id);
+}
+
+function montarDadosContato(contato: EvolutionContato, waNumber: string) {
+  const nomeOriginal = contato.pushName?.trim() ?? contato.nome?.trim() ?? "";
   const telefoneFormatado = aplicaMascaraTelefoneBr(waNumber);
 
   if (nomeOriginal) {
@@ -104,7 +112,7 @@ export async function POST(request: NextRequest) {
         motivo:
           instancia.pdvs.length === 0
             ? "Instancia sem PDV configurado."
-            : "Instancia vinculada a mais de um PDV elegivel.",
+            : `Instancia vinculada a ${instancia.pdvs.length} PDVs. Sincronizacao permite apenas 1 PDV por instancia para garantir distribuicao correta dos leads.`,
       });
       continue;
     }
@@ -207,7 +215,11 @@ export async function POST(request: NextRequest) {
 
     for (const contato of contatos) {
       processados += 1;
-      const digits = extrairNumeroWhatsapp(contato.id);
+      const digits = extrairNumeroReal(contato) ?? extrairNumeroWhatsapp(contato.id);
+      if (!digits) {
+        invalidos += 1;
+        continue;
+      }
       const normalizado = normalizarTelefoneParaWhatsapp(digits);
 
       if (!normalizado.valido || !normalizado.waNumber) {
@@ -226,7 +238,7 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      const { nome, observacoes } = montarDadosContato(contato.nome, waNumber);
+      const { nome, observacoes } = montarDadosContato(contato, waNumber);
       const indiceAtual = indiceRoundRobinPorPdv.get(pdv.id) ?? 0;
       const colaboradorResponsavel = colaboradores[indiceAtual];
 

@@ -12,6 +12,7 @@ export type ListagemKanban = {
   estagios: Estagio[];
   leads: Lead[];
   funcionarios: Funcionario[];
+  pdvs: Array<{ id: string; nome: string }>;
 };
 
 export type PayloadCriarLead = {
@@ -60,6 +61,7 @@ export async function listarKanban(): Promise<ResultadoApi<ListagemKanban>> {
       estagios: json.estagios ?? [],
       leads: json.leads ?? [],
       funcionarios: json.funcionarios ?? [],
+      pdvs: json.pdvs ?? [],
     },
   };
 }

@@ -42,6 +42,7 @@ export function useKanbanDerivacoes({
     status: "todos",
     gravidade: "todas",
     tipo: "todos",
+    pdv: null,
   });
   const [modoFocoPendencias, setModoFocoPendencias] = useState(false);
   const [busca, setBusca] = useState("");
@@ -104,7 +105,7 @@ export function useKanbanDerivacoes({
 
   const leadsFiltradosPorEstagio = useMemo(() => {
     const filtrosAtivos = modoFocoPendencias
-      ? { status: "com_pendencia" as const, gravidade: "todas" as const, tipo: "todos" as const }
+      ? { status: "com_pendencia" as const, gravidade: "todas" as const, tipo: "todos" as const, pdv: filtros.pdv }
       : filtros;
 
     const mapa: Record<string, Lead[]> = {};
@@ -114,6 +115,9 @@ export function useKanbanDerivacoes({
 
     for (const lead of leads) {
       if (!mapa[lead.id_estagio]) continue;
+
+      // Filter by PDV
+      if (filtrosAtivos.pdv && lead.id_pdv !== filtrosAtivos.pdv) continue;
 
       const pendenciaInfo = pendenciasPorLead[lead.id];
       if (!leadPassaFiltros(pendenciaInfo, filtrosAtivos)) continue;

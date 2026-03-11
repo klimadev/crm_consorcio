@@ -23,6 +23,7 @@ type KanbanBoardProps = {
   modoFocoPendencias?: boolean;
   funcionarios?: Funcionario[];
   excluirTodosIndefinidos?: () => Promise<void>;
+  temFiltrosAtivos?: boolean;
 };
 
 type LeadVisualCue = {
@@ -118,8 +119,10 @@ export function KanbanBoard({
   modoFocoPendencias = false,
   funcionarios = [],
   excluirTodosIndefinidos,
+  temFiltrosAtivos = false,
 }: KanbanBoardProps) {
-  const usarFiltrados = leadsFiltradosPorEstagio && Object.values(leadsFiltradosPorEstagio).some(arr => arr.length > 0);
+  // Usa filtrados se há filtros ativos OU modoFocoPendencias, caso contrário usa todos
+  const usarFiltrados = temFiltrosAtivos || modoFocoPendencias;
   const [agoraMs, setAgoraMs] = useState<number | null>(() => typeof window === "undefined" ? null : Date.now());
   const [excluindoIndefinidos, setExcluindoIndefinidos] = useState(false);
 

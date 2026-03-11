@@ -10,6 +10,11 @@ export type Estagio = {
   tipo: string;
 };
 
+export type Pdv = {
+  id: string;
+  nome: string;
+};
+
 export type Lead = {
   id: string;
   id_estagio: string;
@@ -24,6 +29,7 @@ export type Lead = {
   aprovado_por: string | null;
   origem?: "MANUAL" | "SINCRONIZACAO_WHATSAPP" | string;
   atualizado_em: string;
+  id_pdv?: string | null;
 };
 
 export type Funcionario = {
@@ -54,6 +60,7 @@ export type KanbanFilters = {
   status: FiltroPendencia;
   gravidade: FiltroGravidade;
   tipo: FiltroTipo;
+  pdv: string | null;
 };
 
 export type OrdenacaoKanban = "valor_maior" | "valor_menor" | "recente" | "antigo" | "nome";
@@ -76,6 +83,7 @@ export type UseKanbanModuleReturn = {
   estagios: Estagio[];
   leads: Lead[];
   funcionarios: Funcionario[];
+  pdvs: Pdv[];
   leadsPorEstagio: Record<string, Lead[]>;
   leadsFiltradosPorEstagio: Record<string, Lead[]>;
   pendenciasPorLead: Record<string, PendenciaLeadInfo>;

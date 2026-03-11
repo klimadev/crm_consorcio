@@ -9,7 +9,7 @@ import {
   aplicaMascaraMoedaBr,
   aplicaMascaraTelefoneBr,
 } from "@/lib/utils";
-import type { Estagio, Funcionario, KanbanFilters, ResumoPendencias, OrdenacaoKanban } from "../types";
+import type { Estagio, Funcionario, KanbanFilters, ResumoPendencias, OrdenacaoKanban, Pdv } from "../types";
 import { PendenciaBadge } from "./pendencia-badge";
 import { cn } from "@/lib/utils";
 import { Filter, X, Bell, BellOff, Search, ArrowUpDown, RefreshCw } from "lucide-react";
@@ -23,6 +23,7 @@ type KanbanHeaderProps = {
   criarLead: (evento: React.FormEvent<HTMLFormElement>) => Promise<void>;
   estagios: Estagio[];
   funcionarios: Funcionario[];
+  pdvs: Pdv[];
   perfil: "EMPRESA" | "GERENTE" | "COLABORADOR";
   telefoneNovoLead: string;
   setTelefoneNovoLead: (telefone: string) => void;
@@ -76,6 +77,7 @@ export function KanbanHeader({
   criarLead,
   estagios,
   funcionarios,
+  pdvs,
   perfil,
   telefoneNovoLead,
   setTelefoneNovoLead,
@@ -109,7 +111,7 @@ export function KanbanHeader({
   redistribuirLeadsEmAtendimento,
 }: KanbanHeaderProps) {
   const { addToast } = useToast();
-  const filtrosAtivos = filtros.status !== "todos" || filtros.gravidade !== "todas" || filtros.tipo !== "todos";
+  const filtrosAtivos = filtros.status !== "todos" || filtros.gravidade !== "todas" || filtros.tipo !== "todos" || filtros.pdv !== null;
   const inputBuscaRef = useRef<HTMLInputElement>(null);
   const inputNomeNovoLeadRef = useRef<HTMLInputElement>(null);
 
@@ -157,7 +159,7 @@ export function KanbanHeader({
   }, [dialogNovoLeadAberto]);
 
   const limparFiltros = () => {
-    setFiltros({ status: "todos", gravidade: "todas", tipo: "todos" });
+    setFiltros({ status: "todos", gravidade: "todas", tipo: "todos", pdv: null });
   };
 
   return (
@@ -211,6 +213,25 @@ export function KanbanHeader({
           </SelectContent>
         </Select>
 
+        {perfil === "EMPRESA" && pdvs.length > 0 && (
+          <Select
+            value={filtros.pdv ?? "todos"}
+            onValueChange={(v) => setFiltros({ ...filtros, pdv: v === "todos" ? null : v })}
+          >
+            <SelectTrigger className="h-9 w-40 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-600">
+              <SelectValue placeholder="Todos os PDVs" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os PDVs</SelectItem>
+              {pdvs.map((pdv) => (
+                <SelectItem key={pdv.id} value={pdv.id}>
+                  {pdv.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
         {resumoPendencias && (
           <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2">
             <PendenciaBadge resumo={resumoPendencias} tamanho="md" modoExpansivo />
@@ -260,43 +281,74 @@ export function KanbanHeader({
           )}
         </Button>
 
-        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5">
-          <Select
-            value={filtros.status}
-            onValueChange={(v) => setFiltros({ ...filtros, status: v as KanbanFilters["status"] })}
-          >
-            <SelectTrigger className="h-8 w-32 border-0 bg-transparent text-sm font-medium text-slate-600 focus:ring-0">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos</SelectItem>
-              <SelectItem value="com_pendencia">Com pendência</SelectItem>
-              <SelectItem value="sem_pendencia">Sem pendência</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Sección de filtros de pendências */}
+        <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-2 py-1.5">
+          <div className="flex items-center gap-1">
+            <Filter className="h-3.5 w-3.5 text-slate-400" />
+            <Select
+              value={filtros.status}
+              onValueChange={(v) => setFiltros({ ...filtros, status: v as KanbanFilters["status"] })}
+            >
+              <SelectTrigger className="h-8 w-36 border-0 bg-transparent text-sm font-medium text-slate-600 focus:ring-0">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-slate-400" /> Todos
+                  </span>
+                </SelectItem>
+                <SelectItem value="com_pendencia">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-amber-500" /> Com pendência
+                  </span>
+                </SelectItem>
+                <SelectItem value="sem_pendencia">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" /> Sem pendência
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <div className="h-4 w-px bg-slate-200" />
+          <div className="h-5 w-px bg-slate-200" />
 
-          <Select
-            value={filtros.gravidade}
-            onValueChange={(v) => setFiltros({ ...filtros, gravidade: v as KanbanFilters["gravidade"] })}
-          >
-            <SelectTrigger className="h-8 w-24 border-0 bg-transparent text-sm font-medium text-slate-600 focus:ring-0">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Gravidade</SelectItem>
-              <SelectItem value="critica">Crítica</SelectItem>
-              <SelectItem value="alerta">Alerta</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-1">
+            <Select
+              value={filtros.gravidade}
+              onValueChange={(v) => setFiltros({ ...filtros, gravidade: v as KanbanFilters["gravidade"] })}
+            >
+              <SelectTrigger className="h-8 w-32 border-0 bg-transparent text-sm font-medium text-slate-600 focus:ring-0">
+                <SelectValue placeholder="Gravidade" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-slate-400" /> Todas
+                  </span>
+                </SelectItem>
+                <SelectItem value="critica">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-rose-500" /> Crítica
+                  </span>
+                </SelectItem>
+                <SelectItem value="alerta">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-amber-500" /> Alerta
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           {filtrosAtivos && (
             <button
               onClick={limparFiltros}
-              className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-200 text-slate-500 hover:bg-slate-300"
+              className="ml-1 flex h-6 w-6 items-center justify-center rounded-full bg-slate-200 text-slate-500 transition-colors hover:bg-slate-300"
+              title="Limpar filtros"
             >
-              <X className="h-3 w-3" />
+              <X className="h-3.5 w-3.5" />
             </button>
           )}
         </div>
