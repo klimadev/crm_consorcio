@@ -51,7 +51,12 @@ type KanbanHeaderProps = {
   alternarNotificacoes: () => Promise<boolean>;
   permissaoNotificacao: () => NotificationPermission | "unknown";
   sincronizandoWhatsapp: boolean;
-  sincronizarWhatsapp: () => Promise<{ ok: boolean; erro?: string; criados?: number }>;
+  sincronizarWhatsapp: () => Promise<{
+    ok: boolean;
+    erro?: string;
+    criados?: number;
+    instanciasIgnoradas?: Array<{ id: string; nome: string; motivo: string }>;
+  }>;
   redistribuindoEmAtendimento: boolean;
   redistribuirLeadsEmAtendimento: () => Promise<
     | { ok: false; erro: string }
