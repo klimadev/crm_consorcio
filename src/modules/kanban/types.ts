@@ -119,7 +119,12 @@ export type UseKanbanModuleReturn = {
   criarLead: (evento: React.FormEvent<HTMLFormElement>) => Promise<void>;
   sincronizandoWhatsapp: boolean;
   redistribuindoEmAtendimento: boolean;
-  sincronizarWhatsapp: () => Promise<{ ok: boolean; erro?: string; criados?: number }>;
+  sincronizarWhatsapp: () => Promise<{
+    ok: boolean;
+    erro?: string;
+    criados?: number;
+    instanciasIgnoradas?: Array<{ id: string; nome: string; motivo: string }>;
+  }>;
   redistribuirLeadsEmAtendimento: () => Promise<
     | { ok: false; erro: string }
     | {

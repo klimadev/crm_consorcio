@@ -425,6 +425,16 @@ export function KanbanHeader({
                   ? `${resultado.criados} lead(s) novo(s) importado(s).`
                   : "Nenhum novo contato para importar.",
             });
+
+            if (resultado.instanciasIgnoradas && resultado.instanciasIgnoradas.length > 0) {
+              addToast({
+                type: "warning",
+                title: "Instancias ignoradas",
+                description: resultado.instanciasIgnoradas
+                  .map((instancia) => `${instancia.nome}: ${instancia.motivo}`)
+                  .join(" "),
+              });
+            }
           }}
           iconeEsquerda={<RefreshCw className="h-4 w-4" />}
         >

@@ -6,6 +6,20 @@ import { exigirSessao } from "@/lib/permissoes";
 import { obterEstagioIndefinido } from "@/lib/estagios-fixos";
 import { aplicaMascaraTelefoneBr } from "@/lib/utils";
 
+type InstanciaIgnorada = {
+  id: string;
+  nome: string;
+  motivo: string;
+};
+
+function avancarIndiceRoundRobin(indiceAtual: number, total: number) {
+  if (total <= 0) {
+    return 0;
+  }
+
+  return (indiceAtual + 1) % total;
+}
+
 function extrairNumeroWhatsapp(rawId: string) {
   const semDominio = rawId.split("@")[0] ?? "";
   return semDominio.replace(/\D/g, "");
@@ -48,7 +62,24 @@ export async function POST(request: NextRequest) {
 
   const instancias = await prisma.whatsappInstancia.findMany({
     where: whereInstancias,
-    select: { id: true, instance_name: true },
+    select: {
+      id: true,
+      nome: true,
+      instance_name: true,
+      pdvs:
+        auth.sessao.perfil === "GERENTE" && auth.sessao.id_pdv
+          ? {
+              where: {
+                id: auth.sessao.id_pdv,
+                id_empresa: auth.sessao.id_empresa,
+              },
+              select: { id: true, nome: true },
+            }
+          : {
+              where: { id_empresa: auth.sessao.id_empresa },
+              select: { id: true, nome: true },
+            },
+    },
   });
 
   if (!instancias.length) {
@@ -62,43 +93,81 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const [estagioIndefinido, leadsExistentes, funcionarioSessao] = await Promise.all([
+  const pdvsElegiveisPorInstancia = new Map<string, { id: string; nome: string }>();
+  const instanciasIgnoradas: InstanciaIgnorada[] = [];
+
+  for (const instancia of instancias) {
+    if (instancia.pdvs.length !== 1) {
+      instanciasIgnoradas.push({
+        id: instancia.id,
+        nome: instancia.nome,
+        motivo:
+          instancia.pdvs.length === 0
+            ? "Instancia sem PDV configurado."
+            : "Instancia vinculada a mais de um PDV elegivel.",
+      });
+      continue;
+    }
+
+    pdvsElegiveisPorInstancia.set(instancia.id, instancia.pdvs[0]);
+  }
+
+  const idsPdvsElegiveis = Array.from(new Set(Array.from(pdvsElegiveisPorInstancia.values()).map((pdv) => pdv.id)));
+
+  const [estagioIndefinido, leadsExistentes, colaboradoresAtivosPorPdv] = await Promise.all([
     obterEstagioIndefinido(auth.sessao.id_empresa),
     prisma.lead.findMany({
       where: { id_empresa: auth.sessao.id_empresa },
       select: { telefone: true },
     }),
-    auth.sessao.perfil !== "EMPRESA"
-      ? prisma.funcionario.findFirst({
-          where: {
-            id: auth.sessao.id_usuario,
-            id_empresa: auth.sessao.id_empresa,
-            ativo: true,
-          },
-          select: { id: true },
-        })
-      : Promise.resolve(null),
-  ]);
-
-  const funcionarioResponsavel =
-    funcionarioSessao ??
-    (await prisma.funcionario.findFirst({
+    prisma.funcionario.findMany({
       where: {
         id_empresa: auth.sessao.id_empresa,
         ativo: true,
-        ...(auth.sessao.perfil === "GERENTE" && auth.sessao.id_pdv
-          ? { id_pdv: auth.sessao.id_pdv }
-          : {}),
+        cargo: "COLABORADOR",
+        ...(idsPdvsElegiveis.length ? { id_pdv: { in: idsPdvsElegiveis } } : { id_pdv: "__sem_pdv__" }),
       },
-      select: { id: true },
-      orderBy: { criado_em: "asc" },
-    }));
+      select: { id: true, id_pdv: true, nome: true },
+      orderBy: [{ nome: "asc" }, { criado_em: "asc" }, { id: "asc" }],
+    }),
+  ]);
 
-  if (!funcionarioResponsavel) {
-    return NextResponse.json(
-      { erro: "Nao ha funcionario ativo para atribuir os leads sincronizados." },
-      { status: 400 },
-    );
+  const colaboradoresPorPdv = new Map<string, Array<{ id: string; nome: string }>>();
+  for (const colaborador of colaboradoresAtivosPorPdv) {
+    const listaAtual = colaboradoresPorPdv.get(colaborador.id_pdv) ?? [];
+    listaAtual.push({ id: colaborador.id, nome: colaborador.nome });
+    colaboradoresPorPdv.set(colaborador.id_pdv, listaAtual);
+  }
+
+  const instanciasValidas = instancias.filter((instancia) => {
+    const pdv = pdvsElegiveisPorInstancia.get(instancia.id);
+    if (!pdv) {
+      return false;
+    }
+
+    const colaboradores = colaboradoresPorPdv.get(pdv.id) ?? [];
+    if (colaboradores.length === 0) {
+      instanciasIgnoradas.push({
+        id: instancia.id,
+        nome: instancia.nome,
+        motivo: `PDV '${pdv.nome}' sem colaboradores ativos para receber leads.`,
+      });
+      return false;
+    }
+
+    return true;
+  });
+
+  if (!instanciasValidas.length) {
+    return NextResponse.json({
+      ok: true,
+      processados: 0,
+      criados: 0,
+      ignorados: 0,
+      invalidos: 0,
+      instancias_ignoradas: instanciasIgnoradas,
+      motivo: "Nenhuma instancia WhatsApp valida para sincronizacao no contexto atual.",
+    });
   }
 
   const telefonesExistentes = new Set<string>();
@@ -121,7 +190,19 @@ export async function POST(request: NextRequest) {
   const telefonesLoteAtual = new Set<string>();
   const digitosLoteAtual = new Set<string>();
 
-  for (const instancia of instancias) {
+  const indiceRoundRobinPorPdv = new Map<string, number>();
+
+  for (const instancia of instanciasValidas) {
+    const pdv = pdvsElegiveisPorInstancia.get(instancia.id);
+    if (!pdv) {
+      continue;
+    }
+
+    const colaboradores = colaboradoresPorPdv.get(pdv.id) ?? [];
+    if (!colaboradores.length) {
+      continue;
+    }
+
     const contatos = await buscarContatos(instancia.instance_name).catch(() => []);
 
     for (const contato of contatos) {
@@ -146,12 +227,14 @@ export async function POST(request: NextRequest) {
       }
 
       const { nome, observacoes } = montarDadosContato(contato.nome, waNumber);
+      const indiceAtual = indiceRoundRobinPorPdv.get(pdv.id) ?? 0;
+      const colaboradorResponsavel = colaboradores[indiceAtual];
 
       await prisma.lead.create({
         data: {
           id_empresa: auth.sessao.id_empresa,
           id_estagio: estagioIndefinido.id,
-          id_funcionario: funcionarioResponsavel.id,
+          id_funcionario: colaboradorResponsavel.id,
           nome,
           telefone: waNumber,
           valor_consorcio: 0,
@@ -161,6 +244,7 @@ export async function POST(request: NextRequest) {
       });
 
       criados += 1;
+      indiceRoundRobinPorPdv.set(pdv.id, avancarIndiceRoundRobin(indiceAtual, colaboradores.length));
       telefonesLoteAtual.add(waNumber);
       telefonesExistentes.add(waNumber);
       digitosLoteAtual.add(digits);
@@ -174,5 +258,6 @@ export async function POST(request: NextRequest) {
     criados,
     ignorados,
     invalidos,
+    instancias_ignoradas: instanciasIgnoradas,
   });
 }

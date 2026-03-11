@@ -28,6 +28,14 @@ type UseKanbanOperacoesParams = {
   setErroDetalhesLead: (erro: string | null) => void;
 };
 
+type ResultadoSincronizacaoWhatsapp =
+  | { ok: false; erro: string }
+  | {
+      ok: true;
+      criados: number;
+      instanciasIgnoradas: Array<{ id: string; nome: string; motivo: string }>;
+    };
+
 export function useKanbanOperacoes({
   perfil,
   idUsuario,
@@ -159,7 +167,7 @@ export function useKanbanOperacoes({
     ],
   );
 
-  const sincronizarWhatsapp = useCallback(async () => {
+  const sincronizarWhatsapp = useCallback(async (): Promise<ResultadoSincronizacaoWhatsapp> => {
     if (sincronizandoWhatsapp) {
       return { ok: false, erro: "Sincronizacao ja em andamento." };
     }
@@ -172,7 +180,11 @@ export function useKanbanOperacoes({
       }
 
       await bootstrap();
-      return { ok: true, criados: resposta.dados.criados };
+      return {
+        ok: true,
+        criados: resposta.dados.criados,
+        instanciasIgnoradas: resposta.dados.instancias_ignoradas,
+      };
     } catch (erro) {
       return { ok: false, erro: obterMensagemErroKanban(erro, MENSAGENS_FALLBACK_KANBAN.sincronizarWhatsapp) };
     } finally {
