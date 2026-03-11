@@ -2,6 +2,10 @@ export type Pdv = {
   id: string;
   nome: string;
   id_whatsapp_instancia?: string | null;
+  alerta_configuracao?: {
+    tipo: "sem_instancia";
+    mensagem: string;
+  } | null;
   whatsapp_instancia?: {
     id: string;
     nome: string;

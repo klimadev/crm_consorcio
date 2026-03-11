@@ -39,6 +39,18 @@ export function usePdvManagement(): UsePdvManagementReturn {
   const [erroGestaoPdvs, setErroGestaoPdvs] = useState<string | null>(null);
   const [instancias, setInstancias] = useState<WhatsappInstancia[]>([]);
 
+  const enriquecerPdvsComAlertas = useCallback((listaPdvs: Pdv[]) => {
+    return listaPdvs.map((pdv) => ({
+      ...pdv,
+      alerta_configuracao: pdv.whatsapp_instancia
+        ? null
+        : {
+            tipo: "sem_instancia" as const,
+            mensagem: "Sem instancia WhatsApp vinculada. Este PDV sera ignorado na sincronizacao automatica.",
+          },
+    }));
+  }, []);
+
   const carregarPdvs = useCallback(async () => {
     setCarregandoPdvs(true);
     setErroGestaoPdvs(null);
@@ -48,11 +60,11 @@ export function usePdvManagement(): UsePdvManagementReturn {
         setErroGestaoPdvs(resposta.erro);
         return;
       }
-      setPdvs(resposta.dados.pdvs);
+      setPdvs(enriquecerPdvsComAlertas(resposta.dados.pdvs));
     } finally {
       setCarregandoPdvs(false);
     }
-  }, []);
+  }, [enriquecerPdvsComAlertas]);
 
   const carregarInstancias = useCallback(async () => {
     try {
@@ -127,7 +139,24 @@ export function usePdvManagement(): UsePdvManagementReturn {
       setSalvandoPdvId(id);
       setPdvs((atual) =>
         atual.map((item) =>
-          item.id === id ? { ...item, nome: nomeNormalizado, id_whatsapp_instancia: id_whatsapp_instancia ?? null } : item,
+          item.id === id
+            ? {
+                ...item,
+                nome: nomeNormalizado,
+                id_whatsapp_instancia: id_whatsapp_instancia ?? null,
+                whatsapp_instancia:
+                  id_whatsapp_instancia != null
+                    ? instancias.find((instancia) => instancia.id === id_whatsapp_instancia) ?? null
+                    : null,
+                alerta_configuracao:
+                  id_whatsapp_instancia != null
+                    ? null
+                    : {
+                        tipo: "sem_instancia",
+                        mensagem: "Sem instancia WhatsApp vinculada. Este PDV sera ignorado na sincronizacao automatica.",
+                      },
+              }
+            : item,
         ),
       );
 
@@ -148,7 +177,7 @@ export function usePdvManagement(): UsePdvManagementReturn {
         setSalvandoPdvId(null);
       }
     },
-    [pdvs],
+    [instancias, pdvs],
   );
 
   const excluirPdv = useCallback(

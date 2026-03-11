@@ -34,6 +34,7 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
   const [errosLocal, setErrosLocal] = useState<{ nome?: string; email?: string; senha?: string }>({});
   const [dadosEdicaoFuncionario, setDadosEdicaoFuncionario] = useState<{ nome: string; email: string; cargo: string; id_pdv: string } | null>(null);
   const [errosEdicao, setErrosEdicao] = useState<Record<string, string>>({});
+  const totalPdvsSemInstancia = useMemo(() => vm.pdvs.filter((pdv) => !pdv.whatsapp_instancia).length, [vm.pdvs]);
 
   const pdvSelecionadoNoDrawer = useMemo(() => vm.pdvs.find((pdv) => pdv.id === pdvColaboradoresId) ?? null, [vm.pdvs, pdvColaboradoresId]);
   const colaboradoresDrawer = useMemo(() => {
@@ -243,6 +244,12 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">PDVs e operacao</p>
           <p className="text-sm text-slate-600">Clique no card para abrir a gestao da equipe do PDV no drawer lateral.</p>
         </div>
+        {totalPdvsSemInstancia > 0 ? (
+          <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            <AlertCircle className="h-4 w-4" />
+            {totalPdvsSemInstancia} PDV(s) sem instancia WhatsApp vinculada
+          </div>
+        ) : null}
       </div>
 
       {vm.erroGestaoPdvs ? (
@@ -267,7 +274,9 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
                 "group relative cursor-pointer space-y-3 overflow-hidden rounded-2xl border bg-white p-4 transition-all duration-200",
                 "hover:-translate-y-1 hover:shadow-xl hover:border-blue-300/50",
                 "active:scale-[0.99]",
-                "border-slate-200/70 shadow-[0_8px_26px_rgba(15,23,42,0.08)]",
+                pdv.alerta_configuracao
+                  ? "border-amber-300/80 bg-gradient-to-br from-amber-50 via-white to-orange-50 shadow-[0_10px_30px_rgba(217,119,6,0.12)]"
+                  : "border-slate-200/70 shadow-[0_8px_26px_rgba(15,23,42,0.08)]",
               )}
             >
               {/* Indicador visual de clique - ícone animado */}
@@ -351,8 +360,13 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
                           <Building2 className="h-4 w-4 text-slate-400" />
                         </div>
                       </div>
-                      {pdv.whatsapp_instancia && (
+                      {pdv.whatsapp_instancia ? (
                         <p className="mt-2 text-xs text-emerald-600">WhatsApp: {pdv.whatsapp_instancia.nome}</p>
+                      ) : (
+                        <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-800">
+                          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                          <span>{pdv.alerta_configuracao?.mensagem ?? "Sem instancia WhatsApp vinculada."}</span>
+                        </div>
                       )}
                     </button>
                   </>
@@ -589,6 +603,17 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
                 </div>
               </SheetHeader>
               <div className="mb-4 mt-6 space-y-3">
+              {pdvSelecionadoNoDrawer?.alerta_configuracao ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-800">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div>
+                      <p className="font-semibold">PDV fora da sincronizacao automatica</p>
+                      <p className="text-xs text-amber-700">{pdvSelecionadoNoDrawer.alerta_configuracao.mensagem}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               <div className="rounded-xl border border-blue-200/70 bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <div>
