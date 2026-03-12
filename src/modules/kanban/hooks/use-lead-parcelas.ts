@@ -8,6 +8,7 @@ import {
   pagarParcela as apiPagarParcela,
   type Parcela,
 } from "@/lib/api/parcelas";
+import { computarStatusParcelas } from "@/lib/financeiro/parcelas";
 import { aplicaMascaraMoedaBr, converteMoedaBrParaNumero } from "@/lib/utils";
 
 type UseLeadParcelasParams = {
@@ -16,18 +17,6 @@ type UseLeadParcelasParams = {
 
 function hojeIso() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function computarStatus(parcelas: Parcela[]): Parcela[] {
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
-
-  return parcelas.map((parcela) => {
-    if (parcela.status === "PAGO") return parcela;
-    const vencimento = new Date(parcela.data_vencimento);
-    vencimento.setHours(0, 0, 0, 0);
-    return { ...parcela, status: vencimento < hoje ? "ATRASADO" : "PENDENTE" };
-  });
 }
 
 export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
@@ -58,7 +47,7 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
       return;
     }
 
-    setParcelas(computarStatus(resultado.dados.parcelas));
+    setParcelas(computarStatusParcelas(resultado.dados.parcelas));
     setLoading(false);
   }, [leadId]);
 

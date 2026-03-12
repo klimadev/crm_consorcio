@@ -1,4 +1,6 @@
 "use client";
+import { useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useKanbanModule } from "./hooks/use-kanban-module";
 import { ModulePageShell } from "@/components/shared/module-page-shell";
 import { KanbanHeader } from "./components/kanban-header";
@@ -9,14 +11,36 @@ import type { Lead, Props } from "./types";
 
 export function ModuloKanban({ perfil, idUsuario }: Props) {
   const vm = useKanbanModule({ perfil, idUsuario });
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { leadSelecionado, leads, setLeadSelecionado } = vm;
+
+  useEffect(() => {
+    const leadId = searchParams.get("lead");
+    if (!leadId || leads.length === 0) return;
+
+    const lead = leads.find((item) => item.id === leadId);
+    if (!lead) return;
+
+    if (leadSelecionado?.id !== lead.id) {
+      setLeadSelecionado(lead);
+    }
+  }, [leadSelecionado?.id, leads, searchParams, setLeadSelecionado]);
 
   const handleLeadClick = (lead: Lead) => {
     vm.setLeadSelecionado(lead);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("lead", lead.id);
+    router.replace(`/kanban?${params.toString()}`);
   };
 
   const handleDrawerOpenChange = (aberto: boolean) => {
     if (!aberto) {
       vm.setLeadSelecionado(null);
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("lead");
+      const query = params.toString();
+      router.replace(query ? `/kanban?${query}` : "/kanban");
     }
   };
 

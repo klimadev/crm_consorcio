@@ -221,13 +221,13 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
                       <p>{tamanhoArquivoSelecionado}</p>
                     </div>
                   ) : null}
-                  <ActionButton
-                    type="button"
-                    className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700"
-                    disabled={!arquivoSelecionado || uploadando || salvando}
-                    loading={uploadando || salvando}
-                    loadingText="Enviando documento..."
-                    onClick={() => void onEnviarArquivo()}
+                    <ActionButton
+                      type="button"
+                      className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700"
+                      disabled={!arquivoSelecionado || uploadando || salvando}
+                      loading={uploadando || salvando}
+                      loadingText="Enviando documento..."
+                      onClick={() => void onEnviarArquivo()}
                   >
                     Enviar documento
                   </ActionButton>
@@ -250,13 +250,13 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
                       <span>{mensagemUrlDocumento}</span>
                     </div>
                   ) : null}
-                  <ActionButton
-                    type="button"
-                    className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700"
-                    disabled={salvando || uploadando || !documentoAprovacaoUrl.trim() || Boolean(mensagemUrlDocumento)}
-                    loading={salvando}
-                    loadingText="Salvando URL..."
-                    onClick={() => void onSalvarUrlDocumento()}
+                    <ActionButton
+                      type="button"
+                      className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700"
+                      disabled={salvando || uploadando || !documentoAprovacaoUrl.trim() || Boolean(mensagemUrlDocumento)}
+                      loading={salvando}
+                      loadingText="Salvando URL..."
+                      onClick={() => void onSalvarUrlDocumento()}
                   >
                     Salvar URL do documento
                   </ActionButton>
@@ -305,7 +305,7 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
       ) : null}
 
       {hasChanges ? (
-        <ActionButton className="w-full rounded-xl bg-emerald-600 text-sm font-medium hover:bg-emerald-700" onClick={() => void onSalvar()} disabled={salvando} loading={salvando} loadingText="Salvando alteracoes...">
+        <ActionButton className="w-full rounded-xl bg-emerald-600 text-sm font-medium hover:bg-emerald-700" onClick={() => void onSalvar()} disabled={salvando || uploadando} loading={salvando} loadingText="Salvando alteracoes...">
           Salvar Alteracoes
         </ActionButton>
       ) : null}

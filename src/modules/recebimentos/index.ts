@@ -1,0 +1,1 @@
+export { ModuloRecebimentos } from "./page";

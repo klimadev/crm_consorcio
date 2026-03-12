@@ -461,6 +461,19 @@ export const esquemaPagarParcela = z.object({
     .refine((valor) => !Number.isNaN(new Date(valor).getTime()), "Data de pagamento invalida."),
 });
 
+export const esquemaListarRecebimentos = z.object({
+  aba: z.enum(["todos", "recebidos", "a_vencer", "atrasados"]).default("todos"),
+  busca: z.string().trim().optional(),
+  data_inicial: z.string().trim().optional(),
+  data_final: z.string().trim().optional(),
+  id_pdv: z.string().trim().optional(),
+  id_funcionario: z.string().trim().optional(),
+  ordenar: z.enum(["vencimento", "pagamento", "valor"]).default("vencimento"),
+  direcao: z.enum(["asc", "desc"]).default("asc"),
+  pagina: z.coerce.number().int().min(1).default(1),
+  limite: z.coerce.number().int().min(1).max(100).default(20),
+});
+
 export const CARGOS_EQUIPE = ["COLABORADOR", "GERENTE", "ADMINISTRADOR"] as const;
 
 export const schemaAtualizarFuncionario = z.object({

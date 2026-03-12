@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { exigirSessao } from "@/lib/permissoes";
+import { exigirSessao, respostaSemPermissao, whereLeadsPorPerfil } from "@/lib/permissoes";
 import { esquemaPagarParcela } from "@/lib/validacoes";
 import { badRequest, notFound } from "@/lib/api/http";
 import { parseJson, validateBody } from "@/lib/api/route-validation";
@@ -13,6 +13,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const auth = await exigirSessao(request);
   if (auth.erro) {
     return auth.erro;
+  }
+
+  if (auth.sessao.perfil === "COLABORADOR") {
+    return respostaSemPermissao();
   }
 
   const { id } = await params;
@@ -28,9 +32,24 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   const parcela = await prisma.parcela.findFirst({
     where: { id, id_empresa: auth.sessao.id_empresa },
+    include: {
+      lead: {
+        select: { id: true },
+      },
+    },
   });
 
   if (!parcela) {
+    return notFound("Parcela nao encontrada.");
+  }
+
+  const wherePermitido = await whereLeadsPorPerfil(auth.sessao);
+  const leadPermitido = await prisma.lead.findFirst({
+    where: { id: parcela.lead.id, ...wherePermitido },
+    select: { id: true },
+  });
+
+  if (!leadPermitido) {
     return notFound("Parcela nao encontrada.");
   }
 

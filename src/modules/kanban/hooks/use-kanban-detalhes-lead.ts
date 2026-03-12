@@ -50,7 +50,7 @@ export function useKanbanDetalhesLead({
   }, []);
 
   const { autoSavePendente, agendarAutoSave, cancelarAutoSave } = useAutoSave<Lead>({
-    delayMs: 1000,
+    delayMs: 1800,
     enabled: Boolean(leadSelecionado),
     onSave: async (leadAtualizado) => {
       await salvarAutomaticamenteRef.current(leadAtualizado);
@@ -71,7 +71,10 @@ export function useKanbanDetalhesLead({
         cancelarAutoSave();
       }
 
-      setSalvando(true);
+      if (origem === "manual") {
+        setSalvando(true);
+      }
+
       setSalvandoAutomaticamente(origem === "automatica");
       setSalvo(false);
       setErroDetalhesLead(null);

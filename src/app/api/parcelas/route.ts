@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { exigirSessao } from "@/lib/permissoes";
+import { exigirSessao, whereLeadsPorPerfil, respostaSemPermissao } from "@/lib/permissoes";
 import { esquemaGerarParcelas } from "@/lib/validacoes";
 import { badRequest, conflict, notFound } from "@/lib/api/http";
 import { parseJson, validateBody } from "@/lib/api/route-validation";
+import { inicioDoDia } from "@/lib/financeiro/parcelas";
 
 type TabParcelas = "proximos" | "atrasados" | "recebidos";
-
-function inicioDoDia(data = new Date()) {
-  const dia = new Date(data);
-  dia.setHours(0, 0, 0, 0);
-  return dia;
-}
 
 function gerarDatasVencimento(dataInicial: Date, quantidade: number): Date[] {
   const datas: Date[] = [];
@@ -47,6 +42,22 @@ export async function GET(request: NextRequest) {
     id_empresa: auth.sessao.id_empresa,
     ...(idLead ? { id_lead: idLead } : {}),
   };
+
+  if (tab && auth.sessao.perfil !== "EMPRESA") {
+    return respostaSemPermissao();
+  }
+
+  if (idLead) {
+    const whereLeadPermitido = await whereLeadsPorPerfil(auth.sessao);
+    const leadPermitido = await prisma.lead.findFirst({
+      where: { id: idLead, ...whereLeadPermitido },
+      select: { id: true },
+    });
+
+    if (!leadPermitido) {
+      return notFound("Lead nao encontrado.");
+    }
+  }
 
   let parcelas = await prisma.parcela.findMany({
     where:
@@ -107,12 +118,16 @@ export async function POST(request: NextRequest) {
   }
 
   const lead = await prisma.lead.findFirst({
-    where: { id: dados.id_lead, id_empresa: auth.sessao.id_empresa },
+    where: { id: dados.id_lead, ...(await whereLeadsPorPerfil(auth.sessao)) },
     select: { id: true },
   });
 
   if (!lead) {
     return notFound("Lead nao encontrado.");
+  }
+
+  if (auth.sessao.perfil === "COLABORADOR") {
+    return respostaSemPermissao();
   }
 
   const parcelasExistentes = await prisma.parcela.count({

@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   BarChart3,
+  WalletCards,
   LayoutGrid,
   Menu,
   Package,
@@ -101,7 +102,6 @@ function MenuItemComBadge({
 
 export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
   const pathname = usePathname();
-  const router = useRouter();
   const [sidebarAberta, setSidebarAberta] = useState(false);
   const { resumo } = usePendenciasGlobais();
 
@@ -114,6 +114,7 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
       titulo: "OPERAÇÃO",
       itens: [
         { href: "/kanban", label: "Leads", icon: LayoutGrid, tourTarget: TOUR_TARGETS.sidebarKanban },
+        ...(sessao.perfil === "EMPRESA" ? [{ href: "/recebimentos", label: "Recebimentos", icon: WalletCards }] : []),
         ...(sessao.perfil === "EMPRESA" || sessao.perfil === "GERENTE"
           ? [{ href: "/produtos", label: "Produtos", icon: Package }]
           : []),
@@ -188,11 +189,7 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
                   <Link
                     key={item.href}
                     href={item.href}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      router.push(item.href);
-                      setSidebarAberta(false);
-                    }}
+                    onClick={() => setSidebarAberta(false)}
                     data-tour={item.tourTarget}
                     className={cn(
                       "relative flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-slate-600 transition-all duration-200 hover:bg-[#F1F3F5] hover:text-slate-900",

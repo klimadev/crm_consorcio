@@ -286,3 +286,91 @@ export async function buscarConversas(instanceName: string): Promise<EvolutionCo
     })
     .filter((item): item is EvolutionConversa => item !== null);
 }
+
+export type EvolutionMensagem = {
+  remoteJid: string;
+  remoteJidAlt: string | null;
+  pushName: string | null;
+  messageTimestamp: number;
+};
+
+export async function buscarMensagens(instanceName: string, limitePorPagina: number = 1000): Promise<EvolutionMensagem[]> {
+  const todasMensagens: EvolutionMensagem[] = [];
+  let pagina = 1;
+  let temMaisPaginas = true;
+
+  while (temMaisPaginas) {
+    const resposta = await fetch(`${EVOLUTION_API_URL}/chat/findMessages/${instanceName}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        limit: limitePorPagina,
+        page: pagina,
+      }),
+    });
+
+    if (!resposta.ok) {
+      const erro = await resposta.json().catch(() => ({}));
+      throw new Error(erro.message ?? "Erro ao buscar mensagens na Evolution");
+    }
+
+    const json = (await resposta.json().catch(() => ({}))) as {
+      messages?: {
+        records?: Array<{
+          key?: {
+            remoteJid?: string;
+            remoteJidAlt?: string;
+          };
+          pushName?: string | null;
+          messageTimestamp?: number;
+        }>;
+        pages?: number;
+        total?: number;
+      };
+    };
+
+    const registros = json.messages?.records ?? [];
+    if (registros.length === 0) {
+      temMaisPaginas = false;
+      break;
+    }
+
+    for (const msg of registros) {
+      const remoteJid = msg.key?.remoteJid ?? "";
+      if (!remoteJid || remoteJid.includes("@g.us") || remoteJid === "status@broadcast") {
+        continue;
+      }
+
+      const remoteJidAlt = msg.key?.remoteJidAlt ?? null;
+      const pushName = msg.pushName ?? null;
+      const messageTimestamp = msg.messageTimestamp ?? 0;
+
+      todasMensagens.push({
+        remoteJid,
+        remoteJidAlt,
+        pushName,
+        messageTimestamp,
+      });
+    }
+
+    const totalPaginas = json.messages?.pages ?? 1;
+    if (pagina >= totalPaginas) {
+      temMaisPaginas = false;
+    } else {
+      pagina += 1;
+    }
+  }
+
+  const contactosUnicos = new Map<string, EvolutionMensagem>();
+
+  for (const msg of todasMensagens) {
+    const chave = msg.remoteJidAlt ?? msg.remoteJid;
+    const existente = contactosUnicos.get(chave);
+
+    if (!existente || msg.messageTimestamp > existente.messageTimestamp) {
+      contactosUnicos.set(chave, msg);
+    }
+  }
+
+  return Array.from(contactosUnicos.values());
+}
