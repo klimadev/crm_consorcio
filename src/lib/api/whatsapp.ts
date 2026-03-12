@@ -22,6 +22,15 @@ type ResultadoApi<T> =
   | { ok: true; dados: T }
   | { ok: false; erro: string };
 
+type WhatsappConexaoPayload = {
+  qrCode?: string | null;
+  pairingCode?: string | null;
+  status?: string;
+  conectado?: boolean;
+  origem?: "status" | "restart" | "connect";
+  phone?: string | null;
+};
+
 async function lerJsonSeguro<T>(resposta: Response): Promise<T> {
   return (await resposta.json().catch(() => ({}))) as T;
 }
@@ -39,13 +48,47 @@ export async function listarInstanciasWhatsapp(): Promise<ResultadoApi<{ instanc
 
 export async function obterQrCodeWhatsapp(id: string): Promise<ResultadoApi<{ qrCode: string | null }>> {
   const resposta = await fetch(`/api/whatsapp/instances/${id}/qrcode`, { method: "GET" });
-  const json = await lerJsonSeguro<{ qrCode?: string } & ApiErro>(resposta);
+  const json = await lerJsonSeguro<WhatsappConexaoPayload & ApiErro>(resposta);
 
   if (!resposta.ok) {
     return { ok: false, erro: json.erro ?? "Erro ao buscar QR Code." };
   }
 
   return { ok: true, dados: { qrCode: json.qrCode ?? null } };
+}
+
+export async function reconectarInstanciaWhatsapp(id: string): Promise<
+  ResultadoApi<{
+    instancia: WhatsappInstancia | null;
+    qrCode: string | null;
+    pairingCode: string | null;
+    status: string;
+    conectado: boolean;
+    origem: "status" | "restart" | "connect" | null;
+  }>
+> {
+  const resposta = await fetch(`/api/whatsapp/instances/${id}/reconnect`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+  });
+  const json = await lerJsonSeguro<WhatsappConexaoPayload & { instancia?: WhatsappInstancia | null } & ApiErro>(resposta);
+
+  if (!resposta.ok) {
+    return { ok: false, erro: json.erro ?? "Erro ao reconectar instância." };
+  }
+
+  return {
+    ok: true,
+    dados: {
+      instancia: json.instancia ?? null,
+      qrCode: json.qrCode ?? null,
+      pairingCode: json.pairingCode ?? null,
+      status: json.status ?? "unknown",
+      conectado: json.conectado === true,
+      origem: json.origem ?? null,
+    },
+  };
 }
 
 export async function criarInstanciaWhatsapp(nome: string): Promise<

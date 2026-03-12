@@ -245,6 +245,8 @@ export function ModuloWhatsapp() {
           instancias={vm.instancias}
           onExcluir={vm.excluirInstancia}
           onAtualizarStatus={vm.atualizarStatus}
+          onReconectar={vm.reconectarInstancia}
+          estaReconectando={vm.estaReconectando}
           getQrCode={vm.getQrCode}
           buscarQrCode={vm.buscarQrCode}
         />

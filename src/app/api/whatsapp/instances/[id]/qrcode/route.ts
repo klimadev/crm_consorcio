@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { exigirSessao } from "@/lib/permissoes";
-import { gerarQrCode } from "@/lib/evolution-api";
-
-const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL ?? "http://localhost:8080";
-const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY ?? "";
+import { reconectarInstanciaWhatsapp, sincronizarEstadoWhatsapp } from "@/lib/whatsapp-instance-state";
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -34,41 +31,21 @@ export async function GET(request: NextRequest, { params }: Params) {
   }
 
   try {
-    const resposta = await fetch(
-      `${EVOLUTION_API_URL}/instance/connectionState/${instancia.instance_name}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: EVOLUTION_API_KEY,
-        },
-      }
-    );
+    const estadoAtual = await sincronizarEstadoWhatsapp(instancia);
 
-    if (!resposta.ok) {
-      return NextResponse.json({ qrCode: null, status: "disconnected" });
+    if (estadoAtual.conectado) {
+      return NextResponse.json({ qrCode: null, status: estadoAtual.status, phone: estadoAtual.phone });
     }
 
-    const json = await resposta.json();
-    const data = json.instance ?? json;
-    const status = data.state ?? "unknown";
-    const phone = data.owner?.replace("@s.whatsapp.net", "") ?? null;
+    const resultado = await reconectarInstanciaWhatsapp(instancia, { forcarQrCode: true });
 
-    await prisma.whatsappInstancia.update({
-      where: { id: instancia.id },
-      data: { status, phone },
-    });
-
-    if (phone) {
-      return NextResponse.json({ qrCode: null, status, phone });
-    }
-
-    const qrData = await gerarQrCode(instancia.instance_name);
-    
-    return NextResponse.json({ 
-      qrCode: qrData?.base64 ?? qrData?.code ?? null, 
-      status,
-      phone 
+    return NextResponse.json({
+      qrCode: resultado.qrCode,
+      pairingCode: resultado.pairingCode,
+      status: resultado.status,
+      phone: resultado.phone,
+      conectado: resultado.conectado,
+      origem: resultado.origem,
     });
   } catch (erro) {
     console.error("Erro ao buscar QR Code:", erro);

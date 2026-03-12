@@ -182,6 +182,10 @@ export const esquemaAtualizarWhatsappInstancia = z.object({
   nome: z.string().trim().min(3, "Nome da instancia precisa ter pelo menos 3 caracteres."),
 });
 
+export const esquemaReconectarWhatsappInstancia = z.object({
+  forcarQrCode: z.boolean().optional(),
+});
+
 export const esquemaAtualizarPdv = z.object({
   nome: z.string().trim().min(1, "Nome do PDV e obrigatorio.").optional(),
   id_whatsapp_instancia: z

@@ -19,6 +19,23 @@ export type EvolutionInstance = {
   };
 };
 
+export type EvolutionConnectionState = {
+  instanceName: string;
+  instanceId?: string;
+  status: string;
+  connected: boolean;
+  phoneNumber: string | null;
+  profileName: string | null;
+  profilePic: string | null;
+};
+
+export type EvolutionQrCode = {
+  code: string | null;
+  base64: string | null;
+  pairingCode: string | null;
+  count: number | null;
+};
+
 export type EvolutionContato = {
   id: string;
   nome: string | null;
@@ -79,6 +96,106 @@ export async function buscarInstancia(instanceName: string): Promise<EvolutionIn
       instanceId: json.instanceId,
       status: json.status,
       phoneNumber: json.phoneNumber,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function extrairTelefone(raw: unknown): string | null {
+  if (typeof raw !== "string" || raw.length === 0) return null;
+  return raw.replace("@s.whatsapp.net", "").replace("@lid", "");
+}
+
+function normalizarStatusEvolution(raw: unknown): string {
+  if (typeof raw !== "string" || raw.trim().length === 0) return "unknown";
+  return raw.trim().toLowerCase();
+}
+
+function normalizarQrCode(json: Record<string, unknown>): EvolutionQrCode | null {
+  const qrcode = (json.qrcode ?? json) as Record<string, unknown>;
+  const base64 =
+    typeof qrcode.base64 === "string"
+      ? qrcode.base64
+      : typeof json.base64 === "string"
+        ? json.base64
+        : null;
+  const code =
+    typeof qrcode.code === "string"
+      ? qrcode.code
+      : typeof json.code === "string"
+        ? json.code
+        : null;
+  const pairingCode =
+    typeof qrcode.pairingCode === "string"
+      ? qrcode.pairingCode
+      : typeof json.pairingCode === "string"
+        ? json.pairingCode
+        : null;
+  const count =
+    typeof qrcode.count === "number"
+      ? qrcode.count
+      : typeof json.count === "number"
+        ? json.count
+        : null;
+
+  if (!base64 && !code && !pairingCode) {
+    return null;
+  }
+
+  return {
+    code,
+    base64,
+    pairingCode,
+    count,
+  };
+}
+
+export async function obterEstadoConexao(instanceName: string): Promise<EvolutionConnectionState | null> {
+  try {
+    const resposta = await fetch(`${EVOLUTION_API_URL}/instance/connectionState/${instanceName}`, {
+      method: "GET",
+      headers,
+    });
+
+    if (!resposta.ok) {
+      return null;
+    }
+
+    const json = (await resposta.json().catch(() => ({}))) as Record<string, unknown>;
+    const data = (json.instance ?? json) as Record<string, unknown>;
+    const status = normalizarStatusEvolution(data.state ?? data.status ?? json.state ?? json.status);
+    const phoneNumber = extrairTelefone(data.owner ?? data.phoneNumber ?? json.owner ?? json.phoneNumber);
+    const connected = status === "open" || status === "connected" || phoneNumber !== null;
+
+    return {
+      instanceName:
+        typeof data.instanceName === "string"
+          ? data.instanceName
+          : typeof json.instanceName === "string"
+            ? json.instanceName
+            : instanceName,
+      instanceId:
+        typeof data.instanceId === "string"
+          ? data.instanceId
+          : typeof json.instanceId === "string"
+            ? json.instanceId
+            : undefined,
+      status,
+      connected,
+      phoneNumber,
+      profileName:
+        typeof data.profileName === "string"
+          ? data.profileName
+          : typeof json.profileName === "string"
+            ? json.profileName
+            : null,
+      profilePic:
+        typeof data.profilePicUrl === "string"
+          ? data.profilePicUrl
+          : typeof json.profilePicUrl === "string"
+            ? json.profilePicUrl
+            : null,
     };
   } catch {
     return null;
@@ -163,6 +280,41 @@ export async function gerarQrCode(instanceName: string): Promise<{
 
     const json = await resposta.json();
     return json.qrcode ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function conectarInstancia(instanceName: string): Promise<EvolutionQrCode | null> {
+  try {
+    const resposta = await fetch(`${EVOLUTION_API_URL}/instance/connect/${instanceName}`, {
+      method: "GET",
+      headers,
+    });
+
+    if (!resposta.ok) {
+      return null;
+    }
+
+    const json = (await resposta.json().catch(() => ({}))) as Record<string, unknown>;
+    return normalizarQrCode(json);
+  } catch {
+    return null;
+  }
+}
+
+export async function reiniciarInstancia(instanceName: string): Promise<EvolutionConnectionState | null> {
+  try {
+    const resposta = await fetch(`${EVOLUTION_API_URL}/instance/restart/${instanceName}`, {
+      method: "PUT",
+      headers,
+    });
+
+    if (!resposta.ok) {
+      return null;
+    }
+
+    return obterEstadoConexao(instanceName);
   } catch {
     return null;
   }
@@ -290,6 +442,7 @@ export async function buscarConversas(instanceName: string): Promise<EvolutionCo
 export type EvolutionMensagem = {
   remoteJid: string;
   remoteJidAlt: string | null;
+  remoteJidAltLastMessage: string | null;
   pushName: string | null;
   messageTimestamp: number;
 };
@@ -321,6 +474,11 @@ export async function buscarMensagens(instanceName: string, limitePorPagina: num
             remoteJid?: string;
             remoteJidAlt?: string;
           };
+          lastMessage?: {
+            key?: {
+              remoteJidAlt?: string;
+            };
+          };
           pushName?: string | null;
           messageTimestamp?: number;
         }>;
@@ -342,12 +500,14 @@ export async function buscarMensagens(instanceName: string, limitePorPagina: num
       }
 
       const remoteJidAlt = msg.key?.remoteJidAlt ?? null;
+      const remoteJidAltLastMessage = msg.lastMessage?.key?.remoteJidAlt ?? null;
       const pushName = msg.pushName ?? null;
       const messageTimestamp = msg.messageTimestamp ?? 0;
 
       todasMensagens.push({
         remoteJid,
         remoteJidAlt,
+        remoteJidAltLastMessage,
         pushName,
         messageTimestamp,
       });

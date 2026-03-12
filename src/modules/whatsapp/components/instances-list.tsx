@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { OptimisticSync } from "@/components/ui/optimistic-sync";
 import { Card, CardContent } from "@/components/ui/card";
-import { RefreshCw, Trash2, Smartphone, Clock, Wifi, WifiOff, QrCode, Loader2, Zap } from "lucide-react";
+import { RefreshCw, Trash2, Smartphone, Clock, Wifi, WifiOff, QrCode, Loader2, Zap, RotateCcw } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { WhatsappInstancia } from "../types";
 
@@ -13,6 +13,8 @@ type Props = {
   instancias: WhatsappInstancia[];
   onExcluir: (id: string) => Promise<void>;
   onAtualizarStatus: (id: string) => Promise<void>;
+  onReconectar: (id: string) => Promise<void>;
+  estaReconectando: (id: string) => boolean;
   getQrCode: (id: string) => string | null;
   buscarQrCode: (id: string) => Promise<string | null>;
 };
@@ -233,18 +235,24 @@ function InstanceCard({
   instancia, 
   onExcluir, 
   onAtualizarStatus, 
+  onReconectar,
+  estaReconectando,
   getQrCode, 
   buscarQrCode 
 }: { 
   instancia: WhatsappInstancia;
   onExcluir: (id: string) => Promise<void>;
   onAtualizarStatus: (id: string) => Promise<void>;
+  onReconectar: (id: string) => Promise<void>;
+  estaReconectando: (id: string) => boolean;
   getQrCode: (id: string) => string | null;
   buscarQrCode: (id: string) => Promise<string | null>;
 }) {
   const isTemporario = instancia.id.startsWith("temp-");
   const badge = getStatusBadge(instancia.status);
   const isConnected = badge.icon === "connected";
+  const isReconectando = estaReconectando(instancia.id);
+  const podeReconectar = !isConnected && !isTemporario;
 
   const uptime = useMemo(() => {
     return calculateUptime(instancia.last_seen_at || null);
@@ -382,6 +390,21 @@ function InstanceCard({
           />
 
           <div className="mt-4 flex gap-2">
+            {podeReconectar && (
+              <Button
+                size="sm"
+                className="flex-1 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
+                disabled={isReconectando}
+                onClick={() => onReconectar(instancia.id)}
+              >
+                {isReconectando ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                Reconectar
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -396,7 +419,7 @@ function InstanceCard({
               <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
               Atualizar
             </Button>
-<Tooltip content="Excluir instância">
+            <Tooltip content="Excluir instância">
               <Button
                 variant="outline"
                 size="sm"
@@ -414,7 +437,7 @@ function InstanceCard({
   );
 }
 
-export function InstanciasList({ instancias, onExcluir, onAtualizarStatus, getQrCode, buscarQrCode }: Props) {
+export function InstanciasList({ instancias, onExcluir, onAtualizarStatus, onReconectar, estaReconectando, getQrCode, buscarQrCode }: Props) {
   if (instancias.length === 0) {
     return (
       <Card className="rounded-2xl border border-slate-200/60 bg-white shadow-sm">
@@ -439,6 +462,8 @@ export function InstanciasList({ instancias, onExcluir, onAtualizarStatus, getQr
           instancia={instancia}
           onExcluir={onExcluir}
           onAtualizarStatus={onAtualizarStatus}
+          onReconectar={onReconectar}
+          estaReconectando={estaReconectando}
           getQrCode={getQrCode}
           buscarQrCode={buscarQrCode}
         />

@@ -1,16 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { ensureSqliteOptimizations, prisma } from "@/lib/prisma";
 import { exigirSessao, podeVerEquipe, respostaSemPermissao } from "@/lib/permissoes";
 import { criarInstancia } from "@/lib/evolution-api";
 import { esquemaCriarWhatsappInstancia } from "@/lib/validacoes";
 import { handleRouteError } from "@/lib/api/route-errors";
 import { parseJson, validateBody } from "@/lib/api/route-validation";
 import { withRetry } from "@/lib/api/retry";
+import { sincronizarEstadoWhatsapp } from "@/lib/whatsapp-instance-state";
 
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL ?? "http://localhost:8080";
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY ?? "";
 
+function gerarSlugInstancia(parte: string) {
+  return parte
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .replace(/_+/g, "_")
+    .slice(0, 40);
+}
+
+async function gerarNomeTecnicoInstancia(idEmpresa: string, nomeEmpresa: string, nomeEscolhido: string) {
+  const empresaSlug = gerarSlugInstancia(nomeEmpresa) || "empresa";
+  const nomeSlug = gerarSlugInstancia(nomeEscolhido) || "instancia";
+  const base = `crmconsorcio_${empresaSlug}_${nomeSlug}`;
+
+  for (let tentativa = 0; tentativa < 100; tentativa += 1) {
+    const instanceName = tentativa === 0 ? base : `${base}_${tentativa + 1}`;
+    const existente = await prisma.whatsappInstancia.findFirst({
+      where: { id_empresa: idEmpresa, instance_name: instanceName },
+      select: { id: true },
+    });
+
+    if (!existente) {
+      return instanceName;
+    }
+  }
+
+  return `${base}_${Date.now()}`;
+}
+
 export async function GET(request: NextRequest) {
+  await ensureSqliteOptimizations();
+
   const auth = await exigirSessao(request);
   if (auth.erro) {
     return auth.erro;
@@ -53,24 +87,6 @@ export async function GET(request: NextRequest) {
         const profileName = (instanciaApi.profileName as string) ?? null;
         const profilePic = (instanciaApi.profilePicUrl as string) ?? null;
 
-        try {
-          await withRetry(
-            () =>
-              prisma.whatsappInstancia.update({
-                where: { id: inst.id },
-                data: {
-                  status: estado,
-                  phone: phone,
-                  profile_name: profileName,
-                  profile_pic: profilePic,
-                },
-              }),
-            { maxAttempts: 3, delayMs: 1000 }
-          );
-        } catch (erro) {
-          console.error("Erro ao atualizar instância no DB:", erro);
-        }
-
         return {
           ...inst,
           status: estado,
@@ -88,6 +104,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  await ensureSqliteOptimizations();
+
   const auth = await exigirSessao(request);
   if (auth.erro) {
     return auth.erro;
@@ -105,26 +123,44 @@ export async function POST(request: NextRequest) {
     return validacao.response;
   }
   const nome = validacao.data.nome;
+  const empresa = await prisma.empresa.findUnique({
+    where: { id: auth.sessao.id_empresa },
+    select: { nome: true },
+  });
 
-  const instanceName = `crm_${auth.sessao.id_usuario.slice(0, 8)}_${Date.now()}`;
+  if (!empresa) {
+    return NextResponse.json({ erro: "Empresa nao encontrada." }, { status: 404 });
+  }
+
+  const instanceName = await gerarNomeTecnicoInstancia(auth.sessao.id_empresa, empresa.nome, nome);
 
   try {
-    const resultado = await criarInstancia({ nome: instanceName });
+      const resultado = await criarInstancia({ nome: instanceName });
 
-    const instancia = await prisma.whatsappInstancia.create({
-      data: {
-        id_empresa: auth.sessao.id_empresa,
-        id_criador: auth.sessao.id_usuario,
-        nome,
-        instance_name: resultado.instanceName,
-        status: "pending",
-      },
-    });
+      const instancia = await withRetry(
+        () =>
+          prisma.whatsappInstancia.create({
+            data: {
+              id_empresa: auth.sessao.id_empresa,
+              id_criador: auth.sessao.id_usuario,
+              nome,
+              instance_name: resultado.instanceName,
+              status: "pending",
+            },
+          }),
+        { maxAttempts: 3, delayMs: 1000 }
+      );
 
-    return NextResponse.json({ 
-      instancia,
-      qrCode: resultado.base64,
-    });
+      await sincronizarEstadoWhatsapp(instancia);
+
+      const instanciaAtualizada = await prisma.whatsappInstancia.findUnique({
+        where: { id: instancia.id },
+      });
+
+      return NextResponse.json({ 
+        instancia: instanciaAtualizada,
+        qrCode: resultado.base64,
+      });
   } catch (erro) {
     if (erro instanceof Error && erro.message) {
       return NextResponse.json({ erro: erro.message }, { status: 500 });

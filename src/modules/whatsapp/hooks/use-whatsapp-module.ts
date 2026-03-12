@@ -7,12 +7,14 @@ import {
   excluirInstanciaWhatsapp,
   listarInstanciasWhatsapp,
   obterQrCodeWhatsapp,
+  reconectarInstanciaWhatsapp,
 } from "@/lib/api/whatsapp";
 import type { WhatsappInstancia, UseWhatsappModuleReturn } from "../types";
 
 export function useWhatsappModule(): UseWhatsappModuleReturn {
   const [instancias, setInstancias] = useState<WhatsappInstancia[]>([]);
   const [qrCodes, setQrCodes] = useState<Record<string, string>>({});
+  const [reconectandoIds, setReconectandoIds] = useState<Record<string, boolean>>({});
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -146,6 +148,40 @@ export function useWhatsappModule(): UseWhatsappModuleReturn {
     }
   }, []);
 
+  const reconectarInstancia = useCallback(async (id: string) => {
+    if (id.startsWith("temp-") || reconectandoIds[id]) return;
+
+    setReconectandoIds((atual) => ({ ...atual, [id]: true }));
+    setErro(null);
+
+    try {
+      const resultado = await reconectarInstanciaWhatsapp(id);
+
+      if (!resultado.ok) {
+        setErro(resultado.erro);
+        return;
+      }
+
+      if (resultado.dados.instancia) {
+        setInstancias((atual) => atual.map((i) => (i.id === id ? resultado.dados.instancia! : i)));
+      }
+
+      if (resultado.dados.qrCode) {
+        setQrCodes((atual) => ({ ...atual, [id]: resultado.dados.qrCode! }));
+      } else if (resultado.dados.conectado) {
+        setQrCodes((atual) => {
+          const proximo = { ...atual };
+          delete proximo[id];
+          return proximo;
+        });
+      }
+    } catch {
+      setErro("Erro ao reconectar instância.");
+    } finally {
+      setReconectandoIds((atual) => ({ ...atual, [id]: false }));
+    }
+  }, [reconectandoIds]);
+
   useEffect(() => {
     const intervalo = setInterval(() => {
       instancias.forEach((instancia) => {
@@ -162,6 +198,8 @@ export function useWhatsappModule(): UseWhatsappModuleReturn {
     return qrCodes[id] ?? null;
   }, [qrCodes]);
 
+  const estaReconectando = useCallback((id: string) => reconectandoIds[id] === true, [reconectandoIds]);
+
   return {
     instancias,
     carregando,
@@ -169,6 +207,8 @@ export function useWhatsappModule(): UseWhatsappModuleReturn {
     criarInstancia,
     excluirInstancia,
     atualizarStatus,
+    reconectarInstancia,
+    estaReconectando,
     buscarQrCode,
     getQrCode,
     recarregar: carregarInstancias,

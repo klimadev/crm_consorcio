@@ -46,10 +46,33 @@ function extrairNumeroWhatsapp(rawId: string) {
   return semDominio.replace(/\D/g, "");
 }
 
+function jidEhLid(jid: string | null | undefined) {
+  return typeof jid === "string" && jid.includes("@lid");
+}
+
+function jidEhWhatsappUsuario(jid: string | null | undefined) {
+  return typeof jid === "string" && jid.includes("@s.whatsapp.net");
+}
+
+function normalizarJidWhatsappUsuario(jid?: string | null): string | null {
+  return typeof jid === "string" && jidEhWhatsappUsuario(jid) ? jid : null;
+}
+
 function extrairNumeroReal(contato: EvolutionMensagem): string | null {
-  if (contato.remoteJidAlt) {
-    return extrairNumeroWhatsapp(contato.remoteJidAlt);
+  const remoteJidAltValido = normalizarJidWhatsappUsuario(contato.remoteJidAlt);
+  if (remoteJidAltValido) {
+    return extrairNumeroWhatsapp(remoteJidAltValido);
   }
+
+  if (jidEhLid(contato.remoteJid)) {
+    const remoteJidAltLastMessageValido = normalizarJidWhatsappUsuario(contato.remoteJidAltLastMessage);
+    if (remoteJidAltLastMessageValido) {
+      return extrairNumeroWhatsapp(remoteJidAltLastMessageValido);
+    }
+
+    return null;
+  }
+
   return extrairNumeroWhatsapp(contato.remoteJid);
 }
 
@@ -218,7 +241,7 @@ async function sincronizarEmpresa(idEmpresa: string, sessao?: SessaoToken): Prom
 
     for (const contato of contatos) {
       processados += 1;
-      const digits = extrairNumeroReal(contato) ?? extrairNumeroWhatsapp(contato.remoteJid);
+      const digits = extrairNumeroReal(contato);
       if (!digits) {
         invalidos += 1;
         continue;

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { ensureSqliteOptimizations, prisma } from "@/lib/prisma";
 import { exigirSessao, podeVerEquipe, respostaSemPermissao } from "@/lib/permissoes";
 import { deletarInstancia } from "@/lib/evolution-api";
 import { esquemaAtualizarWhatsappInstancia } from "@/lib/validacoes";
@@ -7,15 +7,15 @@ import { notFound } from "@/lib/api/http";
 import { handleRouteError } from "@/lib/api/route-errors";
 import { validateBody } from "@/lib/api/route-validation";
 import { withRetry } from "@/lib/api/retry";
-
-const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL ?? "http://localhost:8080";
-const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY ?? "";
+import { sincronizarEstadoWhatsapp } from "@/lib/whatsapp-instance-state";
 
 type Params = {
   params: Promise<{ id: string }>;
 };
 
 export async function DELETE(request: NextRequest, { params }: Params) {
+  await ensureSqliteOptimizations();
+
   const auth = await exigirSessao(request);
   if (auth.erro) {
     return auth.erro;
@@ -64,6 +64,8 @@ export async function DELETE(request: NextRequest, { params }: Params) {
 }
 
 export async function PATCH(request: NextRequest, { params }: Params) {
+  await ensureSqliteOptimizations();
+
   const auth = await exigirSessao(request);
   if (auth.erro) {
     return auth.erro;
@@ -111,42 +113,11 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   try {
-    const resposta = await fetch(`${EVOLUTION_API_URL}/instance/connectionState/${instancia.instance_name}`, {
-      method: "GET",
-      headers: { 
-        "Content-Type": "application/json",
-        apikey: EVOLUTION_API_KEY,
-      },
+    await sincronizarEstadoWhatsapp(instancia);
+
+    const atualizada = await prisma.whatsappInstancia.findUnique({
+      where: { id: instancia.id },
     });
-
-    if (!resposta.ok) {
-      const atualizada = await withRetry(
-        () =>
-          prisma.whatsappInstancia.update({
-            where: { id: instancia.id },
-            data: { status: "disconnected" },
-          }),
-        { maxAttempts: 3, delayMs: 1000 }
-      );
-      return NextResponse.json({ instancia: atualizada });
-    }
-
-    const json = await resposta.json();
-    const data = json.instance ?? json;
-    const novoStatus = data.state ?? "unknown";
-    const phone = data.owner?.replace("@s.whatsapp.net", "") ?? null;
-
-    const atualizada = await withRetry(
-      () =>
-        prisma.whatsappInstancia.update({
-          where: { id: instancia.id },
-          data: {
-            status: novoStatus,
-            phone: phone,
-          },
-        }),
-      { maxAttempts: 3, delayMs: 1000 }
-    );
 
     return NextResponse.json({ instancia: atualizada });
   } catch (erro) {
