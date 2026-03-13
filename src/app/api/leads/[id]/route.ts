@@ -87,7 +87,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       telefone: dadosValidados.telefone,
       valor_consorcio: dadosValidados.valor_consorcio,
       motivo_perda: dadosValidados.motivo_perda,
-      documento_aprovacao_url: dadosValidados.documento_aprovacao_url ?? undefined,
+      documento_aprovacao_url: dadosValidados.documento_aprovacao_url,
       id_funcionario: idFuncionarioDestino,
     },
   });

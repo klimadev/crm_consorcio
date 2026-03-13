@@ -81,10 +81,19 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   const isMovingToGanho = estagioDestino.tipo === "GANHO";
   const hasAprovacao = Boolean(lead.aprovado_em && lead.aprovado_por);
+  const hasDocumento = Boolean(lead.documento_aprovacao_url);
   let estagioEfetivo = estagioDestino;
   let mensagemMovimentacao: string | undefined;
 
+  // Se tentarem mover para GANHO sem aprovação, redirecionar para PRÉ-APROVAÇÃO
+  // MAS APENAS se o lead já tiver documento de aprovação
+  // Se não tiver documento, não deixar mover (tem que ter documento primeiro)
   if (isMovingToGanho && !hasAprovacao) {
+    if (!hasDocumento) {
+      // Lead sem documento não pode ir para PRÉ-APROVAÇÃO nem FECHADO
+      return badRequest("O lead precisa ter um documento de aprovação anexado antes de ser movido para Fechado.");
+    }
+
     const estagioPreAprovacao = await prisma.estagioFunil.findFirst({
       where: {
         id_empresa: auth.sessao.id_empresa,

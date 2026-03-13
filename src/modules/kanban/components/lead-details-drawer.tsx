@@ -46,6 +46,7 @@ type LeadDetailsDrawerProps = {
     urlDocumento?: string,
     opcoes?: { atualizarSelecionado?: boolean; arquivoUpload?: File | null },
   ) => Promise<void>;
+  onRemoverDocumento: () => Promise<void>;
 };
 
 export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
@@ -73,6 +74,7 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
     setErroDetalhesLead,
     onExcluirLead,
     onSalvarDetalhesLead,
+    onRemoverDocumento,
   } = props;
 
   const [temAlteracoes, setTemAlteracoes] = useState(false);
@@ -327,7 +329,7 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
           {podeRenderizarConteudo && leadSelecionado ? (
             <Tabs value={tabAtiva} onValueChange={setTabAtiva} className="flex min-h-0 flex-1 flex-col">
               <div className="border-b bg-slate-50 px-4 py-2">
-                <TabsList className="grid w-full grid-cols-4 bg-slate-200">
+                <TabsList className="grid w-full grid-cols-3 bg-slate-200">
                   <TabsTrigger value="detalhes" className="text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm">
                     <FileText className="mr-2 h-4 w-4" />
                     Detalhes
@@ -341,10 +343,11 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
                     <Banknote className="mr-2 h-4 w-4" />
                     Parcelas
                   </TabsTrigger>
-                  <TabsTrigger value="produtos" className="text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                  {/* [HYPE CRM] Feature em desenvolvimento - Produtos será uma feature exclusiva do HYPE CRM */}
+                  {/* <TabsTrigger value="produtos" className="text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm">
                     <Package className="mr-2 h-4 w-4" />
                     Produtos
-                  </TabsTrigger>
+                  </TabsTrigger> */}
                 </TabsList>
               </div>
 
@@ -383,6 +386,7 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
                   setModoDocumento={setModoDocumento}
                   temAlteracoes={temAlteracoes}
                   setTemAlteracoes={setTemAlteracoes}
+                  onRemoverDocumento={onRemoverDocumento}
                 />
               </TabsContent>
 
@@ -405,9 +409,10 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
                 <LeadParcelasTab leadId={leadSelecionado.id} />
               </TabsContent>
 
-              <TabsContent value="produtos" className="m-0 flex-1 overflow-y-auto p-4">
+              {/* [HYPE CRM] Feature em desenvolvimento - Produtos será uma feature exclusiva do HYPE CRM */}
+              {/* <TabsContent value="produtos" className="m-0 flex-1 overflow-y-auto p-4">
                 <LeadProdutosTab leadId={leadSelecionado.id} />
-              </TabsContent>
+              </TabsContent> */}
             </Tabs>
           ) : (
             <EmptyState

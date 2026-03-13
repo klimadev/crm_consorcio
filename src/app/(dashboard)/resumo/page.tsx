@@ -93,7 +93,7 @@ export default async function PaginaResumo() {
         <p className="text-sm text-sky-500">Indicadores do seu funil de vendas.</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader>
             <CardTitle>Total em aberto</CardTitle>
@@ -109,6 +109,15 @@ export default async function PaginaResumo() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold">{formataMoeda(totalGanho)}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Vendas fechadas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold">{ganhos.length}</p>
           </CardContent>
         </Card>
 

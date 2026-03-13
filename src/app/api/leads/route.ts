@@ -103,6 +103,11 @@ export async function POST(request: NextRequest) {
     return badRequest("Estagio ou funcionario invalido.");
   }
 
+  // Impedir criação direta em estágio FECHADO (GANHO)
+  if (estagio.tipo === "GANHO") {
+    return badRequest("Não é permitido criar leads diretamente no estágio Fechado. O lead deve passar por Pré Aprovação primeiro.");
+  }
+
   if (!podeGerenciarRecursoNoPdv(auth.sessao, funcionario.id_pdv)) {
     return forbidden("Sem permissao para atribuir lead a este colaborador.");
   }

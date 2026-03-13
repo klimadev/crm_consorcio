@@ -214,14 +214,19 @@ type PendenciaInfoApi = {
 };
 
 export async function listarPendenciasGlobaisKanban(): Promise<ResultadoApi<{ pendencias: PendenciaInfoApi[] }>> {
-  const resposta = await fetch("/api/pendencias");
-  const json = await lerJsonSeguro<{ pendencias?: PendenciaInfoApi[] } & ApiErro>(resposta);
+  try {
+    const resposta = await fetch("/api/pendencias");
+    const json = await lerJsonSeguro<{ pendencias?: PendenciaInfoApi[] } & ApiErro>(resposta);
 
-  if (!resposta.ok) {
-    return { ok: false, erro: json.erro ?? "Erro ao buscar pendências." };
+    if (!resposta.ok) {
+      return { ok: false, erro: json.erro ?? "Erro ao buscar pendências." };
+    }
+
+    return { ok: true, dados: { pendencias: json.pendencias ?? [] } };
+  } catch (erro) {
+    console.error("Erro de rede ao buscar pendências:", erro);
+    return { ok: false, erro: "Erro de conexão. Verifique sua internet." };
   }
-
-  return { ok: true, dados: { pendencias: json.pendencias ?? [] } };
 }
 
 export async function redistribuirLeadsEmAtendimentoKanban(

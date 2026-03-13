@@ -614,95 +614,127 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
                   </div>
                 </div>
               ) : null}
-              <div className="rounded-xl border border-blue-200/70 bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Cadastro rapido no PDV</p>
-                    <p className="text-xs text-slate-600">Novo colaborador entra direto em {pdvSelecionadoNoDrawer?.nome ?? "este PDV"}.</p>
+              {/* Seção de Adicionar Novo Colaborador */}
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100">
+                      <UserPlus className="h-5 w-5 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">Adicionar novo colaborador</p>
+                      <p className="text-xs text-slate-500">Cadastrar em <span className="font-medium text-emerald-600">{pdvSelecionadoNoDrawer?.nome}</span></p>
+                    </div>
                   </div>
                   <Button
                     type="button"
                     size="sm"
-                    className="h-8 rounded-lg bg-blue-600 px-3 text-white hover:bg-blue-500"
+                    className={cn(
+                      "h-9 rounded-lg px-4 font-medium",
+                      novoColaboradorExpandido 
+                        ? "bg-slate-100 text-slate-600 hover:bg-slate-200" 
+                        : "bg-emerald-600 text-white hover:bg-emerald-500"
+                    )}
                     onClick={() => {
                       vm.setCargoSelecionado("COLABORADOR");
                       vm.setPdvSelecionado(pdvSelecionadoNoDrawer?.id ?? "");
                       setNovoColaboradorExpandido((atual) => !atual);
                     }}
                   >
-                    <UserPlus className="mr-1.5 h-3.5 w-3.5" />
-                    {novoColaboradorExpandido ? "Ocultar" : "Adicionar"}
+                    {novoColaboradorExpandido ? "Cancelar" : "Novo"}
                   </Button>
                 </div>
 
-                {novoColaboradorExpandido ? (
-                  <form className="mt-3 space-y-2" onSubmit={handleSubmitCadastroRapido}>
-                    <div className="relative">
-                      <Input 
-                        name="nome" 
-                        placeholder="Nome completo" 
-                        required 
-                        className={cn(
-                          "h-9 rounded-lg bg-white transition-all duration-200",
-                          errosLocal.nome ? "border-rose-300 bg-rose-50/50 focus:border-rose-400 focus:ring-rose-200" : "border-slate-200 focus:border-blue-400 focus:ring-blue-200"
-                        )} 
-                      />
-                      {errosLocal.nome && (
-                        <p className="mt-1 text-[10px] font-medium text-rose-500">{errosLocal.nome}</p>
-                      )}
+                {novoColaboradorExpandido && (
+                  <form className="mt-4 space-y-3" onSubmit={handleSubmitCadastroRapido}>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-slate-600">Nome</label>
+                        <Input 
+                          name="nome" 
+                          placeholder="Nome completo" 
+                          required 
+                          className={cn(
+                            "h-10 rounded-lg bg-slate-50",
+                            errosLocal.nome ? "border-rose-300 bg-rose-50" : "border-slate-200 focus:border-emerald-400"
+                          )} 
+                        />
+                        {errosLocal.nome && (
+                          <p className="mt-1 text-xs text-rose-500">{errosLocal.nome}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-slate-600">Cargo</label>
+                        <Select name="cargo" defaultValue="COLABORADOR">
+                          <SelectTrigger className="h-10 rounded-lg bg-slate-50 border-slate-200">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="COLABORADOR">Colaborador</SelectItem>
+                            <SelectItem value="GERENTE">Gerente</SelectItem>
+                            <SelectItem value="ADMINISTRADOR">Administrador</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                    <div className="relative">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-600">E-mail</label>
                       <Input 
                         name="email" 
                         type="email" 
-                        placeholder="E-mail" 
+                        placeholder="email@exemplo.com" 
                         required 
                         className={cn(
-                          "h-9 rounded-lg bg-white transition-all duration-200",
-                          errosLocal.email ? "border-rose-300 bg-rose-50/50 focus:border-rose-400 focus:ring-rose-200" : "border-slate-200 focus:border-blue-400 focus:ring-blue-200"
+                          "h-10 rounded-lg bg-slate-50",
+                          errosLocal.email ? "border-rose-300 bg-rose-50" : "border-slate-200 focus:border-emerald-400"
                         )} 
                       />
                       {errosLocal.email && (
-                        <p className="mt-1 text-[10px] font-medium text-rose-500">{errosLocal.email}</p>
+                        <p className="mt-1 text-xs text-rose-500">{errosLocal.email}</p>
                       )}
                     </div>
-                    <div className="relative">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-600">Senha temporária</label>
                       <Input 
                         name="senha" 
                         type="password" 
-                        placeholder="Senha temporaria" 
+                        placeholder="Mínimo 4 caracteres" 
                         required 
                         className={cn(
-                          "h-9 rounded-lg bg-white transition-all duration-200",
-                          errosLocal.senha ? "border-rose-300 bg-rose-50/50 focus:border-rose-400 focus:ring-rose-200" : "border-slate-200 focus:border-blue-400 focus:ring-blue-200"
+                          "h-10 rounded-lg bg-slate-50",
+                          errosLocal.senha ? "border-rose-300 bg-rose-50" : "border-slate-200 focus:border-emerald-400"
                         )} 
                       />
                       {errosLocal.senha && (
-                        <p className="mt-1 text-[10px] font-medium text-rose-500">{errosLocal.senha}</p>
+                        <p className="mt-1 text-xs text-rose-500">{errosLocal.senha}</p>
                       )}
                     </div>
-                    <input type="hidden" name="cargo" value="COLABORADOR" />
                     <input type="hidden" name="id_pdv" value={pdvSelecionadoNoDrawer?.id ?? ""} />
                     {vm.erroCadastro ? (
-                      <div className="flex items-center gap-1.5 rounded-lg bg-rose-50 border border-rose-200 px-2 py-1.5">
-                        <AlertCircle className="h-3.5 w-3.5 text-rose-500" />
-                        <p className="text-xs font-medium text-rose-600">{vm.erroCadastro}</p>
+                      <div className="flex items-center gap-2 rounded-lg bg-rose-50 border border-rose-200 px-3 py-2">
+                        <AlertCircle className="h-4 w-4 text-rose-500" />
+                        <p className="text-sm text-rose-600">{vm.erroCadastro}</p>
                       </div>
                     ) : null}
                     <Button 
                       type="submit" 
-                      className="h-9 w-full rounded-lg bg-gradient-to-r from-slate-900 to-slate-800 text-white hover:from-slate-800 hover:to-slate-700 shadow-sm transition-all duration-200 hover:shadow-md" 
+                      className="h-10 w-full rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 font-medium" 
                       disabled={vm.carregandoCadastro}
                     >
                       {vm.carregandoCadastro ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Cadastrando...
+                        </>
                       ) : (
-                        <UserPlus className="mr-2 h-4 w-4" />
+                        <>
+                          <UserPlus className="mr-2 h-4 w-4" />
+                          Cadastrar colaborador
+                        </>
                       )}
-                      {vm.carregandoCadastro ? "Cadastrando..." : "Cadastrar colaborador"}
                     </Button>
                   </form>
-                ) : null}
+                )}
 
               {cadastroSucesso && (
                 <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/80 px-3 py-2.5 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">

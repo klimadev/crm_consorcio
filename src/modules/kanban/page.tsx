@@ -137,6 +137,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         setErroDetalhesLead={vm.setErroDetalhesLead}
         onExcluirLead={vm.excluirLead}
         onSalvarDetalhesLead={vm.salvarDetalhesLead}
+        onRemoverDocumento={vm.removerDocumento}
       />
     </ModulePageShell>
   );

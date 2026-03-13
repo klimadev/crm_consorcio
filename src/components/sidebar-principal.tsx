@@ -11,9 +11,11 @@ import {
   Menu,
   Package,
   Settings2,
+  Target,
   Users,
   X,
   MessageCircle,
+  ChevronDown,
 } from "lucide-react";
 import { BotaoSair } from "@/components/botao-sair";
 import { SessaoToken } from "@/lib/tipos";
@@ -21,6 +23,14 @@ import { DadosUsuarioLogado } from "@/lib/autenticacao";
 import { cn } from "@/lib/utils";
 import { usePendenciasGlobais } from "@/modules/kanban/hooks/use-pendencias-globais";
 import { TOUR_TARGETS } from "@/modules/onboarding/lib/selectors";
+
+type ItemMenu = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tourTarget?: string;
+  children?: ItemMenu[];
+};
 
 type Props = {
   sessao: SessaoToken;
@@ -103,9 +113,21 @@ function MenuItemComBadge({
 export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
   const pathname = usePathname();
   const [sidebarAberta, setSidebarAberta] = useState(false);
+  const [submenuAberto, setSubmenuAberto] = useState<string | null>(
+    pathname.startsWith("/equipe") ? "/equipe" : null
+  );
   const { resumo } = usePendenciasGlobais();
 
-  const secoes = [
+  const toggleSubmenu = (href: string) => {
+    setSubmenuAberto(submenuAberto === href ? null : href);
+  };
+
+  type Secao = {
+  titulo: string;
+  itens: ItemMenu[];
+};
+
+const secoes: Secao[] = [
     {
       titulo: "GERAL",
       itens: [{ href: "/resumo", label: "Resumo", icon: BarChart3, tourTarget: TOUR_TARGETS.sidebarResumo }],
@@ -115,12 +137,23 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
       itens: [
         { href: "/kanban", label: "Leads", icon: LayoutGrid, tourTarget: TOUR_TARGETS.sidebarKanban },
         ...(sessao.perfil === "EMPRESA" ? [{ href: "/recebimentos", label: "Recebimentos", icon: WalletCards }] : []),
-        ...(sessao.perfil === "EMPRESA" || sessao.perfil === "GERENTE"
-          ? [{ href: "/produtos", label: "Produtos", icon: Package }]
-          : []),
+        // [HYPE CRM] Feature em desenvolvimento - Produtos será uma feature exclusiva do HYPE CRM
+        // ...(sessao.perfil === "EMPRESA" || sessao.perfil === "GERENTE"
+        //   ? [{ href: "/produtos", label: "Produtos", icon: Package }]
+        //   : []),
         ...(sessao.perfil !== "COLABORADOR"
-          ? [{ href: "/equipe", label: "Equipe", icon: Users, tourTarget: TOUR_TARGETS.sidebarEquipe }]
-          : []),
+          ? [
+              {
+                href: "/equipe",
+                label: "Equipe",
+                icon: Users,
+                tourTarget: TOUR_TARGETS.sidebarEquipe,
+                children: [
+                  { href: "/equipe/metas", label: "Metas", icon: Target },
+                ],
+              },
+            ]
+          : [{ href: "/minhas-metas", label: "Minhas Metas", icon: Target }]),
       ],
     },
     {
@@ -141,7 +174,7 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
   const iniciaisNome = gerarIniciais(dadosUsuario?.nome, sessao.perfil);
 
   const conteudoSidebar = (
-    <div className="flex h-full flex-col gap-4 rounded-2xl border border-slate-200/80 bg-[#F8F9FA] p-4 shadow-[0_14px_40px_-28px_rgba(15,23,42,0.55)] lg:min-h-[calc(100vh-2rem)]">
+    <div className="flex h-full flex-col gap-4 rounded-2xl border border-blue-200/80 bg-blue-50 p-4 shadow-[0_14px_40px_-28px_rgba(15,23,42,0.55)] lg:min-h-[calc(100vh-2rem)]">
       <div className="space-y-4">
         <div className="flex items-center gap-3 px-1">
           <div className="relative h-9 w-9 overflow-hidden rounded-xl">
@@ -169,6 +202,8 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
               {secao.itens.map((item) => {
                 const Icone = item.icon;
                 const ativo = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                const temChildren = item.children && item.children.length > 0;
+                const isSubmenuOpen = temChildren && submenuAberto === item.href;
 
                 if (item.href === "/kanban") {
                   return (
@@ -182,9 +217,76 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
                       tourTarget={item.tourTarget}
                       onClick={() => setSidebarAberta(false)}
                       />
-                    );
+                  );
                 }
 
+                // Item com submenu (ex: Equipe)
+                if (temChildren) {
+                  return (
+                    <div key={item.href}>
+                      <div
+                        className={cn(
+                          "relative flex w-full items-center justify-between rounded-[10px] px-3 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-slate-600 transition-all duration-200 hover:bg-blue-100 hover:text-blue-900",
+                          ativo && "bg-blue-500/10 pl-4 text-blue-700 hover:bg-blue-500/15 hover:text-blue-700",
+                        )}
+                      >
+                        <Link
+                          href={item.href}
+                          onClick={() => setSidebarAberta(false)}
+                          data-tour={item.tourTarget}
+                          className="flex flex-1 items-center gap-2.5"
+                        >
+                          {ativo ? <span className="absolute left-1 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-blue-600" /> : null}
+                          <Icone className={cn("h-4 w-4", ativo && "text-blue-700")} />
+                          {item.label}
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            toggleSubmenu(item.href);
+                          }}
+                          className="p-1"
+                        >
+                          <ChevronDown
+                            className={cn(
+                              "h-4 w-4 text-slate-400 transition-transform duration-200",
+                              isSubmenuOpen && "rotate-180",
+                            )}
+                          />
+                        </button>
+                      </div>
+
+                      {/* Sub-itens */}
+                      {isSubmenuOpen && (
+                        <div className="ml-4 mt-1 space-y-1 border-l-2 border-blue-200 pl-3">
+                          {item.children!.map((child) => {
+                            const ChildIcon = child.icon;
+                            const childAtivo = pathname === child.href || pathname.startsWith(`${child.href}/`);
+                            return (
+                              <Link
+                                key={child.href}
+                                href={child.href}
+                                onClick={() => setSidebarAberta(false)}
+                                className={cn(
+                                  "relative flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-[13px] font-medium tracking-[-0.01em] transition-all duration-200",
+                                  childAtivo
+                                    ? "bg-blue-500/10 text-blue-700"
+                                    : "text-slate-500 hover:bg-blue-100 hover:text-blue-900",
+                                )}
+                              >
+                                <ChildIcon className={cn("h-3.5 w-3.5", childAtivo && "text-blue-700")} />
+                                {child.label}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                // Item normal sem submenu
                 return (
                   <Link
                     key={item.href}
@@ -192,7 +294,7 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
                     onClick={() => setSidebarAberta(false)}
                     data-tour={item.tourTarget}
                     className={cn(
-                      "relative flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-slate-600 transition-all duration-200 hover:bg-[#F1F3F5] hover:text-slate-900",
+                      "relative flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-slate-600 transition-all duration-200 hover:bg-blue-100 hover:text-blue-900",
                       ativo && "bg-blue-500/10 pl-4 text-blue-700 hover:bg-blue-500/15 hover:text-blue-700",
                     )}
                   >

@@ -3,6 +3,10 @@ import { obterSessaoNaRequest } from "@/lib/autenticacao";
 import { SessaoToken } from "@/lib/tipos";
 import { prisma } from "@/lib/prisma";
 
+function isAdmin(sessao: SessaoToken) {
+  return sessao.perfil === "EMPRESA";
+}
+
 export async function exigirSessao(request: NextRequest): Promise<
   | { sessao: SessaoToken; erro: null }
   | { sessao: null; erro: NextResponse<{ erro: string }> }
@@ -19,7 +23,7 @@ export async function exigirSessao(request: NextRequest): Promise<
 }
 
 export function podeGerenciarEmpresa(sessao: SessaoToken) {
-  return sessao.perfil === "EMPRESA";
+  return isAdmin(sessao);
 }
 
 export function podeAdicionarFuncionario(sessao: SessaoToken) {
@@ -67,7 +71,56 @@ export function podeExecutarAcoesEmLote(sessao: SessaoToken) {
 }
 
 export function podeAprovarLead(sessao: SessaoToken) {
-  return sessao.perfil === "EMPRESA" || sessao.perfil === "GERENTE";
+  return isAdmin(sessao) || sessao.perfil === "GERENTE";
+}
+
+export function podeAcessarPainelMetas(sessao: SessaoToken) {
+  return isAdmin(sessao) || sessao.perfil === "GERENTE";
+}
+
+export function podeAcessarMinhasMetas(sessao: SessaoToken) {
+  return sessao.perfil === "COLABORADOR";
+}
+
+export function podeDefinirMetaGlobal(sessao: SessaoToken) {
+  return isAdmin(sessao);
+}
+
+export function podeGerenciarMetaDoPdv(sessao: SessaoToken, idPdvAlvo: string) {
+  if (isAdmin(sessao)) {
+    return true;
+  }
+
+  return sessao.perfil === "GERENTE" && Boolean(sessao.id_pdv) && sessao.id_pdv === idPdvAlvo;
+}
+
+export async function podeGerenciarMetaIndividual(sessao: SessaoToken, idFuncionarioAlvo: string) {
+  if (isAdmin(sessao)) {
+    return true;
+  }
+
+  if (sessao.perfil !== "GERENTE" || !sessao.id_pdv) {
+    return false;
+  }
+
+  const funcionario = await prisma.funcionario.findFirst({
+    where: {
+      id: idFuncionarioAlvo,
+      id_empresa: sessao.id_empresa,
+      id_pdv: sessao.id_pdv,
+    },
+    select: { id: true },
+  });
+
+  return Boolean(funcionario);
+}
+
+export function podeVerMetaDeOutros(sessao: SessaoToken) {
+  return sessao.perfil !== "COLABORADOR";
+}
+
+export function podeVerValoresAbsolutosMetas(sessao: SessaoToken) {
+  return isAdmin(sessao) || sessao.perfil === "GERENTE";
 }
 
 export function podeGerenciarRecursoNoPdv(sessao: SessaoToken, idPdvRecurso?: string | null) {

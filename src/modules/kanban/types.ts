@@ -123,6 +123,7 @@ export type UseKanbanModuleReturn = {
     urlDocumento?: string,
     opcoes?: { atualizarSelecionado?: boolean; arquivoUpload?: File | null }
   ) => Promise<void>;
+  removerDocumento: () => Promise<void>;
   setLeadSelecionado: (lead: Lead | null) => void;
   criarLead: (evento: React.FormEvent<HTMLFormElement>) => Promise<void>;
   sincronizandoWhatsapp: boolean;

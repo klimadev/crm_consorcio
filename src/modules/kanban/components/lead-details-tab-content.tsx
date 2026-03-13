@@ -42,6 +42,7 @@ type LeadDetailsTabContentProps = {
   onSalvar: () => Promise<void>;
   onEnviarArquivo: () => Promise<void>;
   onSalvarUrlDocumento: () => Promise<void>;
+  onRemoverDocumento: () => Promise<void>;
   onAprovarLead: () => Promise<void>;
   onExcluir: () => void;
   hasChanges: boolean;
@@ -73,6 +74,7 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
     onSalvar,
     onEnviarArquivo,
     onSalvarUrlDocumento,
+    onRemoverDocumento,
     onAprovarLead,
     onExcluir,
     hasChanges,
@@ -186,6 +188,11 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
                 <Button type="button" variant="outline" className="h-8 rounded-lg border-amber-300 text-xs font-semibold text-amber-700 hover:bg-amber-50" disabled={uploadando} onClick={() => setMostrarTrocaDocumento(true)}>
                   Substituir documento
                 </Button>
+                {leadSelecionado.documento_aprovacao_url && (
+                  <Button type="button" variant="outline" className="h-8 rounded-lg border-rose-300 text-xs font-semibold text-rose-700 hover:bg-rose-50" disabled={salvando} onClick={() => void onRemoverDocumento()}>
+                    Remover documento
+                  </Button>
+                )}
               </div>
             </div>
           ) : (

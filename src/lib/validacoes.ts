@@ -225,7 +225,7 @@ export const esquemaAtualizarLead = z
       .trim()
       .refine(
         (valor) => {
-          if (!valor) return false;
+          if (!valor) return true; // Permite null para remoção de documento
           if (valor.startsWith("/")) return true;
           return z.string().url().safeParse(valor).success;
         },
@@ -479,6 +479,123 @@ export const esquemaListarRecebimentos = z.object({
 });
 
 export const CARGOS_EQUIPE = ["COLABORADOR", "GERENTE", "ADMINISTRADOR"] as const;
+export const TIPOS_META = ["GLOBAL", "PDV", "INDIVIDUAL"] as const;
+export const TIPOS_META_VALOR = ["VALOR", "VOLUME"] as const;
+export const PERIODOS_META = ["MENSAIS", "TRIMESTRAL", "ANUAL"] as const;
+
+const schemaDataMeta = z
+  .string()
+  .trim()
+  .min(1, "Data obrigatoria.")
+  .refine((valor) => !Number.isNaN(new Date(valor).getTime()), "Data invalida.");
+
+const schemaEscopoMetaOpcional = z
+  .string()
+  .trim()
+  .optional()
+  .transform((valor) => {
+    if (!valor) return undefined;
+    return valor;
+  });
+
+export const schemaCriarMeta = z
+  .object({
+    tipo: z.enum(TIPOS_META, { message: "Tipo de meta invalido." }),
+    tipo_meta: z.enum(TIPOS_META_VALOR, { message: "Indicador de meta invalido." }),
+    alvo: z.coerce.number().positive("O alvo deve ser maior que zero."),
+    periodo: z.enum(PERIODOS_META, { message: "Periodo invalido." }),
+    data_inicio: schemaDataMeta,
+    data_fim: schemaDataMeta,
+    id_pdv: schemaEscopoMetaOpcional,
+    id_funcionario: schemaEscopoMetaOpcional,
+  })
+  .superRefine((dados, ctx) => {
+    const inicio = new Date(dados.data_inicio);
+    const fim = new Date(dados.data_fim);
+
+    if (inicio.getTime() > fim.getTime()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["data_fim"],
+        message: "A data final deve ser igual ou posterior a data inicial.",
+      });
+    }
+
+    if (dados.tipo === "GLOBAL" && (dados.id_pdv || dados.id_funcionario)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["tipo"],
+        message: "Meta global nao pode ter PDV ou colaborador vinculado.",
+      });
+    }
+
+    if (dados.tipo === "PDV" && !dados.id_pdv) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["id_pdv"],
+        message: "Selecione o PDV da meta.",
+      });
+    }
+
+    if (dados.tipo === "PDV" && dados.id_funcionario) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["id_funcionario"],
+        message: "Meta por PDV nao pode ter colaborador vinculado.",
+      });
+    }
+
+    if (dados.tipo === "INDIVIDUAL" && !dados.id_funcionario) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["id_funcionario"],
+        message: "Selecione o colaborador da meta.",
+      });
+    }
+
+    if (dados.tipo === "INDIVIDUAL" && dados.id_pdv) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["id_pdv"],
+        message: "Meta individual usa o PDV do colaborador selecionado.",
+      });
+    }
+  });
+
+export const schemaAtualizarMeta = z
+  .object({
+    tipo: z.enum(TIPOS_META, { message: "Tipo de meta invalido." }).optional(),
+    tipo_meta: z.enum(TIPOS_META_VALOR, { message: "Indicador de meta invalido." }).optional(),
+    alvo: z.coerce.number().positive("O alvo deve ser maior que zero.").optional(),
+    periodo: z.enum(PERIODOS_META, { message: "Periodo invalido." }).optional(),
+    data_inicio: schemaDataMeta.optional(),
+    data_fim: schemaDataMeta.optional(),
+    id_pdv: schemaEscopoMetaOpcional,
+    id_funcionario: schemaEscopoMetaOpcional,
+  })
+  .refine((dados) => Object.keys(dados).length > 0, {
+    message: "Informe ao menos um campo para atualizar.",
+  });
+
+export const schemaListarMetas = z.object({
+  tipo: z.enum(TIPOS_META).optional(),
+  id_pdv: z.string().trim().optional(),
+  id_funcionario: z.string().trim().optional(),
+  ativo: z.enum(["true", "false"]).optional(),
+});
+
+export const schemaRankingMetas = z.object({
+  periodo: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}$/, "Periodo invalido.")
+    .optional(),
+  id_pdv: z.string().trim().optional(),
+});
+
+export const schemaValidarTetoMeta = schemaCriarMeta.extend({
+  id_meta_atual: z.string().trim().optional(),
+});
 
 export const schemaAtualizarFuncionario = z.object({
   nome: z.string().trim().min(2, "Nome deve ter ao menos 2 caracteres."),

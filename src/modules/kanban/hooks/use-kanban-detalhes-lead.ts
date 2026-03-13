@@ -141,6 +141,45 @@ export function useKanbanDetalhesLead({
     [addToast, arquivoSelecionado, cancelarAutoSave, documentoAprovacaoUrl, handleUploadArquivo, setLeads, setLeadSelecionado],
   );
 
+  const removerDocumento = useCallback(async () => {
+    if (!leadSelecionado) return;
+
+    setSalvando(true);
+    setErroDetalhesLead(null);
+
+    try {
+      const resposta = await atualizarLeadKanban(leadSelecionado.id, {
+        observacoes: leadSelecionado.observacoes,
+        telefone: leadSelecionado.telefone,
+        valor_consorcio: Number(leadSelecionado.valor_consorcio),
+        documento_aprovacao_url: null,
+        id_funcionario: leadSelecionado.id_funcionario,
+      });
+
+      if (!resposta.ok) {
+        setErroDetalhesLead(resposta.erro);
+        return;
+      }
+
+      if (resposta.dados.lead) {
+        const leadAtualizado = resposta.dados.lead;
+        setLeads((atual) => atual.map((item) => (item.id === leadAtualizado.id ? leadAtualizado : item)));
+        setLeadSelecionado((atual) => (atual && atual.id === leadAtualizado.id ? leadAtualizado : atual));
+        setDocumentoAprovacaoUrl("");
+      }
+
+      addToast({
+        type: "success",
+        title: "Documento removido",
+        description: "O documento de aprovação foi removido.",
+      });
+    } catch (erro) {
+      setErroDetalhesLead(obterMensagemErroKanban(erro, "Erro ao remover documento."));
+    } finally {
+      setSalvando(false);
+    }
+  }, [leadSelecionado, setLeads, setLeadSelecionado, setDocumentoAprovacaoUrl, addToast]);
+
   useEffect(() => {
     salvarAutomaticamenteRef.current = async (leadAtualizado) => {
       await salvarDetalhesLead(leadAtualizado, undefined, { origem: "automatica" });
@@ -201,6 +240,7 @@ export function useKanbanDetalhesLead({
     ultimaAtualizacaoSalvaEm,
     statusSalvamentoDetalhes,
     salvarDetalhesLead,
+    removerDocumento,
     aoMudarLead,
   };
 }

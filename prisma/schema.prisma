@@ -17,6 +17,8 @@ model Empresa {
   estagios      EstagioFunil[]
   funcionarios  Funcionario[]
   leads         Lead[]
+  metas         Meta[]
+  metasProgresso MetaProgresso[]
   produtos      Produto[]
   leads_produto LeadProduto[]
   pdvs          Pdv[]
@@ -31,6 +33,7 @@ model Pdv {
   criado_em             DateTime           @default(now())
   atualizado_em         DateTime           @default(now()) @updatedAt
   funcionarios          Funcionario[]
+  metas                 Meta[]
   empresa               Empresa            @relation(fields: [id_empresa], references: [id])
   whatsapp_instancia    WhatsappInstancia? @relation(fields: [id_whatsapp_instancia], references: [id], onDelete: SetNull)
 
@@ -50,6 +53,7 @@ model Funcionario {
   criado_em     DateTime  @default(now())
   atualizado_em DateTime  @default(now()) @updatedAt
   inativado_em  DateTime?
+  metas         Meta[]
   pdv           Pdv       @relation(fields: [id_pdv], references: [id])
   empresa       Empresa   @relation(fields: [id_empresa], references: [id])
   leads         Lead[]
@@ -195,6 +199,47 @@ model Parcela {
   @@index([id_lead])
   @@index([id_empresa, status])
   @@index([id_empresa, data_vencimento])
+}
+
+model Meta {
+  id             String       @id @default(uuid())
+  id_empresa     String
+  tipo           String
+  tipo_meta      String
+  alvo           Float
+  periodo        String
+  data_inicio    DateTime
+  data_fim       DateTime
+  ativo          Boolean      @default(true)
+  criado_em      DateTime     @default(now())
+  atualizado_em  DateTime     @default(now()) @updatedAt
+  id_pdv         String?
+  id_funcionario String?
+
+  empresa     Empresa        @relation(fields: [id_empresa], references: [id])
+  pdv         Pdv?           @relation(fields: [id_pdv], references: [id])
+  funcionario Funcionario?   @relation(fields: [id_funcionario], references: [id])
+  progressos  MetaProgresso[]
+
+  @@index([id_empresa, tipo, ativo])
+  @@index([id_empresa, ativo, data_inicio, data_fim])
+  @@index([id_pdv])
+  @@index([id_funcionario])
+}
+
+model MetaProgresso {
+  id            String   @id @default(uuid())
+  id_meta       String
+  id_empresa    String
+  periodo       String
+  realizado     Float
+  atualizado_em DateTime @default(now()) @updatedAt
+
+  meta    Meta    @relation(fields: [id_meta], references: [id], onDelete: Cascade)
+  empresa Empresa @relation(fields: [id_empresa], references: [id])
+
+  @@unique([id_meta, periodo])
+  @@index([id_empresa, periodo])
 }
 
 model Pendencia {

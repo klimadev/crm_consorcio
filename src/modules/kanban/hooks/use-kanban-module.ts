@@ -84,6 +84,7 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     ultimaAtualizacaoSalvaEm,
     statusSalvamentoDetalhes,
     salvarDetalhesLead,
+    removerDocumento,
     aoMudarLead,
   } = useKanbanDetalhesLead({
     leadSelecionado,
@@ -158,6 +159,7 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     erroDetalhesLead,
     setErroDetalhesLead,
     salvarDetalhesLead,
+    removerDocumento,
     setLeadSelecionado,
     criarLead,
     sincronizandoWhatsapp,
