@@ -46,6 +46,27 @@ export async function listarInstanciasWhatsapp(): Promise<ResultadoApi<{ instanc
   return { ok: true, dados: { instancias: json.instancias ?? [] } };
 }
 
+export type WhatsappStats = {
+  total: number;
+  ativas: number;
+  instancias: Array<{
+    id: string;
+    instance_name: string;
+    status: string;
+  }>;
+};
+
+export async function obterWhatsappStats(): Promise<ResultadoApi<WhatsappStats>> {
+  const resposta = await fetch("/api/whatsapp/stats");
+  const json = await lerJsonSeguro<WhatsappStats & ApiErro>(resposta);
+
+  if (!resposta.ok) {
+    return { ok: false, erro: json.erro ?? "Erro ao carregar estatísticas do WhatsApp." };
+  }
+
+  return { ok: true, dados: json };
+}
+
 export async function obterQrCodeWhatsapp(id: string): Promise<ResultadoApi<{ qrCode: string | null }>> {
   const resposta = await fetch(`/api/whatsapp/instances/${id}/qrcode`, { method: "GET" });
   const json = await lerJsonSeguro<WhatsappConexaoPayload & ApiErro>(resposta);

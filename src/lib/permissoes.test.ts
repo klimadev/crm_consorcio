@@ -29,8 +29,8 @@ describe("whereLeadsPorPerfil", () => {
 
   it("filtra gerente por PDV", async () => {
     vi.spyOn(prisma.funcionario, "findMany").mockResolvedValue([
-      { id: "func-1", id_empresa: "emp-1", id_pdv: "pdv-1", nome: "Func 1", email: "func1@test.com", senha_hash: "hash", cargo: "VENDEDOR", ativo: true, criado_em: new Date(), atualizado_em: new Date() },
-      { id: "func-2", id_empresa: "emp-1", id_pdv: "pdv-1", nome: "Func 2", email: "func2@test.com", senha_hash: "hash", cargo: "VENDEDOR", ativo: true, criado_em: new Date(), atualizado_em: new Date() },
+      { id: "func-1", id_empresa: "emp-1", id_pdv: "pdv-1", nome: "Func 1", email: "func1@test.com", senha_hash: "hash", cargo: "VENDEDOR", ativo: true, criado_em: new Date(), atualizado_em: new Date(), inativado_em: null },
+      { id: "func-2", id_empresa: "emp-1", id_pdv: "pdv-1", nome: "Func 2", email: "func2@test.com", senha_hash: "hash", cargo: "VENDEDOR", ativo: true, criado_em: new Date(), atualizado_em: new Date(), inativado_em: null },
     ]);
 
     const where = await whereLeadsPorPerfil({

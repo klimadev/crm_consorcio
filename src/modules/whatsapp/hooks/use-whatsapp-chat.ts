@@ -143,21 +143,26 @@ export function useWhatsappChat({ leadId, enabled, markReadEnabled, pollMs = 300
       if (!normalizedText) return;
 
       const tempId = retryId ?? `temp-${Date.now()}`;
+      const timestamp = Math.floor(Date.now() / 1000);
       const optimisticMessage: WhatsappChatMessage = {
         id: tempId,
         messageId: tempId,
         leadId,
         remoteJid: "",
+        remoteJidAlt: null,
         fromMe: true,
         direction: "outgoing",
         text: normalizedText,
         kind: "text",
+        tipoLabel: "Texto",
         status: "PENDING",
-        timestamp: Math.floor(Date.now() / 1000),
+        timestamp,
+        timestampIso: new Date().toISOString(),
         createdAtIso: new Date().toISOString(),
         readAtIso: null,
         optimistic: true,
         error: null,
+        dadosAd: null,
       };
 
       setError(null);

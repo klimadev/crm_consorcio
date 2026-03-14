@@ -6,12 +6,14 @@ import type {
   Lead,
   OrdenacaoKanban,
   PendenciaLeadInfo,
+  OrigemStats,
 } from "../types";
 import { getGravidadePendencia } from "./use-pendencias-globais";
 
 function leadPassaFiltros(
   pendenciaInfo: PendenciaLeadInfo | undefined,
   filtros: KanbanFilters,
+  lead: Lead,
 ): boolean {
   if (filtros.status === "com_pendencia" && !pendenciaInfo) return false;
   if (filtros.status === "sem_pendencia" && pendenciaInfo) return false;
@@ -22,6 +24,16 @@ function leadPassaFiltros(
 
   if (filtros.tipo !== "todos" && pendenciaInfo) {
     if (!pendenciaInfo.tipos.includes(filtros.tipo)) return false;
+  }
+
+  // Filter by origin
+  if (filtros.origem !== "todos") {
+    const leadOrigem = lead.origem ?? "MANUAL";
+    const matchesOrigem =
+      (filtros.origem === "ANUNCIO_CTWA" && leadOrigem === "ANUNCIO_CTWA") ||
+      (filtros.origem === "SINCRONIZACAO_WHATSAPP" && leadOrigem === "SINCRONIZACAO_WHATSAPP") ||
+      (filtros.origem === "MANUAL" && (leadOrigem === "MANUAL" || !lead.origem));
+    if (!matchesOrigem) return false;
   }
 
   return true;
@@ -43,6 +55,7 @@ export function useKanbanDerivacoes({
     gravidade: "todas",
     tipo: "todos",
     pdv: null,
+    origem: "todos",
   });
   const [modoFocoPendencias, setModoFocoPendencias] = useState(false);
   const [busca, setBusca] = useState("");
@@ -105,7 +118,7 @@ export function useKanbanDerivacoes({
 
   const leadsFiltradosPorEstagio = useMemo(() => {
     const filtrosAtivos = modoFocoPendencias
-      ? { status: "com_pendencia" as const, gravidade: "todas" as const, tipo: "todos" as const, pdv: filtros.pdv }
+      ? { status: "com_pendencia" as const, gravidade: "todas" as const, tipo: "todos" as const, pdv: filtros.pdv, origem: filtros.origem }
       : filtros;
 
     const mapa: Record<string, Lead[]> = {};
@@ -120,7 +133,7 @@ export function useKanbanDerivacoes({
       if (filtrosAtivos.pdv && lead.id_pdv !== filtrosAtivos.pdv) continue;
 
       const pendenciaInfo = pendenciasPorLead[lead.id];
-      if (!leadPassaFiltros(pendenciaInfo, filtrosAtivos)) continue;
+      if (!leadPassaFiltros(pendenciaInfo, filtrosAtivos, lead)) continue;
 
       if (busca) {
         const buscaLower = busca.toLowerCase();
@@ -159,6 +172,30 @@ export function useKanbanDerivacoes({
     [estagios],
   );
 
+  // Calculate origin statistics
+  const origemStats = useMemo((): OrigemStats => {
+    const stats: OrigemStats = {
+      total: leads.length,
+      anuncios: 0,
+      whatsapp: 0,
+      manual: 0,
+    };
+
+    for (const lead of leads) {
+      const origem = lead.origem ?? "MANUAL";
+      if (origem === "ANUNCIO_CTWA") {
+        stats.anuncios++;
+      } else if (origem === "SINCRONIZACAO_WHATSAPP") {
+        stats.whatsapp++;
+      } else {
+        // MANUAL or undefined
+        stats.manual++;
+      }
+    }
+
+    return stats;
+  }, [leads]);
+
   return {
     filtros,
     setFiltros,
@@ -173,5 +210,6 @@ export function useKanbanDerivacoes({
     leadsPorEstagio,
     leadsFiltradosPorEstagio,
     estagioAberto,
+    origemStats,
   };
 }

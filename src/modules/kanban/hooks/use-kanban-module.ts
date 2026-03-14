@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Lead, UseKanbanModuleReturn, Props } from "../types";
 import { useToast } from "@/components/ui/toast";
 import { useKanbanDerivacoes } from "./use-kanban-derivacoes";
@@ -8,6 +8,7 @@ import { useKanbanMovimentacao } from "./use-kanban-movimentacao";
 import { useKanbanDados } from "./use-kanban-dados";
 import { useKanbanOperacoes } from "./use-kanban-operacoes";
 import { useKanbanDetalhesLead } from "./use-kanban-detalhes-lead";
+import { obterWhatsappStats } from "@/lib/api/whatsapp";
 
 export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleReturn {
   const { addToast } = useToast();
@@ -34,6 +35,21 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
   const [telefoneNovoLead, setTelefoneNovoLead] = useState("");
   const [valorNovoLead, setValorNovoLead] = useState("");
 
+  // Estado para estatísticas do WhatsApp
+  const [ultimaSincronizacaoWhatsapp, setUltimaSincronizacaoWhatsapp] = useState<Date | null>(null);
+  const [instanciasAtivasCount, setInstanciasAtivasCount] = useState(0);
+
+  // Carregar estatísticas do WhatsApp ao montar o componente
+  useEffect(() => {
+    async function carregarStatsWhatsapp() {
+      const resultado = await obterWhatsappStats();
+      if (resultado.ok && resultado.dados) {
+        setInstanciasAtivasCount(resultado.dados.ativas);
+      }
+    }
+    carregarStatsWhatsapp();
+  }, []);
+
   const {
     filtros,
     setFiltros,
@@ -48,6 +64,7 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     leadsPorEstagio,
     leadsFiltradosPorEstagio,
     estagioAberto,
+    origemStats,
   } = useKanbanDerivacoes({
     estagios,
     leads,
@@ -118,6 +135,7 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     setValorNovoLead,
     bootstrap,
     setErroDetalhesLead,
+    aoSincronizarWhatsapp: setUltimaSincronizacaoWhatsapp,
   });
 
   return {
@@ -187,6 +205,9 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     recarregarPendencias,
     totalLeads: leads.length,
     pendenciasCriticas: resumoPendencias?.porGravidade.critica ?? 0,
+    origemStats,
+    ultimaSincronizacaoWhatsapp,
+    instanciasAtivasCount,
     notificacoesAtivadas,
     alternarNotificacoes,
     permissaoNotificacao,

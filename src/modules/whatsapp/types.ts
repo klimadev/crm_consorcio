@@ -3,6 +3,10 @@ export type ConnectionDataSource = "evolution_live" | "db_cache" | "unavailable"
 export type ChatConnectionStatus = "online" | "offline" | "unknown";
 export type ChatMessageStatus = "PENDING" | "SENT" | "DELIVERED" | "READ" | "ERROR" | "DELETED" | "PLAYED";
 
+export type MessageKind = "text" | "image" | "video" | "audio" | "document" | "sticker" | "unsupported";
+
+export type ChatMessageKind = MessageKind | "unsupported";
+
 export type WhatsappChatBlockedState = {
   type: "missing_pdv_instance";
   message: string;
@@ -10,21 +14,39 @@ export type WhatsappChatBlockedState = {
   actionHref?: string;
 };
 
+/**
+ * Dados do Ad (Click to WhatsApp) extraídos de uma mensagem
+ */
+export type DadosAdInfo = {
+  titulo: string | null;
+  corpo: string | null;
+  urlOrigem: string | null;
+  idConversao: string | null;
+  urlThumbnail: string | null;
+  tipoOrigem: string | null;
+  appOrigem: string | null;
+  formato: "ctwa" | null;
+} | null;
+
 export type WhatsappChatMessage = {
   id: string;
   messageId: string;
   leadId: string;
   remoteJid: string;
+  remoteJidAlt: string | null;
   fromMe: boolean;
   direction: "incoming" | "outgoing";
   text: string;
-  kind: "text" | "unsupported";
+  kind: ChatMessageKind;
+  tipoLabel: string;
   status: ChatMessageStatus;
   timestamp: number;
+  timestampIso: string;
   createdAtIso: string;
   readAtIso: string | null;
   optimistic: boolean;
   error: string | null;
+  dadosAd: DadosAdInfo;
 };
 
 export type WhatsappInstancia = {

@@ -26,6 +26,7 @@ type UseKanbanOperacoesParams = {
   setValorNovoLead: (valor: string) => void;
   bootstrap: () => Promise<void>;
   setErroDetalhesLead: (erro: string | null) => void;
+  aoSincronizarWhatsapp?: (timestamp: Date) => void;
 };
 
 type ResultadoSincronizacaoWhatsapp =
@@ -51,6 +52,7 @@ export function useKanbanOperacoes({
   setValorNovoLead,
   bootstrap,
   setErroDetalhesLead,
+  aoSincronizarWhatsapp,
 }: UseKanbanOperacoesParams) {
   const { addToast } = useToast();
   const [erroNovoLead, setErroNovoLead] = useState<string | null>(null);
@@ -167,16 +169,21 @@ export function useKanbanOperacoes({
     ],
   );
 
-  const sincronizarWhatsapp = useCallback(async (): Promise<ResultadoSincronizacaoWhatsapp> => {
+  const sincronizarWhatsapp = useCallback(async (params?: string): Promise<ResultadoSincronizacaoWhatsapp> => {
     if (sincronizandoWhatsapp) {
       return { ok: false, erro: "Sincronizacao ja em andamento." };
     }
 
     setSincronizandoWhatsapp(true);
     try {
-      const resposta = await sincronizarWhatsappKanban();
+      const resposta = await sincronizarWhatsappKanban(params);
       if (!resposta.ok) {
         return { ok: false, erro: resposta.erro ?? MENSAGENS_FALLBACK_KANBAN.sincronizarWhatsapp };
+      }
+
+      // Atualizar timestamp da última sincronização
+      if (resposta.dados.timestamp_sync && aoSincronizarWhatsapp) {
+        aoSincronizarWhatsapp(new Date(resposta.dados.timestamp_sync));
       }
 
       await bootstrap();
@@ -190,7 +197,7 @@ export function useKanbanOperacoes({
     } finally {
       setSincronizandoWhatsapp(false);
     }
-  }, [bootstrap, sincronizandoWhatsapp]);
+  }, [bootstrap, sincronizandoWhatsapp, aoSincronizarWhatsapp]);
 
   const excluirLead = useCallback(
     async (id: string) => {

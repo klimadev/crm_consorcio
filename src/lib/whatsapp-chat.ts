@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { whereLeadsPorPerfil } from "@/lib/permissoes";
 import { normalizarTelefoneParaWhatsapp } from "@/lib/phone";
+import { normalizarTimestampParaIso, traduzirTipoMensagem, extrairDadosAd, type DadosAd } from "@/lib/whatsapp-utils";
 import type { SessaoToken } from "@/lib/tipos";
 import type { Prisma } from "@prisma/client";
 import type { ChatConnectionStatus, ChatMessageStatus, WhatsappChatMessage } from "@/modules/whatsapp/types";
@@ -28,23 +29,149 @@ type MensagemNormalizada = {
   remoteJid: string;
   remoteJidAlt: string | null;
   fromMe: boolean;
-  kind: "text" | "unsupported";
+  kind:
+    | "text"
+    | "conversation"
+    | "extendedTextMessage"
+    | "imageMessage"
+    | "videoMessage"
+    | "audioMessage"
+    | "documentMessage"
+    | "stickerMessage"
+    | "reactionMessage"
+    | "listMessage"
+    | "buttonsMessage"
+    | "templateMessage"
+    | "locationMessage"
+    | "contactMessage"
+    | "groupInviteMessage"
+    | "liveLocationMessage"
+    | "orderMessage"
+    | "protocolMessage"
+    | "unknown";
+  tipoLabel: string;
   text: string;
   status: ChatMessageStatus;
   timestamp: number;
+  timestampIso: string;
+  dadosAd: DadosAd;
   error: string | null;
   payloadJson: string;
 };
 
 function extrairTexto(payload: Record<string, unknown>) {
   const message = payload.message as Record<string, unknown> | undefined;
-  if (!message || typeof message !== "object") return { kind: "unsupported" as const, text: "" };
-  if (typeof message.conversation === "string") return { kind: "text" as const, text: message.conversation };
+  if (!message || typeof message !== "object") return { kind: "unknown" as const, text: "" };
 
+  // Texto simples (conversation)
+  if (typeof message.conversation === "string") {
+    return { kind: "conversation" as const, text: message.conversation };
+  }
+
+  // Texto estendido (link, preview)
   const extended = message.extendedTextMessage as Record<string, unknown> | undefined;
-  if (extended && typeof extended.text === "string") return { kind: "text" as const, text: extended.text };
+  if (extended && typeof extended.text === "string") {
+    return { kind: "extendedTextMessage" as const, text: extended.text };
+  }
 
-  return { kind: "unsupported" as const, text: "[Mensagem nao suportada no MVP]" };
+  // Imagem
+  if (message.imageMessage) {
+    const img = message.imageMessage as Record<string, unknown>;
+    const caption = typeof img.caption === "string" ? img.caption : "[Imagem]";
+    return { kind: "imageMessage" as const, text: caption };
+  }
+
+  // Vídeo
+  if (message.videoMessage) {
+    const vid = message.videoMessage as Record<string, unknown>;
+    const caption = typeof vid.caption === "string" ? vid.caption : "[Vídeo]";
+    return { kind: "videoMessage" as const, text: caption };
+  }
+
+  // Áudio/Nota de voz
+  if (message.audioMessage) {
+    return { kind: "audioMessage" as const, text: "[Áudio]" };
+  }
+
+  // Documento
+  if (message.documentMessage) {
+    const doc = message.documentMessage as Record<string, unknown>;
+    const fileName = typeof doc.fileName === "string" ? doc.fileName : "Documento";
+    return { kind: "documentMessage" as const, text: `[Arquivo: ${fileName}]` };
+  }
+
+  // Sticker
+  if (message.stickerMessage) {
+    return { kind: "stickerMessage" as const, text: "[Sticker]" };
+  }
+
+  // Reação
+  if (message.reactionMessage) {
+    const reaction = message.reactionMessage as Record<string, unknown>;
+    const emoji = typeof reaction.text === "string" ? reaction.text : "😀";
+    return { kind: "reactionMessage" as const, text: `[Reação: ${emoji}]` };
+  }
+
+  // Lista
+  if (message.listMessage) {
+    const list = message.listMessage as Record<string, unknown>;
+    const title = typeof list.title === "string" ? list.title : "Lista";
+    return { kind: "listMessage" as const, text: `[Lista: ${title}]` };
+  }
+
+  // Botões
+  if (message.buttonsMessage) {
+    const btn = message.buttonsMessage as Record<string, unknown>;
+    const content = typeof btn.contentText === "string" ? btn.contentText : "Botões";
+    return { kind: "buttonsMessage" as const, text: `[Botões: ${content}]` };
+  }
+
+  // Template
+  if (message.templateMessage) {
+    return { kind: "templateMessage" as const, text: "[Template]" };
+  }
+
+  // Localização
+  if (message.locationMessage) {
+    const loc = message.locationMessage as Record<string, unknown>;
+    const degrees = typeof loc.degreesLatitude === "number" ? `${loc.degreesLatitude}, ${loc.degreesLongitude}` : "Localização";
+    return { kind: "locationMessage" as const, text: `[Localização: ${degrees}]` };
+  }
+
+  // Contato
+  if (message.contactMessage) {
+    const contact = message.contactMessage as Record<string, unknown>;
+    const name = typeof contact.displayName === "string" ? contact.displayName : "Contato";
+    return { kind: "contactMessage" as const, text: `[Contato: ${name}]` };
+  }
+
+  // Convite de grupo
+  if (message.groupInviteMessage) {
+    const group = message.groupInviteMessage as Record<string, unknown>;
+    const groupName = typeof group.groupName === "string" ? group.groupName : "Grupo";
+    return { kind: "groupInviteMessage" as const, text: `[Convite: ${groupName}]` };
+  }
+
+  // Live location
+  if (message.liveLocationMessage) {
+    return { kind: "liveLocationMessage" as const, text: "[Localização ao vivo]" };
+  }
+
+  // Order
+  if (message.orderMessage) {
+    const order = message.orderMessage as Record<string, unknown>;
+    const id = typeof order.orderId === "string" ? order.orderId : "Pedido";
+    return { kind: "orderMessage" as const, text: `[Pedido: ${id}]` };
+  }
+
+  // Status (stories)
+  if (message.protocolMessage) {
+    return { kind: "protocolMessage" as const, text: "[Mensagem de sistema]" };
+  }
+
+  // Catch-all para outros tipos não mapeados
+  const tipoEncontrado = Object.keys(message)[0] || "unknown";
+  return { kind: "unknown" as const, text: `[${tipoEncontrado}]` };
 }
 
 export function mapearStatusMensagem(rawStatus: unknown, fromMe: boolean): ChatMessageStatus {
@@ -128,15 +255,24 @@ export function normalizarMensagensEvolution(payload: unknown): MensagemNormaliz
       const timestamp = Number.parseInt(String(timestampRaw ?? Math.floor(Date.now() / 1000)), 10);
       const extractedStatus = extrairStatusDaMensagem(raw);
 
+      // Extrair tipo de mensagem e dados do Ad
+      const messageType = raw.messageType as string | null;
+      const tipoLabel = traduzirTipoMensagem(messageType);
+      const timestampIso = normalizarTimestampParaIso(timestamp);
+      const dadosAd = extrairDadosAd(raw);
+
       return {
         messageId,
         remoteJid,
         remoteJidAlt,
         fromMe,
         kind,
+        tipoLabel,
         text,
         status: mapearStatusMensagem(extractedStatus, fromMe),
         timestamp: Number.isNaN(timestamp) ? Math.floor(Date.now() / 1000) : timestamp,
+        timestampIso,
+        dadosAd,
         error: null,
         payloadJson: JSON.stringify(raw),
       };
@@ -262,15 +398,9 @@ export async function buscarConnectionStatus(instanceName: string): Promise<Chat
 }
 
 export async function buscarMensagensEvolution(instanceName: string, remoteJid: string) {
+  // Evolution API 2.3+: usa remoteJid e remoteJidAlt para buscar mensagens de um contato específico
   const telefoneBusca = remoteJid.replace(/\D/g, "");
-  const where = telefoneBusca
-    ? {
-        OR: [
-          { key: { remoteJid: `${telefoneBusca}@s.whatsapp.net` } },
-          { key: { remoteJidAlt: `${telefoneBusca}@s.whatsapp.net` } },
-        ],
-      }
-    : { key: { remoteJid } };
+  const telefoneFormatado = telefoneBusca ? `${telefoneBusca}@s.whatsapp.net` : remoteJid;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => {
@@ -279,12 +409,19 @@ export async function buscarMensagensEvolution(instanceName: string, remoteJid: 
 
   let response: Response;
   try {
+    // Payload correto para Evolution API 2.3+: usa where.key com remoteJid E remoteJidAlt
     response = await fetch(`${EVOLUTION_API_URL}/chat/findMessages/${instanceName}`, {
       method: "POST",
       headers: payloadHeaders(),
       body: JSON.stringify({
-        where,
-        limit: 80,
+        where: {
+          key: {
+            remoteJid: telefoneFormatado,
+            remoteJidAlt: telefoneFormatado,
+          },
+        },
+        page: 1,
+        offset: 80,
       }),
       signal: controller.signal,
     });
@@ -297,6 +434,128 @@ export async function buscarMensagensEvolution(instanceName: string, remoteJid: 
   }
 
   return response.json().catch(() => ([]));
+}
+
+/**
+ * Busca todas as mensagens de uma instância para extração otimizada de nomes e Ads
+ * Evolution API 2.3+: usa paginação com page e offset
+ * 
+ * @param instanceName - Nome da instância na Evolution API
+ * @param limitePorPagina - Número de mensagens por página (padrão: 500)
+ * @returns Mapa de remoteJidAlt => { pushName, dadosAd, timestamp }
+ */
+export async function buscarTodasMensagensDaInstancia(
+  instanceName: string,
+  limitePorPagina: number = 500,
+): Promise<Map<string, { pushName: string | null; dadosAd: DadosAd | null; timestamp: number; remoteJidAlt: string }>> {
+  const mapaContatos = new Map<string, { pushName: string | null; dadosAd: DadosAd | null; timestamp: number; remoteJidAlt: string }>();
+  
+  let pagina = 1;
+  let temMaisPaginas = true;
+
+  while (temMaisPaginas) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      controller.abort();
+    }, EVOLUTION_FETCH_TIMEOUT_MS * 2); // Timeout maior para paginação
+
+    let response: Response;
+    try {
+      response = await fetch(`${EVOLUTION_API_URL}/chat/findMessages/${instanceName}`, {
+        method: "POST",
+        headers: payloadHeaders(),
+        body: JSON.stringify({
+          page: pagina,
+          offset: limitePorPagina,
+        }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (!response.ok) {
+      throw new Error(`Erro ao buscar mensagens na Evolution API (página ${pagina}).`);
+    }
+
+    const json = await response.json().catch(() => ({}));
+    const registros = json.messages?.records ?? json.records ?? [];
+
+    if (registros.length === 0) {
+      temMaisPaginas = false;
+      break;
+    }
+
+    for (const msg of registros) {
+      const key = (msg.key ?? {}) as Record<string, unknown>;
+      const remoteJidAlt = typeof key.remoteJidAlt === "string" ? key.remoteJidAlt : null;
+      
+      if (!remoteJidAlt) continue;
+      
+      const fromMe = Boolean(key.fromMe);
+      const pushName = fromMe ? null : (msg.pushName as string | null);
+      const timestamp = Number(msg.messageTimestamp ?? 0);
+      const dadosAd = extrairDadosAd(msg);
+
+      // Só adiciona se for mensagem do lead (fromMe: false) ou se ainda não existir
+      const existente = mapaContatos.get(remoteJidAlt);
+      
+      if (!existente || !fromMe) {
+        // Se é mensagem do lead, atualiza com dados do lead
+        if (!fromMe) {
+          mapaContatos.set(remoteJidAlt, {
+            pushName: pushName,
+            dadosAd: dadosAd,
+            timestamp: timestamp,
+            remoteJidAlt,
+          });
+        } else if (!existente) {
+          // Se é mensagem do CRM e não existe, cria entrada vazia
+          mapaContatos.set(remoteJidAlt, {
+            pushName: null,
+            dadosAd: null,
+            timestamp: 0,
+            remoteJidAlt,
+          });
+        }
+      }
+    }
+
+    const totalPaginas = json.messages?.pages ?? json.pages ?? 1;
+    if (pagina >= totalPaginas) {
+      temMaisPaginas = false;
+    } else {
+      pagina += 1;
+    }
+  }
+
+  return mapaContatos;
+}
+
+/**
+ * Extrai o nome do lead a partir do mapa de mensagens
+ * Prioridade: pushName da primeira mensagem do lead (fromMe: false)
+ */
+export function extrairNomeDoLeadDoMapa(
+  mapaMensagens: Map<string, { pushName: string | null; dadosAd: DadosAd | null; timestamp: number; remoteJidAlt: string }>,
+  remoteJidAlt: string,
+): string | null {
+  const dados = mapaMensagens.get(remoteJidAlt);
+  if (dados?.pushName && dados.pushName.trim().length > 0) {
+    return dados.pushName.trim();
+  }
+  return null;
+}
+
+/**
+ * Extrai dados do Ad a partir do mapa de mensagens
+ */
+export function extrairDadosAdDoMapa(
+  mapaMensagens: Map<string, { pushName: string | null; dadosAd: DadosAd | null; timestamp: number; remoteJidAlt: string }>,
+  remoteJidAlt: string,
+): DadosAd | null {
+  const dados = mapaMensagens.get(remoteJidAlt);
+  return dados?.dadosAd ?? null;
 }
 
 export async function enviarMensagemEvolution(instanceName: string, number: string, text: string) {
@@ -436,21 +695,32 @@ export function mapearMensagemDbParaCanonica(registro: {
   mensagem_id: string;
 }): WhatsappChatMessage {
   const status = mapearStatusMensagem(registro.status, registro.from_me);
+  const timestampIso = normalizarTimestampParaIso(registro.timestamp);
+  
+  // Mapear tipo
+  const kind: WhatsappChatMessage["kind"] = registro.tipo === "text" ? "text" : 
+    (registro.tipo as WhatsappChatMessage["kind"]) ?? "unsupported";
+  const tipoLabel = traduzirTipoMensagem(registro.tipo);
+
   return {
     id: registro.id,
     messageId: registro.mensagem_id,
     leadId: registro.id_lead,
     remoteJid: registro.remote_jid,
+    remoteJidAlt: null, // Não disponível no registro do banco
     fromMe: registro.from_me,
     direction: registro.from_me ? "outgoing" : "incoming",
     text: registro.conteudo ?? "",
-    kind: registro.tipo === "text" ? "text" : "unsupported",
+    kind,
+    tipoLabel,
     status,
     timestamp: registro.timestamp,
+    timestampIso,
     createdAtIso: registro.criado_em.toISOString(),
     readAtIso: registro.lida_no_crm_em ? registro.lida_no_crm_em.toISOString() : null,
     optimistic: false,
     error: registro.erro,
+    dadosAd: null, // Não disponível no registro do banco
   };
 }
 

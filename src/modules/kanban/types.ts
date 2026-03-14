@@ -15,6 +15,8 @@ export type Pdv = {
   nome: string;
 };
 
+export type OrigemLead = "MANUAL" | "SINCRONIZACAO_WHATSAPP" | "ANUNCIO_CTWA";
+
 export type Lead = {
   id: string;
   id_estagio: string;
@@ -27,9 +29,13 @@ export type Lead = {
   documento_aprovacao_url: string | null;
   aprovado_em: string | null;
   aprovado_por: string | null;
-  origem?: "MANUAL" | "SINCRONIZACAO_WHATSAPP" | string;
+  origem?: OrigemLead;
   atualizado_em: string;
   id_pdv?: string | null;
+  // Campos de Anúncio (CTWA)
+  anuncio_titulo?: string | null;
+  anuncio_descricao?: string | null;
+  announcement_url?: string | null;
 };
 
 export type Funcionario = {
@@ -56,11 +62,21 @@ export type FiltroPendencia = "todos" | "com_pendencia" | "sem_pendencia";
 export type FiltroGravidade = "todas" | "critica" | "alerta" | "info";
 export type FiltroTipo = "todos" | TipoPendencia;
 
+export type FiltroOrigem = "todos" | "ANUNCIO_CTWA" | "SINCRONIZACAO_WHATSAPP" | "MANUAL";
+
+export type OrigemStats = {
+  total: number;
+  anuncios: number;
+  whatsapp: number;
+  manual: number;
+};
+
 export type KanbanFilters = {
   status: FiltroPendencia;
   gravidade: FiltroGravidade;
   tipo: FiltroTipo;
   pdv: string | null;
+  origem: FiltroOrigem;
 };
 
 export type OrdenacaoKanban = "valor_maior" | "valor_menor" | "recente" | "antigo" | "nome";
@@ -127,8 +143,10 @@ export type UseKanbanModuleReturn = {
   setLeadSelecionado: (lead: Lead | null) => void;
   criarLead: (evento: React.FormEvent<HTMLFormElement>) => Promise<void>;
   sincronizandoWhatsapp: boolean;
+  ultimaSincronizacaoWhatsapp: Date | null;
+  instanciasAtivasCount: number;
   redistribuindoEmAtendimento: boolean;
-  sincronizarWhatsapp: () => Promise<{
+  sincronizarWhatsapp: (params?: string) => Promise<{
     ok: boolean;
     erro?: string;
     criados?: number;
@@ -137,12 +155,12 @@ export type UseKanbanModuleReturn = {
   redistribuirLeadsEmAtendimento: () => Promise<
     | { ok: false; erro: string }
     | {
-      ok: true;
-      avaliados: number;
-      elegiveis: number;
-      reatribuidos: number;
-      ignoradosSemDestino: number;
-    }
+        ok: true;
+        avaliados: number;
+        elegiveis: number;
+        reatribuidos: number;
+        ignoradosSemDestino: number;
+      }
   >;
   confirmarPerda: (evento: React.FormEvent<HTMLFormElement>) => Promise<void>;
   aoDragEnd: (resultado: import("@hello-pangea/dnd").DropResult) => Promise<void>;
@@ -164,6 +182,7 @@ export type UseKanbanModuleReturn = {
   recarregarPendencias: () => void;
   totalLeads: number;
   pendenciasCriticas: number;
+  origemStats: OrigemStats;
   notificacoesAtivadas: boolean;
   alternarNotificacoes: () => Promise<boolean>;
   permissaoNotificacao: () => NotificationPermission | "unknown";

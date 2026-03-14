@@ -9,7 +9,7 @@ import type { Estagio, Lead, PendenciaLeadInfo, Funcionario } from "../types";
 import { getClasseBordaGravidade } from "./pendencia-badge";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { Trash2, Loader2, FileWarning, Clock, CheckCircle, AlertTriangle, Users, GripVertical } from "lucide-react";
+import { Trash2, Loader2, FileWarning, Clock, CheckCircle, AlertTriangle, Users, GripVertical, Megaphone, MessageCircle, PenLine } from "lucide-react";
 import { EmptyState } from "./empty-state";
 
 type KanbanBoardProps = {
@@ -121,8 +121,7 @@ export function KanbanBoard({
   excluirTodosIndefinidos,
   temFiltrosAtivos = false,
 }: KanbanBoardProps) {
-  // Usa filtrados se há filtros ativos OU modoFocoPendencias, caso contrário usa todos
-  const usarFiltrados = temFiltrosAtivos || modoFocoPendencias;
+  // Sempre usa leadsFiltradosPorEstagio - que já inclui ordenação e é idêntico a leadsPorEstagio quando não há filtros
   const [agoraMs, setAgoraMs] = useState<number | null>(() => typeof window === "undefined" ? null : Date.now());
   const [excluindoIndefinidos, setExcluindoIndefinidos] = useState(false);
 
@@ -144,7 +143,7 @@ export function KanbanBoard({
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
         {estagios.map((estagio) => {
-          const leads = usarFiltrados ? leadsFiltradosPorEstagio[estagio.id] ?? [] : leadsPorEstagio[estagio.id] ?? [];
+          const leads = leadsFiltradosPorEstagio[estagio.id] ?? [];
           
           return (
             <Droppable key={estagio.id} droppableId={estagio.id}>
@@ -242,6 +241,23 @@ export function KanbanBoard({
                                       
                                       {/* Telefone */}
                                       <p className="text-xs text-slate-500 mt-0.5">{lead.telefone}</p>
+                                      
+                                      {/* Badge de Origem */}
+                                      {lead.origem === "ANUNCIO_CTWA" && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-xs font-medium border border-purple-200 mt-1">
+                                          <Megaphone className="w-3 h-3" /> Anúncio
+                                        </span>
+                                      )}
+                                      {lead.origem === "SINCRONIZACAO_WHATSAPP" && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium border border-emerald-200 mt-1">
+                                          <MessageCircle className="w-3 h-3" /> WhatsApp
+                                        </span>
+                                      )}
+                                      {lead.origem === "MANUAL" && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium border border-blue-200 mt-1">
+                                          <PenLine className="w-3 h-3" /> Manual
+                                        </span>
+                                      )}
                                       
                                       {/* Valor em destaque */}
                                       <p className="text-lg font-bold text-emerald-600 mt-2">

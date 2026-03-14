@@ -77,6 +77,9 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         resumoPendencias={vm.resumoPendencias}
         totalLeads={vm.totalLeads}
         pendenciasCriticas={vm.pendenciasCriticas}
+        origemStats={vm.origemStats}
+        ultimaSincronizacaoWhatsapp={vm.ultimaSincronizacaoWhatsapp}
+        instanciasAtivasCount={vm.instanciasAtivasCount}
         notificacoesAtivadas={vm.notificacoesAtivadas}
         alternarNotificacoes={vm.alternarNotificacoes}
         permissaoNotificacao={vm.permissaoNotificacao}
@@ -102,6 +105,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
           vm.filtros.gravidade !== "todas" ||
           vm.filtros.tipo !== "todos" ||
           vm.filtros.pdv !== null ||
+          vm.filtros.origem !== "todos" ||
           vm.busca !== ""
         }
       />

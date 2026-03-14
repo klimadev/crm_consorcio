@@ -8,10 +8,18 @@ export async function POST(request: NextRequest) {
     return auth.erro;
   }
 
+  // Extrair parâmetro de filtro de origem (anuncio | all)
+  const { searchParams } = new URL(request.url);
+  const origemFiltro = searchParams.get("origem") as "anuncio" | "all" | null;
+
   const resultado = await sincronizarLeadsWhatsapp({
     tipo: "sessao",
     sessao: auth.sessao,
-  });
+  }, origemFiltro);
 
-  return NextResponse.json(resultado);
+  // Incluir timestamp da sincronização
+  return NextResponse.json({
+    ...resultado,
+    timestamp_sync: new Date().toISOString(),
+  });
 }

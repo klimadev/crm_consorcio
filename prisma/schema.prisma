@@ -125,6 +125,9 @@ model Lead {
   atualizado_em           DateTime           @default(now()) @updatedAt
   documento_aprovacao_url String?
   origem                  String             @default("MANUAL")
+  anuncio_titulo          String?
+  anuncio_descricao       String?
+  anuncio_url             String?
   aprovado_em             DateTime?
   aprovado_por            String?
   estagio                 EstagioFunil       @relation(fields: [id_estagio], references: [id])

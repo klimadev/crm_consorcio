@@ -1,5 +1,6 @@
 import { Check, CheckCheck, Clock3, RotateCcw, Trash2, Volume2 } from "lucide-react";
 import type { WhatsappChatMessage } from "@/modules/whatsapp/types";
+import { formatarDataMensagemWhatsapp } from "@/lib/whatsapp-utils";
 
 type Props = {
   message: WhatsappChatMessage;
@@ -7,10 +8,7 @@ type Props = {
 };
 
 function formatTime(timestamp: number) {
-  return new Date(timestamp * 1000).toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatarDataMensagemWhatsapp(timestamp);
 }
 
 function ReceiptIcon({ message }: { message: WhatsappChatMessage }) {

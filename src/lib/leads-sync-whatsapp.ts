@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { buscarMensagens, type EvolutionMensagem } from "@/lib/evolution-api";
+import { buscarTodasMensagensDaInstancia, extrairNomeDoLeadDoMapa, extrairDadosAdDoMapa } from "@/lib/whatsapp-chat";
 import { normalizarTelefoneParaWhatsapp } from "@/lib/phone";
 import { obterEstagioIndefinido } from "@/lib/estagios-fixos";
 import { aplicaMascaraTelefoneBr } from "@/lib/utils";
 import type { SessaoToken } from "@/lib/tipos";
+import type { DadosAd } from "@/lib/whatsapp-utils";
 
 type InstanciaIgnorada = {
   id: string;
@@ -14,6 +15,8 @@ type InstanciaIgnorada = {
 type ContextoSyncWhatsapp =
   | { tipo: "sessao"; sessao: SessaoToken }
   | { tipo: "interno"; idEmpresa?: string };
+
+type OrigemFiltro = "anuncio" | "all";
 
 type EmpresaProcessada = {
   id_empresa: string;
@@ -58,40 +61,7 @@ function normalizarJidWhatsappUsuario(jid?: string | null): string | null {
   return typeof jid === "string" && jidEhWhatsappUsuario(jid) ? jid : null;
 }
 
-function extrairNumeroReal(contato: EvolutionMensagem): string | null {
-  const remoteJidAltValido = normalizarJidWhatsappUsuario(contato.remoteJidAlt);
-  if (remoteJidAltValido) {
-    return extrairNumeroWhatsapp(remoteJidAltValido);
-  }
-
-  if (jidEhLid(contato.remoteJid)) {
-    const remoteJidAltLastMessageValido = normalizarJidWhatsappUsuario(contato.remoteJidAltLastMessage);
-    if (remoteJidAltLastMessageValido) {
-      return extrairNumeroWhatsapp(remoteJidAltLastMessageValido);
-    }
-
-    return null;
-  }
-
-  return extrairNumeroWhatsapp(contato.remoteJid);
-}
-
-function montarDadosContato(contato: EvolutionMensagem, waNumber: string) {
-  const nomeOriginal = contato.pushName?.trim() ?? "";
-  const telefoneFormatado = aplicaMascaraTelefoneBr(waNumber);
-
-  if (nomeOriginal) {
-    return { nome: nomeOriginal, observacoes: null as string | null };
-  }
-
-  return {
-    nome: telefoneFormatado || waNumber,
-    observacoes:
-      "Nome nao identificado na sincronizacao do WhatsApp. O contato foi cadastrado com o numero formatado porque a API nao retornou nome, pushname ou identificador utilizavel, possivelmente devido a politicas recentes do WhatsApp.",
-  };
-}
-
-async function sincronizarEmpresa(idEmpresa: string, sessao?: SessaoToken): Promise<EmpresaProcessada> {
+async function sincronizarEmpresa(idEmpresa: string, sessao?: SessaoToken, origemFiltro?: OrigemFiltro): Promise<EmpresaProcessada> {
   const whereInstancias = sessao
     ? sessao.perfil === "EMPRESA"
       ? { id_empresa: sessao.id_empresa }
@@ -230,6 +200,9 @@ async function sincronizarEmpresa(idEmpresa: string, sessao?: SessaoToken): Prom
   const digitosLoteAtual = new Set<string>();
   const indiceRoundRobinPorPdv = new Map<string, number>();
 
+  // Busca TODAS as mensagens de cada instância uma única vez (otimização N+1 -> 1 chamada)
+  const mapaMensagensPorInstancia = new Map<string, Map<string, { pushName: string | null; dadosAd: DadosAd | null; timestamp: number; remoteJidAlt: string }>>();
+
   for (const instancia of instanciasValidas) {
     const pdv = pdvsElegiveisPorInstancia.get(instancia.id);
     if (!pdv) continue;
@@ -237,11 +210,28 @@ async function sincronizarEmpresa(idEmpresa: string, sessao?: SessaoToken): Prom
     const colaboradores = colaboradoresPorPdv.get(pdv.id) ?? [];
     if (!colaboradores.length) continue;
 
-    const contatos = await buscarMensagens(instancia.instance_name).catch(() => []);
+    // Uma única chamada por instância para buscar todas as mensagens
+    const mapaMensagens = await buscarTodasMensagensDaInstancia(instancia.instance_name).catch(() => new Map());
+    mapaMensagensPorInstancia.set(instancia.instance_name, mapaMensagens);
+  }
 
-    for (const contato of contatos) {
+  // Segunda passagem: processar os leads
+  for (const instancia of instanciasValidas) {
+    const pdv = pdvsElegiveisPorInstancia.get(instancia.id);
+    if (!pdv) continue;
+
+    const colaboradores = colaboradoresPorPdv.get(pdv.id) ?? [];
+    if (!colaboradores.length) continue;
+
+    const mapaMensagens = mapaMensagensPorInstancia.get(instancia.instance_name);
+    if (!mapaMensagens) continue;
+
+    // Iterar sobre os contatos únicos no mapa de mensagens
+    for (const [remoteJidAlt, dadosMensagem] of mapaMensagens) {
       processados += 1;
-      const digits = extrairNumeroReal(contato);
+
+      // Usar remoteJidAlt para extrair o número
+      const digits = remoteJidAlt.replace("@s.whatsapp.net", "").replace(/\D/g, "");
       if (!digits) {
         invalidos += 1;
         continue;
@@ -264,7 +254,39 @@ async function sincronizarEmpresa(idEmpresa: string, sessao?: SessaoToken): Prom
         continue;
       }
 
-      const { nome, observacoes } = montarDadosContato(contato, waNumber);
+      // Usar nome extraído do mapa de mensagens (primeira mensagem do lead)
+      const nomeExtraido = extrairNomeDoLeadDoMapa(mapaMensagens, remoteJidAlt);
+      const telefoneFormatado = aplicaMascaraTelefoneBr(waNumber);
+
+      let nome: string;
+      let observacoes: string | null = null;
+
+      if (nomeExtraido && nomeExtraido.trim().length > 0) {
+        nome = nomeExtraido;
+      } else {
+        nome = telefoneFormatado || waNumber;
+        observacoes = "Nome não identificado na sincronização do WhatsApp. O contato foi cadastrado com o número formatado.";
+      }
+
+      // Verificar se tem dados de Ad na primeira mensagem
+      const dadosAd = extrairDadosAdDoMapa(mapaMensagens, remoteJidAlt);
+      const origemAd = dadosAd?.titulo || dadosAd?.corpo;
+
+      // Filtrar por origem: se filtro é "anuncio" e NÃO tem dadosAd, pular
+      if (origemFiltro === "anuncio" && !origemAd) {
+        ignorados += 1;
+        continue;
+      }
+
+      // Determinar origem: ANUNCIO_CTWA ou SINCRONIZACAO_WHATSAPP
+      const origem = origemAd ? "ANUNCIO_CTWA" : "SINCRONIZACAO_WHATSAPP";
+
+      // Se tem dados de Ad, incluir nas observações e salvar campos dedicados
+      if (origemAd) {
+        const infoAd = ` | Origem: Ad (${dadosAd.titulo || dadosAd.corpo || "Click to WhatsApp"})`;
+        observacoes = observacoes ? observacoes + infoAd : infoAd;
+      }
+
       const indiceAtual = indiceRoundRobinPorPdv.get(pdv.id) ?? 0;
       const colaboradorResponsavel = colaboradores[indiceAtual];
 
@@ -277,7 +299,11 @@ async function sincronizarEmpresa(idEmpresa: string, sessao?: SessaoToken): Prom
           telefone: waNumber,
           valor_consorcio: 0,
           observacoes,
-          origem: "SINCRONIZACAO_WHATSAPP",
+          origem,
+          // Campos de Anúncio (CTWA)
+          anuncio_titulo: dadosAd?.titulo ?? null,
+          anuncio_descricao: dadosAd?.corpo ?? null,
+          anuncio_url: dadosAd?.urlOrigem ?? null,
         },
       });
 
@@ -300,9 +326,9 @@ async function sincronizarEmpresa(idEmpresa: string, sessao?: SessaoToken): Prom
   };
 }
 
-export async function sincronizarLeadsWhatsapp(contexto: ContextoSyncWhatsapp): Promise<ResultadoSyncWhatsapp> {
+export async function sincronizarLeadsWhatsapp(contexto: ContextoSyncWhatsapp, origemFiltro?: OrigemFiltro): Promise<ResultadoSyncWhatsapp> {
   if (contexto.tipo === "sessao") {
-    const resultado = await sincronizarEmpresa(contexto.sessao.id_empresa, contexto.sessao);
+    const resultado = await sincronizarEmpresa(contexto.sessao.id_empresa, contexto.sessao, origemFiltro);
     return {
       ok: true,
       processados: resultado.processados,
@@ -337,7 +363,7 @@ export async function sincronizarLeadsWhatsapp(contexto: ContextoSyncWhatsapp): 
 
   const empresasProcessadas: EmpresaProcessada[] = [];
   for (const empresa of empresas) {
-    empresasProcessadas.push(await sincronizarEmpresa(empresa.id));
+    empresasProcessadas.push(await sincronizarEmpresa(empresa.id, undefined, origemFiltro));
   }
 
   return {
