@@ -28,7 +28,7 @@ export function WhatsappMessageBubble({ message, onRetry }: Props) {
   return (
     <div className={`flex w-full ${outgoing ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[80%] px-3 py-2 shadow-sm text-[15px] leading-relaxed ${
+        className={`max-w-[80%] px-3 py-2 shadow-sm text-[15px] leading-relaxed transition-all duration-200 hover:shadow-md hover:shadow-slate-200/50 ${
           outgoing
             ? "bg-[#d9fdd3] rounded-br-none"
             : "bg-white rounded-bl-none"

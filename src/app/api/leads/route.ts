@@ -61,12 +61,29 @@ export async function GET(request: NextRequest) {
   ]);
 
   // Add id_pdv to leads response
-  const leadsComPdv = leads.map((lead: typeof leads[number]) => ({
-    ...lead,
-    id_pdv: lead.funcionario.id_pdv,
-    pdv: lead.funcionario.pdv,
-    quantidade_parcelas: lead._count.parcelas,
-  }));
+  const leadsComPdv = await Promise.all(
+    leads.map(async (lead: typeof leads[number]) => {
+      let gestores: Array<{ nome: string }> = [];
+      if (lead.funcionario.id_pdv) {
+        gestores = await prisma.funcionario.findMany({
+          where: {
+            id_pdv: lead.funcionario.id_pdv,
+            cargo: "GERENTE",
+            ativo: true,
+          },
+          select: { nome: true },
+          orderBy: { nome: "asc" },
+        });
+      }
+      return {
+        ...lead,
+        id_pdv: lead.funcionario.id_pdv,
+        pdv: lead.funcionario.pdv,
+        gestores,
+        quantidade_parcelas: lead._count.parcelas,
+      };
+    })
+  );
 
   return NextResponse.json({ estagios, leads: leadsComPdv, funcionarios, pdvs });
 }

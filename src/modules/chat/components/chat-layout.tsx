@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { ConversaResumo } from "../types";
+import type { ConversaResumo, LeadDadosChat } from "../types";
 import { ChatListPanel } from "./chat-list-panel";
 import { ChatMessagesPanel } from "./chat-messages-panel";
 import { ChatClientPanel } from "./chat-client-panel";
@@ -12,16 +12,7 @@ type Props = {
   conversaSelecionada: ConversaResumo | null;
   mostrarDadosCliente: boolean;
   chatList: ReturnType<typeof useChatList>;
-  leadDados: {
-    id: string;
-    nome: string;
-    telefone: string;
-    observacoes: string | null;
-    valor_consorcio: number;
-    estagio: { id: string; nome: string } | null;
-    funcionario: { id: string; nome: string } | null;
-    parcelas: Array<{ id: string; numero_parcela: number; valor: number; data_vencimento: string; status: string }>;
-  } | null;
+  leadDados: LeadDadosChat | null;
   carregandoLead: boolean;
   onSelecionarConversa: (c: ConversaResumo) => void;
   onVoltar: () => void;

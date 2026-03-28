@@ -1,12 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Perfil } from "@/lib/tipos";
 import type { LeadDadosChat } from "./types";
 import { useChatList } from "./hooks/use-chat-list";
 import { useChatModule } from "./hooks/use-chat-module";
 import { ChatLayout } from "./components/chat-layout";
 
-export function ModuloChat() {
+type ModuloChatProps = {
+  perfil: Perfil;
+  idUsuario: string;
+};
+
+export function ModuloChat({ perfil, idUsuario }: ModuloChatProps) {
   const chatList = useChatList();
   const modulo = useChatModule();
   const [leadDados, setLeadDados] = useState<LeadDadosChat | null>(null);

@@ -59,7 +59,7 @@ export function WhatsappChatPanel({
 
       <div
         ref={scrollRef}
-        className="min-h-0 flex-1 overflow-y-auto scroll-smooth bg-[#e5ded8] p-3"
+        className="min-h-0 flex-1 overflow-y-auto scroll-smooth scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent bg-[#e5ded8] p-3"
         style={{
           backgroundImage: `
             radial-gradient(circle at 50% 50%, rgba(0,0,0,0.03) 2px, transparent 2px),

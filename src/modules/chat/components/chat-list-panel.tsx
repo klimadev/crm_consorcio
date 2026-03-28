@@ -68,7 +68,7 @@ export function ChatListPanel({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent hover:scrollbar-thumb-slate-400">
         {process.env.NODE_ENV === "development" && (
           <div className="border-b border-dashed border-slate-200 px-4 py-2 text-[11px] text-slate-400">
             {`debug: conversas=${conversas.length} carregando=${carregando} erro=${erro ?? "-"}`}

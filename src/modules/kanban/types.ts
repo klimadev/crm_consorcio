@@ -34,6 +34,7 @@ export type Lead = {
   quantidade_parcelas?: number;
   id_pdv?: string | null;
   pdv?: Pdv | null;
+  gestores?: Array<{ nome: string }> | null;
   // Campos de Anúncio (CTWA)
   anuncio_titulo?: string | null;
   anuncio_descricao?: string | null;

@@ -1,4 +1,4 @@
-import { AlertCircle, Building2, FileText, Phone, Trash2 } from "lucide-react";
+import { AlertCircle, Building2, FileText, Phone, Trash2, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -173,12 +173,28 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
         <div className="mt-3 space-y-2">
           <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
             <Building2 className="h-4 w-4 text-emerald-600" />
-            Gestora da equipe / PDV
+            PDV / Loja
           </label>
           <div className="flex min-h-11 items-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-700">
-            {leadSelecionado.pdv?.nome ?? "PDV nao informado"}
+            {leadSelecionado.pdv?.nome ?? "PDV não informado"}
           </div>
         </div>
+
+        {leadSelecionado.gestores && leadSelecionado.gestores.length > 0 && (
+          <div className="mt-3 space-y-2">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+              <UserCog className="h-4 w-4 text-emerald-600" />
+              {leadSelecionado.gestores.length > 1 ? "Gestores" : "Gestor"}
+            </label>
+            <div className="flex min-h-11 flex-wrap items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">
+              {leadSelecionado.gestores.map((g, i) => (
+                <span key={i} className="inline-flex items-center rounded-lg bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                  {g.nome}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mt-4 space-y-3">
           <label className="flex items-center gap-2 text-sm font-medium text-slate-700">

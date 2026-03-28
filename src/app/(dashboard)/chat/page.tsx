@@ -8,5 +8,5 @@ export default async function PaginaChat() {
     return null;
   }
 
-  return <ModuloChat />;
+  return <ModuloChat perfil={sessao.perfil} idUsuario={sessao.id_usuario} />;
 }

@@ -27,10 +27,25 @@ export async function GET(request: NextRequest, { params }: Params) {
       id: true,
       nome: true,
       telefone: true,
+      origem: true,
+      anuncio_titulo: true,
+      anuncio_descricao: true,
       observacoes: true,
       valor_consorcio: true,
       estagio: { select: { id: true, nome: true } },
-      funcionario: { select: { id: true, nome: true } },
+      funcionario: {
+        select: {
+          id: true,
+          nome: true,
+          id_pdv: true,
+          pdv: {
+            select: {
+              id: true,
+              nome: true,
+            },
+          },
+        },
+      },
       parcelas: {
         select: { id: true, numero_parcela: true, valor: true, data_vencimento: true, status: true },
         orderBy: { numero_parcela: "asc" },
@@ -42,7 +57,26 @@ export async function GET(request: NextRequest, { params }: Params) {
     return notFound("Lead nao encontrado.");
   }
 
-  return NextResponse.json(lead);
+  // Buscar TODOS os gestores do PDV (funcionarios com cargo GERENTE)
+  let gestores: Array<{ nome: string }> = [];
+  if (lead.funcionario.id_pdv) {
+    gestores = await prisma.funcionario.findMany({
+      where: {
+        id_pdv: lead.funcionario.id_pdv,
+        cargo: "GERENTE",
+        ativo: true,
+      },
+      select: { nome: true },
+      orderBy: { nome: "asc" },
+    });
+  }
+
+  return NextResponse.json({
+    ...lead,
+    id_pdv: lead.funcionario.id_pdv,
+    pdv: lead.funcionario.pdv,
+    gestores,
+  });
 }
 
 export async function PATCH(request: NextRequest, { params }: Params) {

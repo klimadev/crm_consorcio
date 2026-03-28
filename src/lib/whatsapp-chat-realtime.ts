@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { formatarPreviewMensagem } from "@/lib/whatsapp-utils";
+import { whereLeadsPorPerfil } from "@/lib/permissoes";
 import {
   buscarConnectionStatus,
   buscarLeadComAcesso,
@@ -386,6 +387,29 @@ export async function obterSnapshotConversas(
   const limite = Math.min(params.limite ?? 30, 50);
   const apenasNaoLidas = params.naoLidas === true;
 
+  // Construir condição SQL baseada no perfil do usuário
+  let condicaoPerfil: Prisma.Sql;
+  if (sessao.perfil === "COLABORADOR") {
+    // Apenas leads onde o colaborador é responsável
+    condicaoPerfil = Prisma.sql`AND l.id_funcionario = ${sessao.id_usuario}`;
+  } else if (sessao.perfil === "GERENTE" && sessao.id_pdv) {
+    // Apenas leads de funcionários do PDV do gerente
+    const funcionariosDoPdv = await prisma.funcionario.findMany({
+      where: { id_pdv: sessao.id_pdv },
+      select: { id: true },
+    });
+    const idsFuncionarios = funcionariosDoPdv.map((f) => f.id);
+    if (idsFuncionarios.length > 0) {
+      condicaoPerfil = Prisma.sql`AND l.id_funcionario IN (${Prisma.join(idsFuncionarios)})`;
+    } else {
+      // Se não há funcionários no PDV, retorna vazio
+      return { conversas: [], cursor: null, temMais: false };
+    }
+  } else {
+    // EMPRESA: vê todos, apenas filtro por empresa já aplicado
+    condicaoPerfil = Prisma.empty;
+  }
+
   const condicaoBusca = busca
     ? Prisma.sql`AND (l.nome ILIKE ${"%" + busca + "%"} OR l.telefone LIKE ${"%" + busca + "%"})`
     : Prisma.empty;
@@ -413,6 +437,7 @@ export async function obterSnapshotConversas(
       GROUP BY id_lead
     ) wm ON wm.id_lead = l.id
     WHERE l.id_empresa = ${sessao.id_empresa}
+    ${condicaoPerfil}
     ${condicaoBusca}
     ${condicaoCursor}
     ${condicaoNaoLidas}
@@ -434,6 +459,7 @@ export async function obterSnapshotConversas(
       id: true,
       nome: true,
       telefone: true,
+      origem: true,
       estagio: { select: { nome: true } },
       whatsapp_mensagens: {
         orderBy: { timestamp: "desc" },
@@ -469,11 +495,13 @@ export async function obterSnapshotConversas(
   return {
     conversas: leadsOrdenadosFinal.map((lead) => {
       const ultimaMsg = lead.whatsapp_mensagens[0] ?? null;
+      const origemLead = (lead.origem ?? "MANUAL") as "MANUAL" | "SINCRONIZACAO_WHATSAPP" | "ANUNCIO_CTWA";
 
       return {
         leadId: lead.id,
         leadNome: lead.nome,
         leadTelefone: lead.telefone,
+        leadOrigem: origemLead,
         estagioNome: lead.estagio?.nome ?? null,
         ultimaMensagem: ultimaMsg
           ? {
