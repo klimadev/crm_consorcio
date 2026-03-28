@@ -311,7 +311,7 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
                 <MessageCircle className="h-5 w-5 shrink-0" />
                 <SheetTitle className="truncate text-base text-white">{leadSelecionado?.nome}</SheetTitle>
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-white hover:bg-white/20" onClick={() => handleOpenChange(false)}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-white hover:bg-white/20" onClick={() => handleOpenChange(false)} aria-label="Fechar drawer">
                 <X className="h-5 w-5" />
               </Button>
             </div>

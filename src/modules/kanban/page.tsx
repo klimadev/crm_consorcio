@@ -1,6 +1,6 @@
 "use client";
-import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useKanbanModule } from "./hooks/use-kanban-module";
 import { ModulePageShell } from "@/components/shared/module-page-shell";
 import { KanbanHeader } from "./components/kanban-header";
@@ -11,36 +11,53 @@ import type { Lead, Props } from "./types";
 
 export function ModuloKanban({ perfil, idUsuario }: Props) {
   const vm = useKanbanModule({ perfil, idUsuario });
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
   const { leadSelecionado, leads, setLeadSelecionado } = vm;
+  const leadIdNaUrl = searchParams.get("lead");
+
+  const atualizarRotaLead = useCallback((leadId: string | null) => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (leadId) {
+      params.set("lead", leadId);
+    } else {
+      params.delete("lead");
+    }
+
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams]);
 
   useEffect(() => {
-    const leadId = searchParams.get("lead");
-    if (!leadId || leads.length === 0) return;
+    if (!leadIdNaUrl) {
+      if (leadSelecionado) {
+        setLeadSelecionado(null);
+      }
+      return;
+    }
 
-    const lead = leads.find((item) => item.id === leadId);
-    if (!lead) return;
+    if (leads.length === 0) return;
+
+    const lead = leads.find((item) => item.id === leadIdNaUrl);
+    if (!lead) {
+      atualizarRotaLead(null);
+      return;
+    }
 
     if (leadSelecionado?.id !== lead.id) {
       setLeadSelecionado(lead);
     }
-  }, [leadSelecionado?.id, leads, searchParams, setLeadSelecionado]);
+  }, [atualizarRotaLead, leadIdNaUrl, leadSelecionado?.id, leads, setLeadSelecionado]);
 
   const handleLeadClick = (lead: Lead) => {
-    vm.setLeadSelecionado(lead);
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("lead", lead.id);
-    router.replace(`/kanban?${params.toString()}`);
+    atualizarRotaLead(lead.id);
   };
 
   const handleDrawerOpenChange = (aberto: boolean) => {
     if (!aberto) {
-      vm.setLeadSelecionado(null);
-      const params = new URLSearchParams(searchParams.toString());
-      params.delete("lead");
-      const query = params.toString();
-      router.replace(query ? `/kanban?${query}` : "/kanban");
+      atualizarRotaLead(null);
     }
   };
 

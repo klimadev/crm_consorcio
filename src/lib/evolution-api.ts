@@ -414,11 +414,52 @@ export async function buscarContatos(instanceName: string): Promise<EvolutionCon
     .filter((item): item is EvolutionContato => item !== null);
 }
 
-export async function buscarConversas(instanceName: string): Promise<EvolutionConversa[]> {
-  const resposta = await fetch(`${EVOLUTION_API_URL}/chat/findChats/${instanceName}`, {
+/**
+ * Busca conversas na Evolution API usando filtro OR dinâmico.
+ * 
+ * Esta função foi criada para resolver o problema de dependência do banco de dados Prisma.
+ * Quando o banco do CRM está indisponível, a pesquisa de conversas falha. Esta função
+ * usa diretamente a Evolution API como fonte de dados, eliminando a dependência do banco.
+ * 
+ * A lógica OR funciona da seguinte forma:
+ * - O mesmo termo de busca é aplicado em TODOS os campos de filtro (remoteJid, remoteJidAlt, senderPn, pushName)
+ * - Se QUALQUER um desses campos conter o termo, a mensagem é retornada
+ * - Isso elimina a necessidade de saber antecipadamente se o termo é nome ou telefone
+ * 
+ * @example
+ * // Busca por telefone ou nome - funciona para ambos automaticamente
+ * const conversas = await buscarConversasEvolution("minhaInstancia", "Maria", 1, 30);
+ * const conversas = await buscarConversasEvolution("minhaInstancia", "5511988776655", 1, 30);
+ * 
+ * @param instanceName - Nome da instância na Evolution API
+ * @param termo - Termo de busca (será aplicado em todos os campos via OR)
+ * @param page - Número da página (padrão: 1)
+ * @param offset - Quantidade de resultados por página (padrão: 30)
+ * @returns Array de conversas agrupadas por remoteJidAlt
+ * 
+ * @throws Error se a Evolution API retornar erro
+ */
+export async function buscarConversasEvolution(
+  instanceName: string,
+  termo: string,
+  page: number = 1,
+  offset: number = 30,
+): Promise<EvolutionConversa[]> {
+  const resposta = await fetch(`${EVOLUTION_API_URL}/chat/findMessages/${instanceName}`, {
     method: "POST",
     headers,
-    body: JSON.stringify({}),
+    body: JSON.stringify({
+      where: {
+        key: {
+          remoteJid: termo,
+          remoteJidAlt: termo,
+          senderPn: termo,
+        },
+        pushName: termo,
+      },
+      page,
+      offset,
+    }),
   });
 
   if (!resposta.ok) {
@@ -426,42 +467,67 @@ export async function buscarConversas(instanceName: string): Promise<EvolutionCo
     throw new Error(erro.message ?? "Erro ao buscar conversas na Evolution");
   }
 
-  const json = (await resposta.json().catch(() => ({}))) as Array<{
-    remoteJid?: string;
-    remoteJidAlt?: string;
-    pushName?: string | null;
-    isGroup?: boolean;
-    lastMessage?: {
-      key?: {
-        remoteJid?: string;
-        remoteJidAlt?: string;
-        fromMe?: boolean;
-      };
-      pushName?: string;
+  const json = (await resposta.json().catch(() => ({}))) as {
+    messages?: {
+      records?: Array<{
+        key?: {
+          remoteJid?: string;
+          remoteJidAlt?: string;
+          fromMe?: boolean;
+        };
+        pushName?: string | null;
+        messageTimestamp?: number;
+      }>;
+      pages?: number;
+      total?: number;
     };
-  }>;
+  };
 
-  return json
-    .map((chat) => {
-      const remoteJid = (chat.remoteJid ?? "").trim();
-      if (!remoteJid || remoteJid.includes("@g.us")) return null;
+  const registros = json.messages?.records ?? [];
 
-      const remoteJidAlt =
-        chat.remoteJidAlt ??
-        chat.lastMessage?.key?.remoteJidAlt ??
-        (remoteJid.includes("@lid") ? null : remoteJid);
+  // Agrupar por remoteJidAlt - cada grupo = uma conversa
+  const conversasAgrupadas = new Map<string, {
+    remoteJid: string;
+    remoteJidAlt: string | null;
+    pushName: string | null;
+    ultimaMensagemTimestamp: number;
+  }>();
 
-      const pushName = chat.pushName ?? chat.lastMessage?.pushName ?? null;
-      const isGroup = remoteJid.includes("@g.us") || chat.isGroup === true;
+  for (const msg of registros) {
+    const remoteJid = msg.key?.remoteJid ?? "";
+    if (!remoteJid || remoteJid.includes("@g.us") || remoteJid === "status@broadcast") {
+      continue;
+    }
 
-      return {
+    const remoteJidAlt = msg.key?.remoteJidAlt ?? null;
+    const pushName = msg.pushName ?? null;
+    const messageTimestamp = msg.messageTimestamp ?? 0;
+
+    // Usa remoteJidAlt como chave principal, ou remoteJid se não existir
+    const chaveConversa = remoteJidAlt ?? remoteJid;
+
+    const existente = conversasAgrupadas.get(chaveConversa);
+
+    // Mantém a conversa com a mensagem mais recente
+    if (!existente || messageTimestamp > existente.ultimaMensagemTimestamp) {
+      conversasAgrupadas.set(chaveConversa, {
         remoteJid,
-        remoteJidAlt: remoteJidAlt && remoteJidAlt.includes("@s.whatsapp.net") ? remoteJidAlt : null,
-        pushName: pushName ?? null,
-        isGroup,
-      };
-    })
-    .filter((item): item is EvolutionConversa => item !== null);
+        remoteJidAlt,
+        pushName,
+        ultimaMensagemTimestamp: messageTimestamp,
+      });
+    }
+  }
+
+  // Ordena por última mensagem mais recente
+  return Array.from(conversasAgrupadas.values())
+    .sort((a, b) => b.ultimaMensagemTimestamp - a.ultimaMensagemTimestamp)
+    .map((conversa) => ({
+      remoteJid: conversa.remoteJid,
+      remoteJidAlt: conversa.remoteJidAlt,
+      pushName: conversa.pushName,
+      isGroup: false,
+    }));
 }
 
 export type EvolutionMensagem = {

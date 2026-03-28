@@ -411,7 +411,7 @@ export async function obterSnapshotConversas(
   }
 
   const condicaoBusca = busca
-    ? Prisma.sql`AND (l.nome ILIKE ${"%" + busca + "%"} OR l.telefone LIKE ${"%" + busca + "%"})`
+    ? Prisma.sql`AND (LOWER(l.nome) LIKE ${"%" + busca.toLowerCase() + "%"} OR l.telefone LIKE ${"%" + busca + "%"})`
     : Prisma.empty;
 
   const condicaoCursor = cursor
