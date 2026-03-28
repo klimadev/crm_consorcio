@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { enviarMensagemWhatsapp, listarMensagensWhatsapp, marcarMensagensComoLidas } from "@/lib/api/whatsapp";
+import { assinarMensagensWhatsapp, enviarMensagemWhatsapp, listarMensagensWhatsapp, marcarMensagensComoLidas } from "@/lib/api/whatsapp";
 import type { ChatConnectionStatus, ChatMessageStatus, WhatsappChatBlockedState, WhatsappChatMessage } from "@/modules/whatsapp/types";
 
 type UseWhatsappChatParams = {
@@ -56,20 +56,18 @@ export function useWhatsappChat({ leadId, enabled, markReadEnabled, pollMs = 300
   const messagesRef = useRef<WhatsappChatMessage[]>([]);
 
   const mountedRef = useRef(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestSeqRef = useRef(0);
   const controllerRef = useRef<AbortController | null>(null);
   const markReadInFlightRef = useRef(false);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
 
   const stopPolling = useCallback(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
+    unsubscribeRef.current?.();
+    unsubscribeRef.current = null;
     if (controllerRef.current) {
       controllerRef.current.abort();
       controllerRef.current = null;
@@ -121,12 +119,6 @@ export function useWhatsappChat({ leadId, enabled, markReadEnabled, pollMs = 300
     } finally {
       if (!mountedRef.current) return;
       setLoading(false);
-      if (enabled) {
-        const delay = document.visibilityState === "hidden" ? Math.max(backoffMsRef.current, 30000) : backoffMsRef.current;
-        timeoutRef.current = setTimeout(() => {
-          void fetchMessages();
-        }, delay);
-      }
     }
   }, [enabled, leadId, pollMs]);
 
@@ -275,6 +267,21 @@ export function useWhatsappChat({ leadId, enabled, markReadEnabled, pollMs = 300
     }
 
     void fetchMessages();
+    unsubscribeRef.current = assinarMensagensWhatsapp(leadId, {
+      onSnapshot: (snapshot) => {
+        if (!mountedRef.current) return;
+        setBlockedState(null);
+        setError(null);
+        setMessages((prev) => mergeMessages(prev, snapshot.messages));
+        setConnectionStatus(snapshot.connectionStatus);
+        setUnreadCount(snapshot.unreadCount);
+      },
+      onError: () => {
+        if (!mountedRef.current) return;
+        backoffMsRef.current = Math.max(pollMs, 30000);
+      },
+    });
+
     return () => {
       stopPolling();
     };

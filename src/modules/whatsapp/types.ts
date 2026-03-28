@@ -49,6 +49,12 @@ export type WhatsappChatMessage = {
   dadosAd: DadosAdInfo;
 };
 
+export type WhatsappChatSnapshot = {
+  messages: WhatsappChatMessage[];
+  connectionStatus: ChatConnectionStatus;
+  unreadCount: number;
+};
+
 export type WhatsappInstancia = {
   id: string;
   id_empresa: string;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { assinarConversasWhatsapp } from "@/lib/api/whatsapp";
 import type { ConversaResumo, ConversasResponse } from "../types";
 
 async function fetchConversas(
@@ -30,9 +31,29 @@ export function useChatList() {
   const [carregandoMais, setCarregandoMais] = useState(false);
 
   const controllerRef = useRef<AbortController | null>(null);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
   const buscaRef = useRef(busca);
   buscaRef.current = busca;
   const cursorRef = useRef<string | null>(null);
+
+  const reiniciarStream = useCallback((buscaAtual: string, filtroNaoLidas: boolean) => {
+    unsubscribeRef.current?.();
+    unsubscribeRef.current = assinarConversasWhatsapp(
+      { busca: buscaAtual, naoLidas: filtroNaoLidas, limite: 30 },
+      {
+        onSnapshot: (dados) => {
+          if (buscaRef.current !== buscaAtual) return;
+          if (cursorRef.current !== null) return;
+          setConversas(dados.conversas);
+          setTemMais(dados.temMais);
+          cursorRef.current = dados.cursor;
+          setErro(null);
+          setCarregando(false);
+        },
+        onError: () => undefined,
+      },
+    );
+  }, []);
 
   const carregar = useCallback(async (buscaAtual: string, filtroNaoLidas: boolean, resetar = true) => {
     controllerRef.current?.abort();
@@ -53,6 +74,9 @@ export function useChatList() {
       setConversas((prev) => resetar ? dados.conversas : [...prev, ...dados.conversas]);
       cursorRef.current = dados.cursor;
       setTemMais(dados.temMais);
+      if (resetar) {
+        reiniciarStream(buscaAtual, filtroNaoLidas);
+      }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       setErro(err instanceof Error ? err.message : "Erro desconhecido");
@@ -60,7 +84,7 @@ export function useChatList() {
       setCarregando(false);
       setCarregandoMais(false);
     }
-  }, []);
+  }, [reiniciarStream]);
 
   const buscar = useCallback((termo: string) => {
     setBusca(termo);
@@ -87,8 +111,11 @@ export function useChatList() {
 
   useEffect(() => {
     void carregar("", false, true);
-    return () => controllerRef.current?.abort();
-  }, []);
+    return () => {
+      controllerRef.current?.abort();
+      unsubscribeRef.current?.();
+    };
+  }, [carregar]);
 
   return {
     conversas,

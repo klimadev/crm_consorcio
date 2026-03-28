@@ -1,22 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { withSessao } from "@/lib/api/route-guards";
 import { validateQuery } from "@/lib/api/route-validation";
-import { ok, badRequest, notFound } from "@/lib/api/http";
+import { ok, badRequest } from "@/lib/api/http";
 import { esquemaWhatsappChatMessagesQuery } from "@/lib/validacoes";
-import {
-  buscarPdvDoLead,
-  buscarConnectionStatus,
-  buscarLeadComAcesso,
-  buscarMensagensEvolution,
-  mapearMensagemDbParaCanonica,
-  normalizarMensagensEvolution,
-  normalizarRemoteJidParaLead,
-  resolverInstanciaDoLead,
-  upsertMensagensNoBanco,
-} from "@/lib/whatsapp-chat";
-
-const syncInFlight = new Set<string>();
+import { obterSnapshotMensagens } from "@/lib/whatsapp-chat-realtime";
 
 export async function GET(request: NextRequest) {
   return withSessao(request, async ({ sessao }): Promise<NextResponse> => {
@@ -25,100 +12,33 @@ export async function GET(request: NextRequest) {
     });
     if (!validacao.ok) return validacao.response;
 
-    const lead = await buscarLeadComAcesso(sessao, validacao.data.leadId);
-    if (!lead) {
-      return notFound("Lead nao encontrado.");
-    }
+    try {
+      const snapshot = await obterSnapshotMensagens(sessao, validacao.data.leadId);
+      return ok(snapshot);
+    } catch (erro) {
+      const erroTipado = erro as Error & {
+        codigo?: string;
+        pdv?: { id: string; nome: string } | null;
+        rotaConfiguracao?: string | null;
+      };
 
-    const instancia = await resolverInstanciaDoLead(sessao.id_empresa, lead.id);
-    if (!instancia) {
-      const leadComPdv = await buscarPdvDoLead(sessao.id_empresa, lead.id);
-      const pdv = leadComPdv?.funcionario?.pdv;
-      const podeConfigurar = sessao.perfil === "EMPRESA" || (sessao.perfil === "GERENTE" && sessao.id_pdv === pdv?.id);
-
-      return NextResponse.json(
-        {
-          erro: "Lead sem instancia WhatsApp configurada no PDV.",
-          codigo: "PDV_SEM_INSTANCIA",
-          pdv: pdv ? { id: pdv.id, nome: pdv.nome } : null,
-          rotaConfiguracao: podeConfigurar && pdv ? `/equipe?id_pdv=${pdv.id}&editar_pdv=${pdv.id}` : null,
-        },
-        { status: 409 },
-      );
-    }
-
-    const remoteJidInfo = normalizarRemoteJidParaLead(lead.telefone);
-    if (!remoteJidInfo.ok) {
-      return badRequest(remoteJidInfo.erro);
-    }
-
-    const [mensagensCache, unreadCount] = await Promise.all([
-      prisma.whatsappMensagem.findMany({
-        where: { id_empresa: sessao.id_empresa, id_lead: lead.id },
-        orderBy: { timestamp: "asc" },
-      }),
-      prisma.whatsappMensagem.count({
-        where: {
-          id_empresa: sessao.id_empresa,
-          id_lead: lead.id,
-          from_me: false,
-          lida_no_crm_em: null,
-        },
-      }),
-    ]);
-
-    let connectionStatus = "offline";
-    if (instancia) {
-      connectionStatus = await buscarConnectionStatus(instancia.instanceName);
-      try {
-        const payload = await buscarMensagensEvolution(instancia.instanceName, remoteJidInfo.remoteJid);
-
-        const targetNumber = remoteJidInfo.waNumber.replace(/\D/g, "");
-
-        const mensagensNormalizadas = normalizarMensagensEvolution(payload).filter((mensagem) => {
-          const jidComparacao = mensagem.remoteJidAlt ?? mensagem.remoteJid;
-          const msgNumber = jidComparacao.replace(/\D/g, "");
-          return msgNumber.includes(targetNumber) || targetNumber.includes(msgNumber);
-        });
-
-        if (mensagensNormalizadas.length > 0) {
-          const syncKey = `${sessao.id_empresa}:${lead.id}`;
-
-          if (!syncInFlight.has(syncKey)) {
-            syncInFlight.add(syncKey);
-            try {
-              await upsertMensagensNoBanco(prisma, {
-                idEmpresa: sessao.id_empresa,
-                idLead: lead.id,
-                idWhatsappInstancia: instancia.id,
-                mensagens: mensagensNormalizadas,
-              });
-            } finally {
-              syncInFlight.delete(syncKey);
-            }
-          }
-
-          const mensagensAtualizadas = await prisma.whatsappMensagem.findMany({
-            where: { id_empresa: sessao.id_empresa, id_lead: lead.id },
-            orderBy: { timestamp: "asc" },
-          });
-
-          return ok({
-            messages: mensagensAtualizadas.map(mapearMensagemDbParaCanonica),
-            connectionStatus,
-            unreadCount,
-          });
-        }
-      } catch (erro) {
-        console.error("[messages] Erro ao buscar mensagens da Evolution API:", erro);
-        connectionStatus = "offline";
+      if (erroTipado.codigo === "PDV_SEM_INSTANCIA") {
+        return NextResponse.json(
+          {
+            erro: erroTipado.message,
+            codigo: erroTipado.codigo,
+            pdv: erroTipado.pdv ?? null,
+            rotaConfiguracao: erroTipado.rotaConfiguracao ?? null,
+          },
+          { status: 409 },
+        );
       }
-    }
 
-    return ok({
-      messages: mensagensCache.map(mapearMensagemDbParaCanonica),
-      connectionStatus,
-      unreadCount,
-    });
+      if (erroTipado.message === "Lead nao encontrado.") {
+        return NextResponse.json({ erro: erroTipado.message }, { status: 404 });
+      }
+
+      return badRequest(erroTipado.message || "Erro ao carregar mensagens.");
+    }
   });
 }

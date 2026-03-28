@@ -5,10 +5,12 @@ import type {
   WhatsappAutomacaoCreateInput,
   WhatsappAutomacaoUpdateInput,
   WhatsappChatMessage,
+  WhatsappChatSnapshot,
   WhatsappFollowUpDispatchResultado,
   WhatsappInstancia,
   WhatsappJobItem,
 } from "@/modules/whatsapp/types";
+import type { ConversasStreamSnapshot } from "@/modules/chat/types";
 
 type ApiErro = { erro?: string };
 
@@ -191,6 +193,53 @@ export async function listarMensagensWhatsapp(
       unreadCount: json.unreadCount ?? 0,
     },
   };
+}
+
+export function assinarMensagensWhatsapp(
+  leadId: string,
+  handlers: {
+    onSnapshot: (snapshot: WhatsappChatSnapshot) => void;
+    onError?: () => void;
+  },
+) {
+  const source = new EventSource(`/api/whatsapp/chat/messages/stream?leadId=${encodeURIComponent(leadId)}`);
+
+  source.addEventListener("snapshot", (event) => {
+    const dados = JSON.parse((event as MessageEvent).data) as WhatsappChatSnapshot;
+    handlers.onSnapshot(dados);
+  });
+
+  source.onerror = () => {
+    handlers.onError?.();
+  };
+
+  return () => source.close();
+}
+
+export function assinarConversasWhatsapp(
+  params: { busca: string; naoLidas: boolean; limite?: number },
+  handlers: {
+    onSnapshot: (snapshot: ConversasStreamSnapshot) => void;
+    onError?: () => void;
+  },
+) {
+  const searchParams = new URLSearchParams();
+  if (params.busca) searchParams.set("busca", params.busca);
+  if (params.naoLidas) searchParams.set("naoLidas", "true");
+  searchParams.set("limite", String(params.limite ?? 30));
+
+  const source = new EventSource(`/api/whatsapp/chat/conversations/stream?${searchParams.toString()}`);
+
+  source.addEventListener("snapshot", (event) => {
+    const dados = JSON.parse((event as MessageEvent).data) as ConversasStreamSnapshot;
+    handlers.onSnapshot(dados);
+  });
+
+  source.onerror = () => {
+    handlers.onError?.();
+  };
+
+  return () => source.close();
 }
 
 export async function enviarMensagemWhatsapp(payload: {

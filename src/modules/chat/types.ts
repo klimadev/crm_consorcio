@@ -17,6 +17,8 @@ export type ConversasResponse = {
   temMais: boolean;
 };
 
+export type ConversasStreamSnapshot = ConversasResponse;
+
 export type LeadDadosChat = {
   id: string;
   nome: string;
