@@ -40,12 +40,23 @@ export async function detectarPendenciasDinamicas(
           nome: true,
         },
       },
+      _count: {
+        select: {
+          parcelas: true,
+        },
+      },
     },
   });
 
   const pendencias: PendenciaDinamica[] = [];
   for (const lead of leads) {
-    const p = calcularPendenciasLead(lead, lead.estagio);
+    const p = calcularPendenciasLead(
+      {
+        ...lead,
+        quantidade_parcelas: lead._count.parcelas,
+      },
+      lead.estagio
+    );
     pendencias.push(...p);
   }
 
@@ -66,12 +77,23 @@ export async function detectarPendenciasDinamicasLead(idLead: string): Promise<P
           nome: true,
         },
       },
+      _count: {
+        select: {
+          parcelas: true,
+        },
+      },
     },
   });
 
   if (!lead) return [];
 
-  return calcularPendenciasLead(lead, lead.estagio);
+  return calcularPendenciasLead(
+    {
+      ...lead,
+      quantidade_parcelas: lead._count.parcelas,
+    },
+    lead.estagio
+  );
 }
 
 export async function getLeadsComPendencias(

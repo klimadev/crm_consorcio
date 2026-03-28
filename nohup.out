@@ -1,0 +1,156 @@
+
+> crm_consorcio_final@0.1.0 start
+> next start -p 3333
+
+▲ Next.js 16.1.6
+- Local:         http://localhost:3333
+- Network:       http://177.153.38.26:3333
+
+✓ Starting...
+✓ Ready in 1211ms
+[WA_AUTOMATION] runId=lead-stage-1773769996553-svxalt evento=LEAD_STAGE_CHANGED leadId=b786eb9c-e33f-4496-aeaa-e3b604c1c4e3 automacoes=0
+[WA_AUTOMATION] runId=lead-stage-1773770109433-9vst6b evento=LEAD_STAGE_CHANGED leadId=57977b58-3806-4c0d-818c-b0dde5f90e08 automacoes=0
+Erro ao deletar instância na Evolution: Error: Erro ao excluir instância
+    at r (.next/server/chunks/[root-of-the-server]__a4690aa3._.js:1:4902)
+    at async C (.next/server/chunks/[root-of-the-server]__83d21846._.js:1:13164)
+    at async c (.next/server/chunks/[root-of-the-server]__83d21846._.js:1:17878)
+    at async l (.next/server/chunks/[root-of-the-server]__83d21846._.js:1:18919)
+    at async Module.M (.next/server/chunks/[root-of-the-server]__83d21846._.js:1:19997)
+Erro ao deletar instância na Evolution: Error: Erro ao excluir instância
+    at r (.next/server/chunks/[root-of-the-server]__a4690aa3._.js:1:4902)
+    at async C (.next/server/chunks/[root-of-the-server]__83d21846._.js:1:13164)
+    at async c (.next/server/chunks/[root-of-the-server]__83d21846._.js:1:17878)
+    at async l (.next/server/chunks/[root-of-the-server]__83d21846._.js:1:18919)
+    at async Module.M (.next/server/chunks/[root-of-the-server]__83d21846._.js:1:19997)
+Erro ao deletar instância na Evolution: Error: Erro ao excluir instância
+    at r (.next/server/chunks/[root-of-the-server]__a4690aa3._.js:1:4902)
+    at async C (.next/server/chunks/[root-of-the-server]__83d21846._.js:1:13164)
+    at async c (.next/server/chunks/[root-of-the-server]__83d21846._.js:1:17878)
+    at async l (.next/server/chunks/[root-of-the-server]__83d21846._.js:1:18919)
+    at async Module.M (.next/server/chunks/[root-of-the-server]__83d21846._.js:1:19997)
+Erro ao deletar instância na Evolution: Error: Erro ao excluir instância
+    at r (.next/server/chunks/[root-of-the-server]__a4690aa3._.js:1:4902)
+    at async C (.next/server/chunks/[root-of-the-server]__83d21846._.js:1:13164)
+    at async c (.next/server/chunks/[root-of-the-server]__83d21846._.js:1:17878)
+    at async l (.next/server/chunks/[root-of-the-server]__83d21846._.js:1:18919)
+    at async Module.M (.next/server/chunks/[root-of-the-server]__83d21846._.js:1:19997)
+
+> crm_consorcio_final@0.1.0 start
+> next start -p 3333
+
+▲ Next.js 16.1.6
+- Local:         http://localhost:3333
+- Network:       http://177.153.38.26:3333
+
+✓ Starting...
+Error: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+    at ignore-listed frames
+
+> crm_consorcio_final@0.1.0 start
+> next start -p 3333
+
+▲ Next.js 16.1.6
+- Local:         http://localhost:3333
+- Network:       http://177.153.38.26:3333
+
+✓ Starting...
+Error: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+    at ignore-listed frames
+
+> crm_consorcio_final@0.1.0 start
+> next start -p 3333
+
+▲ Next.js 16.1.6
+- Local:         http://localhost:3333
+- Network:       http://177.153.38.26:3333
+
+✓ Starting...
+Error: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+    at ignore-listed frames
+
+> crm_consorcio_final@0.1.0 start
+> next start -p 3333 AGENTS.md dev.db docs dx-reduction-plan eslint.config.mjs evolution-api-diagnostico-e-solucoes.md evolution-api-diagnostico.md evolution_messages_response.json evolution_messages_whatsapp_response.json middleware.ts next.config.ts next-env.d.ts node_modules nohup.out package.json package-lock.json plan_leads_funnel_refactor _plan_parcelas plans postcss.config.mjs prisma public README.md scripts src tsconfig.json tsconfig.tsbuildinfo vitest.config.ts whatsapp-chat-architecture-plan whatsapp-chat-plan whatsapp-module-overhaul-plan
+
+▲ Next.js 16.1.6
+- Local:         http://localhost:3333
+- Network:       http://177.153.38.26:3333
+
+✓ Starting...
+⨯ Failed to load env from .env.production.local Error: ENOTDIR: not a directory, stat '/var/www/crmconsorcio/AGENTS.md/.env.production.local'
+    at ignore-listed frames {
+  errno: -20,
+  code: 'ENOTDIR',
+  syscall: 'stat',
+  path: '/var/www/crmconsorcio/AGENTS.md/.env.production.local'
+}
+⨯ Failed to load env from .env.local Error: ENOTDIR: not a directory, stat '/var/www/crmconsorcio/AGENTS.md/.env.local'
+    at ignore-listed frames {
+  errno: -20,
+  code: 'ENOTDIR',
+  syscall: 'stat',
+  path: '/var/www/crmconsorcio/AGENTS.md/.env.local'
+}
+⨯ Failed to load env from .env.production Error: ENOTDIR: not a directory, stat '/var/www/crmconsorcio/AGENTS.md/.env.production'
+    at ignore-listed frames {
+  errno: -20,
+  code: 'ENOTDIR',
+  syscall: 'stat',
+  path: '/var/www/crmconsorcio/AGENTS.md/.env.production'
+}
+⨯ Failed to load env from .env Error: ENOTDIR: not a directory, stat '/var/www/crmconsorcio/AGENTS.md/.env'
+    at ignore-listed frames {
+  errno: -20,
+  code: 'ENOTDIR',
+  syscall: 'stat',
+  path: '/var/www/crmconsorcio/AGENTS.md/.env'
+}
+Error: ENOTDIR: not a directory, open '/var/www/crmconsorcio/AGENTS.md/.next/BUILD_ID'
+    at ignore-listed frames {
+  errno: -20,
+  code: 'ENOTDIR',
+  syscall: 'open',
+  path: '/var/www/crmconsorcio/AGENTS.md/.next/BUILD_ID'
+}
+
+> crm_consorcio_final@0.1.0 start
+> next start -p 3333
+
+▲ Next.js 16.1.6
+- Local:         http://localhost:3333
+- Network:       http://177.153.38.26:3333
+
+✓ Starting...
+✓ Ready in 954ms
+[WA_AUTOMATION] runId=lead-stage-1773773481383-gx24ld evento=LEAD_STAGE_CHANGED leadId=cd025a29-5c0a-4951-9d0c-d1f4aff1206e automacoes=0
+[WA_AUTOMATION] runId=lead-stage-1773856142184-kc6soj evento=LEAD_STAGE_CHANGED leadId=c6741059-1a14-4f69-a9ee-dba4ca533bd3 automacoes=0
+Killed
+
+> crm_consorcio_final@0.1.0 start
+> next start -p 3333
+
+▲ Next.js 16.1.6
+- Local:         http://localhost:3333
+- Network:       http://177.153.38.26:3333
+
+✓ Starting...
+✓ Ready in 934ms
+
+> crm_consorcio_final@0.1.0 start
+> next start -p 3333
+
+▲ Next.js 16.1.6
+- Local:         http://localhost:3333
+- Network:       http://177.153.38.26:3333
+
+✓ Starting...
+✓ Ready in 885ms
+
+> crm_consorcio_final@0.1.0 start
+> next start -p 3333
+
+▲ Next.js 16.1.6
+- Local:         http://localhost:3333
+- Network:       http://177.153.38.26:3333
+
+✓ Starting...
+✓ Ready in 1181ms

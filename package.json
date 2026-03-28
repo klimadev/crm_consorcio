@@ -3,13 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3333",
+    "dev": "next dev -p 3334",
     "build": "next build",
-    "start": "next start -p 3333",
+    "start": "next start -p 3333 -H 0.0.0.0",
     "lint": "eslint",
     "test": "vitest run",
+    "backup:metas": "node scripts/backup-metas.mjs",
     "seed": "prisma db seed",
-    "setup": "node scripts/setup-wizard.js"
+    "setup": "node scripts/setup-wizard.js",
+    "pm2:start": "pm2 start ecosystem.config.js --env production --update-env --no-daemon",
+    "pm2:stop": "pm2 stop ecosystem.config.js",
+    "pm2:restart": "pm2 restart ecosystem.config.js --env production --update-env",
+    "pm2:logs": "pm2 logs crm-consorcio",
+    "pm2:monit": "pm2 monit",
+    "pm2:status": "pm2 status"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2, CalendarDays, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formataData, formataMoeda } from "@/lib/utils";
@@ -10,6 +10,7 @@ type InstallmentCardProps = {
   parcela: Parcela;
   pagando: boolean;
   onPagar: (idParcela: string, dataPagamento?: string) => void;
+  onEditar: (parcela: Parcela) => void;
 };
 
 function StatusBadgeParcela({ status }: { status: Parcela["status"] }) {
@@ -28,7 +29,7 @@ function StatusBadgeParcela({ status }: { status: Parcela["status"] }) {
   return <span className={cn("rounded-full px-2.5 py-1 text-xs font-semibold", statusUi)}>{label}</span>;
 }
 
-export function InstallmentCard({ parcela, pagando, onPagar }: InstallmentCardProps) {
+export function InstallmentCard({ parcela, pagando, onPagar, onEditar }: InstallmentCardProps) {
   const [aberto, setAberto] = useState(false);
   const [dataPagamento, setDataPagamento] = useState(new Date().toISOString().slice(0, 10));
 
@@ -39,16 +40,31 @@ export function InstallmentCard({ parcela, pagando, onPagar }: InstallmentCardPr
           <p className="text-sm font-semibold text-slate-800">
             Parcela {parcela.numero_parcela}/{parcela.quantidade_total}
           </p>
-          <p className="text-xs text-slate-500">Vencimento: {formataData(parcela.data_vencimento)}</p>
+          <p className="flex items-center gap-1 text-xs text-slate-500">
+            <CalendarDays className="h-3 w-3" />
+            Vence em: {formataData(parcela.data_vencimento)}
+          </p>
         </div>
 
         <p className="text-sm font-bold text-slate-800">{formataMoeda(parcela.valor)}</p>
         <StatusBadgeParcela status={parcela.status} />
       </div>
 
-      {parcela.status !== "PAGO" ? (
-        <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
-          {aberto ? (
+      <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="border-slate-200 text-slate-600 hover:bg-slate-50"
+          onClick={() => onEditar(parcela)}
+          disabled={pagando}
+        >
+          <Pencil className="mr-1 h-4 w-4" />
+          Editar
+        </Button>
+
+        {parcela.status !== "PAGO" ? (
+          aberto ? (
             <div className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 sm:w-auto">
               <label className="text-xs font-medium text-slate-600">Data do pagamento</label>
               <Input
@@ -87,9 +103,9 @@ export function InstallmentCard({ parcela, pagando, onPagar }: InstallmentCardPr
               {pagando ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1 h-4 w-4" />}
               Marcar como Pago
             </Button>
-          )}
-        </div>
-      ) : null}
+          )
+        ) : null}
+      </div>
     </div>
   );
 }

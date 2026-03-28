@@ -1,9 +1,16 @@
 "use client";
 
-import { AlertCircle, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { AlertCircle, Loader2, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useLeadParcelas } from "../hooks/use-lead-parcelas";
 import { InstallmentCard } from "./parcelas/installment-card";
 import { InstallmentGeneratorForm } from "./parcelas/installment-generator-form";
+import { ConfirmDialog } from "./confirm-dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { aplicaMascaraMoedaBr, converteMoedaBrParaNumero, formataMoeda } from "@/lib/utils";
+import type { Parcela } from "@/lib/api/parcelas";
 
 type LeadParcelasTabProps = {
   leadId: string;
@@ -55,6 +62,16 @@ function ParcelasResumo({ parcelas }: { parcelas: { valor: number; status: strin
 
 export function LeadParcelasTab({ leadId }: LeadParcelasTabProps) {
   const vm = useLeadParcelas({ leadId });
+  const [showRemoveDialog, setShowRemoveDialog] = useState(false);
+  const [parcelaEmEdicao, setParcelaEmEdicao] = useState<Parcela | null>(null);
+  const [valorEdicao, setValorEdicao] = useState("");
+  const [dataVencimentoEdicao, setDataVencimentoEdicao] = useState("");
+
+  const abrirEdicao = (parcela: Parcela) => {
+    setParcelaEmEdicao(parcela);
+    setValorEdicao(aplicaMascaraMoedaBr(String(Math.round(parcela.valor * 100))));
+    setDataVencimentoEdicao(parcela.data_vencimento.slice(0, 10));
+  };
 
   if (vm.loading) {
     return (
@@ -80,16 +97,37 @@ export function LeadParcelasTab({ leadId }: LeadParcelasTabProps) {
       ) : (
         <>
           <ParcelasResumo parcelas={vm.parcelas} />
+          
+          {/* Botão para remover o plano */}
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+              onClick={() => setShowRemoveDialog(true)}
+              disabled={vm.removendo}
+            >
+              {vm.removendo ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" />
+              )}
+              {vm.parcelas.some((parcela) => parcela.status === "PAGO") ? "Remover Pendentes" : "Remover Plano"}
+            </Button>
+          </div>
+          
           <div className="space-y-2">
             {vm.parcelas.map((parcela) => (
               <InstallmentCard
                 key={parcela.id}
-                parcela={parcela}
-                pagando={vm.pagando === parcela.id}
-                onPagar={vm.pagarParcela}
-              />
-            ))}
-          </div>
+                  parcela={parcela}
+                  pagando={vm.pagando === parcela.id}
+                  onPagar={vm.pagarParcela}
+                  onEditar={abrirEdicao}
+                />
+              ))}
+            </div>
         </>
       )}
 
@@ -101,6 +139,95 @@ export function LeadParcelasTab({ leadId }: LeadParcelasTabProps) {
           </p>
         </div>
       ) : null}
+
+      {/* Dialog de confirmação para remover */}
+      <ConfirmDialog
+        aberto={showRemoveDialog}
+        titulo="Remover Plano de Pagamento"
+        descricao={
+          <p>
+            Tem certeza que deseja ajustar o plano de <strong>{vm.parcelas.length} parcelas</strong>?
+            <br />
+            <span className="text-rose-600">
+              {vm.parcelas.some((parcela) => parcela.status === "PAGO")
+                ? "As parcelas pendentes serao removidas e os pagamentos ja registrados serao preservados."
+                : "Esta ação não pode ser desfeita."}
+            </span>
+          </p>
+        }
+        erro={vm.error}
+        confirmando={vm.removendo}
+        textoConfirmar="Remover"
+        textoConfirmando="Removendo..."
+        textoCancel="Cancelar"
+        onCancelar={() => {
+          setShowRemoveDialog(false);
+        }}
+        onConfirmar={async () => {
+          await vm.removerPlano();
+          setShowRemoveDialog(false);
+        }}
+        modo="destrutivo"
+        icone={<Trash2 className="h-6 w-6" />}
+      />
+
+      <Dialog open={Boolean(parcelaEmEdicao)} onOpenChange={(aberto) => !aberto && setParcelaEmEdicao(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar parcela</DialogTitle>
+            <DialogDescription>
+              Corrija valor ou vencimento da parcela sem perder o historico do lead.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
+              {parcelaEmEdicao ? `Parcela ${parcelaEmEdicao.numero_parcela}/${parcelaEmEdicao.quantidade_total} • ${formataMoeda(parcelaEmEdicao.valor)}` : null}
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Valor da parcela</label>
+              <Input
+                inputMode="numeric"
+                value={valorEdicao}
+                onChange={(event) => setValorEdicao(aplicaMascaraMoedaBr(event.target.value))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Data de vencimento</label>
+              <Input type="date" value={dataVencimentoEdicao} onChange={(event) => setDataVencimentoEdicao(event.target.value)} />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setParcelaEmEdicao(null)}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              className="bg-emerald-600 text-white hover:bg-emerald-700"
+              disabled={!parcelaEmEdicao || vm.salvandoEdicao === parcelaEmEdicao.id}
+              onClick={async () => {
+                if (!parcelaEmEdicao) return;
+                const ok = await vm.editarParcela(parcelaEmEdicao.id, {
+                  valor: converteMoedaBrParaNumero(valorEdicao),
+                  data_vencimento: dataVencimentoEdicao,
+                });
+                if (ok) {
+                  setParcelaEmEdicao(null);
+                }
+              }}
+            >
+              {parcelaEmEdicao && vm.salvandoEdicao === parcelaEmEdicao.id ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Salvar ajustes"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -9,7 +9,7 @@ import {
   WalletCards,
   LayoutGrid,
   Menu,
-  Package,
+  MessageSquare,
   Settings2,
   Target,
   Users,
@@ -30,6 +30,7 @@ type ItemMenu = {
   icon: React.ComponentType<{ className?: string }>;
   tourTarget?: string;
   children?: ItemMenu[];
+  badge?: string;
 };
 
 type Props = {
@@ -87,13 +88,13 @@ function MenuItemComBadge({
       onClick={onClick}
       data-tour={tourTarget}
       className={cn(
-        "relative flex items-center justify-between rounded-[10px] px-3 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-slate-600 transition-all duration-200 hover:bg-[#F1F3F5] hover:text-slate-900",
-        ativo && "bg-blue-500/10 pl-4 text-blue-700 hover:bg-blue-500/15 hover:text-blue-700",
+        "relative flex items-center justify-between rounded-[10px] px-3 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-white transition-all duration-200 hover:bg-blue-500 hover:text-white",
+        ativo && "bg-blue-500 pl-4 text-white",
       )}
     >
       <div className="flex items-center gap-2.5">
-        {ativo ? <span className="absolute left-1 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-blue-600" /> : null}
-        <Icone className={cn("h-4 w-4", ativo && "text-blue-700")} />
+        {ativo ? <span className="absolute left-1 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-white" /> : null}
+        <Icone className={cn("h-4 w-4", ativo ? "text-white" : "text-blue-100")} />
         {label}
       </div>
       {temPendencia && (
@@ -135,6 +136,7 @@ const secoes: Secao[] = [
     {
       titulo: "OPERAÇÃO",
       itens: [
+        { href: "/chat", label: "Chat", icon: MessageSquare, badge: "Beta" },
         { href: "/kanban", label: "Leads", icon: LayoutGrid, tourTarget: TOUR_TARGETS.sidebarKanban },
         ...(sessao.perfil === "EMPRESA" ? [{ href: "/recebimentos", label: "Recebimentos", icon: WalletCards }] : []),
         // [HYPE CRM] Feature em desenvolvimento - Produtos será uma feature exclusiva do HYPE CRM
@@ -153,7 +155,7 @@ const secoes: Secao[] = [
                 ],
               },
             ]
-          : [{ href: "/minhas-metas", label: "Minhas Metas", icon: Target }]),
+          : []),
       ],
     },
     {
@@ -174,8 +176,8 @@ const secoes: Secao[] = [
   const iniciaisNome = gerarIniciais(dadosUsuario?.nome, sessao.perfil);
 
   const conteudoSidebar = (
-    <div className="flex h-full flex-col gap-4 rounded-2xl border border-blue-200/80 bg-blue-50 p-4 shadow-[0_14px_40px_-28px_rgba(15,23,42,0.55)] lg:min-h-[calc(100vh-2rem)]">
-      <div className="space-y-4">
+    <div className="flex h-full flex-col gap-4 rounded-2xl bg-blue-600 p-4 shadow-[0_14px_40px_-28px_rgba(15,23,42,0.55)] lg:min-h-[calc(100vh-2rem)]">
+        <div className="space-y-4">
         <div className="flex items-center gap-3 px-1">
           <div className="relative h-9 w-9 overflow-hidden rounded-xl">
             <Image
@@ -186,7 +188,7 @@ const secoes: Secao[] = [
             />
           </div>
           <div>
-            <p className="text-[15px] font-semibold tracking-[-0.01em] text-slate-900">MC CRM Consórcio</p>
+            <p className="text-[15px] font-semibold tracking-[-0.01em] text-white">MC CRM Consórcio</p>
           </div>
         </div>
       </div>
@@ -194,7 +196,7 @@ const secoes: Secao[] = [
       <nav className="space-y-5">
         {secoes.map((secao) => (
           <div key={secao.titulo} className="space-y-1.5">
-            <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+            <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-blue-200">
               {secao.titulo}
             </p>
 
@@ -226,8 +228,8 @@ const secoes: Secao[] = [
                     <div key={item.href}>
                       <div
                         className={cn(
-                          "relative flex w-full items-center justify-between rounded-[10px] px-3 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-slate-600 transition-all duration-200 hover:bg-blue-100 hover:text-blue-900",
-                          ativo && "bg-blue-500/10 pl-4 text-blue-700 hover:bg-blue-500/15 hover:text-blue-700",
+                          "relative flex w-full items-center justify-between rounded-[10px] px-3 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-white transition-all duration-200 hover:bg-blue-500 hover:text-white",
+                          ativo && "bg-blue-500 pl-4 text-white",
                         )}
                       >
                         <Link
@@ -236,8 +238,8 @@ const secoes: Secao[] = [
                           data-tour={item.tourTarget}
                           className="flex flex-1 items-center gap-2.5"
                         >
-                          {ativo ? <span className="absolute left-1 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-blue-600" /> : null}
-                          <Icone className={cn("h-4 w-4", ativo && "text-blue-700")} />
+                          {ativo ? <span className="absolute left-1 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-white" /> : null}
+                          <Icone className={cn("h-4 w-4", ativo ? "text-white" : "text-blue-100")} />
                           {item.label}
                         </Link>
                         <button
@@ -250,7 +252,7 @@ const secoes: Secao[] = [
                         >
                           <ChevronDown
                             className={cn(
-                              "h-4 w-4 text-slate-400 transition-transform duration-200",
+                              "h-4 w-4 text-blue-200 transition-transform duration-200",
                               isSubmenuOpen && "rotate-180",
                             )}
                           />
@@ -259,7 +261,7 @@ const secoes: Secao[] = [
 
                       {/* Sub-itens */}
                       {isSubmenuOpen && (
-                        <div className="ml-4 mt-1 space-y-1 border-l-2 border-blue-200 pl-3">
+                        <div className="ml-4 mt-1 space-y-1 border-l-2 border-blue-400 pl-3">
                           {item.children!.map((child) => {
                             const ChildIcon = child.icon;
                             const childAtivo = pathname === child.href || pathname.startsWith(`${child.href}/`);
@@ -271,11 +273,11 @@ const secoes: Secao[] = [
                                 className={cn(
                                   "relative flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-[13px] font-medium tracking-[-0.01em] transition-all duration-200",
                                   childAtivo
-                                    ? "bg-blue-500/10 text-blue-700"
-                                    : "text-slate-500 hover:bg-blue-100 hover:text-blue-900",
+                                    ? "bg-blue-500 text-white"
+                                    : "text-blue-100 hover:bg-blue-500 hover:text-white",
                                 )}
                               >
-                                <ChildIcon className={cn("h-3.5 w-3.5", childAtivo && "text-blue-700")} />
+                                <ChildIcon className={cn("h-3.5 w-3.5", childAtivo ? "text-white" : "text-blue-200")} />
                                 {child.label}
                               </Link>
                             );
@@ -294,13 +296,18 @@ const secoes: Secao[] = [
                     onClick={() => setSidebarAberta(false)}
                     data-tour={item.tourTarget}
                     className={cn(
-                      "relative flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-slate-600 transition-all duration-200 hover:bg-blue-100 hover:text-blue-900",
-                      ativo && "bg-blue-500/10 pl-4 text-blue-700 hover:bg-blue-500/15 hover:text-blue-700",
+                      "relative flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-white transition-all duration-200 hover:bg-blue-500 hover:text-white",
+                      ativo && "bg-blue-500 pl-4 text-white",
                     )}
                   >
-                    {ativo ? <span className="absolute left-1 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-blue-600" /> : null}
-                    <Icone className={cn("h-4 w-4", ativo && "text-blue-700")} />
-                    {item.label}
+                    {ativo ? <span className="absolute left-1 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-white" /> : null}
+                    <Icone className={cn("h-4 w-4", ativo ? "text-white" : "text-blue-100")} />
+                    <span className="flex-1">{item.label}</span>
+                    {item.badge && (
+                      <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none text-amber-950">
+                        {item.badge}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
@@ -309,19 +316,19 @@ const secoes: Secao[] = [
         ))}
       </nav>
 
-      <div className="mt-auto rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200">
+      <div className="mt-auto rounded-2xl bg-white/10 p-3 shadow-sm ring-1 ring-blue-400/30 backdrop-blur-sm">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 text-sm font-semibold uppercase text-white">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-white to-blue-100 text-sm font-semibold uppercase text-blue-600">
             {iniciaisNome}
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[14px] font-medium tracking-[-0.01em] text-slate-900">
+            <p className="truncate text-[14px] font-medium tracking-[-0.01em] text-white">
               {nomeExibicao}
             </p>
             <div className="flex items-center gap-2">
-              <p className="truncate text-xs uppercase tracking-wide text-slate-500">{cargoExibicao}</p>
-              <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+              <p className="truncate text-xs uppercase tracking-wide text-blue-200">{cargoExibicao}</p>
+              <span className="rounded-md bg-blue-500 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
                 {SIGLA_PERFIL[sessao.perfil]}
               </span>
             </div>

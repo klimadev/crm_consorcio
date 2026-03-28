@@ -121,6 +121,41 @@ export function KanbanHeader({
   const filtrosAtivos = filtros.status !== "todos" || filtros.gravidade !== "todas" || filtros.tipo !== "todos" || filtros.pdv !== null || filtros.origem !== "todos";
   const inputBuscaRef = useRef<HTMLInputElement>(null);
   const inputNomeNovoLeadRef = useRef<HTMLInputElement>(null);
+  const [tempoDesdeSincronizacao, setTempoDesdeSincronizacao] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!ultimaSincronizacaoWhatsapp) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTempoDesdeSincronizacao(null);
+      return;
+    }
+    const handleUpdate = () => {
+      const diff = Date.now() - ultimaSincronizacaoWhatsapp.getTime();
+      const minutes = Math.floor(diff / 60000);
+      let result;
+      if (minutes < 1) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setTempoDesdeSincronizacao("agora");
+      } else if (minutes < 60) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setTempoDesdeSincronizacao(`${minutes}min`);
+      } else {
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setTempoDesdeSincronizacao(`${hours}h`);
+        } else {
+          const days = Math.floor(hours / 24);
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setTempoDesdeSincronizacao(`${days}d`);
+        }
+      }
+    };
+
+    handleUpdate(); // set initial value
+    const intervalId = setInterval(handleUpdate, 60 * 1000);
+    return () => clearInterval(intervalId);
+  }, [ultimaSincronizacaoWhatsapp]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -559,20 +594,11 @@ export function KanbanHeader({
               </span>
             )}
           </span>
-          {ultimaSincronizacaoWhatsapp && !sincronizandoWhatsapp && (
-            <span className="ml-2 text-xs text-slate-400">
-              {(() => {
-                const diff = Date.now() - ultimaSincronizacaoWhatsapp.getTime();
-                const minutes = Math.floor(diff / 60000);
-                if (minutes < 1) return "agora";
-                if (minutes < 60) return `${minutes}min`;
-                const hours = Math.floor(minutes / 60);
-                if (hours < 24) return `${hours}h`;
-                const days = Math.floor(hours / 24);
-                return `${days}d`;
-              })()}
-            </span>
-          )}
+      {ultimaSincronizacaoWhatsapp && !sincronizandoWhatsapp && (
+        <span className="ml-2 text-xs text-slate-400">
+          {tempoDesdeSincronizacao}
+        </span>
+      )}
         </ActionButton>
 
         {/* Toggle Apenas Anúncios */}

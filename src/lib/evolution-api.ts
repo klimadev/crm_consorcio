@@ -256,9 +256,34 @@ export async function deletarInstancia(instanceName: string): Promise<void> {
 
     if (!resposta.ok) {
       const erro = await resposta.json().catch(() => ({}));
-      throw new Error(erro.message ?? "Erro ao excluir instância");
+
+      // Se a instância já foi deletada (404 ou mensagem específica), considera sucesso
+      const mensagemErro = erro.message ?? "";
+      if (
+        resposta.status === 404 ||
+        mensagemErro.toLowerCase().includes("not found") ||
+        mensagemErro.toLowerCase().includes("instance not found") ||
+        mensagemErro.toLowerCase().includes("does not exist")
+      ) {
+        console.warn(`Instância "${instanceName}" já foi deletada na Evolution API.`);
+        return; // Sucesso - instância não existe mais
+      }
+
+      throw new Error(mensagemErro || "Erro ao excluir instância");
     }
   } catch (erro) {
+    // Se for erro de instância não encontrada, não relança
+    if (erro instanceof Error) {
+      const msg = erro.message.toLowerCase();
+      if (
+        msg.includes("not found") ||
+        msg.includes("instance not found") ||
+        msg.includes("does not exist")
+      ) {
+        console.warn(`Instância "${instanceName}" já foi deletada (erro capturado):`, erro.message);
+        return;
+      }
+    }
     console.error("Erro ao deletar instância na Evolution:", erro);
     throw erro;
   }

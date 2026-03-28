@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, FileX, Clock, Info } from "lucide-react";
+import { AlertTriangle, FileX, Clock, Info, CreditCard } from "lucide-react";
 import type { PendenciaGravidade, ResumoPendencias } from "../hooks/use-pendencias-globais";
 import { TipoPendencia } from "@/lib/validacoes";
 import { cn } from "@/lib/utils";
@@ -90,6 +90,8 @@ export function getIconePendencia(tipo: TipoPendencia) {
   switch (tipo) {
     case "DOCUMENTO_APROVACAO_PENDENTE":
       return FileX;
+    case "PLANO_PAGAMENTO_PENDENTE":
+      return CreditCard;
     case "ESTAGIO_PARADO":
       return Clock;
     default:

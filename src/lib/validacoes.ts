@@ -417,6 +417,7 @@ export const TIPOS_PENDENCIA = [
   "DOCUMENTO_APROVACAO_PENDENTE", // Documento de aprovação não anexado
   "APROVACAO_GERENCIA_PENDENTE",  // Documento anexado mas aguardando analise da EMPRESA
   "ESTAGIO_PARADO",                // Lead parado em um estágio há muito tempo
+  "PLANO_PAGAMENTO_PENDENTE",     // Lead GANHO/FECHADO sem plano de pagamento
 ] as const;
 
 export type TipoPendencia = (typeof TIPOS_PENDENCIA)[number];
@@ -430,6 +431,7 @@ export const LABELS_PENDENCIA: Record<TipoPendencia, string> = {
   DOCUMENTO_APROVACAO_PENDENTE: "Documento de Aprovação (PDF/Link) Pendente",
   APROVACAO_GERENCIA_PENDENTE: "Pendência de Análise da EMPRESA",
   ESTAGIO_PARADO: "Lead Parado no Estágio",
+  PLANO_PAGAMENTO_PENDENTE: "Plano de Pagamento Pendente",
 };
 
 // Dias sem resposta para considerar como pendência
@@ -465,6 +467,54 @@ export const esquemaPagarParcela = z.object({
     .refine((valor) => !Number.isNaN(new Date(valor).getTime()), "Data de pagamento invalida."),
 });
 
+export const esquemaAtualizarParcela = z
+  .object({
+    valor: z.number().positive("Valor da parcela deve ser maior que zero.").optional(),
+    data_vencimento: z
+      .string()
+      .trim()
+      .refine((valor) => !valor || !Number.isNaN(new Date(valor).getTime()), "Data de vencimento invalida.")
+      .optional(),
+    data_pagamento: z
+      .union([
+        z
+          .string()
+          .trim()
+          .min(1, "Data de pagamento obrigatoria.")
+          .refine((valor) => !Number.isNaN(new Date(valor).getTime()), "Data de pagamento invalida."),
+        z.null(),
+      ])
+      .optional(),
+    status: z.enum(["PENDENTE", "PAGO"]).optional(),
+  })
+  .refine(
+    (dados) =>
+      dados.valor !== undefined ||
+      dados.data_vencimento !== undefined ||
+      dados.data_pagamento !== undefined ||
+      dados.status !== undefined,
+    {
+      message: "Informe ao menos um campo para atualizar.",
+    },
+  )
+  .superRefine((dados, ctx) => {
+    if (dados.status === "PAGO" && dados.data_pagamento === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["data_pagamento"],
+        message: "Informe a data de pagamento ao marcar a parcela como paga.",
+      });
+    }
+
+    if (dados.status === "PENDENTE" && dados.data_pagamento !== undefined && dados.data_pagamento !== null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["data_pagamento"],
+        message: "Parcela pendente nao pode manter data de pagamento.",
+      });
+    }
+  });
+
 export const esquemaListarRecebimentos = z.object({
   aba: z.enum(["todos", "recebidos", "a_vencer", "atrasados"]).default("todos"),
   busca: z.string().trim().optional(),
@@ -479,9 +529,13 @@ export const esquemaListarRecebimentos = z.object({
 });
 
 export const CARGOS_EQUIPE = ["COLABORADOR", "GERENTE", "ADMINISTRADOR"] as const;
-export const TIPOS_META = ["GLOBAL", "PDV", "INDIVIDUAL"] as const;
+export const TIPOS_META = ["PDV"] as const;
 export const TIPOS_META_VALOR = ["VALOR", "VOLUME"] as const;
-export const PERIODOS_META = ["MENSAIS", "TRIMESTRAL", "ANUAL"] as const;
+export const PERIODOS_META = ["SEMANAL", "MENSAIS", "TRIMESTRAL", "ANUAL", "PERSONALIZADO"] as const;
+export const ORIGENS_RESULTADO_META = ["PAGAMENTOS", "ESTAGIO_GANHO"] as const;
+export const CADENCIAS_META = ["SEMANAL_MES", "MENSAL", "TRIMESTRAL", "ANUAL", "PERSONALIZADO"] as const;
+export const RECORRENCIAS_META = ["PONTUAL"] as const;
+export const PERIODOS_TEMPLATE_META = ["SEMANA", "MES", "TRIMESTRE", "ANO", "PERSONALIZADO"] as const;
 
 const schemaDataMeta = z
   .string()
@@ -498,21 +552,31 @@ const schemaEscopoMetaOpcional = z
     return valor;
   });
 
-export const schemaCriarMeta = z
-  .object({
-    tipo: z.enum(TIPOS_META, { message: "Tipo de meta invalido." }),
-    tipo_meta: z.enum(TIPOS_META_VALOR, { message: "Indicador de meta invalido." }),
-    alvo: z.coerce.number().positive("O alvo deve ser maior que zero."),
-    periodo: z.enum(PERIODOS_META, { message: "Periodo invalido." }),
-    data_inicio: schemaDataMeta,
-    data_fim: schemaDataMeta,
-    id_pdv: schemaEscopoMetaOpcional,
-    id_funcionario: schemaEscopoMetaOpcional,
-  })
+const schemaSemanaDoMes = z.coerce.number().int().min(1).max(4);
+
+const schemaBaseNovaMeta = z.object({
+  titulo: z.string().trim().min(2, "Informe um titulo para a meta.").max(80, "Titulo muito longo."),
+  tipo: z.enum(TIPOS_META, { message: "Tipo de meta invalido." }),
+  tipo_meta: z.enum(TIPOS_META_VALOR, { message: "Indicador de meta invalido." }),
+  origem_resultado: z.enum(ORIGENS_RESULTADO_META, { message: "Origem de resultado invalida." }).default("PAGAMENTOS"),
+  cadencia: z.enum(CADENCIAS_META, { message: "Cadencia invalida." }).default("SEMANAL_MES"),
+  recorrencia: z.enum(RECORRENCIAS_META, { message: "Recorrencia invalida." }).default("PONTUAL"),
+  criar_periodos_automaticamente: z.boolean().default(false),
+  dividir_mensal_em_semanas: z.boolean().default(false),
+  estagio_ganho_min_ordem: z.coerce.number().int().min(1).max(99).optional(),
+  alvo: z.coerce.number().positive("O alvo deve ser maior que zero."),
+  periodo: z.enum(PERIODOS_META, { message: "Periodo invalido." }),
+  data_inicio: schemaDataMeta,
+  data_fim: schemaDataMeta,
+  semana_do_mes: schemaSemanaDoMes.optional(),
+  id_pdv: schemaEscopoMetaOpcional,
+  id_funcionario: schemaEscopoMetaOpcional,
+});
+
+export const schemaCriarMeta = schemaBaseNovaMeta
   .superRefine((dados, ctx) => {
     const inicio = new Date(dados.data_inicio);
     const fim = new Date(dados.data_fim);
-
     if (inicio.getTime() > fim.getTime()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -521,81 +585,99 @@ export const schemaCriarMeta = z
       });
     }
 
-    if (dados.tipo === "GLOBAL" && (dados.id_pdv || dados.id_funcionario)) {
+    if (!dados.id_pdv) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["id_pdv"],
+        message: "Selecione a equipe da meta.",
+      });
+    }
+
+    if (dados.id_funcionario) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["id_funcionario"],
+        message: "As metas simplificadas sao sempre por equipe, sem colaborador vinculado.",
+      });
+    }
+
+    if (dados.tipo !== "PDV") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["tipo"],
-        message: "Meta global nao pode ter PDV ou colaborador vinculado.",
+        message: "A meta simplificada usa apenas o escopo por equipe.",
       });
     }
 
-    if (dados.tipo === "PDV" && !dados.id_pdv) {
+    const cadenciasPorPeriodo: Record<(typeof PERIODOS_META)[number], (typeof CADENCIAS_META)[number]> = {
+      SEMANAL: "SEMANAL_MES",
+      MENSAIS: "MENSAL",
+      TRIMESTRAL: "TRIMESTRAL",
+      ANUAL: "ANUAL",
+      PERSONALIZADO: "PERSONALIZADO",
+    };
+
+    if (dados.cadencia !== cadenciasPorPeriodo[dados.periodo]) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["id_pdv"],
-        message: "Selecione o PDV da meta.",
+        path: ["cadencia"],
+        message: "A cadencia precisa acompanhar o periodo escolhido.",
       });
     }
 
-    if (dados.tipo === "PDV" && dados.id_funcionario) {
+    if (dados.recorrencia !== "PONTUAL") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["id_funcionario"],
-        message: "Meta por PDV nao pode ter colaborador vinculado.",
+        path: ["recorrencia"],
+        message: "A meta simplificada nao usa recorrencia automatica.",
       });
     }
 
-    if (dados.tipo === "INDIVIDUAL" && !dados.id_funcionario) {
+    if (dados.origem_resultado === "PAGAMENTOS" && dados.tipo_meta !== "VALOR") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["id_funcionario"],
-        message: "Selecione o colaborador da meta.",
-      });
-    }
-
-    if (dados.tipo === "INDIVIDUAL" && dados.id_pdv) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["id_pdv"],
-        message: "Meta individual usa o PDV do colaborador selecionado.",
+        path: ["tipo_meta"],
+        message: "Pagamentos so podem ser medidos por valor.",
       });
     }
   });
 
 export const schemaAtualizarMeta = z
   .object({
-    tipo: z.enum(TIPOS_META, { message: "Tipo de meta invalido." }).optional(),
+    titulo: z.string().trim().min(2, "Informe um titulo para a meta.").max(80, "Titulo muito longo.").optional(),
     tipo_meta: z.enum(TIPOS_META_VALOR, { message: "Indicador de meta invalido." }).optional(),
+    origem_resultado: z.enum(ORIGENS_RESULTADO_META, { message: "Origem de resultado invalida." }).optional(),
+    cadencia: z.enum(CADENCIAS_META, { message: "Cadencia invalida." }).optional(),
+    recorrencia: z.enum(RECORRENCIAS_META, { message: "Recorrencia invalida." }).optional(),
+    criar_periodos_automaticamente: z.boolean().optional(),
+    dividir_mensal_em_semanas: z.boolean().optional(),
+    estagio_ganho_min_ordem: z.coerce.number().int().min(1).max(99).optional(),
     alvo: z.coerce.number().positive("O alvo deve ser maior que zero.").optional(),
     periodo: z.enum(PERIODOS_META, { message: "Periodo invalido." }).optional(),
     data_inicio: schemaDataMeta.optional(),
     data_fim: schemaDataMeta.optional(),
+    semana_do_mes: schemaSemanaDoMes.optional(),
     id_pdv: schemaEscopoMetaOpcional,
-    id_funcionario: schemaEscopoMetaOpcional,
   })
   .refine((dados) => Object.keys(dados).length > 0, {
     message: "Informe ao menos um campo para atualizar.",
   });
 
 export const schemaListarMetas = z.object({
-  tipo: z.enum(TIPOS_META).optional(),
   id_pdv: z.string().trim().optional(),
-  id_funcionario: z.string().trim().optional(),
   ativo: z.enum(["true", "false"]).optional(),
 });
 
 export const schemaRankingMetas = z.object({
-  periodo: z
-    .string()
-    .trim()
-    .regex(/^\d{4}-\d{2}$/, "Periodo invalido.")
-    .optional(),
+  periodo: z.string().trim().optional(),
   id_pdv: z.string().trim().optional(),
 });
 
 export const schemaValidarTetoMeta = schemaCriarMeta.extend({
   id_meta_atual: z.string().trim().optional(),
 });
+
+export const schemaCriarTemplateMeta = z.never();
 
 export const schemaAtualizarFuncionario = z.object({
   nome: z.string().trim().min(2, "Nome deve ter ao menos 2 caracteres."),

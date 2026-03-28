@@ -12,6 +12,12 @@ export type DadosUsuarioLogado = {
   nomeEmpresa: string;
 };
 
+const LABEL_PERFIL_USUARIO: Record<SessaoToken["perfil"], string> = {
+  EMPRESA: "Administrador",
+  GERENTE: "Gerente",
+  COLABORADOR: "Colaborador",
+};
+
 export const NOME_COOKIE_SESSAO = "crm_consorcio_sessao";
 
 const segredo = new TextEncoder().encode(
@@ -78,6 +84,24 @@ export async function obterDadosUsuarioLogado(
   sessao: SessaoToken,
 ): Promise<DadosUsuarioLogado | null> {
   try {
+    if (sessao.perfil === "EMPRESA") {
+      const empresa = await prisma.empresa.findUnique({
+        where: { id: sessao.id_usuario },
+      });
+
+      if (!empresa) {
+        return null;
+      }
+
+      return {
+        id: empresa.id,
+        nome: empresa.nome,
+        email: empresa.email,
+        cargo: LABEL_PERFIL_USUARIO.EMPRESA,
+        nomeEmpresa: empresa.nome,
+      };
+    }
+
     const funcionario = await prisma.funcionario.findUnique({
       where: { id: sessao.id_usuario },
       include: { empresa: true },
@@ -91,7 +115,7 @@ export async function obterDadosUsuarioLogado(
       id: funcionario.id,
       nome: funcionario.nome,
       email: funcionario.email,
-      cargo: funcionario.cargo,
+      cargo: LABEL_PERFIL_USUARIO[sessao.perfil],
       nomeEmpresa: funcionario.empresa.nome,
     };
   } catch {

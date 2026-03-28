@@ -6,6 +6,8 @@ import {
   gerarParcelas,
   listarParcelasLead,
   pagarParcela as apiPagarParcela,
+  atualizarParcela as apiAtualizarParcela,
+  excluirParcelasLead,
   type Parcela,
 } from "@/lib/api/parcelas";
 import { computarStatusParcelas } from "@/lib/financeiro/parcelas";
@@ -31,6 +33,8 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
 
   const [gerando, setGerando] = useState(false);
   const [pagando, setPagando] = useState<string | null>(null);
+  const [removendo, setRemovendo] = useState(false);
+  const [salvandoEdicao, setSalvandoEdicao] = useState<string | null>(null);
 
   const carregarParcelas = useCallback(async () => {
     if (!leadId) {
@@ -123,6 +127,66 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
     [parcelas],
   );
 
+  const removerPlano = useCallback(async () => {
+    if (!leadId) return;
+    setRemovendo(true);
+    setError(null);
+
+    const resultado = await excluirParcelasLead(leadId);
+
+    if (!resultado.ok) {
+      setError(resultado.erro);
+      setRemovendo(false);
+      return;
+    }
+
+    addToast({
+      type: "success",
+      title: resultado.dados.preservadas_pagas > 0 ? "Pendentes removidas" : "Plano removido",
+      description:
+        resultado.dados.preservadas_pagas > 0
+          ? `${resultado.dados.excluidas} parcelas pendentes foram removidas e ${resultado.dados.preservadas_pagas} pagamento(s) ja registrado(s) foram preservados.`
+          : `${resultado.dados.excluidas} parcelas foram removidas.`,
+    });
+
+    setRemovendo(false);
+    await carregarParcelas();
+  }, [addToast, carregarParcelas, leadId]);
+
+  const editarParcela = useCallback(
+    async (idParcela: string, dados: { valor: number; data_vencimento: string }) => {
+      setSalvandoEdicao(idParcela);
+      setError(null);
+
+      const resultado = await apiAtualizarParcela(idParcela, dados);
+      if (!resultado.ok) {
+        setError(resultado.erro);
+        setSalvandoEdicao(null);
+        return false;
+      }
+
+      setParcelas((atual) =>
+        computarStatusParcelas(
+          atual.map((parcela) => (parcela.id === idParcela ? resultado.dados.parcela : parcela)),
+        ),
+      );
+      addToast({
+        type: "success",
+        title: "Parcela atualizada",
+        description: "Os dados da parcela foram corrigidos com sucesso.",
+      });
+      setSalvandoEdicao(null);
+      return true;
+    },
+    [addToast],
+  );
+
+  const limparFormulario = useCallback(() => {
+    setValorTotal("");
+    setQuantidadeParcelas("");
+    setDataPrimeiroVencimento(hojeIso());
+  }, []);
+
   return {
     parcelas,
     loading,
@@ -138,5 +202,10 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
     pagarParcela,
     pagando,
     temParcelas: parcelas.length > 0,
+    removerPlano,
+    removendo,
+    editarParcela,
+    salvandoEdicao,
+    limparFormulario,
   };
 }

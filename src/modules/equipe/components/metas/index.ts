@@ -1,11 +1,3 @@
 export { MetasHeader } from "./metas-header";
 export { MetaAdminPanel } from "./meta-admin-panel";
-export { MetaColaboradorCard } from "./meta-colaborador-card";
 export { MetaFormDialog } from "./meta-form-dialog";
-export { RankingWidget } from "./ranking-widget";
-export { MetaPdvCard } from "./meta-pdv-card";
-export { MetaIndividualCard } from "./meta-individual-card";
-export { ProgressRing } from "./progress-ring";
-export { ProgressBarSimples } from "./progress-bar-simples";
-export { MetasKPIHeader } from "./metas-kpi-header";
-export { MetaCardCompact } from "./meta-card-compact";

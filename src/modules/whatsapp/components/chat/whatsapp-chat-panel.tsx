@@ -43,7 +43,7 @@ export function WhatsappChatPanel({
   }, [messages.length]);
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-b from-[#075e54] to-[#128c7e]">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-gradient-to-b from-[#075e54] to-[#128c7e]">
       <div className="flex items-center justify-between px-4 py-3 bg-[#00a884]">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center text-white font-semibold">
@@ -57,21 +57,21 @@ export function WhatsappChatPanel({
         <WhatsappConnectionBadge status={connectionStatus} />
       </div>
 
-      <div 
-        ref={scrollRef} 
-        className="flex-1 overflow-y-auto scroll-smooth bg-[#e5ded8] p-3"
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 overflow-y-auto scroll-smooth bg-[#e5ded8] p-3"
         style={{
           backgroundImage: `
             radial-gradient(circle at 50% 50%, rgba(0,0,0,0.03) 2px, transparent 2px),
             linear-gradient(to bottom, rgba(0,0,0,0.05), transparent)
           `,
-          backgroundSize: '20px 20px, 100% 100%'
+          backgroundSize: "20px 20px, 100% 100%",
         }}
       >
-        <WhatsappMessageList 
-          messages={messages} 
-          loading={loading} 
-          onRetry={(message) => void onRetryMessage(message)} 
+        <WhatsappMessageList
+          messages={messages}
+          loading={loading}
+          onRetry={(message) => void onRetryMessage(message)}
         />
       </div>
 

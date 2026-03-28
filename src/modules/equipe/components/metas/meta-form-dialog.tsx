@@ -9,17 +9,24 @@ type MetaFormDialogProps = {
 export function MetaFormDialog({ vm }: MetaFormDialogProps) {
   return (
     <Dialog open={vm.dialogFormAberto} onOpenChange={(aberto) => (aberto ? undefined : vm.fecharDialog())}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>{vm.metaEmEdicao ? "Editar meta" : "Nova meta"}</DialogTitle>
-          <DialogDescription>
-            {vm.metaEmEdicao
-              ? "Atualize os dados da meta selecionada."
-              : "Siga os passos para criar uma nova meta para sua equipe."}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-h-[92vh] overflow-y-auto border-0 bg-transparent p-0 shadow-none sm:max-w-3xl">
+        <div className="overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_28px_80px_-32px_rgba(15,23,42,0.45)]">
+          <DialogHeader className="border-b border-emerald-100 bg-gradient-to-r from-emerald-50 via-lime-50 to-white px-6 py-5 text-left">
+            <DialogTitle className="text-2xl font-semibold tracking-[-0.03em] text-slate-900">
+              {vm.metaEmEdicao ? "Ajustar meta da equipe" : "Criar meta semanal"}
+            </DialogTitle>
+            <DialogDescription className="max-w-2xl text-sm leading-6 text-slate-600">
+              Preencha so o essencial: equipe, tipo da meta, valor da semana e periodo. O painel se atualiza sozinho e fica facil de acompanhar.
+            </DialogDescription>
+          </DialogHeader>
 
-        <MetaCreationWizard vm={vm} />
+          <div className="px-6 py-6">
+            <MetaCreationWizard
+              key={vm.metaEmEdicao?.id ?? `nova-${vm.pdvSelecionado ?? "todas"}`}
+              vm={vm}
+            />
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

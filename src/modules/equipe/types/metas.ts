@@ -1,4 +1,6 @@
-import type { Perfil, PeriodoMeta, TipoMeta, TipoMetaValor } from "@/lib/tipos";
+import type { OrigemResultadoMeta, Perfil, PeriodoMeta, TipoMetaValor } from "@/lib/tipos";
+
+export type MetaMedicao = "VALOR_PAGAMENTOS" | "VALOR_FECHADOS" | "VOLUME_FECHADOS";
 
 export type MetaModuleProgresso = {
   id_meta: string;
@@ -12,18 +14,25 @@ export type MetaModuleProgresso = {
 
 export type MetaModuleItem = {
   id: string;
-  tipo: TipoMeta;
+  titulo: string;
+  tipo: "PDV";
   tipo_meta: TipoMetaValor;
+  origem_resultado: OrigemResultadoMeta;
   alvo: number;
   periodo: PeriodoMeta;
   data_inicio: string;
   data_fim: string;
   ativo: boolean;
   id_pdv: string | null;
-  id_funcionario: string | null;
+  id_funcionario: null;
   pdv: { id: string; nome: string } | null;
-  funcionario: { id: string; nome: string; id_pdv?: string | null } | null;
+  funcionario: null;
   progresso?: MetaModuleProgresso | null;
+  template?: null;
+  periodo_item?: {
+    semana_do_mes: 1 | 2 | 3 | 4 | null;
+    periodo_label: string;
+  } | null;
 };
 
 export type RankingMetaModuleItem = {
@@ -31,26 +40,19 @@ export type RankingMetaModuleItem = {
   nome: string;
   percentual: number;
   posicao: number;
-};
-
-export type TetoMetaModuleResumo = {
-  id_meta: string;
-  tipo_meta: TipoMetaValor;
-  alvo: number;
-  alocado: number;
-  disponivel: number;
-  pdv?: { id: string; nome: string } | null;
+  realizado: number;
+  meta: number;
+  faltante: number;
 };
 
 export type MetaFormState = {
-  tipo: TipoMeta;
-  tipo_meta: TipoMetaValor;
-  alvo: string;
+  titulo: string;
   periodo: PeriodoMeta;
+  medicao: MetaMedicao;
+  alvo: string;
   data_inicio: string;
   data_fim: string;
   id_pdv: string;
-  id_funcionario: string;
 };
 
 export type MetaOptionPdv = {
@@ -58,51 +60,41 @@ export type MetaOptionPdv = {
   nome: string;
 };
 
-export type MetaOptionColaborador = {
-  id: string;
-  nome: string;
-  id_pdv: string;
-  nome_pdv: string;
-};
-
 export type UseMetasModuleProps = {
   perfil: Perfil;
   id_pdv?: string | null;
-  id_usuario: string;
-  modo: "painel" | "colaborador";
+  modo: "painel";
+};
+
+export type ResumoMetasSemana = {
+  totalEquipes: number;
+  equipesNoRitmo: number;
+  equipesEmAtencao: number;
+  equipesForaDoRitmo: number;
+  mediaPercentual: number;
 };
 
 export type UseMetasModuleReturn = {
-  modo: "painel" | "colaborador";
+  modo: "painel";
+  perfil: Perfil;
   metas: MetaModuleItem[];
-  metasGlobais: MetaModuleItem[];
-  metasPdv: MetaModuleItem[];
-  metasIndividuais: MetaModuleItem[];
-  minhaMeta: MetaModuleItem | null;
-  progresso: MetaModuleProgresso | null;
+  metasFiltradas: MetaModuleItem[];
+  metasAgrupadas: Array<{ id: string; nome: string; metas: MetaModuleItem[] }>;
   ranking: RankingMetaModuleItem[];
   mediaEquipe: number;
   totalParticipantes: number;
-  tetos: {
-    globais: TetoMetaModuleResumo[];
-    pdvs: TetoMetaModuleResumo[];
-  };
   opcoesPdvs: MetaOptionPdv[];
-  opcoesColaboradores: MetaOptionColaborador[];
   carregando: boolean;
   salvando: boolean;
   desativandoId: string | null;
   erro: string | null;
   dialogFormAberto: boolean;
   metaEmEdicao: MetaModuleItem | null;
-  tipoCriacao: TipoMeta;
-  abaAtiva: TipoMeta;
-  podeCriarGlobal: boolean;
-  podeCriarMetaPdv: boolean;
-  podeCriarMetaIndividual: boolean;
-  podeVerValoresAbsolutos: boolean;
-  setAbaAtiva: (aba: TipoMeta) => void;
-  abrirNovaMeta: (tipo?: TipoMeta) => void;
+  pdvSelecionado: string | null;
+  podeCriarMeta: boolean;
+  resumo: ResumoMetasSemana;
+  setPdvSelecionado: (id: string | null) => void;
+  abrirNovaMeta: () => void;
   abrirEdicao: (meta: MetaModuleItem) => void;
   fecharDialog: () => void;
   salvarMeta: (formulario: MetaFormState) => Promise<boolean>;

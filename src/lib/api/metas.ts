@@ -1,9 +1,10 @@
 import type {
+  MetaMedicao,
   MetaModuleItem,
   MetaModuleProgresso,
   RankingMetaModuleItem,
-  TetoMetaModuleResumo,
 } from "@/modules/equipe/types/metas";
+import type { OrigemResultadoMeta, PeriodoMeta, TipoMetaValor } from "@/lib/tipos";
 
 type ApiErro = { erro?: string };
 
@@ -16,29 +17,29 @@ async function lerJsonSeguro<T>(resposta: Response): Promise<T> {
 }
 
 export type MetaPayloadApi = {
-  tipo: "GLOBAL" | "PDV" | "INDIVIDUAL";
-  tipo_meta: "VALOR" | "VOLUME";
+  titulo: string;
+  tipo: "PDV";
+  tipo_meta: TipoMetaValor;
+  origem_resultado: OrigemResultadoMeta;
+  cadencia: "SEMANAL_MES" | "MENSAL" | "TRIMESTRAL" | "ANUAL" | "PERSONALIZADO";
+  recorrencia: "PONTUAL";
   alvo: number;
-  periodo: "MENSAIS" | "TRIMESTRAL" | "ANUAL";
+  periodo: PeriodoMeta;
   data_inicio: string;
   data_fim: string;
-  id_pdv?: string;
-  id_funcionario?: string;
+  id_pdv: string;
 };
 
-export async function listarMetas(queryString = ""): Promise<ResultadoApi<{
-  metas: MetaModuleItem[];
-  tetos: {
-    globais: TetoMetaModuleResumo[];
-    pdvs: TetoMetaModuleResumo[];
-  };
-}>> {
+export const MEDICOES_META: Array<{ value: MetaMedicao; label: string }> = [
+  { value: "VALOR_PAGAMENTOS", label: "Valor - pagamentos" },
+  { value: "VALOR_FECHADOS", label: "Valor - fechados" },
+  { value: "VOLUME_FECHADOS", label: "Volume - fechados" },
+];
+
+export async function listarMetas(queryString = ""): Promise<ResultadoApi<{ metas: MetaModuleItem[] }>> {
   const sufixo = queryString ? `?${queryString}` : "";
   const resposta = await fetch(`/api/metas${sufixo}`, { cache: "no-store" });
-  const json = await lerJsonSeguro<{
-    metas?: MetaModuleItem[];
-    tetos?: { globais?: TetoMetaModuleResumo[]; pdvs?: TetoMetaModuleResumo[] };
-  } & ApiErro>(resposta);
+  const json = await lerJsonSeguro<{ metas?: MetaModuleItem[] } & ApiErro>(resposta);
 
   if (!resposta.ok) {
     return { ok: false, erro: json.erro ?? "Erro ao carregar metas." };
@@ -48,10 +49,6 @@ export async function listarMetas(queryString = ""): Promise<ResultadoApi<{
     ok: true,
     dados: {
       metas: json.metas ?? [],
-      tetos: {
-        globais: json.tetos?.globais ?? [],
-        pdvs: json.tetos?.pdvs ?? [],
-      },
     },
   };
 }
@@ -122,7 +119,7 @@ export async function obterRankingMetas(queryString = ""): Promise<ResultadoApi<
   } & ApiErro>(resposta);
 
   if (!resposta.ok) {
-    return { ok: false, erro: json.erro ?? "Erro ao carregar ranking das metas." };
+    return { ok: false, erro: json.erro ?? "Erro ao carregar comparativo das equipes." };
   }
 
   return {
@@ -133,36 +130,4 @@ export async function obterRankingMetas(queryString = ""): Promise<ResultadoApi<
       total_participantes: json.total_participantes ?? 0,
     },
   };
-}
-
-export async function validarTetoMeta(payload: MetaPayloadApi & { id_meta_atual?: string }): Promise<ResultadoApi<{
-  teto: {
-    tipo: "GLOBAL" | "PDV";
-    tipo_meta: "VALOR" | "VOLUME";
-    alvo_pai: number;
-    alocado: number;
-    disponivel: number;
-  } | null;
-}>> {
-  const resposta = await fetch("/api/metas/validar-teto", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  const json = await lerJsonSeguro<{
-    ok?: boolean;
-    teto?: {
-      tipo: "GLOBAL" | "PDV";
-      tipo_meta: "VALOR" | "VOLUME";
-      alvo_pai: number;
-      alocado: number;
-      disponivel: number;
-    } | null;
-  } & ApiErro>(resposta);
-
-  if (!resposta.ok || json.ok === false) {
-    return { ok: false, erro: json.erro ?? "Erro ao validar teto da meta." };
-  }
-
-  return { ok: true, dados: { teto: json.teto ?? null } };
 }

@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
   const resultado = await sincronizarLeadsWhatsapp({
     tipo: "sessao",
     sessao: auth.sessao,
-  }, origemFiltro);
+  }, origemFiltro ?? undefined);
 
   // Incluir timestamp da sincronização
   return NextResponse.json({

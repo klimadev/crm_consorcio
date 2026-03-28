@@ -259,8 +259,12 @@ export function useWhatsappChat({ leadId, enabled, markReadEnabled, pollMs = 300
   }, [stopPolling]);
 
   useEffect(() => {
-    setMessages([]);
-    setUnreadCount(0);
+    const isSameLead = Boolean(leadId) && messagesRef.current[0]?.leadId === leadId;
+
+    if (!isSameLead) {
+      setMessages([]);
+      setUnreadCount(0);
+    }
     setError(null);
     setBlockedState(null);
     backoffMsRef.current = pollMs;

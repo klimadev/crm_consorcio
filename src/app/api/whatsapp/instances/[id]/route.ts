@@ -35,8 +35,16 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   }
 
   try {
+    // Tenta deletar na Evolution API (trata erro de "já deletada" internamente)
     await deletarInstancia(instancia.instance_name);
+  } catch (erro) {
+    // Log do erro mas continua para limpar banco local
+    console.error("Erro ao deletar instância na Evolution API:", erro);
+  }
 
+  // Sempre executa o delete no banco, independente do resultado da Evolution
+  // Isso evita desincronização quando a instância já foi deletada externamente
+  try {
     await withRetry(
       () =>
         prisma.$transaction([
@@ -53,14 +61,12 @@ export async function DELETE(request: NextRequest, { params }: Params) {
         ]),
       { maxAttempts: 3, delayMs: 1000 }
     );
-
-    return NextResponse.json({ ok: true });
-  } catch (erro) {
-    if (erro instanceof Error && erro.message) {
-      return NextResponse.json({ erro: erro.message }, { status: 500 });
-    }
-    return handleRouteError(erro, "Erro ao excluir instância.", "Erro ao excluir instância WhatsApp:");
+  } catch (erroDb) {
+    console.error("Erro ao deletar instância do banco local:", erroDb);
+    return handleRouteError(erroDb, "Erro ao excluir instância.", "Erro ao excluir instância WhatsApp do banco:");
   }
+
+  return NextResponse.json({ ok: true });
 }
 
 export async function PATCH(request: NextRequest, { params }: Params) {

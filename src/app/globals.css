@@ -157,8 +157,8 @@ body {
   outline-offset: 2px;
 }
 
-/* Transições globais */
-* {
+/* Transições globais — exceto containers de layout para evitar flash branco */
+*:not(div):not(main):not(section):not(article):not(header):not(footer):not(nav):not(aside) {
   transition-property: color, background-color, border-color;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;

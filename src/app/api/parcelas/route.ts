@@ -94,6 +94,51 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ parcelas });
 }
 
+export async function DELETE(request: NextRequest) {
+  const auth = await exigirSessao(request);
+  if (auth.erro) {
+    return auth.erro;
+  }
+
+  const { searchParams } = new URL(request.url);
+  const idLead = searchParams.get("id_lead")?.trim() || null;
+
+  if (!idLead) {
+    return badRequest("ID do lead e obrigatorio.");
+  }
+
+  // Verificar se o lead existe e se tem permissão
+  const lead = await prisma.lead.findFirst({
+    where: { id: idLead, ...(await whereLeadsPorPerfil(auth.sessao)) },
+    select: { id: true },
+  });
+
+  if (!lead) {
+    return notFound("Lead nao encontrado.");
+  }
+
+  // Apenas EMPRESA e GERENTE podem excluir
+  if (auth.sessao.perfil === "COLABORADOR") {
+    return respostaSemPermissao();
+  }
+
+  const parcelasPagas = await prisma.parcela.count({
+    where: {
+      id_lead: idLead,
+      OR: [{ status: "PAGO" }, { data_pagamento: { not: null } }],
+    },
+  });
+
+  const resultado = await prisma.parcela.deleteMany({
+    where:
+      parcelasPagas > 0
+        ? { id_lead: idLead, status: { not: "PAGO" }, data_pagamento: null }
+        : { id_lead: idLead },
+  });
+
+  return NextResponse.json({ ok: true, excluidas: resultado.count, preservadas_pagas: parcelasPagas });
+}
+
 export async function POST(request: NextRequest) {
   const auth = await exigirSessao(request);
   if (auth.erro) {
@@ -112,10 +157,6 @@ export async function POST(request: NextRequest) {
 
   const dados = validacao.data;
   const primeiroVencimento = new Date(dados.data_primeiro_vencimento);
-  const hoje = inicioDoDia();
-  if (inicioDoDia(primeiroVencimento) < hoje) {
-    return badRequest("A data do primeiro vencimento nao pode estar no passado.");
-  }
 
   const lead = await prisma.lead.findFirst({
     where: { id: dados.id_lead, ...(await whereLeadsPorPerfil(auth.sessao)) },
@@ -130,26 +171,46 @@ export async function POST(request: NextRequest) {
     return respostaSemPermissao();
   }
 
-  const parcelasExistentes = await prisma.parcela.count({
-    where: { id_empresa: auth.sessao.id_empresa, id_lead: dados.id_lead },
-  });
+  const [parcelasExistentes, parcelasPendentes, maiorNumeroParcela] = await Promise.all([
+    prisma.parcela.count({
+      where: { id_empresa: auth.sessao.id_empresa, id_lead: dados.id_lead },
+    }),
+    prisma.parcela.count({
+      where: { id_empresa: auth.sessao.id_empresa, id_lead: dados.id_lead, data_pagamento: null },
+    }),
+    prisma.parcela.aggregate({
+      where: { id_empresa: auth.sessao.id_empresa, id_lead: dados.id_lead },
+      _max: { numero_parcela: true },
+    }),
+  ]);
 
-  if (parcelasExistentes > 0) {
-    return conflict("Este lead ja possui plano de parcelas cadastrado.");
+  if (parcelasPendentes > 0) {
+    return conflict("Este lead ja possui parcelas pendentes cadastradas. Edite ou remova as pendentes antes de gerar um novo plano.");
   }
 
+  const quantidadeTotalPlano = parcelasExistentes + dados.quantidade_parcelas;
+  const proximoNumeroParcela = (maiorNumeroParcela._max.numero_parcela ?? 0) + 1;
   const datas = gerarDatasVencimento(primeiroVencimento, dados.quantidade_parcelas);
   const parcelasParaCriar = datas.map((dataVencimento, indice) => ({
     id_empresa: auth.sessao.id_empresa,
     id_lead: dados.id_lead,
-    numero_parcela: indice + 1,
-    quantidade_total: dados.quantidade_parcelas,
+    numero_parcela: proximoNumeroParcela + indice,
+    quantidade_total: quantidadeTotalPlano,
     valor: dados.valor_parcela,
     data_vencimento: dataVencimento,
     status: "PENDENTE",
   }));
 
-  await prisma.parcela.createMany({ data: parcelasParaCriar });
+  await prisma.$transaction(async (tx) => {
+    if (parcelasExistentes > 0) {
+      await tx.parcela.updateMany({
+        where: { id_empresa: auth.sessao.id_empresa, id_lead: dados.id_lead },
+        data: { quantidade_total: quantidadeTotalPlano },
+      });
+    }
+
+    await tx.parcela.createMany({ data: parcelasParaCriar });
+  });
 
   return NextResponse.json({ ok: true, parcelas_criadas: parcelasParaCriar.length }, { status: 201 });
 }

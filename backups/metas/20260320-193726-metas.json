@@ -1,0 +1,50 @@
+{
+  "criado_em": "2026-03-20T22:37:26.820Z",
+  "origem": {
+    "database_url": "file:./dev.db",
+    "banco_copiado_de": "/var/www/crmconsorcio/dev.db"
+  },
+  "resumo": {
+    "metas": 2,
+    "templates": 0,
+    "periodos": 0,
+    "progressos": 0
+  },
+  "dados": {
+    "metas": [
+      {
+        "id": "255f3abf-84c0-4ab6-8d4d-752c66df737d",
+        "id_empresa": "5ca33969-8648-4349-ad1e-a5a783edd02f",
+        "tipo": "PDV",
+        "tipo_meta": "VALOR",
+        "alvo": 1000000,
+        "periodo": "MENSAIS",
+        "data_inicio": "2026-03-02T03:00:00.000Z",
+        "data_fim": "2026-04-01T02:59:59.000Z",
+        "ativo": false,
+        "criado_em": "2026-03-13T04:52:30.639Z",
+        "atualizado_em": "2026-03-16T19:59:19.802Z",
+        "id_pdv": "6dcbf1f7-b41c-4a8a-91fe-5da22d5630ee",
+        "id_funcionario": null
+      },
+      {
+        "id": "19d3cfbc-6b13-4cf8-9536-820585d0df66",
+        "id_empresa": "5ca33969-8648-4349-ad1e-a5a783edd02f",
+        "tipo": "PDV",
+        "tipo_meta": "VALOR",
+        "alvo": 1000000,
+        "periodo": "SEMANAL",
+        "data_inicio": "2026-03-23T03:00:00.000Z",
+        "data_fim": "2026-04-01T02:59:59.000Z",
+        "ativo": true,
+        "criado_em": "2026-03-13T19:59:50.019Z",
+        "atualizado_em": "2026-03-16T19:56:15.971Z",
+        "id_pdv": "ea48c8af-a0f4-4ee9-96da-4c7ac7be2766",
+        "id_funcionario": null
+      }
+    ],
+    "templates": [],
+    "periodos": [],
+    "progressos": []
+  }
+}

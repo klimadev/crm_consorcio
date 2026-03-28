@@ -35,11 +35,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (auth.sessao.perfil === "COLABORADOR") {
-    if (!auth.sessao.id_pdv) {
-      return NextResponse.json({ ranking: [], media_equipe: 0, total_participantes: 0 });
-    }
-
-    idPdvAlvo = auth.sessao.id_pdv;
+    return respostaSemPermissao();
   }
 
   const resultado = await calcularRankingMetas({

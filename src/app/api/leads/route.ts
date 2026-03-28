@@ -25,7 +25,22 @@ export async function GET(request: NextRequest) {
     prisma.lead.findMany({
       where: whereLeads,
       orderBy: { atualizado_em: "desc" },
-      include: { funcionario: { select: { id_pdv: true } } },
+      include: {
+        funcionario: {
+          select: {
+            id_pdv: true,
+            pdv: {
+              select: {
+                id: true,
+                nome: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: { parcelas: true },
+        },
+      },
     }),
     // Filter employees by PDV for GERENTE
     prisma.funcionario.findMany({
@@ -49,6 +64,8 @@ export async function GET(request: NextRequest) {
   const leadsComPdv = leads.map((lead: typeof leads[number]) => ({
     ...lead,
     id_pdv: lead.funcionario.id_pdv,
+    pdv: lead.funcionario.pdv,
+    quantidade_parcelas: lead._count.parcelas,
   }));
 
   return NextResponse.json({ estagios, leads: leadsComPdv, funcionarios, pdvs });

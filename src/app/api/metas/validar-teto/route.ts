@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   exigirSessao,
-  podeDefinirMetaGlobal,
   podeGerenciarMetaDoPdv,
-  podeGerenciarMetaIndividual,
   respostaSemPermissao,
 } from "@/lib/permissoes";
 import { type MetaPayload, validarMeta } from "@/lib/metas";
@@ -29,23 +27,8 @@ export async function POST(request: NextRequest) {
   const { id_meta_atual, ...restante } = validacao.data;
   const payload = restante as MetaPayload;
 
-  if (payload.tipo === "GLOBAL" && !podeDefinirMetaGlobal(auth.sessao)) {
+  if (payload.tipo !== "PDV" || !payload.id_pdv || !podeGerenciarMetaDoPdv(auth.sessao, payload.id_pdv)) {
     return respostaSemPermissao();
-  }
-
-  if (payload.tipo === "PDV" && (!payload.id_pdv || !podeGerenciarMetaDoPdv(auth.sessao, payload.id_pdv))) {
-    return respostaSemPermissao();
-  }
-
-  if (payload.tipo === "INDIVIDUAL") {
-    if (!payload.id_funcionario) {
-      return NextResponse.json({ ok: false, erro: "Selecione o colaborador da meta." });
-    }
-
-    const pode = await podeGerenciarMetaIndividual(auth.sessao, payload.id_funcionario);
-    if (!pode) {
-      return respostaSemPermissao();
-    }
   }
 
   const resultado = await validarMeta({

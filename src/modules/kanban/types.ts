@@ -31,7 +31,9 @@ export type Lead = {
   aprovado_por: string | null;
   origem?: OrigemLead;
   atualizado_em: string;
+  quantidade_parcelas?: number;
   id_pdv?: string | null;
+  pdv?: Pdv | null;
   // Campos de Anúncio (CTWA)
   anuncio_titulo?: string | null;
   anuncio_descricao?: string | null;

@@ -29,6 +29,8 @@ export function getGravidadePendencia(tipo: TipoPendencia): PendenciaGravidade {
       return "alerta";
     case "ESTAGIO_PARADO":
       return "alerta";
+    case "PLANO_PAGAMENTO_PENDENTE":
+      return "critica";
     case "SEM_RESPOSTA":
     case "CARTA_CREDITO_PENDENTE":
     case "DOCUMENTOS_PENDENTES":
@@ -326,6 +328,7 @@ export function usePendenciasProvider() {
       DOCUMENTO_APROVACAO_PENDENTE: 0,
       APROVACAO_GERENCIA_PENDENTE: 0,
       ESTAGIO_PARADO: 0,
+      PLANO_PAGAMENTO_PENDENTE: 0,
     };
     const porGravidade: Record<PendenciaGravidade, number> = {
       critica: 0,

@@ -9,11 +9,10 @@ import { MetaAdminPanel, MetasHeader } from "./components/metas";
 type ModuloMetasEquipeProps = {
   perfil: Perfil;
   id_pdv?: string | null;
-  id_usuario: string;
 };
 
-export function ModuloMetasEquipe({ perfil, id_pdv, id_usuario }: ModuloMetasEquipeProps) {
-  const vm = useMetasModule({ perfil, id_pdv, id_usuario, modo: "painel" });
+export function ModuloMetasEquipe({ perfil, id_pdv }: ModuloMetasEquipeProps) {
+  const vm = useMetasModule({ perfil, id_pdv, modo: "painel" });
 
   return (
     <ModulePageShell spacing="lg">

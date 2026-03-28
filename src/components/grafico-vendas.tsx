@@ -21,7 +21,7 @@ export function GraficoVendas({ dados }: Props) {
           <XAxis dataKey="mes" />
           <YAxis />
           <Tooltip formatter={(valor) => formataMoeda(Number(valor))} />
-          <Bar dataKey="total" fill="#0f172a" radius={[6, 6, 0, 0]} />
+          <Bar dataKey="total" fill="#16a34a" radius={[6, 6, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

@@ -1,0 +1,1 @@
+export { ModuloChat } from "./page";

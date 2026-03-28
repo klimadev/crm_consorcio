@@ -19,5 +19,5 @@ export default async function PaginaMetasEquipe() {
     );
   }
 
-  return <ModuloMetasEquipe perfil={sessao.perfil} id_pdv={sessao.id_pdv} id_usuario={sessao.id_usuario} />;
+  return <ModuloMetasEquipe perfil={sessao.perfil} id_pdv={sessao.id_pdv} />;
 }

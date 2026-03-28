@@ -13,6 +13,7 @@ export type LeadParaCalculo = {
   atualizado_em: Date | string;
   documento_aprovacao_url: string | null;
   aprovado_em: Date | string | null;
+  quantidade_parcelas?: number;
 };
 
 export type EstagioParaCalculo = {
@@ -65,6 +66,17 @@ export function calcularPendenciasLead(
       id_lead: lead.id,
       tipo: "ESTAGIO_PARADO",
       descricao: `Lead parado no estágio "${estagio.nome}" há mais de ${DIAS_ESTAGIO_PARADO} dias.`,
+      resolvida: false,
+    });
+  }
+
+  // Pendência: Lead GANHO/FECHADO sem plano de pagamento (parcelas)
+  if (isFechadoOuGanho && (!lead.quantidade_parcelas || lead.quantidade_parcelas === 0)) {
+    pendencias.push({
+      id: gerarIdPendencia(lead.id, "PLANO_PAGAMENTO_PENDENTE"),
+      id_lead: lead.id,
+      tipo: "PLANO_PAGAMENTO_PENDENTE",
+      descricao: "Lead fechado sem plano de pagamento. Gere as parcelas para iniciar o recebimento.",
       resolvida: false,
     });
   }

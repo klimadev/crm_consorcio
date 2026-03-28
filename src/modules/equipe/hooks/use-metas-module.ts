@@ -8,98 +8,156 @@ import {
   desativarMeta as desativarMetaApi,
   editarMeta as editarMetaApi,
   listarMetas,
-  obterProgressoMeta,
+  MEDICOES_META,
   obterRankingMetas,
-  validarTetoMeta as validarTetoMetaApi,
   type MetaPayloadApi,
 } from "@/lib/api/metas";
+import type { OrigemResultadoMeta, PeriodoMeta, TipoMetaValor } from "@/lib/tipos";
 import type {
   MetaFormState,
+  MetaMedicao,
   MetaModuleItem,
-  MetaOptionColaborador,
   MetaOptionPdv,
   UseMetasModuleProps,
   UseMetasModuleReturn,
 } from "../types/metas";
 
 function hojeInput() {
-  return new Date().toISOString().slice(0, 10);
+  const data = new Date();
+  const ano = data.getFullYear();
+  const mes = String(data.getMonth() + 1).padStart(2, "0");
+  const dia = String(data.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
 }
 
-function ultimoDiaMesAtualInput() {
-  const agora = new Date();
-  return new Date(agora.getFullYear(), agora.getMonth() + 1, 0).toISOString().slice(0, 10);
+function inicioDaSemanaInput(dataBase?: string) {
+  const base = dataBase ? new Date(`${dataBase}T12:00:00`) : new Date();
+  const diaSemana = base.getDay() || 7;
+  const inicio = new Date(base);
+  inicio.setDate(base.getDate() - diaSemana + 1);
+  return hojeLocalInput(inicio);
 }
 
-function criarFormularioInicial(tipo: MetaFormState["tipo"] = "GLOBAL"): MetaFormState {
+function hojeLocalInput(data: Date) {
+  const ano = data.getFullYear();
+  const mes = String(data.getMonth() + 1).padStart(2, "0");
+  const dia = String(data.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+}
+
+function fimDaSemanaInput(dataBase?: string) {
+  const base = dataBase ? new Date(`${dataBase}T12:00:00`) : new Date();
+  const dia = base.getDay() || 7;
+  const fim = new Date(base);
+  fim.setDate(base.getDate() + (7 - dia));
+  return hojeLocalInput(fim);
+}
+
+function inicioPadraoMetaSemanal() {
+  const hoje = new Date();
+  const diaSemana = hoje.getDay() || 7;
+
+  if (diaSemana === 1) {
+    return hojeInput();
+  }
+
+  const inicioSemanaAtual = new Date(`${inicioDaSemanaInput()}T12:00:00`);
+  inicioSemanaAtual.setDate(inicioSemanaAtual.getDate() + 7);
+  return hojeLocalInput(inicioSemanaAtual);
+}
+
+function criarFormularioInicial(idPdv?: string | null): MetaFormState {
+  const inicio = inicioPadraoMetaSemanal();
   return {
-    tipo,
-    tipo_meta: "VALOR",
+    titulo: "",
+    periodo: "SEMANAL",
+    medicao: "VALOR_PAGAMENTOS",
     alvo: "",
-    periodo: "MENSAIS",
-    data_inicio: hojeInput(),
-    data_fim: ultimoDiaMesAtualInput(),
-    id_pdv: "",
-    id_funcionario: "",
+    data_inicio: inicio,
+    data_fim: fimDaSemanaInput(inicio),
+    id_pdv: idPdv ?? "",
   };
+}
+
+function medicaoDaMeta(meta: Pick<MetaModuleItem, "tipo_meta" | "origem_resultado">): MetaMedicao {
+  if (meta.tipo_meta === "VOLUME") {
+    return "VOLUME_FECHADOS";
+  }
+
+  return meta.origem_resultado === "ESTAGIO_GANHO" ? "VALOR_FECHADOS" : "VALOR_PAGAMENTOS";
+}
+
+function definirMedicao(medicao: MetaMedicao): { tipo_meta: TipoMetaValor; origem_resultado: OrigemResultadoMeta } {
+  switch (medicao) {
+    case "VALOR_FECHADOS":
+      return { tipo_meta: "VALOR", origem_resultado: "ESTAGIO_GANHO" };
+    case "VOLUME_FECHADOS":
+      return { tipo_meta: "VOLUME", origem_resultado: "ESTAGIO_GANHO" };
+    default:
+      return { tipo_meta: "VALOR", origem_resultado: "PAGAMENTOS" };
+  }
 }
 
 function formularioDaMeta(meta: MetaModuleItem): MetaFormState {
   return {
-    tipo: meta.tipo,
-    tipo_meta: meta.tipo_meta,
-    alvo: String(meta.alvo),
+    titulo: meta.titulo,
     periodo: meta.periodo,
+    medicao: medicaoDaMeta(meta),
+    alvo: String(meta.alvo),
     data_inicio: meta.data_inicio.slice(0, 10),
     data_fim: meta.data_fim.slice(0, 10),
     id_pdv: meta.id_pdv ?? "",
-    id_funcionario: meta.id_funcionario ?? "",
   };
 }
 
+function cadenciaPorPeriodo(periodo: PeriodoMeta): MetaPayloadApi["cadencia"] {
+  switch (periodo) {
+    case "MENSAIS":
+      return "MENSAL";
+    case "TRIMESTRAL":
+      return "TRIMESTRAL";
+    case "ANUAL":
+      return "ANUAL";
+    case "PERSONALIZADO":
+      return "PERSONALIZADO";
+    default:
+      return "SEMANAL_MES";
+  }
+}
+
 function montarPayload(formulario: MetaFormState): MetaPayloadApi {
+  const configuracaoMedicao = definirMedicao(formulario.medicao);
   return {
-    tipo: formulario.tipo,
-    tipo_meta: formulario.tipo_meta,
+    titulo: formulario.titulo,
+    tipo: "PDV",
+    tipo_meta: configuracaoMedicao.tipo_meta,
+    origem_resultado: configuracaoMedicao.origem_resultado,
+    cadencia: cadenciaPorPeriodo(formulario.periodo),
+    recorrencia: "PONTUAL",
     alvo: Number(formulario.alvo),
     periodo: formulario.periodo,
     data_inicio: new Date(`${formulario.data_inicio}T00:00:00`).toISOString(),
     data_fim: new Date(`${formulario.data_fim}T23:59:59`).toISOString(),
-    ...(formulario.tipo === "PDV" && formulario.id_pdv ? { id_pdv: formulario.id_pdv } : {}),
-    ...(formulario.tipo === "INDIVIDUAL" && formulario.id_funcionario
-      ? { id_funcionario: formulario.id_funcionario }
-      : {}),
+    id_pdv: formulario.id_pdv,
   };
 }
 
-export function useMetasModule({ perfil, id_pdv, id_usuario, modo }: UseMetasModuleProps): UseMetasModuleReturn {
+export function useMetasModule({ perfil, id_pdv, modo }: UseMetasModuleProps): UseMetasModuleReturn {
   const { addToast } = useToast();
   const [metas, setMetas] = useState<MetaModuleItem[]>([]);
-  const [minhaMeta, setMinhaMeta] = useState<MetaModuleItem | null>(null);
-  const [progresso, setProgresso] = useState<UseMetasModuleReturn["progresso"]>(null);
   const [ranking, setRanking] = useState<UseMetasModuleReturn["ranking"]>([]);
   const [mediaEquipe, setMediaEquipe] = useState(0);
   const [totalParticipantes, setTotalParticipantes] = useState(0);
-  const [tetos, setTetos] = useState<UseMetasModuleReturn["tetos"]>({ globais: [], pdvs: [] });
   const [opcoesPdvs, setOpcoesPdvs] = useState<MetaOptionPdv[]>([]);
-  const [opcoesColaboradores, setOpcoesColaboradores] = useState<MetaOptionColaborador[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [desativandoId, setDesativandoId] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [dialogFormAberto, setDialogFormAberto] = useState(false);
   const [metaEmEdicao, setMetaEmEdicao] = useState<MetaModuleItem | null>(null);
-  const [tipoCriacao, setTipoCriacao] = useState<MetaFormState["tipo"]>(perfil === "EMPRESA" ? "GLOBAL" : "PDV");
-  const [abaAtiva, setAbaAtiva] = useState<MetaFormState["tipo"]>(perfil === "EMPRESA" ? "GLOBAL" : "PDV");
+  const [pdvSelecionado, setPdvSelecionado] = useState<string | null>(id_pdv ?? null);
 
-  const podeCriarGlobal = perfil === "EMPRESA";
-  const podeCriarMetaPdv = perfil === "EMPRESA" || perfil === "GERENTE";
-  const podeCriarMetaIndividual = perfil === "EMPRESA" || perfil === "GERENTE";
-  const podeVerValoresAbsolutos = perfil === "EMPRESA" || perfil === "GERENTE" || modo === "colaborador";
-
-  const metasGlobais = useMemo(() => metas.filter((meta) => meta.tipo === "GLOBAL"), [metas]);
-  const metasPdv = useMemo(() => metas.filter((meta) => meta.tipo === "PDV"), [metas]);
-  const metasIndividuais = useMemo(() => metas.filter((meta) => meta.tipo === "INDIVIDUAL"), [metas]);
+  const podeCriarMeta = perfil === "EMPRESA" || perfil === "GERENTE";
 
   const carregarOpcoes = useCallback(async () => {
     const resposta = await listarPdvs();
@@ -108,27 +166,17 @@ export function useMetasModule({ perfil, id_pdv, id_usuario, modo }: UseMetasMod
     }
 
     const pdvsFiltrados = resposta.dados.pdvs.filter((pdv) => {
-      if (!id_pdv) return true;
       if (perfil === "EMPRESA") return true;
       return pdv.id === id_pdv;
     });
 
     const proximosPdvs = pdvsFiltrados.map((pdv) => ({ id: pdv.id, nome: pdv.nome }));
-    const proximosColaboradores = pdvsFiltrados
-      .flatMap((pdv) =>
-        (pdv.funcionarios ?? [])
-          .filter((funcionario) => funcionario.cargo === "COLABORADOR")
-          .map((funcionario) => ({
-            id: funcionario.id,
-            nome: funcionario.nome,
-            id_pdv: pdv.id,
-            nome_pdv: pdv.nome,
-          })),
-      )
-      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
-
     setOpcoesPdvs(proximosPdvs);
-    setOpcoesColaboradores(proximosColaboradores);
+
+    if (perfil !== "EMPRESA" && proximosPdvs[0]?.id) {
+      setPdvSelecionado(proximosPdvs[0].id);
+    }
+
     return { erro: null };
   }, [id_pdv, perfil]);
 
@@ -141,7 +189,7 @@ export function useMetasModule({ perfil, id_pdv, id_usuario, modo }: UseMetasMod
     try {
       const [opcoesResultado, metasResultado, rankingResultado] = await Promise.all([
         carregarOpcoes(),
-        listarMetas(modo === "colaborador" ? `id_funcionario=${id_usuario}&ativo=true` : ""),
+        listarMetas(id_pdv && perfil !== "EMPRESA" ? `id_pdv=${id_pdv}&ativo=true` : "ativo=true"),
         obterRankingMetas(rankingQuery),
       ]);
 
@@ -152,30 +200,8 @@ export function useMetasModule({ perfil, id_pdv, id_usuario, modo }: UseMetasMod
       if (!metasResultado.ok) {
         setErro(metasResultado.erro);
         setMetas([]);
-        setMinhaMeta(null);
-        setProgresso(null);
-      } else if (modo === "colaborador") {
-        const metaPessoal = metasResultado.dados.metas[0] ?? null;
-        setMetas(metaPessoal ? [metaPessoal] : []);
-        setMinhaMeta(metaPessoal);
-        setTetos({ globais: [], pdvs: [] });
-
-        if (metaPessoal?.progresso) {
-          setProgresso(metaPessoal.progresso);
-        } else if (metaPessoal) {
-          const progressoResultado = await obterProgressoMeta(metaPessoal.id);
-          setProgresso(progressoResultado.ok ? progressoResultado.dados : null);
-          if (!progressoResultado.ok) {
-            setErro(progressoResultado.erro);
-          }
-        } else {
-          setProgresso(null);
-        }
       } else {
         setMetas(metasResultado.dados.metas);
-        setTetos(metasResultado.dados.tetos);
-        setMinhaMeta(null);
-        setProgresso(null);
       }
 
       if (!rankingResultado.ok) {
@@ -191,21 +217,72 @@ export function useMetasModule({ perfil, id_pdv, id_usuario, modo }: UseMetasMod
     } finally {
       setCarregando(false);
     }
-  }, [carregarOpcoes, id_pdv, id_usuario, modo, perfil]);
+  }, [carregarOpcoes, id_pdv, perfil]);
 
   useEffect(() => {
     void carregarDados();
   }, [carregarDados]);
 
-  const abrirNovaMeta = useCallback((tipo: MetaFormState["tipo"] = tipoCriacao) => {
+  const metasFiltradas = useMemo(() => {
+    if (!pdvSelecionado) return metas;
+    return metas.filter((meta) => meta.id_pdv === pdvSelecionado);
+  }, [metas, pdvSelecionado]);
+
+  const metasAgrupadas = useMemo(() => {
+    const grupos = new Map<string, { id: string; nome: string; metas: MetaModuleItem[] }>();
+
+    for (const meta of metasFiltradas) {
+      const id = meta.id_pdv ?? meta.id;
+      const nome = meta.pdv?.nome ?? "Equipe";
+
+      if (!grupos.has(id)) {
+        grupos.set(id, { id, nome, metas: [] });
+      }
+
+      grupos.get(id)?.metas.push(meta);
+    }
+
+    return Array.from(grupos.values()).map((grupo) => ({
+      ...grupo,
+      metas: [...grupo.metas].sort((a, b) => new Date(b.data_inicio).getTime() - new Date(a.data_inicio).getTime()),
+    }));
+  }, [metasFiltradas]);
+
+  const resumo = useMemo(() => {
+    const totais = metasFiltradas.reduce(
+      (acc, meta) => {
+        const percentual = meta.progresso?.percentual ?? 0;
+        if (percentual >= 80) acc.equipesNoRitmo += 1;
+        else if (percentual >= 45) acc.equipesEmAtencao += 1;
+        else acc.equipesForaDoRitmo += 1;
+        acc.somaPercentual += percentual;
+        return acc;
+      },
+      {
+        equipesNoRitmo: 0,
+        equipesEmAtencao: 0,
+        equipesForaDoRitmo: 0,
+        somaPercentual: 0,
+      },
+    );
+
+    const totalEquipes = metasFiltradas.length;
+    return {
+      totalEquipes,
+      equipesNoRitmo: totais.equipesNoRitmo,
+      equipesEmAtencao: totais.equipesEmAtencao,
+      equipesForaDoRitmo: totais.equipesForaDoRitmo,
+      mediaPercentual: totalEquipes > 0 ? Number((totais.somaPercentual / totalEquipes).toFixed(1)) : 0,
+    };
+  }, [metasFiltradas]);
+
+  const abrirNovaMeta = useCallback(() => {
     setMetaEmEdicao(null);
-    setTipoCriacao(tipo);
     setDialogFormAberto(true);
-  }, [tipoCriacao]);
+  }, []);
 
   const abrirEdicao = useCallback((meta: MetaModuleItem) => {
     setMetaEmEdicao(meta);
-    setTipoCriacao(meta.tipo);
     setDialogFormAberto(true);
   }, []);
 
@@ -225,22 +302,6 @@ export function useMetasModule({ perfil, id_pdv, id_usuario, modo }: UseMetasMod
     setErro(null);
 
     try {
-      const validacaoTeto = await validarTetoMetaApi({
-        ...payload,
-        ...(metaEmEdicao ? { id_meta_atual: metaEmEdicao.id } : {}),
-      });
-
-      if (!validacaoTeto.ok) {
-        setErro(validacaoTeto.erro);
-        addToast({
-          type: "error",
-          title: "Nao foi possivel salvar a meta",
-          description: validacaoTeto.erro,
-          duration: 4500,
-        });
-        return false;
-      }
-
       const resposta = metaEmEdicao
         ? await editarMetaApi(metaEmEdicao.id, payload)
         : await criarMetaApi(payload);
@@ -260,8 +321,8 @@ export function useMetasModule({ perfil, id_pdv, id_usuario, modo }: UseMetasMod
         type: "success",
         title: metaEmEdicao ? "Meta atualizada" : "Meta criada",
         description: metaEmEdicao
-          ? "As alteracoes ja aparecem no painel de acompanhamento."
-          : "A nova meta ja esta disponivel para acompanhamento.",
+          ? "A equipe ja aparece com os dados atualizados no painel."
+          : "A nova meta ja esta pronta para acompanhar.",
         duration: 4000,
       });
 
@@ -283,7 +344,7 @@ export function useMetasModule({ perfil, id_pdv, id_usuario, modo }: UseMetasMod
         setErro(resposta.erro);
         addToast({
           type: "error",
-          title: "Nao foi possivel desativar a meta",
+          title: "Nao foi possivel arquivar a meta",
           description: resposta.erro,
           duration: 4500,
         });
@@ -292,8 +353,8 @@ export function useMetasModule({ perfil, id_pdv, id_usuario, modo }: UseMetasMod
 
       addToast({
         type: "success",
-        title: "Meta desativada",
-        description: "A meta saiu do acompanhamento ativo sem apagar o historico.",
+        title: "Meta arquivada",
+        description: "A meta saiu da semana atual sem apagar o historico.",
         duration: 3500,
       });
       await carregarDados();
@@ -305,31 +366,24 @@ export function useMetasModule({ perfil, id_pdv, id_usuario, modo }: UseMetasMod
 
   return {
     modo,
+    perfil,
     metas,
-    metasGlobais,
-    metasPdv,
-    metasIndividuais,
-    minhaMeta,
-    progresso,
+    metasFiltradas,
+    metasAgrupadas,
     ranking,
     mediaEquipe,
     totalParticipantes,
-    tetos,
     opcoesPdvs,
-    opcoesColaboradores,
     carregando,
     salvando,
     desativandoId,
     erro,
     dialogFormAberto,
     metaEmEdicao,
-    tipoCriacao,
-    abaAtiva,
-    podeCriarGlobal,
-    podeCriarMetaPdv,
-    podeCriarMetaIndividual,
-    podeVerValoresAbsolutos,
-    setAbaAtiva,
+    pdvSelecionado,
+    podeCriarMeta,
+    resumo,
+    setPdvSelecionado,
     abrirNovaMeta,
     abrirEdicao,
     fecharDialog,
@@ -340,3 +394,4 @@ export function useMetasModule({ perfil, id_pdv, id_usuario, modo }: UseMetasMod
 }
 
 export { criarFormularioInicial, formularioDaMeta };
+export { MEDICOES_META };

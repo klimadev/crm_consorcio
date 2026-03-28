@@ -464,3 +464,60 @@ export function ehStatusBroadcast(jid: string | null | undefined): boolean {
   if (!jid || typeof jid !== "string") return false;
   return jid === "status@broadcast";
 }
+
+// ============================================================================
+// PREVIEW DE MENSAGEM PARA LISTA DE CONVERSAS
+// ============================================================================
+
+const ICONES_MIDIA: Record<string, string> = {
+  imageMessage: "📷",
+  videoMessage: "🎥",
+  audioMessage: "🎵",
+  documentMessage: "📄",
+};
+
+const LABELS_MIDIA: Record<string, string> = {
+  imageMessage: "Foto",
+  videoMessage: "Vídeo",
+  audioMessage: "Áudio",
+  documentMessage: "Documento",
+  stickerMessage: "Sticker",
+  locationMessage: "Localização",
+  contactsArrayMessage: "Contato",
+  contactsMessage: "Contato",
+  reactionMessage: "Reação",
+  listMessage: "Lista",
+  buttonsMessage: "Botões",
+  templateMessage: "Template",
+  pollingCreationMessage: "Enquete",
+};
+
+/**
+ * Formata preview da última mensagem para exibição na lista de conversas
+ */
+export function formatarPreviewMensagem(
+  tipo: string,
+  conteudo: string | null,
+): string {
+  // Texto simples
+  if (tipo === "conversation" || tipo === "extendedTextMessage") {
+    const texto = conteudo ?? "";
+    return texto.length > 80 ? texto.slice(0, 77) + "..." : texto;
+  }
+
+  // Mídia com caption
+  if (conteudo && conteudo.trim().length > 0) {
+    const icone = ICONES_MIDIA[tipo] ?? "💬";
+    const caption = conteudo.length > 60 ? conteudo.slice(0, 57) + "..." : conteudo;
+    return `${icone} ${caption}`;
+  }
+
+  // Mídia sem caption
+  const label = LABELS_MIDIA[tipo];
+  if (label) {
+    const icone = ICONES_MIDIA[tipo] ?? "💬";
+    return `${icone} ${label}`;
+  }
+
+  return "💬 Mensagem";
+}

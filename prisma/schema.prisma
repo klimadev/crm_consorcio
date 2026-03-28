@@ -8,21 +8,23 @@ datasource db {
 }
 
 model Empresa {
-  id            String         @id @default(uuid())
-  nome          String
-  email         String         @unique
-  senha_hash    String
-  criado_em     DateTime       @default(now())
-  atualizado_em DateTime       @default(now()) @updatedAt
-  estagios      EstagioFunil[]
-  funcionarios  Funcionario[]
-  leads         Lead[]
-  metas         Meta[]
-  metasProgresso MetaProgresso[]
-  produtos      Produto[]
-  leads_produto LeadProduto[]
-  pdvs          Pdv[]
-  parcelas      Parcela[]
+  id              String          @id @default(uuid())
+  nome            String
+  email           String          @unique
+  senha_hash      String
+  criado_em       DateTime        @default(now())
+  atualizado_em   DateTime        @default(now()) @updatedAt
+  estagios        EstagioFunil[]
+  funcionarios    Funcionario[]
+  leads           Lead[]
+  metas           Meta[]
+  metas_periodo   MetaPeriodo[]
+  metas_progresso MetaProgresso[]
+  metas_templates MetaTemplate[]
+  produtos        Produto[]
+  leads_produto   LeadProduto[]
+  pdvs            Pdv[]
+  parcelas        Parcela[]
 }
 
 model Pdv {
@@ -34,6 +36,7 @@ model Pdv {
   atualizado_em         DateTime           @default(now()) @updatedAt
   funcionarios          Funcionario[]
   metas                 Meta[]
+  metas_templates       MetaTemplate[]
   empresa               Empresa            @relation(fields: [id_empresa], references: [id])
   whatsapp_instancia    WhatsappInstancia? @relation(fields: [id_whatsapp_instancia], references: [id], onDelete: SetNull)
 
@@ -42,21 +45,22 @@ model Pdv {
 }
 
 model Funcionario {
-  id            String    @id @default(uuid())
-  id_empresa    String
-  id_pdv        String
-  nome          String
-  email         String    @unique
-  senha_hash    String
-  cargo         String
-  ativo         Boolean   @default(true)
-  criado_em     DateTime  @default(now())
-  atualizado_em DateTime  @default(now()) @updatedAt
-  inativado_em  DateTime?
-  metas         Meta[]
-  pdv           Pdv       @relation(fields: [id_pdv], references: [id])
-  empresa       Empresa   @relation(fields: [id_empresa], references: [id])
-  leads         Lead[]
+  id              String         @id @default(uuid())
+  id_empresa      String
+  id_pdv          String
+  nome            String
+  email           String         @unique
+  senha_hash      String
+  cargo           String
+  ativo           Boolean        @default(true)
+  criado_em       DateTime       @default(now())
+  atualizado_em   DateTime       @default(now()) @updatedAt
+  inativado_em    DateTime?
+  metas           Meta[]
+  metas_templates MetaTemplate[]
+  pdv             Pdv            @relation(fields: [id_pdv], references: [id])
+  empresa         Empresa        @relation(fields: [id_empresa], references: [id])
+  leads           Lead[]
 
   @@index([id_empresa])
   @@index([id_pdv])
@@ -144,17 +148,17 @@ model Lead {
 }
 
 model Produto {
-  id             String       @id @default(uuid())
-  id_empresa     String
-  nome           String
-  slug           String
-  descricao      String?
-  ativo          Boolean      @default(true)
-  schema_layout  String
-  criado_em      DateTime     @default(now())
-  atualizado_em  DateTime     @default(now()) @updatedAt
-  empresa        Empresa      @relation(fields: [id_empresa], references: [id])
-  leads_produto  LeadProduto[]
+  id            String        @id @default(uuid())
+  id_empresa    String
+  nome          String
+  slug          String
+  descricao     String?
+  ativo         Boolean       @default(true)
+  schema_layout String
+  criado_em     DateTime      @default(now())
+  atualizado_em DateTime      @default(now()) @updatedAt
+  empresa       Empresa       @relation(fields: [id_empresa], references: [id])
+  leads_produto LeadProduto[]
 
   @@unique([id_empresa, slug])
   @@index([id_empresa])
@@ -182,7 +186,7 @@ model LeadProduto {
 }
 
 model Parcela {
-  id               String   @id @default(uuid())
+  id               String    @id @default(uuid())
   id_empresa       String
   id_lead          String
   numero_parcela   Int
@@ -190,9 +194,9 @@ model Parcela {
   valor            Float
   data_vencimento  DateTime
   data_pagamento   DateTime?
-  status           String   @default("PENDENTE")
-  criado_em        DateTime @default(now())
-  atualizado_em    DateTime @default(now()) @updatedAt
+  status           String    @default("PENDENTE")
+  criado_em        DateTime  @default(now())
+  atualizado_em    DateTime  @default(now()) @updatedAt
 
   lead    Lead    @relation(fields: [id_lead], references: [id], onDelete: Cascade)
   empresa Empresa @relation(fields: [id_empresa], references: [id])
@@ -205,7 +209,7 @@ model Parcela {
 }
 
 model Meta {
-  id             String       @id @default(uuid())
+  id             String   @id @default(uuid())
   id_empresa     String
   tipo           String
   tipo_meta      String
@@ -213,16 +217,17 @@ model Meta {
   periodo        String
   data_inicio    DateTime
   data_fim       DateTime
-  ativo          Boolean      @default(true)
-  criado_em      DateTime     @default(now())
-  atualizado_em  DateTime     @default(now()) @updatedAt
+  ativo          Boolean  @default(true)
+  criado_em      DateTime @default(now())
+  atualizado_em  DateTime @default(now()) @updatedAt
   id_pdv         String?
   id_funcionario String?
 
-  empresa     Empresa        @relation(fields: [id_empresa], references: [id])
-  pdv         Pdv?           @relation(fields: [id_pdv], references: [id])
-  funcionario Funcionario?   @relation(fields: [id_funcionario], references: [id])
+  empresa     Empresa         @relation(fields: [id_empresa], references: [id])
+  pdv         Pdv?            @relation(fields: [id_pdv], references: [id])
+  funcionario Funcionario?    @relation(fields: [id_funcionario], references: [id])
   progressos  MetaProgresso[]
+  periodo_ref MetaPeriodo?
 
   @@index([id_empresa, tipo, ativo])
   @@index([id_empresa, ativo, data_inicio, data_fim])
@@ -230,19 +235,81 @@ model Meta {
   @@index([id_funcionario])
 }
 
+model MetaTemplate {
+  id                        String    @id @default(uuid())
+  id_empresa                String
+  tipo                      String
+  tipo_meta                 String
+  origem_resultado          String    @default("PAGAMENTOS")
+  cadencia                  String
+  recorrencia               String    @default("PONTUAL")
+  nome                      String?
+  descricao                 String?
+  estagio_ganho_min_ordem   Int?
+  dividir_mensal_em_semanas Boolean   @default(false)
+  vigencia_inicio           DateTime
+  vigencia_fim              DateTime?
+  ativo                     Boolean   @default(true)
+  criado_em                 DateTime  @default(now())
+  atualizado_em             DateTime  @default(now()) @updatedAt
+  id_pdv                    String?
+  id_funcionario            String?
+
+  empresa     Empresa       @relation(fields: [id_empresa], references: [id])
+  pdv         Pdv?          @relation(fields: [id_pdv], references: [id])
+  funcionario Funcionario?  @relation(fields: [id_funcionario], references: [id])
+  periodos    MetaPeriodo[]
+
+  @@index([id_empresa, tipo, ativo])
+  @@index([id_empresa, cadencia, recorrencia, ativo])
+  @@index([id_pdv])
+  @@index([id_funcionario])
+}
+
+model MetaPeriodo {
+  id             String   @id @default(uuid())
+  id_empresa     String
+  id_template    String?
+  id_meta_legada String?  @unique
+  periodo_tipo   String
+  periodo_label  String
+  ano            Int
+  mes            Int?
+  trimestre      Int?
+  semana_do_mes  Int?
+  alvo           Float
+  data_inicio    DateTime
+  data_fim       DateTime
+  ativo          Boolean  @default(true)
+  criado_em      DateTime @default(now())
+  atualizado_em  DateTime @default(now()) @updatedAt
+
+  empresa     Empresa         @relation(fields: [id_empresa], references: [id])
+  template    MetaTemplate?   @relation(fields: [id_template], references: [id])
+  meta_legada Meta?           @relation(fields: [id_meta_legada], references: [id])
+  progressos  MetaProgresso[]
+
+  @@index([id_empresa, periodo_tipo, ano, mes])
+  @@index([id_empresa, semana_do_mes, ano, mes])
+  @@index([id_template])
+}
+
 model MetaProgresso {
-  id            String   @id @default(uuid())
-  id_meta       String
-  id_empresa    String
-  periodo       String
-  realizado     Float
-  atualizado_em DateTime @default(now()) @updatedAt
+  id              String   @id @default(uuid())
+  id_meta         String?
+  id_meta_periodo String?
+  id_empresa      String
+  periodo         String
+  realizado       Float
+  atualizado_em   DateTime @default(now()) @updatedAt
 
-  meta    Meta    @relation(fields: [id_meta], references: [id], onDelete: Cascade)
-  empresa Empresa @relation(fields: [id_empresa], references: [id])
+  meta         Meta?        @relation(fields: [id_meta], references: [id], onDelete: Cascade)
+  meta_periodo MetaPeriodo? @relation(fields: [id_meta_periodo], references: [id], onDelete: Cascade)
+  empresa      Empresa      @relation(fields: [id_empresa], references: [id])
 
-  @@unique([id_meta, periodo])
   @@index([id_empresa, periodo])
+  @@index([id_meta, periodo])
+  @@index([id_meta_periodo, periodo])
 }
 
 model Pendencia {

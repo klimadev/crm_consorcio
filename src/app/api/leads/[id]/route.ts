@@ -10,6 +10,41 @@ type Params = {
   params: Promise<{ id: string }>;
 };
 
+export async function GET(request: NextRequest, { params }: Params) {
+  const auth = await exigirSessao(request);
+  if (auth.erro) {
+    return auth.erro;
+  }
+
+  const { id } = await params;
+
+  const lead = await prisma.lead.findFirst({
+    where: {
+      id,
+      id_empresa: auth.sessao.id_empresa,
+    },
+    select: {
+      id: true,
+      nome: true,
+      telefone: true,
+      observacoes: true,
+      valor_consorcio: true,
+      estagio: { select: { id: true, nome: true } },
+      funcionario: { select: { id: true, nome: true } },
+      parcelas: {
+        select: { id: true, numero_parcela: true, valor: true, data_vencimento: true, status: true },
+        orderBy: { numero_parcela: "asc" },
+      },
+    },
+  });
+
+  if (!lead) {
+    return notFound("Lead nao encontrado.");
+  }
+
+  return NextResponse.json(lead);
+}
+
 export async function PATCH(request: NextRequest, { params }: Params) {
   const auth = await exigirSessao(request);
   if (auth.erro) {
@@ -38,7 +73,19 @@ export async function PATCH(request: NextRequest, { params }: Params) {
           ? {} // GERENTE pode ver todos do PDV, validado abaixo
           : {}),
     },
-    include: { funcionario: { select: { id_pdv: true } } },
+    include: {
+      funcionario: {
+        select: {
+          id_pdv: true,
+          pdv: {
+            select: {
+              id: true,
+              nome: true,
+            },
+          },
+        },
+      },
+    },
   });
 
   if (!lead) {
@@ -90,9 +137,28 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       documento_aprovacao_url: dadosValidados.documento_aprovacao_url,
       id_funcionario: idFuncionarioDestino,
     },
+    include: {
+      funcionario: {
+        select: {
+          id_pdv: true,
+          pdv: {
+            select: {
+              id: true,
+              nome: true,
+            },
+          },
+        },
+      },
+    },
   });
 
-  return NextResponse.json({ lead: atualizado });
+  return NextResponse.json({
+    lead: {
+      ...atualizado,
+      id_pdv: atualizado.funcionario.id_pdv,
+      pdv: atualizado.funcionario.pdv,
+    },
+  });
 }
 
 export async function DELETE(request: NextRequest, { params }: Params) {

@@ -1,4 +1,4 @@
-import { AlertCircle, FileText, Phone, Trash2 } from "lucide-react";
+import { AlertCircle, Building2, FileText, Phone, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -169,6 +169,16 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
             </Select>
           </div>
         ) : null}
+
+        <div className="mt-3 space-y-2">
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+            <Building2 className="h-4 w-4 text-emerald-600" />
+            Gestora da equipe / PDV
+          </label>
+          <div className="flex min-h-11 items-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-700">
+            {leadSelecionado.pdv?.nome ?? "PDV nao informado"}
+          </div>
+        </div>
 
         <div className="mt-4 space-y-3">
           <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
