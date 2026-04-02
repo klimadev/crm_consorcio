@@ -699,6 +699,7 @@ export function mapearMensagemDbParaCanonica(registro: {
   
   // Mapear tipo
   const kind: WhatsappChatMessage["kind"] = registro.tipo === "text" ? "text" : 
+    registro.tipo === "audioMessage" ? "audio" :
     (registro.tipo as WhatsappChatMessage["kind"]) ?? "unsupported";
   const tipoLabel = traduzirTipoMensagem(registro.tipo);
 

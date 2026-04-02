@@ -79,7 +79,7 @@ export function ModuloChat({ perfil, idUsuario }: ModuloChatProps) {
   }, [modulo.conversaSelecionada, carregarDadosLead]);
 
   return (
-    <section className="flex min-h-0 flex-1 overflow-hidden">
+    <section className="flex min-h-0 flex-1 overflow-hidden lg:h-[calc(100vh-4rem)] lg:max-h-[calc(100vh-4rem)] lg:min-h-[calc(100vh-4rem)] lg:py-0">
       <ChatLayout
         conversaSelecionada={modulo.conversaSelecionada}
         mostrarDadosCliente={modulo.mostrarDadosCliente}

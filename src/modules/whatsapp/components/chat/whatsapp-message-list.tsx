@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { MessageCircleMore } from "lucide-react";
 import type { WhatsappChatMessage } from "@/modules/whatsapp/types";
 import { WhatsappMessageBubble } from "./whatsapp-message-bubble";
@@ -9,6 +9,15 @@ type Props = {
   loading: boolean;
   onRetry: (message: WhatsappChatMessage) => void;
 };
+
+type AutoPlayRequest = {
+  messageId: string;
+  sequence: number;
+} | null;
+
+function getMessageKey(message: WhatsappChatMessage) {
+  return message.messageId || message.id;
+}
 
 /**
  * Agrupa mensagens por dia para adicionar separadores
@@ -52,6 +61,47 @@ function groupMessagesByDate(messages: WhatsappChatMessage[]): Array<{
 
 export function WhatsappMessageList({ messages, loading, onRetry }: Props) {
   const groupedMessages = useMemo(() => groupMessagesByDate(messages), [messages]);
+  const [autoPlayRequest, setAutoPlayRequest] = useState<AutoPlayRequest>(null);
+
+  const audioMessageIds = useMemo(
+    () => messages.filter((message) => message.kind === "audio").map(getMessageKey),
+    [messages],
+  );
+
+  const nextAudioMessageById = useMemo(() => {
+    const map = new Map<string, string>();
+
+    audioMessageIds.forEach((messageId, index) => {
+      const nextMessageId = audioMessageIds[index + 1];
+      if (nextMessageId) {
+        map.set(messageId, nextMessageId);
+      }
+    });
+
+    return map;
+  }, [audioMessageIds]);
+
+  const effectiveAutoPlayRequest = useMemo(() => {
+    if (!autoPlayRequest) return null;
+    return messages.some((message) => getMessageKey(message) === autoPlayRequest.messageId) ? autoPlayRequest : null;
+  }, [autoPlayRequest, messages]);
+
+  const handleAudioEnded = useCallback(
+    (message: WhatsappChatMessage) => {
+      const nextMessageId = nextAudioMessageById.get(getMessageKey(message));
+
+      if (!nextMessageId) {
+        setAutoPlayRequest(null);
+        return;
+      }
+
+      setAutoPlayRequest((current) => ({
+        messageId: nextMessageId,
+        sequence: (current?.sequence ?? 0) + 1,
+      }));
+    },
+    [nextAudioMessageById],
+  );
 
   if (!loading && messages.length === 0) {
     return (
@@ -86,6 +136,9 @@ export function WhatsappMessageList({ messages, loading, onRetry }: Props) {
                 key={message.messageId || message.id}
                 message={message}
                 onRetry={onRetry}
+                onAudioEnded={handleAudioEnded}
+                autoPlayRequested={effectiveAutoPlayRequest?.messageId === message.messageId}
+                autoPlaySequence={effectiveAutoPlayRequest?.messageId === message.messageId ? effectiveAutoPlayRequest.sequence : null}
               />
             ))}
           </div>

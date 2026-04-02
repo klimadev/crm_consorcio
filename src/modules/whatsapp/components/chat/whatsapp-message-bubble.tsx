@@ -1,10 +1,14 @@
 import { Check, CheckCheck, Clock3, RotateCcw, Trash2, Volume2 } from "lucide-react";
 import type { WhatsappChatMessage } from "@/modules/whatsapp/types";
 import { formatarDataMensagemWhatsapp } from "@/lib/whatsapp-utils";
+import { AudioMessageBubble } from "./audio-message-bubble";
 
 type Props = {
   message: WhatsappChatMessage;
   onRetry?: (message: WhatsappChatMessage) => void;
+  onAudioEnded?: (message: WhatsappChatMessage) => void;
+  autoPlayRequested?: boolean;
+  autoPlaySequence?: number | null;
 };
 
 function formatTime(timestamp: number) {
@@ -22,9 +26,31 @@ function ReceiptIcon({ message }: { message: WhatsappChatMessage }) {
   return null;
 }
 
-export function WhatsappMessageBubble({ message, onRetry }: Props) {
+function isAudioMessage(message: WhatsappChatMessage): boolean {
+  return message.kind === "audio";
+}
+
+export function WhatsappMessageBubble({
+  message,
+  onRetry,
+  onAudioEnded,
+  autoPlayRequested,
+  autoPlaySequence,
+}: Props) {
   const outgoing = message.fromMe;
   const isDeleted = message.status === "DELETED";
+
+  if (isAudioMessage(message)) {
+    return (
+      <AudioMessageBubble
+        message={message}
+        autoPlayRequested={autoPlayRequested}
+        autoPlaySequence={autoPlaySequence}
+        onEnded={() => onAudioEnded?.(message)}
+      />
+    );
+  }
+
   return (
     <div className={`flex w-full ${outgoing ? "justify-end" : "justify-start"}`}>
       <div
