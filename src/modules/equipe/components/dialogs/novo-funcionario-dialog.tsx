@@ -20,6 +20,12 @@ export function NovoFuncionarioDialog({ vm }: NovoFuncionarioDialogProps) {
         { value: "GERENTE", label: "Gerente" },
         { value: "ADMINISTRADOR", label: "Administrador" },
       ];
+  const nomeId = "novo-funcionario-nome";
+  const emailId = "novo-funcionario-email";
+  const senhaId = "novo-funcionario-senha";
+  const cargoId = "novo-funcionario-cargo";
+  const pdvId = "novo-funcionario-pdv";
+  const erroId = "novo-funcionario-erro";
 
   return (
     <Dialog
@@ -37,33 +43,53 @@ export function NovoFuncionarioDialog({ vm }: NovoFuncionarioDialogProps) {
         </DialogHeader>
 
         <form className="space-y-3" onSubmit={vm.adicionarFuncionario}>
-          <Input
-            className="h-11 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
-            name="nome"
+          <div className="space-y-1">
+            <label htmlFor={nomeId} className="block text-sm font-medium text-foreground">Nome completo</label>
+            <Input
+              id={nomeId}
+              className="h-11 rounded-xl border-border bg-background-elevated text-sm text-foreground placeholder:text-foreground-disabled focus:border-ring focus:bg-background focus:ring-2 focus:ring-ring/30"
+             name="nome"
             placeholder="Nome completo"
             required
-          />
-          <Input
-            className="h-11 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
-            name="email"
+              aria-describedby={vm.erroCadastro ? erroId : undefined}
+              aria-invalid={vm.erroCadastro ? true : undefined}
+            />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor={emailId} className="block text-sm font-medium text-foreground">E-mail</label>
+            <Input
+              id={emailId}
+              className="h-11 rounded-xl border-border bg-background-elevated text-sm text-foreground placeholder:text-foreground-disabled focus:border-ring focus:bg-background focus:ring-2 focus:ring-ring/30"
+             name="email"
             type="email"
             placeholder="E-mail"
             required
-          />
-          <Input
-            className="h-11 rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
-            name="senha"
+              aria-describedby={vm.erroCadastro ? erroId : undefined}
+              aria-invalid={vm.erroCadastro ? true : undefined}
+            />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor={senhaId} className="block text-sm font-medium text-foreground">Senha temporária</label>
+            <Input
+              id={senhaId}
+              className="h-11 rounded-xl border-border bg-background-elevated text-sm text-foreground placeholder:text-foreground-disabled focus:border-ring focus:bg-background focus:ring-2 focus:ring-ring/30"
+             name="senha"
             type="password"
             placeholder="Senha temporaria"
             required
-          />
+              aria-describedby={vm.erroCadastro ? erroId : undefined}
+              aria-invalid={vm.erroCadastro ? true : undefined}
+            />
+          </div>
 
+          <div className="space-y-1">
+            <label htmlFor={cargoId} className="block text-sm font-medium text-foreground">Cargo</label>
           <Select
             name="cargo"
             value={vm.cargoSelecionado}
             onValueChange={vm.setCargoSelecionado}
           >
-            <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-slate-50/80 text-sm font-medium text-slate-600">
+            <SelectTrigger id={cargoId} className="h-11 w-full rounded-xl border-border bg-background-elevated text-sm font-medium text-foreground" aria-describedby={vm.erroCadastro ? erroId : undefined} aria-invalid={vm.erroCadastro ? true : undefined}>
               <SelectValue placeholder="Cargo" />
             </SelectTrigger>
             <SelectContent>
@@ -74,16 +100,19 @@ export function NovoFuncionarioDialog({ vm }: NovoFuncionarioDialogProps) {
               ))}
             </SelectContent>
           </Select>
+          </div>
 
           {isGerente ? (
             <input type="hidden" name="id_pdv" value={vm.pdvSelecionado} />
           ) : (
+            <div className="space-y-1">
+              <label htmlFor={pdvId} className="block text-sm font-medium text-foreground">PDV</label>
             <Select
               name="id_pdv"
               value={vm.pdvSelecionado}
               onValueChange={vm.setPdvSelecionado}
             >
-              <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-slate-50/80 text-sm font-medium text-slate-600">
+              <SelectTrigger id={pdvId} className="h-11 w-full rounded-xl border-border bg-background-elevated text-sm font-medium text-foreground" aria-describedby={vm.erroCadastro ? erroId : undefined} aria-invalid={vm.erroCadastro ? true : undefined}>
                 <SelectValue placeholder="PDV" />
               </SelectTrigger>
               <SelectContent>
@@ -94,11 +123,12 @@ export function NovoFuncionarioDialog({ vm }: NovoFuncionarioDialogProps) {
                 ))}
               </SelectContent>
             </Select>
+            </div>
           )}
 
-          {vm.erroCadastro ? <p className="text-sm font-medium text-rose-600">{vm.erroCadastro}</p> : null}
+          {vm.erroCadastro ? <p id={erroId} role="alert" className="text-sm font-medium text-rose-600">{vm.erroCadastro}</p> : null}
 
-          <Button className="w-full rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700" type="submit" disabled={vm.carregandoCadastro}>
+          <Button className="w-full rounded-xl bg-primary font-medium text-primary-foreground hover:bg-primary/90" type="submit" disabled={vm.carregandoCadastro}>
             {vm.carregandoCadastro ? (
               <span className="flex items-center gap-2">
                 <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">

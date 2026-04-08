@@ -33,7 +33,7 @@ export function ModuloRecebimentos() {
 
       <RecebimentosKpis itens={vm.kpis} carregando={vm.carregando} />
 
-      <div className="grid gap-4 xl:grid-cols-[1.45fr_0.95fr]">
+      <div className="grid gap-4 2xl:grid-cols-[1.45fr_0.95fr]">
         <RecebimentosChartCard dados={vm.graficos.recebimentosPorPeriodo} />
         <RecebimentosStatusDonut dados={vm.graficos.distribuicaoStatus} />
       </div>
@@ -42,7 +42,7 @@ export function ModuloRecebimentos() {
       <RecebimentosTabs vm={vm} />
 
       {vm.carregando ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm animate-shimmer">
+        <div className="rounded-2xl border border-border bg-background-surface p-6 shadow-sm animate-shimmer">
           <div className="h-80 rounded-xl bg-transparent" />
         </div>
       ) : vm.recebimentos.length === 0 ? (

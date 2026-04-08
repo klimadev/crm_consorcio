@@ -1,0 +1,1 @@
+export { ModuloResumo } from "./page";

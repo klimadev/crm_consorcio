@@ -37,7 +37,7 @@ export function WhatsappMessageInput({ disabled, sending, onSend }: Props) {
 
   return (
     <form
-      className="flex items-center gap-2 px-3 py-2.5 bg-[#f0f2f5]"
+      className="flex items-center gap-2 border-t border-border bg-background-surface px-3 py-2.5"
       onSubmit={handleSubmit}
     >
       <div className="flex items-center gap-1">
@@ -45,8 +45,9 @@ export function WhatsappMessageInput({ disabled, sending, onSend }: Props) {
           type="button"
           variant="ghost"
           size="icon"
-          className="h-9 w-9 rounded-full text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+          className="h-9 w-9 rounded-full text-foreground-muted hover:bg-muted hover:text-foreground"
           disabled={disabled}
+          aria-label="Adicionar emoji"
         >
           <Smile className="h-5 w-5" />
         </Button>
@@ -54,18 +55,20 @@ export function WhatsappMessageInput({ disabled, sending, onSend }: Props) {
           type="button"
           variant="ghost"
           size="icon"
-          className="h-9 w-9 rounded-full text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+          className="h-9 w-9 rounded-full text-foreground-muted hover:bg-muted hover:text-foreground"
           disabled={disabled}
+          aria-label="Anexar arquivo"
         >
           <Paperclip className="h-5 w-5" />
         </Button>
       </div>
 
-      <div className="flex-1 flex items-center bg-white rounded-[20px] px-4 py-2 shadow-sm border border-transparent focus-within:border-[#00a884] focus-within:shadow-md transition-all">
+      <div className="flex flex-1 items-center rounded-[20px] border border-border bg-muted px-4 py-2 transition-all focus-within:border-ring focus-within:shadow-md">
         <input
           ref={inputRef}
-          className="flex-1 bg-transparent text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none min-h-[20px] max-h-[100px]"
+          className="min-h-[20px] max-h-[100px] flex-1 bg-transparent text-sm text-foreground placeholder:text-foreground-disabled focus:outline-none"
           placeholder="Digite uma mensagem..."
+          aria-label="Digite uma mensagem"
           value={text}
           disabled={disabled}
           onChange={(event) => setText(event.target.value)}
@@ -78,7 +81,8 @@ export function WhatsappMessageInput({ disabled, sending, onSend }: Props) {
           type="submit"
           size="icon"
           disabled={disabled || sending || !text.trim()}
-          className="h-10 w-10 rounded-full bg-[#00a884] text-white hover:bg-[#008f6b] active:scale-95 transition-all shadow-sm"
+          className="h-10 w-10 rounded-full bg-success text-success-foreground hover:bg-success/90 active:scale-95 transition-all shadow-sm"
+          aria-label="Enviar mensagem"
         >
           <Send className="h-5 w-5" />
         </Button>
@@ -87,7 +91,8 @@ export function WhatsappMessageInput({ disabled, sending, onSend }: Props) {
           type="button"
           size="icon"
           disabled={disabled}
-          className="h-10 w-10 rounded-full text-slate-400 hover:bg-slate-200"
+          className="h-10 w-10 rounded-full text-foreground-muted hover:bg-muted"
+          aria-label="Gravar áudio"
         >
           <Mic className="h-5 w-5" />
         </Button>

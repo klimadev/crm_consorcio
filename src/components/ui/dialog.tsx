@@ -17,7 +17,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm animate-fade-in",
+      "fixed inset-0 z-50 bg-[color:var(--overlay)] backdrop-blur-sm animate-fade-in",
       className,
     )}
     suppressHydrationWarning
@@ -35,7 +35,7 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-slate-200 bg-white p-6 shadow-2xl animate-scale-in",
+        "fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-background-elevated p-6 shadow-2xl shadow-black/50 animate-scale-in",
         "focus:outline-none",
         className,
       )}
@@ -43,7 +43,7 @@ const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DialogClose className="absolute right-4 top-4 rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+      <DialogClose className="absolute right-4 top-4 rounded-lg p-1 text-foreground-disabled transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background">
         <X className="h-4 w-4" />
         <span className="sr-only">Fechar</span>
       </DialogClose>
@@ -53,7 +53,7 @@ const DialogContent = React.forwardRef<
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("flex flex-col space-y-1.5", className)} {...props} />;
+    return <div className={cn("flex flex-col space-y-1.5", className)} {...props} />;
 }
 
 function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
@@ -63,14 +63,14 @@ function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
 function DialogTitle({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Title>) {
   return (
     <DialogPrimitive.Title 
-      className={cn("text-lg font-semibold leading-tight tracking-tight text-slate-900", className)} 
+      className={cn("text-lg font-semibold leading-tight tracking-tight text-foreground", className)} 
       {...props} 
     />
   );
 }
 
 function DialogDescription({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Description>) {
-  return <DialogPrimitive.Description className={cn("text-sm text-slate-500", className)} {...props} />;
+  return <DialogPrimitive.Description className={cn("text-sm text-foreground-muted", className)} {...props} />;
 }
 
 export {

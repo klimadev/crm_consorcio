@@ -9,6 +9,8 @@ type UseEquipeLoteParams = {
   setIdsSelecionados: React.Dispatch<React.SetStateAction<string[]>>;
   funcionarios: Funcionario[];
   carregarFuncionarios: () => Promise<void>;
+  carregarPdvs: () => Promise<void>;
+  addToast: (toast: { type: "success" | "info" | "warning" | "error"; title: string; description?: string; duration?: number }) => void;
 };
 
 type UseEquipeLoteReturn = {
@@ -17,6 +19,9 @@ type UseEquipeLoteReturn = {
   executandoLote: boolean;
   resultadoLote: ResultadoLote | null;
   erroLote: string | null;
+  lotePodeExecutar: boolean;
+  loteResumoAcao: string;
+  lotePendencia: string | null;
   acaoLote: AcaoLote;
   setAcaoLote: React.Dispatch<React.SetStateAction<AcaoLote>>;
   cargoLote: string;
@@ -37,6 +42,8 @@ export function useEquipeLote({
   setIdsSelecionados,
   funcionarios,
   carregarFuncionarios,
+  carregarPdvs,
+  addToast,
 }: UseEquipeLoteParams): UseEquipeLoteReturn {
   const [executandoLote, setExecutandoLote] = useState(false);
   const [resultadoLote, setResultadoLote] = useState<ResultadoLote | null>(null);
@@ -46,6 +53,26 @@ export function useEquipeLote({
   const [pdvLote, setPdvLote] = useState("");
   const [destinoInativacaoLote, setDestinoInativacaoLote] = useState("");
   const [observacaoLote, setObservacaoLote] = useState("");
+  const totalSelecionados = idsSelecionados.length;
+  const lotePendencia =
+    totalSelecionados === 0
+      ? "Selecione ao menos um colaborador."
+      : acaoLote === "ALTERAR_CARGO" && !cargoLote
+        ? "Escolha o novo cargo antes de aplicar."
+        : acaoLote === "ALTERAR_PDV" && !pdvLote
+          ? "Escolha o PDV de destino antes de aplicar."
+          : acaoLote === "INATIVAR" && !destinoInativacaoLote
+            ? "Selecione quem recebera os leads antes de inativar."
+            : null;
+  const lotePodeExecutar = lotePendencia === null;
+  const loteResumoAcao =
+    acaoLote === "ATIVAR"
+      ? `Reativar ${totalSelecionados} colaborador(es) selecionado(s).`
+      : acaoLote === "INATIVAR"
+        ? `Inativar ${totalSelecionados} colaborador(es) com reatribuicao de leads.`
+        : acaoLote === "ALTERAR_CARGO"
+          ? `Alterar o cargo de ${totalSelecionados} colaborador(es).`
+          : `Mover ${totalSelecionados} colaborador(es) para outro PDV.`;
 
   const alternarSelecao = useCallback((id: string, marcado: boolean) => {
     setIdsSelecionados((atual) => {
@@ -70,23 +97,14 @@ export function useEquipeLote({
   );
 
   const executarAcaoLote = useCallback(async () => {
-    if (idsSelecionados.length === 0) {
-      setErroLote("Selecione ao menos um colaborador.");
-      return;
-    }
-
-    if (acaoLote === "ALTERAR_CARGO" && !cargoLote) {
-      setErroLote("Informe o cargo para alteracao em lote.");
-      return;
-    }
-
-    if (acaoLote === "ALTERAR_PDV" && !pdvLote) {
-      setErroLote("Informe o PDV para alteracao em lote.");
-      return;
-    }
-
-    if (acaoLote === "INATIVAR" && !destinoInativacaoLote) {
-      setErroLote("Selecione um destino para inativacao em lote.");
+    if (lotePendencia) {
+      setErroLote(lotePendencia);
+      addToast({
+        type: "warning",
+        title: "Ação incompleta",
+        description: lotePendencia,
+        duration: 3500,
+      });
       return;
     }
 
@@ -126,21 +144,36 @@ export function useEquipeLote({
     if (!resultado.ok) {
       setErroLote(resultado.erro);
       setExecutandoLote(false);
+      addToast({
+        type: "error",
+        title: "Não foi possível aplicar a ação",
+        description: resultado.erro,
+        duration: 4500,
+      });
       return;
     }
 
     setResultadoLote(resultado.dados);
     setExecutandoLote(false);
     setIdsSelecionados([]);
-    void carregarFuncionarios();
+    addToast({
+      type: "success",
+      title: "Ação aplicada",
+      description: `${resultado.dados.atualizados} colaborador(es) atualizado(s).`,
+      duration: 3500,
+    });
+    void Promise.all([carregarFuncionarios(), carregarPdvs()]);
   }, [
-    idsSelecionados,
     acaoLote,
+    addToast,
     cargoLote,
+    carregarFuncionarios,
+    carregarPdvs,
+    idsSelecionados,
     pdvLote,
     destinoInativacaoLote,
+    lotePendencia,
     observacaoLote,
-    carregarFuncionarios,
     setIdsSelecionados,
   ]);
 
@@ -150,6 +183,9 @@ export function useEquipeLote({
     executandoLote,
     resultadoLote,
     erroLote,
+    lotePodeExecutar,
+    loteResumoAcao,
+    lotePendencia,
     acaoLote,
     setAcaoLote,
     cargoLote,

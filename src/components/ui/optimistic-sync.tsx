@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils";
 const optimisticSyncVariants = cva("rounded-md border border-dashed p-2 opacity-75", {
   variants: {
     variant: {
-      warning: "border-sky-300 bg-sky-50/70",
-      info: "border-sky-300 bg-sky-50/70",
-      success: "border-emerald-300 bg-emerald-50/70",
+      warning: "border-warning/30 bg-warning/10",
+      info: "border-info/30 bg-info/10",
+      success: "border-success/30 bg-success/10",
     },
   },
   defaultVariants: {
@@ -18,9 +18,9 @@ const optimisticSyncVariants = cva("rounded-md border border-dashed p-2 opacity-
 const optimisticSyncLabelVariants = cva("mt-1 text-xs font-medium", {
   variants: {
     variant: {
-      warning: "text-amber-700",
-      info: "text-sky-700",
-      success: "text-emerald-700",
+      warning: "text-warning",
+      info: "text-info",
+      success: "text-success",
     },
   },
   defaultVariants: {

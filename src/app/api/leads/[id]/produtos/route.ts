@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { exigirSessao } from "@/lib/permissoes";
+import { exigirSessao, whereLeadsPorPerfil } from "@/lib/permissoes";
 import { esquemaAnexarProdutoLead } from "@/lib/validacoes";
 import { badRequest, notFound, ok } from "@/lib/api/http";
 import { parseJson, validateBody } from "@/lib/api/route-validation";
@@ -16,9 +16,10 @@ export async function GET(request: NextRequest, { params }: Params) {
   }
 
   const { id } = await params;
+  const whereLeads = await whereLeadsPorPerfil(auth.sessao);
 
   const lead = await prisma.lead.findFirst({
-    where: { id, id_empresa: auth.sessao.id_empresa },
+    where: { id, ...whereLeads },
     select: { id: true },
   });
 
@@ -62,10 +63,11 @@ export async function POST(request: NextRequest, { params }: Params) {
   }
 
   const dados = validacao.data;
+  const whereLeads = await whereLeadsPorPerfil(auth.sessao);
 
   const [lead, produto] = await Promise.all([
     prisma.lead.findFirst({
-      where: { id, id_empresa: auth.sessao.id_empresa },
+      where: { id, ...whereLeads },
       select: { id: true },
     }),
     prisma.produto.findFirst({

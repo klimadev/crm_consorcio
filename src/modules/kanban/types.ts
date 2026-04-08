@@ -74,6 +74,19 @@ export type OrigemStats = {
   manual: number;
 };
 
+export type ResumoOperacionalKanban = {
+  leadsSemResponsavel: number;
+  leadsParados: number;
+  valorTotalEmAberto: number;
+};
+
+export type ResumoEstagioKanban = {
+  quantidade: number;
+  valorTotal: number;
+  parados: number;
+  pendencias: number;
+};
+
 export type KanbanFilters = {
   status: FiltroPendencia;
   gravidade: FiltroGravidade;
@@ -186,6 +199,8 @@ export type UseKanbanModuleReturn = {
   totalLeads: number;
   pendenciasCriticas: number;
   origemStats: OrigemStats;
+  resumoOperacional: ResumoOperacionalKanban;
+  resumoPorEstagio: Record<string, ResumoEstagioKanban>;
   notificacoesAtivadas: boolean;
   alternarNotificacoes: () => Promise<boolean>;
   permissaoNotificacao: () => NotificationPermission | "unknown";

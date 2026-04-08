@@ -19,6 +19,8 @@ export function PerdaDialog({
   onConfirmarPerda,
   onOpenChange,
 }: PerdaDialogProps) {
+  const motivoId = "motivo-perda";
+
   return (
     <Dialog open={Boolean(movimentoPendente)} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-2xl">
@@ -27,14 +29,18 @@ export function PerdaDialog({
         </DialogHeader>
 
         <form className="space-y-3" onSubmit={onConfirmarPerda}>
+          <div className="space-y-1.5">
+            <label htmlFor={motivoId} className="block text-sm font-medium text-foreground">Motivo da perda</label>
           <Textarea
-            className="rounded-xl border-slate-200 bg-slate-50/80 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50 min-h-[100px]"
+            id={motivoId}
+            className="min-h-[100px] rounded-xl border-border bg-background-surface text-sm text-foreground placeholder:text-foreground-disabled focus:border-ring focus:bg-background focus:ring-2 focus:ring-ring/30"
             value={motivoPerda}
             onChange={(e) => setMotivoPerda(e.target.value)}
             placeholder="Descreva o motivo da perda..."
             required
           />
-          <Button className="w-full rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700" type="submit">
+          </div>
+          <Button className="w-full rounded-xl bg-destructive font-medium text-destructive-foreground hover:bg-destructive/90" type="submit">
             Confirmar
           </Button>
         </form>

@@ -40,16 +40,16 @@ export function RenderizadorCamposProduto({
         const larguraClasse = campo.largura === "full" ? "md:col-span-2" : campo.largura === "lg" ? "md:col-span-2" : "";
 
          return (
-           <div key={campo.id} className={cn("rounded-lg border border-slate-200 bg-white p-4", larguraClasse)}>
-             <div className="mb-3">
-               <label className="block text-sm font-medium text-slate-900">
-                 {campo.label}
-                 {campo.obrigatorio ? <span className="text-rose-500"> *</span> : null}
-               </label>
-               {campo.ajuda && (
-                 <p className="mt-1 text-xs text-slate-500">{campo.ajuda}</p>
-               )}
-             </div>
+            <div key={campo.id} className={cn("rounded-lg border border-border bg-background-surface p-4", larguraClasse)}>
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-foreground">
+                  {campo.label}
+                  {campo.obrigatorio ? <span className="text-rose-500"> *</span> : null}
+                </label>
+                {campo.ajuda && (
+                  <p className="mt-1 text-xs text-foreground-muted">{campo.ajuda}</p>
+                )}
+              </div>
 
              {campo.tipo === "textarea" ? (
                <Textarea
@@ -57,7 +57,7 @@ export function RenderizadorCamposProduto({
                  placeholder={campo.placeholder}
                  readOnly={somenteLeitura}
                  onChange={(event) => onChange?.(campo.id, event.target.value)}
-                 className="min-h-24 border-slate-200"
+                  className="min-h-24"
                />
              ) : campo.tipo === "select" ? (
                <Select
@@ -65,7 +65,7 @@ export function RenderizadorCamposProduto({
                  onValueChange={(novoValor) => onChange?.(campo.id, novoValor)}
                  disabled={somenteLeitura}
                >
-                 <SelectTrigger className="border-slate-200">
+                  <SelectTrigger>
                    <SelectValue placeholder={campo.placeholder ?? "Selecione uma opção"} />
                  </SelectTrigger>
                  <SelectContent>
@@ -78,7 +78,7 @@ export function RenderizadorCamposProduto({
                </Select>
              ) : campo.tipo === "boolean" ? (
                <select
-                 className="flex h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                  className="flex h-11 w-full rounded-lg border border-border bg-background-surface px-3 py-2 text-sm text-foreground"
                  value={valor === true ? "true" : valor === false ? "false" : ""}
                  disabled={somenteLeitura}
                  onChange={(event) => {
@@ -97,7 +97,7 @@ export function RenderizadorCamposProduto({
                   placeholder={campo.placeholder}
                   readOnly={somenteLeitura}
                   onChange={(event) => onChange?.(campo.id, campo.tipo === "numero" || campo.tipo === "moeda" ? Number(event.target.value || 0) : event.target.value)}
-                  className="h-11 border-slate-200"
+                   className="h-11"
                 />
               )}
            </div>

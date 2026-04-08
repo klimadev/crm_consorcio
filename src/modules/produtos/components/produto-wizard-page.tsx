@@ -97,7 +97,7 @@ export function ModuloProdutoWizard({ produtoInicial }: ProdutoWizardPageProps) 
   function renderizarConteudoEtapa(wizard: UseProdutoWizardReturn) {
     if (wizard.etapaAtual === "basico") {
       return (
-        <Card className="border-slate-200">
+        <Card className="border-border">
           <CardContent className="pt-6 space-y-6">
             <div className="space-y-3">
               <label className="text-sm font-medium text-slate-700">Nome do Produto</label>
@@ -151,7 +151,7 @@ export function ModuloProdutoWizard({ produtoInicial }: ProdutoWizardPageProps) 
 
     if (wizard.etapaAtual === "campos") {
       return (
-        <Card className="border-slate-200">
+        <Card className="border-border">
           <CardContent className="pt-6">
             <ProdutoLayoutBuilder
               campos={wizard.form.schemaLayout.campos}
@@ -166,18 +166,18 @@ export function ModuloProdutoWizard({ produtoInicial }: ProdutoWizardPageProps) 
     }
 
     return (
-      <Card className="border-slate-200">
+        <Card className="border-border">
         <CardContent className="pt-6 space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-              <p className="text-xs font-medium text-slate-500">Nome</p>
-              <p className="text-sm font-semibold text-slate-900 truncate" title={wizard.form.nome}>
+            <div className="rounded-lg border border-border bg-background-surface p-4">
+              <p className="text-xs font-medium text-foreground-muted">Nome</p>
+              <p className="truncate text-sm font-semibold text-foreground" title={wizard.form.nome}>
                 {wizard.form.nome || "—"}
               </p>
             </div>
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-              <p className="text-xs font-medium text-slate-500">Campos</p>
-              <p className="text-lg font-semibold text-slate-900">{vm.resumoFormulario.quantidadeCampos}</p>
+            <div className="rounded-lg border border-border bg-background-surface p-4">
+              <p className="text-xs font-medium text-foreground-muted">Campos</p>
+              <p className="text-lg font-semibold text-foreground">{vm.resumoFormulario.quantidadeCampos}</p>
             </div>
           </div>
 
@@ -201,7 +201,7 @@ export function ModuloProdutoWizard({ produtoInicial }: ProdutoWizardPageProps) 
   }
 
   return (
-    <ModulePageShell spacing="lg" className="bg-white">
+      <ModulePageShell spacing="lg">
       <ModulePageHeader
         title={vm.produtoEmEdicao ? "Editar Produto" : "Criar Produto"}
         icon={<LayoutTemplate className="h-6 w-6" />}
@@ -211,7 +211,7 @@ export function ModuloProdutoWizard({ produtoInicial }: ProdutoWizardPageProps) 
             type="button" 
             variant="ghost" 
             onClick={vm.voltarCatalogo} 
-            className="gap-2 text-slate-600 hover:bg-slate-100"
+            className="gap-2 text-foreground-muted hover:bg-muted"
           >
             <ArrowLeft className="h-4 w-4" />
             <span className="text-sm">Voltar</span>
@@ -220,16 +220,16 @@ export function ModuloProdutoWizard({ produtoInicial }: ProdutoWizardPageProps) 
       />
 
       {vm.erro && (
-        <div className="mb-6 rounded-lg border border-rose-200 bg-rose-50 p-4">
+        <div className="mb-6 rounded-lg border border-destructive/20 bg-destructive/10 p-4">
           <p className="font-semibold text-rose-800">Erro</p>
-          <p className="text-sm text-rose-700">{vm.erro}</p>
+          <p className="text-sm text-destructive">{vm.erro}</p>
         </div>
       )}
 
       <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
         <div className="space-y-2">
-          <div className="rounded-lg border border-slate-200 p-4">
-            <div className="text-xs font-medium text-slate-500 mb-3">Etapas</div>
+          <div className="rounded-lg border border-border bg-background-surface p-4">
+            <div className="mb-3 text-xs font-medium text-foreground-muted">Etapas</div>
             <EtapasNavegacao
               etapas={vm.etapas}
               indiceAtual={vm.indiceEtapaAtual}
@@ -246,7 +246,7 @@ export function ModuloProdutoWizard({ produtoInicial }: ProdutoWizardPageProps) 
               type="button"
               variant="ghost"
               onClick={vm.voltarCatalogo}
-              className="gap-2 text-slate-600 hover:bg-slate-100"
+              className="gap-2 text-foreground-muted hover:bg-muted"
             >
               <ArrowLeft className="h-4 w-4" />
               <span className="text-sm font-medium">Cancelar</span>
@@ -258,7 +258,7 @@ export function ModuloProdutoWizard({ produtoInicial }: ProdutoWizardPageProps) 
                   type="button"
                   variant="outline"
                   onClick={vm.voltarEtapa}
-                  className="gap-2 border-slate-200"
+                  className="gap-2 border-border"
                 >
                   <ChevronRight className="h-4 w-4 rotate-180" />
                   <span className="text-sm font-medium">Voltar</span>
@@ -301,7 +301,7 @@ export function ModuloProdutoWizard({ produtoInicial }: ProdutoWizardPageProps) 
             <button
               type="button"
               onClick={() => setMostrarPreview(!mostrarPreview)}
-              className="text-sm text-slate-500 hover:text-slate-700 font-medium transition-colors"
+              className="text-sm font-medium text-foreground-muted transition-colors hover:text-foreground"
             >
               {mostrarPreview ? (
                 <span className="inline-flex items-center gap-1">

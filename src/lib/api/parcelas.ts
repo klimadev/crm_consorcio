@@ -52,8 +52,16 @@ async function lerJsonSeguro<T>(resposta: Response): Promise<T> {
   return (await resposta.json().catch(() => ({}))) as T;
 }
 
-export async function listarParcelasLead(idLead: string): Promise<ResultadoApi<{ parcelas: Parcela[] }>> {
-  const resposta = await fetch(`/api/parcelas?id_lead=${idLead}`);
+export async function listarParcelasLead(
+  idLead: string,
+  opcoes?: { limit?: number },
+): Promise<ResultadoApi<{ parcelas: Parcela[] }>> {
+  const params = new URLSearchParams({ id_lead: idLead });
+  if (opcoes?.limit) {
+    params.set("limit", String(opcoes.limit));
+  }
+
+  const resposta = await fetch(`/api/parcelas?${params.toString()}`);
   const json = await lerJsonSeguro<{ parcelas?: Parcela[] } & ApiErro>(resposta);
 
   if (!resposta.ok) {

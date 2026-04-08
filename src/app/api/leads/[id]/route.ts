@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { exigirSessao } from "@/lib/permissoes";
+import { exigirSessao, whereLeadsPorPerfil } from "@/lib/permissoes";
 import { esquemaAtualizarLead } from "@/lib/validacoes";
 import { badRequest, forbidden, notFound } from "@/lib/api/http";
 import { parseJson, validateBody } from "@/lib/api/route-validation";
@@ -17,11 +17,12 @@ export async function GET(request: NextRequest, { params }: Params) {
   }
 
   const { id } = await params;
+  const whereLeads = await whereLeadsPorPerfil(auth.sessao);
 
   const lead = await prisma.lead.findFirst({
     where: {
       id,
-      id_empresa: auth.sessao.id_empresa,
+      ...whereLeads,
     },
     select: {
       id: true,
@@ -96,16 +97,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   const dadosValidados = validacao.data;
+  const whereLeads = await whereLeadsPorPerfil(auth.sessao);
 
   const lead = await prisma.lead.findFirst({
     where: {
       id,
-      id_empresa: auth.sessao.id_empresa,
-      ...(auth.sessao.perfil === "COLABORADOR"
-        ? { id_funcionario: auth.sessao.id_usuario }
-        : auth.sessao.perfil === "GERENTE" && auth.sessao.id_pdv
-          ? {} // GERENTE pode ver todos do PDV, validado abaixo
-          : {}),
+      ...whereLeads,
     },
     include: {
       funcionario: {
@@ -202,16 +199,12 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   }
 
   const { id } = await params;
+  const whereLeads = await whereLeadsPorPerfil(auth.sessao);
 
   const lead = await prisma.lead.findFirst({
     where: {
       id,
-      id_empresa: auth.sessao.id_empresa,
-      ...(auth.sessao.perfil === "COLABORADOR"
-        ? { id_funcionario: auth.sessao.id_usuario }
-        : auth.sessao.perfil === "GERENTE" && auth.sessao.id_pdv
-          ? {} // GERENTE pode ver todos do PDV, validado abaixo
-          : {}),
+      ...whereLeads,
     },
     include: { funcionario: { select: { id_pdv: true } } },
   });

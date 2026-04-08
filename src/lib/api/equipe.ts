@@ -187,7 +187,7 @@ export async function inativarFuncionario(
   const json = await lerJsonSeguro<ApiErro>(resposta);
 
   if (!resposta.ok) {
-    return { ok: false, erro: json.erro ?? "Erro ao deletar funcionario." };
+    return { ok: false, erro: json.erro ?? "Erro ao inativar funcionario." };
   }
 
   return { ok: true, dados: null };

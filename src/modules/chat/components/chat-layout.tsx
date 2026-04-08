@@ -30,9 +30,9 @@ export function ChatLayout({
   onAlternarDados,
 }: Props) {
   return (
-    <div className="flex h-full min-h-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm max-lg:flex-col">
+    <div className="flex h-full min-h-0 overflow-hidden rounded-xl border border-border/70 bg-background shadow-sm max-lg:flex-col">
       {/* Coluna 1: Lista de conversas */}
-      <div className="min-h-0 w-full shrink-0 overflow-hidden border-b border-slate-200 lg:w-[280px] lg:border-b-0 lg:border-r">
+      <div className="min-h-0 w-full shrink-0 overflow-hidden border-b border-border lg:w-[248px] lg:border-b-0 lg:border-r xl:w-[264px]">
         <ChatListPanel
           conversas={chatList.conversas}
           conversaAtivaId={conversaSelecionada?.leadId ?? null}
@@ -54,24 +54,26 @@ export function ChatLayout({
         {conversaSelecionada ? (
           <>
             {/* Header mobile */}
-            <div className="flex items-center gap-2 border-b border-slate-200 px-3 py-2 sm:hidden">
+            <div className="flex items-center gap-2 border-b border-border px-3 py-2 sm:hidden">
               <button
                 type="button"
                 onClick={onVoltar}
-                className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"
+                className="rounded-lg p-1.5 text-foreground-muted hover:bg-muted"
+                aria-label="Voltar para a lista de conversas"
               >
                 <ArrowLeft className="h-5 w-5" />
               </button>
-              <span className="flex-1 truncate text-sm font-medium text-slate-900">
+              <span className="flex-1 truncate text-sm font-medium text-foreground">
                 {conversaSelecionada.leadNome}
               </span>
               <button
                 type="button"
                 onClick={onAlternarDados}
                 className={cn(
-                  "rounded-lg p-1.5 hover:bg-slate-100",
-                  mostrarDadosCliente ? "bg-emerald-100 text-emerald-600" : "text-slate-500",
+                  "rounded-lg p-1.5 hover:bg-muted",
+                  mostrarDadosCliente ? "bg-success/10 text-success" : "text-foreground-muted",
                 )}
+                aria-label={mostrarDadosCliente ? "Ocultar dados do cliente" : "Mostrar dados do cliente"}
               >
                 <Info className="h-5 w-5" />
               </button>
@@ -94,15 +96,15 @@ export function ChatLayout({
         ) : (
           <div className="flex flex-1 items-center justify-center">
             <div className="text-center">
-              <p className="text-lg font-medium text-slate-300">Selecione uma conversa</p>
-              <p className="mt-1 text-sm text-slate-400">Escolha um chat na lista para comecar</p>
+              <p className="text-lg font-medium text-foreground-disabled">Selecione uma conversa</p>
+              <p className="mt-1 text-sm text-foreground-muted">Escolha um chat na lista para comecar</p>
             </div>
           </div>
         )}
       </div>
 
       {/* Coluna 3: Dados do cliente */}
-      <div className="hidden min-h-0 w-[260px] shrink-0 overflow-hidden border-l border-slate-200 lg:block">
+      <div className="hidden min-h-0 w-[280px] shrink-0 overflow-hidden border-l border-border xl:block">
         <ChatClientPanel lead={leadDados} carregando={carregandoLead} />
       </div>
     </div>

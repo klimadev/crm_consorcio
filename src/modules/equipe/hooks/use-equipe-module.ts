@@ -93,6 +93,9 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     executandoLote,
     resultadoLote,
     erroLote,
+    lotePodeExecutar,
+    loteResumoAcao,
+    lotePendencia,
     acaoLote,
     setAcaoLote,
     cargoLote,
@@ -111,6 +114,8 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     setIdsSelecionados,
     funcionarios,
     carregarFuncionarios,
+    carregarPdvs,
+    addToast,
   });
 
   const podeGerenciarEmpresa = perfil === "EMPRESA";
@@ -172,14 +177,18 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     observacaoInativacaoIndividual,
     setObservacaoInativacaoIndividual,
     executandoInativacaoIndividual,
+    erroInativacaoIndividual,
     abrirModalInativacao,
     confirmarInativacaoIndividual,
+    reativarFuncionarioIndividual,
   } = useFuncionarioInativacao({
     funcionarios,
     funcionariosAtivosParaDestino,
     setFuncionarios,
     setErroLista,
     carregarFuncionarios,
+    carregarPdvs,
+    addToast,
   });
 
   const adicionarFuncionario = useCallback(
@@ -255,6 +264,9 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     executandoLote,
     resultadoLote,
     erroLote,
+    lotePodeExecutar,
+    loteResumoAcao,
+    lotePendencia,
     acaoLote,
     cargoLote,
     pdvLote,
@@ -293,6 +305,7 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     observacaoInativacaoIndividual,
     setObservacaoInativacaoIndividual,
     executandoInativacaoIndividual,
+    erroInativacaoIndividual,
     destinoInativacaoLote,
     setDestinoInativacaoLote,
     observacaoLote,
@@ -309,6 +322,7 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     desfazerUltimaEdicao,
     abrirModalInativacao,
     confirmarInativacaoIndividual,
+    reativarFuncionarioIndividual,
     alternarSelecao,
     alternarSelecaoPagina,
     executarAcaoLote,

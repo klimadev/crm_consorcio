@@ -28,14 +28,14 @@ export async function GET(request: NextRequest) {
       funcionarios: {
         where: {
           id_empresa: auth.sessao.id_empresa,
-          ativo: true,
         },
         select: {
           id: true,
           nome: true,
           cargo: true,
+          ativo: true,
         },
-        orderBy: { nome: "asc" },
+        orderBy: [{ ativo: "desc" }, { nome: "asc" }],
       },
     },
     orderBy: { nome: "asc" },

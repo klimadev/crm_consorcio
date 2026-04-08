@@ -41,21 +41,21 @@ type Props = {
 function getOrigemBadge(origem: OrigemLead) {
   switch (origem) {
     case "ANUNCIO_CTWA":
-      return { bg: "bg-purple-100", text: "text-purple-700", icon: Megaphone, label: "Anúncio" };
+      return { bg: "bg-info/10", text: "text-info", icon: Megaphone, label: "Anúncio" };
     case "SINCRONIZACAO_WHATSAPP":
-      return { bg: "bg-emerald-100", text: "text-emerald-700", icon: MessageCircle, label: "WhatsApp" };
+      return { bg: "bg-success/10", text: "text-success", icon: MessageCircle, label: "WhatsApp" };
     default:
-      return { bg: "bg-blue-100", text: "text-blue-700", icon: PenLine, label: "Manual" };
+      return { bg: "bg-warning/10", text: "text-warning", icon: PenLine, label: "Manual" };
   }
 }
 
 function InfoRow({ icone, label, valor }: { icone: React.ReactNode; label: string; valor: string }) {
   return (
     <div className="flex items-start gap-3 py-2">
-      <div className="mt-0.5 text-slate-400">{icone}</div>
+      <div className="mt-0.5 text-foreground-muted">{icone}</div>
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] uppercase tracking-wide text-slate-400">{label}</p>
-        <p className="text-sm text-slate-900">{valor}</p>
+        <p className="text-[11px] uppercase tracking-wide text-foreground-muted">{label}</p>
+        <p className="text-sm text-foreground">{valor}</p>
       </div>
     </div>
   );
@@ -67,13 +67,13 @@ export function ChatClientPanel({ lead, carregando }: Props) {
   }
 
   const conteudo = carregando ? (
-    <p className="text-sm text-slate-400">Carregando...</p>
+    <p className="text-sm text-foreground-muted">Carregando...</p>
   ) : !lead ? (
-    <p className="text-sm text-slate-400">Selecione uma conversa</p>
+    <p className="text-sm text-foreground-muted">Selecione uma conversa</p>
   ) : null;
 
   if (conteudo) {
-    return <div className="flex h-full items-center justify-center bg-slate-50">{conteudo}</div>;
+    return <div className="flex h-full items-center justify-center bg-background">{conteudo}</div>;
   }
 
   if (!lead) {
@@ -84,17 +84,17 @@ export function ChatClientPanel({ lead, carregando }: Props) {
   const OrigemIcon = origemBadge.icon;
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto bg-slate-50">
-      <div className="border-b border-slate-200 bg-white p-4">
+    <div className="flex h-full flex-col overflow-y-auto bg-background">
+      <div className="border-b border-border bg-background px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-lg font-semibold text-emerald-700">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10 text-lg font-semibold text-success">
             {lead.nome.charAt(0).toUpperCase()}
           </div>
           <div>
-            <p className="font-semibold text-slate-900">{lead.nome}</p>
+            <p className="font-semibold text-foreground">{lead.nome}</p>
             <div className="mt-1 flex items-center gap-2">
               {lead.estagio && (
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">
                   {lead.estagio.nome}
                 </span>
               )}
@@ -108,13 +108,13 @@ export function ChatClientPanel({ lead, carregando }: Props) {
 
         {/* Info do anúncio se for origem de anúncio */}
         {lead.origem === "ANUNCIO_CTWA" && lead.anuncio_titulo && (
-          <div className="mt-3 rounded-lg border border-purple-200 bg-purple-50 p-3">
+          <div className="mt-3 rounded-lg border border-info/25 bg-info/10 p-3">
             <div className="flex items-start gap-2">
-              <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-purple-600" />
+              <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-info" />
               <div className="min-w-0">
-                <p className="text-xs font-medium text-purple-900">{lead.anuncio_titulo}</p>
+                <p className="text-xs font-medium text-foreground">{lead.anuncio_titulo}</p>
                 {lead.anuncio_descricao && (
-                  <p className="mt-1 text-xs text-purple-700">{lead.anuncio_descricao}</p>
+                  <p className="mt-1 text-xs text-foreground-muted">{lead.anuncio_descricao}</p>
                 )}
               </div>
             </div>
@@ -122,7 +122,7 @@ export function ChatClientPanel({ lead, carregando }: Props) {
         )}
       </div>
 
-      <div className="divide-y divide-slate-100 px-4">
+      <div className="divide-y divide-border px-4">
         <InfoRow
           icone={<Phone className="h-4 w-4" />}
           label="Telefone"
@@ -156,20 +156,20 @@ export function ChatClientPanel({ lead, carregando }: Props) {
       </div>
 
       {lead.parcelas.length > 0 && (
-        <div className="border-t border-slate-200 p-4">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Parcelas</h3>
+        <div className="border-t border-border px-4 py-3">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-foreground-muted">Parcelas</h3>
           <div className="space-y-1.5">
             {lead.parcelas.map((parcela) => (
-              <div key={parcela.id} className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-sm">
-                <span className="text-slate-600">#{parcela.numero_parcela}</span>
-                <span className="font-medium text-slate-900">{formatarMoeda(parcela.valor)}</span>
+              <div key={parcela.id} className="flex items-center justify-between rounded-lg bg-background-surface px-3 py-2 text-sm">
+                <span className="text-foreground-muted">#{parcela.numero_parcela}</span>
+                <span className="font-medium text-foreground">{formatarMoeda(parcela.valor)}</span>
                 <span
                   className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
                     parcela.status === "PAGO"
-                      ? "bg-emerald-100 text-emerald-700"
+                      ? "bg-success/10 text-success"
                       : parcela.status === "VENCIDO"
-                        ? "bg-rose-100 text-rose-700"
-                        : "bg-amber-100 text-amber-700"
+                        ? "bg-destructive/10 text-destructive"
+                        : "bg-warning/10 text-warning"
                   }`}
                 >
                   {parcela.status}

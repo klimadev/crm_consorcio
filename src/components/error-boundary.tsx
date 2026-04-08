@@ -42,9 +42,9 @@ function DefaultErrorFallback({ error, reset }: { error?: Error; reset: () => vo
 
   return (
     <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 p-8 text-center">
-      <div className="rounded-full bg-rose-50 p-4">
+      <div className="rounded-full bg-destructive/10 p-4">
         <svg
-          className="h-8 w-8 text-rose-500"
+          className="h-8 w-8 text-destructive"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -58,12 +58,12 @@ function DefaultErrorFallback({ error, reset }: { error?: Error; reset: () => vo
         </svg>
       </div>
       <div>
-        <h2 className="text-lg font-semibold text-slate-900">Algo deu errado</h2>
-        <p className="mt-1 text-sm text-slate-500">
+        <h2 className="text-lg font-semibold text-foreground">Algo deu errado</h2>
+        <p className="mt-1 text-sm text-foreground-muted">
           Ocorreu um erro inesperado. Por favor, tente novamente.
         </p>
         {process.env.NODE_ENV === "development" && error && (
-          <pre className="mt-4 max-w-md overflow-auto rounded-lg bg-slate-100 p-4 text-left text-xs text-slate-600">
+          <pre className="mt-4 max-w-md overflow-auto rounded-lg bg-muted p-4 text-left text-xs text-foreground-muted">
             {error.message}
           </pre>
         )}

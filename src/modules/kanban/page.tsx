@@ -15,6 +15,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { leadSelecionado, leads, setLeadSelecionado } = vm;
+  const leadSelecionadoId = leadSelecionado?.id ?? null;
   const leadIdNaUrl = searchParams.get("lead");
 
   const atualizarRotaLead = useCallback((leadId: string | null) => {
@@ -32,7 +33,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
 
   useEffect(() => {
     if (!leadIdNaUrl) {
-      if (leadSelecionado) {
+      if (leadSelecionadoId) {
         setLeadSelecionado(null);
       }
       return;
@@ -46,10 +47,10 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
       return;
     }
 
-    if (leadSelecionado?.id !== lead.id) {
+    if (leadSelecionadoId !== lead.id) {
       setLeadSelecionado(lead);
     }
-  }, [atualizarRotaLead, leadIdNaUrl, leadSelecionado?.id, leads, setLeadSelecionado]);
+  }, [atualizarRotaLead, leadIdNaUrl, leadSelecionadoId, leads, setLeadSelecionado]);
 
   const handleLeadClick = (lead: Lead) => {
     atualizarRotaLead(lead.id);
@@ -95,6 +96,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         totalLeads={vm.totalLeads}
         pendenciasCriticas={vm.pendenciasCriticas}
         origemStats={vm.origemStats}
+        resumoOperacional={vm.resumoOperacional}
         ultimaSincronizacaoWhatsapp={vm.ultimaSincronizacaoWhatsapp}
         instanciasAtivasCount={vm.instanciasAtivasCount}
         notificacoesAtivadas={vm.notificacoesAtivadas}
@@ -108,7 +110,6 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
 
       <KanbanBoard
         estagios={vm.estagios}
-        leadsPorEstagio={vm.leadsPorEstagio}
         leadsFiltradosPorEstagio={vm.leadsFiltradosPorEstagio}
         pendenciasPorLead={vm.pendenciasPorLead}
         todasPendencias={vm.todasPendencias}
@@ -116,15 +117,8 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         onLeadClick={handleLeadClick}
         modoFocoPendencias={vm.modoFocoPendencias}
         funcionarios={vm.funcionarios}
+        resumoPorEstagio={vm.resumoPorEstagio}
         excluirTodosIndefinidos={vm.excluirTodosIndefinidos}
-        temFiltrosAtivos={
-          vm.filtros.status !== "todos" ||
-          vm.filtros.gravidade !== "todas" ||
-          vm.filtros.tipo !== "todos" ||
-          vm.filtros.pdv !== null ||
-          vm.filtros.origem !== "todos" ||
-          vm.busca !== ""
-        }
       />
 
       <PerdaDialog

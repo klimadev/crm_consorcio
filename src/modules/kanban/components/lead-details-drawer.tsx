@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { AlertCircle, Banknote, FileText, Loader2, MessageCircle, Package, Phone, X } from "lucide-react";
+import { AlertCircle, Banknote, FileText, Loader2, MessageCircle, Phone, X } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
 import { aprovarLeadKanban } from "@/lib/api/kanban";
 import { useWhatsappChat } from "@/modules/whatsapp/hooks/use-whatsapp-chat";
 import { WhatsappChatPanel } from "@/modules/whatsapp/components/chat/whatsapp-chat-panel";
@@ -14,10 +15,10 @@ import type { Estagio, Funcionario, Lead, PendenciaDinamica, StatusSalvamentoDet
 import { obterMensagemErroKanban } from "../utils/erro";
 import { MENSAGENS_KANBAN } from "../utils/mensagens";
 import { EmptyState } from "./empty-state";
+import { ConfirmDialog } from "./confirm-dialog";
 import { LeadDeleteConfirmDialog } from "./lead-delete-confirm-dialog";
 import { LeadDetailsTabContent } from "./lead-details-tab-content";
 import { LeadParcelasTab } from "./lead-parcelas-tab";
-import { LeadProdutosTab } from "./lead-produtos-tab";
 
 type LeadDetailsDrawerProps = {
   leadSelecionado: Lead | null;
@@ -78,7 +79,7 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
   } = props;
 
   const [temAlteracoes, setTemAlteracoes] = useState(false);
-  const [fecharConfirmado, setFecharConfirmado] = useState(false);
+  const [confirmarFechamentoAberto, setConfirmarFechamentoAberto] = useState(false);
   const [confirmarExclusaoAberta, setConfirmarExclusaoAberta] = useState(false);
   const [tabAtiva, setTabAtiva] = useState("detalhes");
   const [aprovando, setAprovando] = useState(false);
@@ -119,7 +120,7 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
     if (erroDetalhesLead) {
       return {
         texto: erroDetalhesLead,
-        classe: "text-rose-200",
+        classe: "text-destructive",
         icone: <AlertCircle className="h-3 w-3" />,
       };
     }
@@ -127,36 +128,36 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
     const mapaStatus: Record<StatusSalvamentoDetalhesLead, { texto: string; classe: string; icone?: ReactNode }> = {
       erro: {
         texto: erroDetalhesLead ?? MENSAGENS_KANBAN.erro.generico,
-        classe: "text-rose-200",
+        classe: "text-destructive",
         icone: <AlertCircle className="h-3 w-3" />,
       },
       uploadando: {
         texto: "Enviando documento para o lead...",
-        classe: "text-amber-100",
+        classe: "text-warning",
         icone: <Loader2 className="h-3 w-3 animate-spin" />,
       },
       salvando_automaticamente: {
         texto: "Salvando alteracoes automaticamente...",
-        classe: "text-amber-100",
+        classe: "text-warning",
         icone: <Loader2 className="h-3 w-3 animate-spin" />,
       },
       salvando_manual: {
         texto: "Salvando alteracoes do lead...",
-        classe: "text-amber-100",
+        classe: "text-warning",
         icone: <Loader2 className="h-3 w-3 animate-spin" />,
       },
       salvo: {
         texto: textoUltimaAtualizacao ? `Ultima atualizacao salva as ${textoUltimaAtualizacao}.` : "Alteracoes salvas com sucesso.",
-        classe: "text-emerald-100",
+        classe: "text-success",
       },
       pendente: {
         texto: "Alteracoes detectadas. Salvamento automatico em instantes.",
-        classe: "text-amber-100",
+        classe: "text-warning",
         icone: <AlertCircle className="h-3 w-3" />,
       },
       ocioso: {
         texto: textoUltimaAtualizacao ? `Tudo salvo. Ultima atualizacao as ${textoUltimaAtualizacao}.` : `Edite os detalhes e use ${atalhoSalvar} para salvar na hora.`,
-        classe: "text-emerald-100",
+        classe: "text-success",
       },
     };
 
@@ -165,13 +166,61 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
     if (!salvando && !salvandoAutomaticamente && !salvo && hasChanges && !salvamentoAutomaticoPendente) {
       return {
         texto: "Existem alteracoes locais aguardando salvamento.",
-        classe: "text-amber-100",
+        classe: "text-warning",
         icone: <AlertCircle className="h-3 w-3" />,
       };
     }
 
     return statusBase;
   }, [atalhoSalvar, erroDetalhesLead, hasChanges, salvando, salvandoAutomaticamente, salvamentoAutomaticoPendente, salvo, statusSalvamentoDetalhes, textoUltimaAtualizacao]);
+
+  const resumoLead = useMemo(() => {
+    if (!leadSelecionado) {
+      return null;
+    }
+
+    const estagioAtual = estagios.find((estagio) => estagio.id === leadSelecionado.id_estagio);
+    const temPendenciaDocumento = pendenciasLead.some((pendencia) => pendencia.tipo === "DOCUMENTO_APROVACAO_PENDENTE");
+    const temPendenciaAprovacao = pendenciasLead.some((pendencia) => pendencia.tipo === "APROVACAO_GERENCIA_PENDENTE");
+    const diasParados = Math.floor((Date.now() - new Date(leadSelecionado.atualizado_em).getTime()) / (1000 * 60 * 60 * 24));
+
+    let proximoPasso = "Atualizar dados do lead";
+    let tom = "border-border/70 bg-muted/80 text-foreground";
+    let status = "Em andamento";
+
+    if (estagioAtual?.nome === "Pré Aprovação" && (temPendenciaDocumento || !leadSelecionado.documento_aprovacao_url)) {
+      proximoPasso = "Enviar documento de aprovação";
+      status = "Crítico";
+      tom = "border-destructive/30 bg-destructive/10 text-foreground";
+    } else if (estagioAtual?.nome === "Pré Aprovação" && (temPendenciaAprovacao || !leadSelecionado.aprovado_em)) {
+      proximoPasso = "Aguardar análise da empresa";
+      status = "Aguardando análise";
+      tom = "border-warning/30 bg-warning/10 text-foreground";
+    } else if (leadSelecionado.aprovado_em) {
+      proximoPasso = "Mover para fechado";
+      status = "Aprovado";
+      tom = "border-success/30 bg-success/10 text-foreground";
+    } else if (diasParados > 3) {
+      proximoPasso = "Retomar contato comercial";
+      status = `${diasParados}d parado`;
+      tom = "border-warning/30 bg-warning/10 text-foreground";
+    }
+
+    return {
+      estagio: estagioAtual?.nome ?? "Sem estágio",
+      status,
+      proximoPasso,
+      diasParados,
+      tom,
+    };
+  }, [estagios, leadSelecionado, pendenciasLead]);
+
+  const fecharDrawer = useCallback(() => {
+    onOpenChange(false);
+    setTemAlteracoes(false);
+    setConfirmarFechamentoAberto(false);
+    setTabAtiva("detalhes");
+  }, [onOpenChange]);
 
   const handleOpenChange = useCallback((aberto: boolean) => {
     if (aberto) {
@@ -183,22 +232,13 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
       return;
     }
 
-    let fechamentoConfirmadoAgora = false;
-
-    if (!aberto && !fecharConfirmado && hasChanges) {
-      const confirmar = window.confirm(MENSAGENS_KANBAN.confirmacao.descartarAlteracoes);
-      if (!confirmar) return;
-      setFecharConfirmado(true);
-      fechamentoConfirmadoAgora = true;
+    if (hasChanges) {
+      setConfirmarFechamentoAberto(true);
+      return;
     }
 
-    if (!hasChanges || fecharConfirmado || fechamentoConfirmadoAgora) {
-      onOpenChange(false);
-      setFecharConfirmado(false);
-      setTemAlteracoes(false);
-      setTabAtiva("detalhes");
-    }
-  }, [confirmarExclusaoAberta, fecharConfirmado, hasChanges, onOpenChange]);
+    fecharDrawer();
+  }, [confirmarExclusaoAberta, fecharDrawer, hasChanges, onOpenChange]);
 
   const handleSalvar = useCallback(async () => {
     if (!leadSelecionado) return;
@@ -274,20 +314,11 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
         return;
       }
 
-      if (event.key !== "Escape") return;
-
-      if (confirmarExclusaoAberta) {
-        event.preventDefault();
-        return;
-      }
-
-      event.preventDefault();
-      handleOpenChange(false);
     };
 
     window.addEventListener("keydown", handleAtalhos, true);
     return () => window.removeEventListener("keydown", handleAtalhos, true);
-  }, [confirmarExclusaoAberta, handleOpenChange, handleSalvar, hasChanges, leadSelecionado, salvando, uploadando]);
+  }, [handleSalvar, hasChanges, leadSelecionado, salvando, uploadando]);
 
   useEffect(() => {
     if (statusSalvamentoDetalhes === "salvo") {
@@ -297,6 +328,7 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
     if (!leadSelecionado) {
       setTemAlteracoes(false);
       setErroExclusaoLead(null);
+      setConfirmarFechamentoAberto(false);
       setConfirmarExclusaoAberta(false);
     }
   }, [leadSelecionado, statusSalvamentoDetalhes]);
@@ -304,47 +336,72 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
   return (
     <>
       <Sheet open={Boolean(leadSelecionado)} onOpenChange={handleOpenChange}>
-        <SheetContent side="right" className="flex h-full w-full flex-col overflow-hidden p-0 sm:max-w-lg">
-          <SheetHeader className="space-y-0 border-b bg-gradient-to-r from-emerald-600 to-emerald-700 px-4 py-3 text-white">
-            <div className="flex items-center justify-between">
-              <div className="flex min-w-0 flex-1 items-center gap-2">
-                <MessageCircle className="h-5 w-5 shrink-0" />
-                <SheetTitle className="truncate text-base text-white">{leadSelecionado?.nome}</SheetTitle>
+        <SheetContent
+          side="right"
+          className="flex h-full w-full flex-col overflow-hidden p-0 sm:max-w-2xl lg:max-w-[48rem]"
+        >
+          <SheetHeader className="space-y-0 border-b bg-background-elevated px-3 py-2.5 text-foreground sm:px-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 items-center gap-2">
+                  <MessageCircle className="h-4 w-4 shrink-0 text-success" />
+                  <SheetTitle className="truncate text-base text-foreground">{leadSelecionado?.nome}</SheetTitle>
+                </div>
+                <SheetDescription className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-foreground-muted">
+                  <span className="inline-flex items-center gap-1">
+                    <Phone className="h-3 w-3" />
+                    {leadSelecionado?.telefone ?? "Sem telefone informado"}
+                  </span>
+                  {resumoLead ? <span className="text-foreground-disabled">{resumoLead.estagio}</span> : null}
+                </SheetDescription>
+                {resumoLead ? (
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] font-medium">
+                    <span className={cn("rounded-full border px-2.5 py-1", resumoLead.tom)}>
+                      {resumoLead.status}
+                    </span>
+                    {resumoLead.diasParados > 3 ? (
+                      <span className="rounded-full border border-warning/30 bg-warning/10 px-2.5 py-1 text-warning">
+                        {resumoLead.diasParados}d parado
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-white hover:bg-white/20" onClick={() => handleOpenChange(false)} aria-label="Fechar drawer">
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 hover:bg-muted" onClick={() => handleOpenChange(false)} aria-label="Fechar drawer">
                 <X className="h-5 w-5" />
               </Button>
             </div>
-            <SheetDescription className="flex items-center gap-2 text-emerald-100">
-              <Phone className="h-3 w-3" />
-              <span>{leadSelecionado?.telefone ?? "Sem telefone informado"}</span>
-              <span className={`inline-flex items-center gap-1 ${statusSalvar.classe}`}>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+              <span className={cn("inline-flex items-center gap-1", statusSalvar.classe)}>
                 {statusSalvar.icone ?? null}
                 {statusSalvar.texto}
               </span>
-            </SheetDescription>
-            <p className="text-xs text-emerald-100/90">Atalhos: {atalhoSalvar} salva agora • Esc fecha o drawer</p>
+              <span className="text-foreground-disabled">Atalho: {atalhoSalvar}</span>
+              {resumoLead ? (
+                <span className="truncate text-foreground-muted">Próximo passo: {resumoLead.proximoPasso}</span>
+              ) : null}
+            </div>
           </SheetHeader>
 
           {podeRenderizarConteudo && leadSelecionado ? (
             <Tabs value={tabAtiva} onValueChange={setTabAtiva} className="flex min-h-0 flex-1 flex-col">
-              <div className="border-b bg-slate-50 px-4 py-2">
-                <TabsList className="grid w-full grid-cols-3 bg-slate-200">
-                  <TabsTrigger value="detalhes" className="text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              <div className="border-b bg-muted px-3 py-1.5">
+                <TabsList className="grid h-10 w-full grid-cols-3 bg-background-surface">
+                  <TabsTrigger value="detalhes" className="text-sm data-[state=active]:bg-background-surface data-[state=active]:shadow-sm">
                     <FileText className="mr-2 h-4 w-4" />
                     Detalhes
                   </TabsTrigger>
-                  <TabsTrigger value="chat" className="relative text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                  <TabsTrigger value="chat" className="relative text-sm data-[state=active]:bg-background-surface data-[state=active]:shadow-sm">
                     <MessageCircle className="mr-2 h-4 w-4" />
                     Chat
-                    {whatsappChat.unreadCount > 0 ? <span className="ml-1 h-2 w-2 animate-pulse rounded-full bg-red-500" /> : null}
+                    {whatsappChat.unreadCount > 0 ? <span className="ml-1 h-2 w-2 animate-pulse rounded-full bg-destructive" /> : null}
                   </TabsTrigger>
-                  <TabsTrigger value="parcelas" className="text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                  <TabsTrigger value="parcelas" className="text-sm data-[state=active]:bg-background-surface data-[state=active]:shadow-sm">
                     <Banknote className="mr-2 h-4 w-4" />
                     Parcelas
                   </TabsTrigger>
                   {/* [HYPE CRM] Feature em desenvolvimento - Produtos será uma feature exclusiva do HYPE CRM */}
-                  {/* <TabsTrigger value="produtos" className="text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                  {/* <TabsTrigger value="produtos" className="text-sm data-[state=active]:bg-background-surface data-[state=active]:shadow-sm">
                     <Package className="mr-2 h-4 w-4" />
                     Produtos
                   </TabsTrigger> */}
@@ -405,7 +462,7 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
                 />
               </TabsContent>
 
-              <TabsContent value="parcelas" className="m-0 flex-1 overflow-y-auto p-4">
+              <TabsContent value="parcelas" className="m-0 flex-1 overflow-y-auto p-3">
                 <LeadParcelasTab leadId={leadSelecionado.id} />
               </TabsContent>
 
@@ -447,6 +504,21 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
             setExcluindoLead(false);
           }
         }}
+      />
+
+      <ConfirmDialog
+        aberto={confirmarFechamentoAberto && Boolean(leadSelecionado)}
+        titulo="Descartar alterações?"
+        descricao={<p>{MENSAGENS_KANBAN.confirmacao.descartarAlteracoes}</p>}
+        erro={null}
+        confirmando={false}
+        textoCancel={MENSAGENS_KANBAN.confirmacao.cancelar}
+        textoConfirmar="Descartar e fechar"
+        onCancelar={() => setConfirmarFechamentoAberto(false)}
+        onConfirmar={async () => {
+          fecharDrawer();
+        }}
+        modo="destrutivo"
       />
     </>
   );

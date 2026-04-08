@@ -105,7 +105,7 @@ export function AutomacoesList({
 
   if (carregando) {
     return (
-      <Card className="rounded-2xl border border-slate-200/60 bg-white">
+      <Card className="rounded-2xl border border-border bg-background-surface">
         <CardContent className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
         </CardContent>
@@ -115,7 +115,7 @@ export function AutomacoesList({
 
   return (
     <div className="space-y-4">
-      <Card className="rounded-2xl border border-slate-200/60 bg-white">
+      <Card className="rounded-2xl border border-border bg-background-surface">
         <CardHeader className="pb-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-800">
@@ -153,12 +153,12 @@ export function AutomacoesList({
       </Card>
 
       {automacoes.length === 0 && (
-        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 py-12 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
-            <Zap className="h-7 w-7 text-slate-400" />
+        <div className="rounded-xl border border-dashed border-border bg-background-elevated/60 py-12 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-background-surface">
+            <Zap className="h-7 w-7 text-foreground-muted" />
           </div>
-          <p className="text-sm font-medium text-slate-700">Nenhuma automação configurada</p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="text-sm font-medium text-foreground">Nenhuma automação configurada</p>
+          <p className="mt-1 text-xs text-foreground-muted">
             Configure alertas automáticos para receber notificações no WhatsApp
           </p>
           <Button

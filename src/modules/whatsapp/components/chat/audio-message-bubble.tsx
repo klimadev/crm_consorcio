@@ -246,8 +246,8 @@ export function AudioMessageBubble({
   const bubbleBaseClassName = cn(
     "flex items-center gap-3 border px-4 py-3 shadow-sm transition-all duration-300",
     outgoing
-      ? "border-[#b7e6b0] bg-[#d9fdd3] text-slate-900"
-      : "border-slate-200 bg-white text-slate-900",
+      ? "border-[#b7e6b0] bg-[#d9fdd3] text-foreground"
+      : "border-border bg-background-surface text-foreground",
     (playerState === "playing" || playerState === "buffering") &&
       "shadow-[0_12px_30px_rgba(16,185,129,0.12)] ring-1 ring-emerald-300/40",
   );
@@ -494,7 +494,7 @@ export function AudioMessageBubble({
             borderRadius: outgoing ? "22px 22px 6px 22px" : "22px 22px 22px 6px",
           }}
         >
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-rose-600 shadow-sm">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-background text-rose-600 shadow-sm">
             <AlertCircle className="h-5 w-5" />
           </div>
 
@@ -506,7 +506,7 @@ export function AudioMessageBubble({
               variant="outline"
               size="sm"
               onClick={handleRetry}
-              className="mt-3 h-8 rounded-full border-rose-200 bg-white px-3 text-[11px] font-semibold text-rose-700 hover:bg-rose-50"
+              className="mt-3 h-8 rounded-full border-rose-200 bg-background px-3 text-[11px] font-semibold text-rose-700 hover:bg-rose-50"
             >
               <RotateCcw className="mr-1 h-3.5 w-3.5" />
               Tentar novamente
@@ -543,13 +543,13 @@ export function AudioMessageBubble({
               {waveformBars.map((amplitude, index) => (
                 <div
                   key={index}
-                  className="w-1.5 rounded-full bg-slate-200/80"
+                  className="w-1.5 rounded-full bg-muted"
                   style={{ height: `${Math.round(amplitude * 24)}px` }}
                 />
               ))}
             </div>
 
-            <div className="flex items-center justify-between text-[11px] font-medium text-slate-400">
+            <div className="flex items-center justify-between text-[11px] font-medium text-foreground-muted">
               <span>0:00</span>
               <span>--:--</span>
             </div>
@@ -606,7 +606,7 @@ export function AudioMessageBubble({
                   disabled={duration <= 0 || Boolean(error)}
                   className={cn(
                     "w-1.5 rounded-full origin-bottom transition-all duration-200 ease-out",
-                    isPlayed ? "bg-slate-400" : "bg-[#00a884]",
+                    isPlayed ? "bg-muted-foreground" : "bg-emerald-500",
                     isCurrentBar && isPlaying && "scale-y-110 shadow-[0_0_0_1px_rgba(255,255,255,0.18)]",
                     (duration <= 0 || Boolean(error)) && "opacity-60",
                   )}
@@ -617,7 +617,7 @@ export function AudioMessageBubble({
             })}
           </div>
 
-          <div className="flex items-center justify-between text-[11px] font-medium text-slate-500">
+          <div className="flex items-center justify-between text-[11px] font-medium text-foreground-muted">
             <span>{currentLabel}</span>
             <span>{totalLabel}</span>
           </div>
@@ -629,7 +629,7 @@ export function AudioMessageBubble({
               size="sm"
               onClick={handleTogglePlaybackRate}
               disabled={Boolean(error)}
-              className="h-8 min-w-14 rounded-full border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+              className="h-8 min-w-14 rounded-full border-border bg-background px-3 text-[11px] font-semibold text-foreground hover:bg-muted"
               aria-label={`Velocidade ${playbackRateLabel}`}
             >
               {playbackRateLabel}

@@ -22,9 +22,9 @@ export default async function LayoutDashboard({
 
   return (
     <ProvidersWrapper sessao={sessao}>
-      <div className="min-h-screen lg:flex">
+      <div className="min-h-screen bg-background lg:flex">
         <SidebarPrincipal sessao={sessao} dadosUsuario={dadosUsuario} />
-        <main className="flex min-w-0 flex-1 flex-col p-4 lg:p-8">
+        <main className="flex min-w-0 flex-1 flex-col p-4 lg:px-4 lg:py-3 xl:px-5">
           <DashboardErrorBoundary>
             {children}
           </DashboardErrorBoundary>

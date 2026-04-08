@@ -15,6 +15,7 @@ export type Pdv = {
     id: string;
     nome: string;
     cargo: string;
+    ativo?: boolean;
   }>;
 };
 
@@ -122,6 +123,9 @@ export type UseEquipeModuleReturn = {
   executandoLote: boolean;
   resultadoLote: ResultadoLote | null;
   erroLote: string | null;
+  lotePodeExecutar: boolean;
+  loteResumoAcao: string;
+  lotePendencia: string | null;
   acaoLote: AcaoLote;
   cargoLote: string;
   pdvLote: string;
@@ -160,6 +164,7 @@ export type UseEquipeModuleReturn = {
   observacaoInativacaoIndividual: string;
   setObservacaoInativacaoIndividual: (observacao: string) => void;
   executandoInativacaoIndividual: boolean;
+  erroInativacaoIndividual: string | null;
   destinoInativacaoLote: string;
   setDestinoInativacaoLote: (destino: string) => void;
   observacaoLote: string;
@@ -176,6 +181,7 @@ export type UseEquipeModuleReturn = {
   desfazerUltimaEdicao: () => Promise<void>;
   abrirModalInativacao: (funcionario: Funcionario) => void;
   confirmarInativacaoIndividual: () => Promise<void>;
+  reativarFuncionarioIndividual: (funcionario: Funcionario) => Promise<void>;
   alternarSelecao: (id: string, marcado: boolean) => void;
   alternarSelecaoPagina: (marcado: boolean) => void;
   executarAcaoLote: () => Promise<void>;

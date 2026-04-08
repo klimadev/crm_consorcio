@@ -157,10 +157,10 @@ export function AutomationFormDialog({
           <StepCard title="Definir Gatilho" description=" Escolha quando esta automação será disparada">
             <div className="space-y-6">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700" htmlFor="instancia">Instância WhatsApp</label>
+                <label className="text-sm font-medium text-foreground" htmlFor="instancia">Instância WhatsApp</label>
                 <select
                   id="instancia"
-                  className="flex h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  className="flex h-11 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                   value={form.formState.instanciaId}
                   onChange={(e) => form.setInstanciaId(e.target.value)}
                   required
@@ -175,13 +175,13 @@ export function AutomationFormDialog({
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">Tipo de Evento</label>
+                <label className="text-sm font-medium text-foreground">Tipo de Evento</label>
                 <div className="grid gap-3">
                   <label
                     className={`flex items-start gap-3 rounded-lg border-2 p-4 cursor-pointer transition-all ${
                       form.formState.evento === "LEAD_STAGE_CHANGED"
                         ? "border-emerald-500 bg-emerald-50/50"
-                        : "border-slate-200 hover:border-slate-300"
+                        : "border-border hover:border-border/80"
                     }`}
                   >
                     <input
@@ -193,15 +193,15 @@ export function AutomationFormDialog({
                       className="mt-1 h-4 w-4 text-emerald-600"
                     />
                     <div>
-                      <span className="block font-medium text-slate-800">Mensagem Imediata</span>
-                      <span className="text-sm text-slate-500">Envia mensagem no momento exato que o lead entra no estágio</span>
+                      <span className="block font-medium text-foreground">Mensagem Imediata</span>
+                      <span className="text-sm text-foreground-muted">Envia mensagem no momento exato que o lead entra no estágio</span>
                     </div>
                   </label>
                   <label
                     className={`flex items-start gap-3 rounded-lg border-2 p-4 cursor-pointer transition-all ${
                       form.formState.evento === "LEAD_FOLLOW_UP"
                         ? "border-emerald-500 bg-emerald-50/50"
-                        : "border-slate-200 hover:border-slate-300"
+                        : "border-border hover:border-border/80"
                     }`}
                   >
                     <input
@@ -213,12 +213,12 @@ export function AutomationFormDialog({
                       className="mt-1 h-4 w-4 text-emerald-600"
                     />
                     <div className="flex-1">
-                      <span className="block font-medium text-slate-800">Follow-up Agendado</span>
-                      <span className="text-sm text-slate-500">
+                      <span className="block font-medium text-foreground">Follow-up Agendado</span>
+                      <span className="text-sm text-foreground-muted">
                         Envia sequência de mensagens X minutos após o lead entrar no estágio
                       </span>
                       {form.formState.evento === "LEAD_FOLLOW_UP" && (
-                        <ul className="mt-2 text-xs text-slate-500 space-y-1 bg-slate-100 rounded p-2">
+                        <ul className="mt-2 space-y-1 rounded bg-muted p-2 text-xs text-foreground-muted">
                           <li>• Cada etapa = 1 job agendado</li>
                           <li>• Se lead sair do estágio: jobs são cancelados</li>
                           <li>• Se &quot;Todos os estágios&quot;: cancela os antigos e cria novos</li>
@@ -237,10 +237,10 @@ export function AutomationFormDialog({
           <StepCard title="Definir Filtro" description="Configure quem deve receber a mensagem">
             <div className="space-y-6">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700" htmlFor="estagio">Estágio do Lead</label>
+                <label className="text-sm font-medium text-foreground" htmlFor="estagio">Estágio do Lead</label>
                 <select
                   id="estagio"
-                  className="flex h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  className="flex h-11 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                   value={form.formState.idEstagioDestino}
                   onChange={(e) => form.setIdEstagioDestino(e.target.value)}
                 >
@@ -251,20 +251,20 @@ export function AutomationFormDialog({
                     </option>
                   ))}
                 </select>
-                <div className="text-xs text-slate-500 space-y-1">
+                <div className="space-y-1 text-xs text-foreground-muted">
                   <p><span className="font-medium">Estágio específico:</span> cria jobs apenas quando o lead entra nesse estágio</p>
                   <p><span className="font-medium">Todos os estágios:</span> cancela os jobs antigos e cria novos para o novo estágio</p>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">Destino da Mensagem</label>
+                <label className="text-sm font-medium text-foreground">Destino da Mensagem</label>
                 <div className="grid gap-3">
                   <label
                     className={`flex items-start gap-3 rounded-lg border-2 p-4 cursor-pointer transition-all ${
                       form.formState.tipoDestino === "LEAD_TELEFONE"
                         ? "border-emerald-500 bg-emerald-50/50"
-                        : "border-slate-200 hover:border-slate-300"
+                        : "border-border hover:border-border/80"
                     }`}
                   >
                     <input
@@ -276,15 +276,15 @@ export function AutomationFormDialog({
                       className="mt-1 h-4 w-4 text-emerald-600"
                     />
                     <div>
-                      <span className="block font-medium text-slate-800">Telefone do Lead</span>
-                      <span className="text-sm text-slate-500">Envia para o número cadastrado no lead</span>
+                      <span className="block font-medium text-foreground">Telefone do Lead</span>
+                      <span className="text-sm text-foreground-muted">Envia para o número cadastrado no lead</span>
                     </div>
                   </label>
                   <label
                     className={`flex items-start gap-3 rounded-lg border-2 p-4 cursor-pointer transition-all ${
                       form.formState.tipoDestino === "FIXO"
                         ? "border-emerald-500 bg-emerald-50/50"
-                        : "border-slate-200 hover:border-slate-300"
+                        : "border-border hover:border-border/80"
                     }`}
                   >
                     <input
@@ -296,8 +296,8 @@ export function AutomationFormDialog({
                       className="mt-1 h-4 w-4 text-emerald-600"
                     />
                     <div className="flex-1">
-                      <span className="block font-medium text-slate-800">Número Específico</span>
-                      <span className="text-sm text-slate-500">Envia para um número fixo</span>
+                      <span className="block font-medium text-foreground">Número Específico</span>
+                      <span className="text-sm text-foreground-muted">Envia para um número fixo</span>
                       {form.formState.tipoDestino === "FIXO" && (
                         <Input
                           className="mt-2 h-10"
@@ -335,7 +335,7 @@ export function AutomationFormDialog({
                   />
                 ) : (
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700" htmlFor="mensagem">Mensagem</label>
+                    <label className="text-sm font-medium text-foreground" htmlFor="mensagem">Mensagem</label>
                     <Textarea
                       id="mensagem"
                       className="min-h-[160px] text-sm"
@@ -347,8 +347,8 @@ export function AutomationFormDialog({
                 )}
               </div>
               
-              <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                <h4 className="text-sm font-medium text-slate-700 mb-4 text-center">Preview WhatsApp</h4>
+              <div className="rounded-lg border border-border bg-muted p-4">
+                <h4 className="mb-4 text-center text-sm font-medium text-foreground">Preview WhatsApp</h4>
                 {isFollowUp ? (
                   <PreviewSimulator
                     evento="LEAD_FOLLOW_UP"
@@ -381,29 +381,29 @@ export function AutomationFormDialog({
                 </div>
                 <dl className="grid grid-cols-2 gap-3 text-sm">
                   <div>
-                    <dt className="text-slate-500">Instância</dt>
-                    <dd className="font-medium text-slate-800">{instanciaNome}</dd>
+                    <dt className="text-foreground-muted">Instância</dt>
+                    <dd className="font-medium text-foreground">{instanciaNome}</dd>
                   </div>
                   <div>
-                    <dt className="text-slate-500">Evento</dt>
-                    <dd className="font-medium text-slate-800">
+                    <dt className="text-foreground-muted">Evento</dt>
+                    <dd className="font-medium text-foreground">
                       {form.formState.evento === "LEAD_STAGE_CHANGED" ? "Mudança de Estágio" : "Follow-up Timeline"}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-slate-500">Estágio</dt>
-                    <dd className="font-medium text-slate-800">{estagioNome}</dd>
+                    <dt className="text-foreground-muted">Estágio</dt>
+                    <dd className="font-medium text-foreground">{estagioNome}</dd>
                   </div>
                   <div>
-                    <dt className="text-slate-500">Destino</dt>
-                    <dd className="font-medium text-slate-800">
+                    <dt className="text-foreground-muted">Destino</dt>
+                    <dd className="font-medium text-foreground">
                       {form.formState.tipoDestino === "LEAD_TELEFONE" ? "Telefone do Lead" : form.formState.telefone}
                     </dd>
                   </div>
                   {form.formState.evento === "LEAD_FOLLOW_UP" && (
                     <div className="col-span-2">
-                      <dt className="text-slate-500">Mensagens</dt>
-                      <dd className="font-medium text-slate-800">{form.formState.etapas.length} etapa(s) configurada(s)</dd>
+                      <dt className="text-foreground-muted">Mensagens</dt>
+                      <dd className="font-medium text-foreground">{form.formState.etapas.length} etapa(s) configurada(s)</dd>
                     </div>
                   )}
                 </dl>
@@ -465,15 +465,15 @@ export function AutomationFormDialog({
                           status === "completed"
                             ? "border-emerald-500 bg-emerald-500 text-white"
                             : status === "current"
-                            ? "border-emerald-500 bg-white text-emerald-600 ring-4 ring-emerald-500/20"
-                            : "border-slate-300 bg-white text-slate-400"
+                            ? "border-emerald-500 bg-background text-emerald-600 ring-4 ring-emerald-500/20"
+                            : "border-border bg-background text-foreground-muted"
                         }`}
                       >
                         {status === "completed" ? <Check className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
                       </span>
                       <span
                         className={`mt-2 text-xs font-medium ${
-                          status === "current" ? "text-emerald-600" : "text-slate-500"
+                          status === "current" ? "text-emerald-600" : "text-foreground-muted"
                         }`}
                       >
                         {step.label}
@@ -482,7 +482,7 @@ export function AutomationFormDialog({
                     {!isLast && (
                       <div
                         className={`flex-1 h-0.5 mx-2 ${
-                          stepOrder.indexOf(step.id) < currentIndex ? "bg-emerald-500" : "bg-slate-200"
+                          stepOrder.indexOf(step.id) < currentIndex ? "bg-emerald-500" : "bg-muted"
                         }`}
                       />
                     )}
@@ -558,8 +558,8 @@ function StepCard({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
-        <p className="text-sm text-slate-500">{description}</p>
+        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+        <p className="text-sm text-foreground-muted">{description}</p>
       </div>
       {children}
     </div>
@@ -577,14 +577,14 @@ function VariableChips({ onSelect }: { onSelect: (variavel: string) => void }) {
 
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium text-slate-700">Variáveis disponíveis</label>
+      <label className="text-sm font-medium text-foreground">Variáveis disponíveis</label>
       <div className="flex flex-wrap gap-2">
         {variaveis.map((v) => (
           <button
             key={v.key}
             type="button"
             onClick={() => onSelect(v.key)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-600 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-sm text-foreground-muted hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
           >
             <span className="font-mono text-xs">{v.key}</span>
           </button>
@@ -610,7 +610,7 @@ function FollowupTimelineEditorV2({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-slate-700">Timeline de Follow-up</label>
+        <label className="text-sm font-medium text-foreground">Timeline de Follow-up</label>
         <Button type="button" variant="outline" size="sm" onClick={onAdicionarEtapa}>
           + Adicionar etapa
         </Button>
@@ -618,9 +618,9 @@ function FollowupTimelineEditorV2({
 
       <div className="space-y-4">
         {etapas.map((etapa, index) => (
-          <div key={index} className="rounded-lg border border-slate-200 bg-slate-50/50 p-4 space-y-3">
+          <div key={index} className="space-y-3 rounded-lg border border-border bg-muted/50 p-4">
             <div className="flex items-center justify-between">
-              <span className="font-medium text-slate-700">Etapa {index + 1}</span>
+              <span className="font-medium text-foreground">Etapa {index + 1}</span>
               {etapas.length > 1 && (
                 <button
                   type="button"

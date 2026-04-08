@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { exigirSessao } from "@/lib/permissoes";
+import { exigirSessao, whereLeadsPorPerfil } from "@/lib/permissoes";
 import { esquemaAtualizarProdutoLead } from "@/lib/validacoes";
 import { notFound, ok } from "@/lib/api/http";
 import { parseJson, validateBody } from "@/lib/api/route-validation";
@@ -16,6 +16,20 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   const { id, leadProdutoId } = await params;
+  const whereLeads = await whereLeadsPorPerfil(auth.sessao);
+
+  const lead = await prisma.lead.findFirst({
+    where: {
+      id,
+      ...whereLeads,
+    },
+    select: { id: true },
+  });
+
+  if (!lead) {
+    return notFound("Lead nao encontrado.");
+  }
+
   const body = await parseJson<unknown>(request);
   if (!body.ok) {
     return body.response;
@@ -68,6 +82,19 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   }
 
   const { id, leadProdutoId } = await params;
+  const whereLeads = await whereLeadsPorPerfil(auth.sessao);
+
+  const lead = await prisma.lead.findFirst({
+    where: {
+      id,
+      ...whereLeads,
+    },
+    select: { id: true },
+  });
+
+  if (!lead) {
+    return notFound("Lead nao encontrado.");
+  }
 
   const leadProduto = await prisma.leadProduto.findFirst({
     where: {

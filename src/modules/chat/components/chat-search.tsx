@@ -27,22 +27,21 @@ export function ChatSearch({ valor, onChange }: Props) {
 
   return (
     <div className="relative">
-      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-muted" />
       <input
         type="text"
         placeholder="Buscar conversas..."
         defaultValue={valor}
         onChange={handleChange}
-        className={cn(
-          "w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-9 text-sm text-slate-900",
-          "placeholder:text-slate-400 focus:border-emerald-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-100",
-        )}
+        aria-label="Buscar conversas"
+        className={cn("w-full rounded-xl py-2.5 pl-10 pr-9 text-sm", "placeholder:text-foreground-muted")}
       />
       {valor && (
         <button
           type="button"
           onClick={limpar}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-foreground"
+          aria-label="Limpar busca"
         >
           <X className="h-4 w-4" />
         </button>

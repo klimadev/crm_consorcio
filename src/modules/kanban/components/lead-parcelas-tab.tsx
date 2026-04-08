@@ -23,35 +23,35 @@ function ParcelasResumo({ parcelas }: { parcelas: { valor: number; status: strin
   const progresso = total > 0 ? (pago / total) * 100 : 0;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+    <div className="rounded-xl border border-border bg-background-surface p-4">
       <div className="mb-2 flex items-center justify-between text-sm">
-        <span className="text-slate-600">Progresso</span>
-        <span className="font-semibold text-slate-800">
+        <span className="text-foreground-muted">Progresso</span>
+        <span className="font-semibold text-foreground">
           {parcelas.filter((p) => p.status === "PAGO").length}/{parcelas.length} parcelas
         </span>
       </div>
-      <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-slate-200">
-        <div
-          className="h-full rounded-full bg-emerald-500 transition-all duration-500"
-          style={{ width: `${progresso}%` }}
-        />
-      </div>
+        <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+          <div
+           className="h-full rounded-full bg-success transition-all duration-500"
+           style={{ width: `${progresso}%` }}
+         />
+       </div>
       <div className="grid grid-cols-3 gap-2 text-center">
         <div>
-          <p className="text-xs text-slate-500">Total</p>
-          <p className="font-semibold text-slate-800">
+          <p className="text-xs text-foreground-muted">Total</p>
+          <p className="font-semibold text-foreground">
             {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(total)}
           </p>
         </div>
         <div>
-          <p className="text-xs text-emerald-600">Pago</p>
-          <p className="font-semibold text-emerald-600">
+          <p className="text-xs text-success">Pago</p>
+          <p className="font-semibold text-success">
             {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(pago)}
           </p>
         </div>
         <div>
-          <p className="text-xs text-amber-600">Pendente</p>
-          <p className="font-semibold text-amber-600">
+          <p className="text-xs text-warning">Pendente</p>
+          <p className="font-semibold text-warning">
             {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(pendente)}
           </p>
         </div>
@@ -75,8 +75,8 @@ export function LeadParcelasTab({ leadId }: LeadParcelasTabProps) {
 
   if (vm.loading) {
     return (
-      <div className="flex h-40 items-center justify-center rounded-xl border border-slate-200 bg-white">
-        <Loader2 className="h-5 w-5 animate-spin text-slate-500" />
+      <div className="flex h-40 items-center justify-center rounded-xl border border-border bg-background-surface">
+        <Loader2 className="h-5 w-5 animate-spin text-foreground-muted" />
       </div>
     );
   }
@@ -104,7 +104,7 @@ export function LeadParcelasTab({ leadId }: LeadParcelasTabProps) {
               type="button"
               variant="ghost"
               size="sm"
-              className="text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
               onClick={() => setShowRemoveDialog(true)}
               disabled={vm.removendo}
             >
@@ -132,7 +132,7 @@ export function LeadParcelasTab({ leadId }: LeadParcelasTabProps) {
       )}
 
       {vm.error ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+        <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-3 text-sm text-destructive">
           <p className="flex items-center gap-2 font-medium">
             <AlertCircle className="h-4 w-4" />
             {vm.error}
@@ -148,7 +148,7 @@ export function LeadParcelasTab({ leadId }: LeadParcelasTabProps) {
           <p>
             Tem certeza que deseja ajustar o plano de <strong>{vm.parcelas.length} parcelas</strong>?
             <br />
-            <span className="text-rose-600">
+            <span className="text-destructive">
               {vm.parcelas.some((parcela) => parcela.status === "PAGO")
                 ? "As parcelas pendentes serao removidas e os pagamentos ja registrados serao preservados."
                 : "Esta ação não pode ser desfeita."}
@@ -181,12 +181,12 @@ export function LeadParcelasTab({ leadId }: LeadParcelasTabProps) {
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
+            <div className="rounded-xl bg-muted p-3 text-sm text-foreground-muted">
               {parcelaEmEdicao ? `Parcela ${parcelaEmEdicao.numero_parcela}/${parcelaEmEdicao.quantidade_total} • ${formataMoeda(parcelaEmEdicao.valor)}` : null}
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Valor da parcela</label>
+              <label className="text-sm font-medium text-foreground">Valor da parcela</label>
               <Input
                 inputMode="numeric"
                 value={valorEdicao}
@@ -195,7 +195,7 @@ export function LeadParcelasTab({ leadId }: LeadParcelasTabProps) {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Data de vencimento</label>
+              <label className="text-sm font-medium text-foreground">Data de vencimento</label>
               <Input type="date" value={dataVencimentoEdicao} onChange={(event) => setDataVencimentoEdicao(event.target.value)} />
             </div>
           </div>
@@ -206,7 +206,7 @@ export function LeadParcelasTab({ leadId }: LeadParcelasTabProps) {
             </Button>
             <Button
               type="button"
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
+              className="bg-success text-success-foreground hover:bg-success/90"
               disabled={!parcelaEmEdicao || vm.salvandoEdicao === parcelaEmEdicao.id}
               onClick={async () => {
                 if (!parcelaEmEdicao) return;

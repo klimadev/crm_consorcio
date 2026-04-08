@@ -13,8 +13,8 @@ export default async function PaginaWhatsapp() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-slate-800">Acesso restrito</h2>
-          <p className="mt-2 text-sm text-slate-500">
+          <h2 className="text-xl font-semibold text-foreground">Acesso restrito</h2>
+          <p className="mt-2 text-sm text-foreground-muted">
             Este módulo está disponível apenas para o administrador da empresa.
           </p>
         </div>

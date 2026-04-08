@@ -1,4 +1,5 @@
 # Constituição do Projeto: MC CRM Consórcio
+
 **Contexto:** Este é um CRM multi-tenant focado na venda de consórcios. O sistema possui três perfis de acesso estritos: `EMPRESA` (Admin), `GERENTE` (gestão de um PDV específico) e `COLABORADOR` (vendedor/corretor).
 
 A IA deve atuar como uma Desenvolvedora Sênior (Full Stack Next.js 15, React, TypeScript, Prisma, Tailwind). Ao gerar ou refatorar código, siga estritamente as regras abaixo. NUNCA desvie desta arquitetura sem perguntar antes.
@@ -31,6 +32,8 @@ O projeto usa uma abordagem Feature-Sliced/Modular. O código não fica solto na
   - Notificações de sucesso/erro DEVEM usar o hook `useToast` ou mensagens renderizadas em tela com ícones claros (`AlertCircle`, `CheckCircle2`).
 
 ## 4. Regras de Negócio Específicas
+- **Cargo x Perfil:** `ADMINISTRADOR` é um `cargo` de `Funcionario`, mas no login ele vira `perfil: EMPRESA`; nunca trate isso como um quarto perfil de acesso.
+- **Equipe:** `GERENTE` pode adicionar somente `COLABORADOR` no próprio PDV; `EMPRESA` pode adicionar qualquer cargo em qualquer PDV.
 - **Automação/WhatsApp:** Lógica de agendamento (`jobs`) exige uso de chaves de *idempotência* para evitar disparos duplicados. Se um lead muda de estágio, agendamentos antigos incompatíveis devem ser cancelados.
 - **Pendências:** Nunca são salvas fixamente no banco, são calculadas "on the fly" em `src/lib/pendencias-dinamicas.ts` ou `calculo-pendencias.ts` baseado em regras de tempo (ex: `DIAS_ESTAGIO_PARADO`).
 - **Telefones e Moeda:** Sempre use utilitários de máscara (`aplicaMascaraTelefoneBr`, `aplicaMascaraMoedaBr`) para exibição e `normalizarTelefoneParaWhatsapp` antes de enviar para a API (Evolution).
@@ -41,3 +44,67 @@ Antes de gerar código:
 2. Identifique se a mudança é no Banco, na API, no Hook (VM) ou na View.
 3. Se o pedido for grande, crie um plano em Markdown e peça aprovação ANTES de escrever o código final.
 4. Escreva código limpo, em português do Brasil (para variáveis, funções e comentários de negócio), seguindo estritamente as tipagens Typescript.
+
+## 6. Comandos de Desenvolvimento
+- **Desenvolvimento:** `pnpm dev` - Inicia o servidor de desenvolvimento na porta 3334
+- **Build:** `pnpm build` - Cria a build de produção
+- **Iniciar Produção:** `pnpm start` - Inicia o servidor de produção na porta 3333
+- **Linting:** `pnpm lint` - Executa o ESLint em todo o projeto
+- **Testes:** 
+  - Todos os testes: `pnpm test` ou `vitest run`
+  - Teste específico: `vitest run src/caminho/para/arquivo.test.ts`
+  - Teste com watch: `vitest src/caminho/para/arquivo.test.ts`
+  - Teste com coverage: `vitest run --coverage`
+- **Prisma:**
+  - Gerar cliente: `prisma generate`
+  - Migrações: `prisma migrate dev`
+  - Seed: `pnpm seed`
+- **Outros:**
+  - Setup: `pnpm setup`
+  - Backup de metas: `pnpm backup:metas`
+
+## 7. Diretrizes de Estilo de Código
+
+### Importações
+- Use `@/` para imports absolutos (configurado em tsconfig.json)
+- Agrupe imports: 1) externas, 2) internas do projeto, 3) relativas
+- Ordem alfabética dentro de cada grupo
+- Evite imports duplicados ou não utilizados
+
+### Formatação
+- Use 2 espaços para identação (padrão do Prettier/ESLint)
+- Máximo 100 caracteres por linha quando possível
+- Use vírgula trailing em objetos e arrays multilinha
+- Pontos e vírgulas obrigatórios
+
+### Tipos e Interfaces
+- Defina tipos em arquivos `types.ts` dentro de cada módulo
+- Use interface para formas de objetos que podem ser estendidas
+- Use type para tipos primitivos, unions, intersections e mapeamentos
+- Nomeie interfaces com letra maiúscula inicial (ex: `IFuncionario`)
+- Seja explícito com tipos, evite `any` quando possível
+
+### Convenções de Nomenclatura
+- **Componentes:** PascalCase (ex: `FuncionarioForm.tsx`)
+- **Funções e variáveis:** camelCase (ex: `calcularSalario`)
+- **Constantes:** UPPER_SNAKE_CASE (ex: `DIAS_ESTAGIO_PARADO`)
+- **Arquivos:** kebab-case (ex: `funcionario-form.tsx`)
+- **Pastas:** kebab-case
+- **Hooks:** comece com `use` seguido de camelCase (ex: `useFuncionarioModule`)
+- **API routes:** use estrutura RESTful em `src/app/api/[recurso]/route.ts`
+
+### Tratamento de Erros
+- API routes: sempre retornar respostas JSON estruturadas com `{ erro: "mensagem" }` ou dados
+- Use try/catch em operações assíncronas
+- Para erros esperados, retorne mensagens amigáveis ao usuário
+- Erros inesperados devem ser logados (considere usar serviço de logging)
+- Validações de entrada devem usar Zod e retornar 400 para dados inválidos
+
+### Boas Práticas Adicionais
+- Mantenha componentes pequenos e focados em uma única responsabilidade
+- Prefira composição sobre herança
+- Use React.memo para componentes que recebem props estáveis
+- Implemente loading states e tratamento de vazios em listas
+- Separe regras de negócio pura de componentes de UI
+- Use variáveis de ambiente para configurações (arquivo .env.example)
+- Comentários devem explicar o "porquê", não o "o que"

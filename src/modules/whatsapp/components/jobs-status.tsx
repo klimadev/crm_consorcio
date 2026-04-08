@@ -12,7 +12,7 @@ export function JobsStatus({ resumo, carregando, erro }: JobsStatusProps) {
   const jobsAgendados = resumo.pendentes + resumo.processando;
 
   return (
-    <Card className="rounded-xl border border-slate-200/60 bg-white">
+    <Card className="rounded-xl border border-border bg-background-surface">
       <CardContent className="flex items-center gap-3 p-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-50">
           {carregando ? (
@@ -23,12 +23,12 @@ export function JobsStatus({ resumo, carregando, erro }: JobsStatusProps) {
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="text-2xl font-bold text-slate-800">{jobsAgendados}</p>
-          <p className="text-xs text-slate-500">Jobs Agendados</p>
+          <p className="text-2xl font-bold text-foreground">{jobsAgendados}</p>
+          <p className="text-xs text-foreground-muted">Jobs Agendados</p>
           {erro ? (
-            <p className="mt-1 truncate text-[11px] text-rose-600">{erro}</p>
+            <p className="mt-1 truncate text-[11px] text-destructive">{erro}</p>
           ) : (
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-foreground-muted">
               <span className="inline-flex items-center gap-1">
                 <Loader2 className={`h-3 w-3 ${resumo.processando > 0 ? "animate-spin" : ""}`} />
                 Proc. {resumo.processando}

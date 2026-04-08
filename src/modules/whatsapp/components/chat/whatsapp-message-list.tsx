@@ -105,12 +105,12 @@ export function WhatsappMessageList({ messages, loading, onRetry }: Props) {
 
   if (!loading && messages.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-500 py-8">
-        <div className="h-16 w-16 rounded-full bg-[#00a884]/10 flex items-center justify-center">
-          <MessageCircleMore className="h-8 w-8 text-[#00a884]" />
+      <div className="flex h-full flex-col items-center justify-center gap-3 py-8 text-foreground-muted">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success/10">
+          <MessageCircleMore className="h-8 w-8 text-success" />
         </div>
-        <p className="text-sm font-medium text-slate-600">Nenhuma mensagem ainda</p>
-        <p className="text-xs text-slate-400 text-center max-w-[200px]">
+        <p className="text-sm font-medium text-foreground">Nenhuma mensagem ainda</p>
+        <p className="max-w-[200px] text-center text-xs text-foreground-muted">
           Envie uma mensagem para começar a conversa
         </p>
       </div>
@@ -123,8 +123,8 @@ export function WhatsappMessageList({ messages, loading, onRetry }: Props) {
         <div key={group.dateLabel}>
           {/* Separador de data estilo WhatsApp */}
           <div className="flex items-center justify-center my-3">
-            <div className="bg-[#e5ded8] px-3 py-1 rounded-lg">
-              <span className="text-[11px] text-[#54656f] font-medium">
+            <div className="rounded-lg bg-background-surface px-3 py-1">
+              <span className="text-[11px] font-medium text-foreground-muted">
                 {group.dateLabel}
               </span>
             </div>
@@ -146,9 +146,9 @@ export function WhatsappMessageList({ messages, loading, onRetry }: Props) {
       ))}
       {loading && (
         <div className="flex justify-center py-2">
-          <div className="h-2 w-2 rounded-full bg-[#00a884] animate-bounce" style={{ animationDelay: '0ms' }} />
-          <div className="h-2 w-2 rounded-full bg-[#00a884] animate-bounce mx-1" style={{ animationDelay: '150ms' }} />
-          <div className="h-2 w-2 rounded-full bg-[#00a884] animate-bounce" style={{ animationDelay: '300ms' }} />
+          <div className="h-2 w-2 rounded-full bg-success animate-bounce" style={{ animationDelay: '0ms' }} />
+          <div className="mx-1 h-2 w-2 rounded-full bg-success animate-bounce" style={{ animationDelay: '150ms' }} />
+          <div className="h-2 w-2 rounded-full bg-success animate-bounce" style={{ animationDelay: '300ms' }} />
         </div>
       )}
     </div>

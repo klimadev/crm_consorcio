@@ -7,6 +7,8 @@ import type {
   OrdenacaoKanban,
   PendenciaLeadInfo,
   OrigemStats,
+  ResumoEstagioKanban,
+  ResumoOperacionalKanban,
 } from "../types";
 import { getGravidadePendencia } from "./use-pendencias-globais";
 
@@ -60,6 +62,7 @@ export function useKanbanDerivacoes({
   const [modoFocoPendencias, setModoFocoPendencias] = useState(false);
   const [busca, setBusca] = useState("");
   const [ordenacao, setOrdenacao] = useState<OrdenacaoKanban>("recente");
+  const [agoraMs] = useState(() => Date.now());
 
   const pendenciasPorLead = useMemo((): Record<string, PendenciaLeadInfo> => {
     const mapa: Record<string, PendenciaLeadInfo> = {};
@@ -137,8 +140,10 @@ export function useKanbanDerivacoes({
 
       if (busca) {
         const buscaLower = busca.toLowerCase();
-        const matchesNome = lead.nome.toLowerCase().includes(buscaLower);
-        const matchesTelefone = lead.telefone.includes(busca);
+        const nomeLead = typeof lead.nome === "string" ? lead.nome : "";
+        const telefoneLead = typeof lead.telefone === "string" ? lead.telefone : "";
+        const matchesNome = nomeLead.toLowerCase().includes(buscaLower);
+        const matchesTelefone = telefoneLead.includes(busca);
         if (!matchesNome && !matchesTelefone) continue;
       }
 
@@ -157,7 +162,7 @@ export function useKanbanDerivacoes({
           case "antigo":
             return new Date(a.atualizado_em).getTime() - new Date(b.atualizado_em).getTime();
           case "nome":
-            return a.nome.localeCompare(b.nome);
+            return String(a.nome ?? "").localeCompare(String(b.nome ?? ""));
           default:
             return 0;
         }
@@ -167,6 +172,23 @@ export function useKanbanDerivacoes({
     return mapa;
   }, [estagios, leads, pendenciasPorLead, filtros, modoFocoPendencias, busca, ordenacao]);
 
+  const leadsVisiveis = useMemo(
+    () => estagios.flatMap((estagio) => leadsFiltradosPorEstagio[estagio.id] ?? []),
+    [estagios, leadsFiltradosPorEstagio],
+  );
+
+  const pendenciasCriticasVisiveis = useMemo(() => {
+    let total = 0;
+
+    for (const lead of leadsVisiveis) {
+      if (pendenciasPorLead[lead.id]?.gravidadeMaxima === "critica") {
+        total += 1;
+      }
+    }
+
+    return total;
+  }, [leadsVisiveis, pendenciasPorLead]);
+
   const estagioAberto = useMemo(
     () => estagios.find((estagio) => estagio.tipo === "ABERTO")?.id ?? estagios[0]?.id ?? "",
     [estagios],
@@ -175,13 +197,13 @@ export function useKanbanDerivacoes({
   // Calculate origin statistics
   const origemStats = useMemo((): OrigemStats => {
     const stats: OrigemStats = {
-      total: leads.length,
+      total: leadsVisiveis.length,
       anuncios: 0,
       whatsapp: 0,
       manual: 0,
     };
 
-    for (const lead of leads) {
+    for (const lead of leadsVisiveis) {
       const origem = lead.origem ?? "MANUAL";
       if (origem === "ANUNCIO_CTWA") {
         stats.anuncios++;
@@ -194,7 +216,77 @@ export function useKanbanDerivacoes({
     }
 
     return stats;
-  }, [leads]);
+  }, [leadsVisiveis]);
+
+  const resumoOperacional = useMemo((): ResumoOperacionalKanban => {
+    const estagiosFechados = new Set(
+      estagios.filter((estagio) => estagio.tipo === "GANHO" || estagio.tipo === "PERDIDO").map((estagio) => estagio.id),
+    );
+
+    let leadsSemResponsavel = 0;
+    let leadsParados = 0;
+    let valorTotalEmAberto = 0;
+
+    for (const lead of leadsVisiveis) {
+      if (!lead.id_funcionario) {
+        leadsSemResponsavel++;
+      }
+
+      if (!estagiosFechados.has(lead.id_estagio)) {
+        valorTotalEmAberto += lead.valor_consorcio;
+
+        const diasParados = Math.floor(
+          (agoraMs - new Date(lead.atualizado_em).getTime()) / (1000 * 60 * 60 * 24),
+        );
+
+        if (diasParados > 3) {
+          leadsParados++;
+        }
+      }
+    }
+
+    return {
+      leadsSemResponsavel,
+      leadsParados,
+      valorTotalEmAberto,
+    };
+  }, [agoraMs, estagios, leadsVisiveis]);
+
+  const resumoPorEstagio = useMemo((): Record<string, ResumoEstagioKanban> => {
+    const mapa: Record<string, ResumoEstagioKanban> = {};
+
+    for (const estagio of estagios) {
+      mapa[estagio.id] = {
+        quantidade: 0,
+        valorTotal: 0,
+        parados: 0,
+        pendencias: 0,
+      };
+    }
+
+    for (const lead of leadsVisiveis) {
+      const resumo = mapa[lead.id_estagio];
+      if (!resumo) continue;
+
+      resumo.quantidade += 1;
+      resumo.valorTotal += lead.valor_consorcio;
+
+      const pendenciaInfo = pendenciasPorLead[lead.id];
+      if (pendenciaInfo?.naoResolvidas) {
+        resumo.pendencias += 1;
+      }
+
+      const diasParados = Math.floor(
+        (agoraMs - new Date(lead.atualizado_em).getTime()) / (1000 * 60 * 60 * 24),
+      );
+
+      if (diasParados > 3) {
+        resumo.parados += 1;
+      }
+    }
+
+    return mapa;
+  }, [agoraMs, estagios, leadsVisiveis, pendenciasPorLead]);
 
   return {
     filtros,
@@ -209,7 +301,11 @@ export function useKanbanDerivacoes({
     pendenciasLead,
     leadsPorEstagio,
     leadsFiltradosPorEstagio,
+    totalLeadsVisiveis: leadsVisiveis.length,
+    pendenciasCriticasVisiveis,
     estagioAberto,
     origemStats,
+    resumoOperacional,
+    resumoPorEstagio,
   };
 }

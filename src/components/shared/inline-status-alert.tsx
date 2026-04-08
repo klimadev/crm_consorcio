@@ -10,17 +10,17 @@ type InlineStatusAlertProps = {
 };
 
 const variantStyles = {
-  error: "border-rose-200/60 bg-rose-50/50 text-rose-700",
-  success: "border-emerald-200/60 bg-emerald-50/50 text-emerald-700",
-  warning: "border-amber-200/60 bg-amber-50/50 text-amber-700",
-  info: "border-blue-200/60 bg-blue-50/50 text-blue-700",
+  error: "border-destructive/25 bg-destructive/10 text-foreground",
+  success: "border-success/25 bg-success/10 text-foreground",
+  warning: "border-warning/25 bg-warning/10 text-foreground",
+  info: "border-info/25 bg-info/10 text-foreground",
 };
 
 const iconStyles = {
-  error: "bg-rose-100 text-rose-600",
-  success: "bg-emerald-100 text-emerald-600",
-  warning: "bg-amber-100 text-amber-600",
-  info: "bg-blue-100 text-blue-600",
+  error: "bg-destructive/15 text-destructive",
+  success: "bg-success/15 text-success",
+  warning: "bg-warning/15 text-warning",
+  info: "bg-info/15 text-info",
 };
 
 function variantIcon(variant: InlineStatusAlertProps["variant"]) {
@@ -44,7 +44,7 @@ export function InlineStatusAlert({ variant, message, icon, className }: InlineS
       <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg", iconStyles[variant])}>
         {icon ?? variantIcon(variant)}
       </div>
-      <p className="text-sm font-medium">{message}</p>
+      <p className="text-sm font-medium text-foreground">{message}</p>
     </div>
   );
 }

@@ -11,6 +11,10 @@ export default function PaginaCadastroEmpresa() {
   const { addToast } = useToast();
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const inputNomeId = "cadastro-nome";
+  const inputEmailId = "cadastro-email";
+  const inputSenhaId = "cadastro-senha";
+  const erroId = "cadastro-erro";
 
   async function aoCadastrar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -58,32 +62,32 @@ setErro(null);
 
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
-      <section className="w-full max-w-md rounded-xl border border-sky-200 bg-white p-6 shadow-sm">
+      <section className="w-full max-w-md rounded-xl border border-border bg-background-surface p-6 shadow-md shadow-black/20">
         <h1 className="text-2xl font-semibold">Criar conta da empresa</h1>
-        <p className="mt-1 text-sm text-sky-500">Ao cadastrar, o funil inicial sera criado automaticamente.</p>
+        <p className="mt-1 text-sm text-foreground-muted">Ao cadastrar, o funil inicial sera criado automaticamente.</p>
 
         <form className="mt-6 space-y-4" onSubmit={aoCadastrar}>
           <div>
-            <label className="mb-1 block text-sm font-medium">Nome da empresa</label>
-            <Input name="nome" required />
+            <label htmlFor={inputNomeId} className="mb-1 block text-sm font-medium">Nome da empresa</label>
+            <Input id={inputNomeId} name="nome" required aria-describedby={erro ? erroId : undefined} aria-invalid={erro ? true : undefined} />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium">E-mail</label>
-            <Input name="email" type="email" required />
+            <label htmlFor={inputEmailId} className="mb-1 block text-sm font-medium">E-mail</label>
+            <Input id={inputEmailId} name="email" type="email" required aria-describedby={erro ? erroId : undefined} aria-invalid={erro ? true : undefined} />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium">Senha</label>
-            <Input name="senha" type="password" minLength={6} required />
+            <label htmlFor={inputSenhaId} className="mb-1 block text-sm font-medium">Senha</label>
+            <Input id={inputSenhaId} name="senha" type="password" minLength={6} required aria-describedby={erro ? erroId : undefined} aria-invalid={erro ? true : undefined} />
           </div>
 
-          {erro ? <p className="text-sm text-red-600">{erro}</p> : null}
+          {erro ? <p id={erroId} role="alert" className="text-sm text-destructive">{erro}</p> : null}
 
           <Button className="w-full" disabled={carregando}>
             {carregando ? "Criando..." : "Criar conta"}
           </Button>
         </form>
 
-        <p className="mt-4 text-sm text-sky-600">
+        <p className="mt-4 text-sm text-foreground-muted">
           Ja possui conta? <a className="font-medium underline" href="/login">Fazer login</a>
         </p>
       </section>

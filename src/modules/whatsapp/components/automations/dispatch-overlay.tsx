@@ -43,22 +43,22 @@ export function DispatchOverlay({ open, resultado, onClose }: DispatchOverlayPro
         {resultado && (
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-lg bg-emerald-50 p-3 text-center">
+                <div className="rounded-lg bg-emerald-50 p-3 text-center">
                 <p className="text-2xl font-bold text-emerald-600">{resultado.enviados}</p>
                 <p className="text-xs text-emerald-700">Enviados</p>
               </div>
-              <div className="rounded-lg bg-amber-50 p-3 text-center">
+                <div className="rounded-lg bg-amber-50 p-3 text-center">
                 <p className="text-2xl font-bold text-amber-600">{resultado.falhas}</p>
                 <p className="text-xs text-amber-700">Falhas</p>
               </div>
-              <div className="rounded-lg bg-slate-50 p-3 text-center">
-                <p className="text-2xl font-bold text-slate-600">{resultado.processados}</p>
-                <p className="text-xs text-slate-600">Processados</p>
+                <div className="rounded-lg bg-muted p-3 text-center">
+                  <p className="text-2xl font-bold text-foreground">{resultado.processados}</p>
+                  <p className="text-xs text-foreground-muted">Processados</p>
               </div>
             </div>
 
             {resultado.metrics && (
-              <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600 space-y-1">
+                <div className="space-y-1 rounded-lg bg-muted p-3 text-xs text-foreground-muted">
                 <p>
                   <strong>Metrics:</strong>
                 </p>
@@ -69,7 +69,7 @@ export function DispatchOverlay({ open, resultado, onClose }: DispatchOverlayPro
             )}
 
             {resultado.detalhes.length > 0 && (
-              <div className="max-h-32 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-2">
+              <div className="max-h-32 overflow-y-auto rounded-lg border border-border bg-muted p-2">
                 {resultado.detalhes.slice(0, 10).map((detalhe, i) => (
                   <div key={i} className="flex items-center gap-2 py-1 text-xs">
                     {detalhe.statusFinal === "ENVIADO" ? (
@@ -80,14 +80,14 @@ export function DispatchOverlay({ open, resultado, onClose }: DispatchOverlayPro
                       <Loader2 className="h-3 w-3 text-amber-500 animate-spin" />
                     )}
                     <span className="truncate flex-1">{detalhe.leadId}</span>
-                    <span className="text-slate-400">{detalhe.statusFinal}</span>
+                    <span className="text-foreground-muted">{detalhe.statusFinal}</span>
                   </div>
                 ))}
               </div>
             )}
 
             {resultado.runId && (
-              <p className="text-xs text-slate-400 text-center">Run ID: {resultado.runId}</p>
+              <p className="text-center text-xs text-foreground-muted">Run ID: {resultado.runId}</p>
             )}
           </div>
         )}

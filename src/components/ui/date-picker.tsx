@@ -31,11 +31,11 @@ export function DatePicker({
         max={max}
         disabled={disabled}
         className={cn(
-          "flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm",
+          "flex h-10 w-full rounded-xl border border-border bg-background-surface px-3 py-2 text-sm text-foreground",
           "file:border-0 file:bg-transparent file:text-sm file:font-medium",
-          "placeholder:text-slate-400",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
-          "disabled:cursor-not-allowed disabled:opacity-50",
+          "placeholder:text-foreground-disabled",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:border-ring",
+          "disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-background-elevated",
           "[&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60",
           "[&::-webkit-calendar-picker-indicator]:hover:opacity-100"
         )}
@@ -48,7 +48,6 @@ export interface DatePickerWithWarningProps {
   value?: string;
   onChange?: (value: string) => void;
   label?: string;
-  placeholder?: string;
   warningMessage?: string;
   disabled?: boolean;
 }
@@ -57,7 +56,6 @@ export function DatePickerWithWarning({
   value,
   onChange,
   label,
-  placeholder,
   warningMessage,
   disabled,
 }: DatePickerWithWarningProps) {
@@ -70,11 +68,11 @@ export function DatePickerWithWarning({
   return (
     <div className="space-y-1.5">
       {label && (
-        <label className="text-xs font-medium text-slate-600">{label}</label>
+        <label className="text-xs font-medium text-foreground-muted">{label}</label>
       )}
       <DatePicker value={value} onChange={onChange} disabled={disabled} />
       {isDataPassado && warningMessage && (
-        <p className="flex items-center gap-1 text-xs text-amber-600">
+        <p className="flex items-center gap-1 text-xs text-warning">
           <CalendarIcon className="h-3 w-3" />
           {warningMessage}
         </p>

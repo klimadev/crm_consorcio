@@ -17,12 +17,12 @@ function formatTime(timestamp: number) {
 
 function ReceiptIcon({ message }: { message: WhatsappChatMessage }) {
   if (!message.fromMe) return null;
-  if (message.status === "PENDING") return <Clock3 className="h-3 w-3 text-slate-500" />;
-  if (message.status === "SENT") return <Check className="h-3 w-3 text-slate-500" />;
-  if (message.status === "DELIVERED") return <CheckCheck className="h-3 w-3 text-slate-500" />;
-  if (message.status === "READ") return <CheckCheck className="h-3 w-3 text-blue-500" />;
-  if (message.status === "PLAYED") return <Volume2 className="h-3 w-3 text-purple-500" />;
-  if (message.status === "DELETED") return <Trash2 className="h-3 w-3 text-slate-400" />;
+  if (message.status === "PENDING") return <Clock3 className="h-3 w-3 text-foreground-muted" />;
+  if (message.status === "SENT") return <Check className="h-3 w-3 text-foreground-muted" />;
+  if (message.status === "DELIVERED") return <CheckCheck className="h-3 w-3 text-foreground-muted" />;
+  if (message.status === "READ") return <CheckCheck className="h-3 w-3 text-info" />;
+  if (message.status === "PLAYED") return <Volume2 className="h-3 w-3 text-success" />;
+  if (message.status === "DELETED") return <Trash2 className="h-3 w-3 text-foreground-disabled" />;
   return null;
 }
 
@@ -56,23 +56,23 @@ export function WhatsappMessageBubble({
       <div
         className={`max-w-[80%] px-3 py-2 shadow-sm text-[15px] leading-relaxed transition-all duration-200 hover:shadow-md hover:shadow-slate-200/50 ${
           outgoing
-            ? "bg-[#d9fdd3] rounded-br-none"
-            : "bg-white rounded-bl-none"
+            ? "bg-success/10 rounded-br-none"
+            : "bg-background-surface rounded-bl-none"
         } ${isDeleted ? "opacity-50" : ""}`}
         style={{
           borderRadius: outgoing ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
         }}
       >
         {isDeleted ? (
-          <p className="whitespace-pre-wrap text-sm text-slate-400 italic">Mensagem excluída</p>
+          <p className="whitespace-pre-wrap text-sm text-foreground-muted italic">Mensagem excluída</p>
         ) : (
-          <p className="whitespace-pre-wrap text-slate-800">{message.text}</p>
+          <p className="whitespace-pre-wrap text-foreground">{message.text}</p>
         )}
-        <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-slate-500">
+        <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-foreground-muted">
           {message.status === "ERROR" ? (
             <button
               type="button"
-              className="inline-flex items-center gap-1 text-rose-600 hover:text-rose-700 font-medium"
+              className="inline-flex items-center gap-1 font-medium text-destructive hover:text-destructive/90"
               onClick={() => onRetry?.(message)}
             >
               <RotateCcw className="h-3 w-3" />

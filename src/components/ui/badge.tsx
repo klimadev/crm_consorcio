@@ -7,12 +7,12 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-slate-100 text-slate-700 border border-slate-200",
-        success: "bg-emerald-50 text-emerald-700 border border-emerald-100",
-        warning: "bg-amber-50 text-amber-700 border border-amber-100",
-        error: "bg-rose-50 text-rose-700 border border-rose-100",
-        info: "bg-blue-50 text-blue-700 border border-blue-100",
-        secondary: "bg-slate-100 text-slate-600 border border-slate-200",
+        default: "bg-muted text-foreground-muted border border-border",
+        success: "bg-success/10 text-success border border-success/25",
+        warning: "bg-warning/10 text-warning border border-warning/25",
+        error: "bg-destructive/10 text-destructive border border-destructive/25",
+        info: "bg-info/10 text-info border border-info/25",
+        secondary: "bg-secondary text-secondary-foreground border border-border",
       },
       size: {
         default: "px-3 py-1.5 text-xs",
@@ -40,11 +40,11 @@ function Badge({ className, variant, size, dot, children, ...props }: BadgeProps
         <span
           className={cn(
             "h-1.5 w-1.5 rounded-full",
-            variant === "success" && "bg-emerald-500",
-            variant === "warning" && "bg-amber-500",
-            variant === "error" && "bg-rose-500",
-            variant === "info" && "bg-blue-500",
-            (variant === "default" || variant === "secondary" || !variant) && "bg-slate-500",
+            variant === "success" && "bg-success",
+            variant === "warning" && "bg-warning",
+            variant === "error" && "bg-destructive",
+            variant === "info" && "bg-info",
+            (variant === "default" || variant === "secondary" || !variant) && "bg-foreground-disabled",
           )}
         />
       )}

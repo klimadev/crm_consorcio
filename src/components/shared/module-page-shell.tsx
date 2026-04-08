@@ -11,8 +11,8 @@ export function ModulePageShell({ children, spacing = "md", className }: ModuleP
   return (
     <section
       className={cn(
-        "rounded-2xl bg-slate-50/50 p-4 md:p-6",
-        spacing === "md" ? "space-y-5 pb-6" : "space-y-6 pb-6",
+        "min-w-0",
+        spacing === "md" ? "space-y-5" : "space-y-6",
         className,
       )}
     >

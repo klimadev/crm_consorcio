@@ -1,5 +1,6 @@
 "use client";
 
+import { AlertCircle, ArrowRight, Loader2, ShieldAlert } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,16 +22,24 @@ export function InativacaoDialog({ vm }: InativacaoDialogProps) {
         }
       }}
     >
-        <DialogContent className="rounded-2xl">
+        <DialogContent className="rounded-2xl sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Inativar colaborador</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-3">
-            <p className="text-sm text-slate-600">
-              Ao inativar <span className="font-semibold">{vm.funcionariosDestinoInativacao?.nome}</span>, os leads precisam ser
-              reatribuidos para outro colaborador ativo do mesmo PDV.
-            </p>
+          <div className="space-y-4">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <div className="flex items-start gap-3">
+                <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+                <div className="space-y-1">
+                  <p className="font-semibold">Ação sensível</p>
+                  <p>
+                    Ao inativar <span className="font-semibold">{vm.funcionariosDestinoInativacao?.nome}</span>, os leads atuais precisam ser
+                    transferidos para outro colaborador ativo do mesmo PDV.
+                  </p>
+                </div>
+              </div>
+            </div>
 
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Destino da reatribuicao</p>
@@ -57,6 +66,17 @@ export function InativacaoDialog({ vm }: InativacaoDialogProps) {
               </Select>
             </div>
 
+            {vm.destinoInativacaoIndividual ? (
+              <div className="rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-foreground">
+                <div className="flex items-center gap-2 text-foreground-muted">
+                  <ArrowRight className="h-4 w-4" />
+                  <span>
+                    Leads de <span className="font-semibold text-foreground">{vm.funcionariosDestinoInativacao?.nome}</span> serão enviados para o colaborador selecionado.
+                  </span>
+                </div>
+              </div>
+            ) : null}
+
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Observacao (opcional)</p>
               <Textarea
@@ -67,9 +87,14 @@ export function InativacaoDialog({ vm }: InativacaoDialogProps) {
               />
             </div>
 
-            {vm.erroLista && <p className="text-sm font-medium text-rose-600">{vm.erroLista}</p>}
+            {vm.erroInativacaoIndividual ? (
+              <div className="flex items-start gap-2 rounded-xl border border-destructive/25 bg-destructive/10 px-3 py-3 text-sm text-destructive">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <p>{vm.erroInativacaoIndividual}</p>
+              </div>
+            ) : null}
             {vm.funcionariosDestinoMesmoPdv.length === 0 ? (
-              <p className="text-sm font-medium text-amber-700">Nenhum colaborador no mesmo PDV. Atribua a um gerente geral.</p>
+              <p className="text-sm font-medium text-amber-700">Nenhum colaborador ativo no mesmo PDV pode receber os leads agora.</p>
             ) : null}
 
             <div className="flex gap-2">
@@ -89,7 +114,14 @@ export function InativacaoDialog({ vm }: InativacaoDialogProps) {
                 vm.funcionariosDestinoMesmoPdv.length === 0
               }
             >
-              {vm.executandoInativacaoIndividual ? "Processando..." : "Inativar colaborador"}
+              {vm.executandoInativacaoIndividual ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Inativando...
+                </>
+              ) : (
+                "Confirmar inativação"
+              )}
             </Button>
           </div>
         </div>

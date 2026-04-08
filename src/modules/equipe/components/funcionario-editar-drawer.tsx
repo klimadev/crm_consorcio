@@ -188,8 +188,9 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
 
   return (
     <Sheet open={aberto} onOpenChange={(proximoAberto) => { if (!proximoAberto) onFechar(); }}>
-      <SheetContent side="right" className="w-full max-w-lg overflow-y-auto bg-slate-50/50">
-        <SheetHeader className="pb-6 border-b border-slate-100">
+      <SheetContent side="right" className="h-[100dvh] max-h-[100dvh] w-full max-w-lg overflow-hidden">
+        <div className="flex h-full min-h-0 flex-col">
+        <SheetHeader className="pb-6 border-b border-border/60">
           {/* Header com avatar e info do colaborador */}
           <div className="flex items-start gap-4">
             <ColaboradorAvatar nome={funcionario?.nome || ""} />
@@ -211,6 +212,7 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
           </SheetDescription>
         </SheetHeader>
 
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
         <Tabs defaultValue="dados" className="mt-6">
           <TabsList className="grid w-full grid-cols-3 bg-slate-100/80 p-1 rounded-xl">
             <TabsTrigger value="dados" className="rounded-lg gap-1.5 text-sm font-medium">
@@ -431,7 +433,7 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
           </div>
         )}
 
-        <SheetFooter className="mt-8 pt-4 border-t border-slate-100 flex-row gap-3">
+        <SheetFooter className="mt-8 pt-4 border-t border-border/60 flex-row gap-3">
           <div className="relative flex-1">
             <Button 
               variant="outline" 
@@ -445,7 +447,7 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
             
             {/* Dropdown de ações */}
             {mostrarMenuAcoes && (
-              <div className="absolute bottom-full mb-2 left-0 right-0 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-10">
+              <div className="absolute bottom-full mb-2 left-0 right-0 rounded-xl border border-border bg-background-elevated py-2 z-10 shadow-lg">
                 <button 
                   className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
                   onClick={handleVerHistorico}
@@ -490,7 +492,9 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
             )}
           </Button>
         </SheetFooter>
-      </SheetContent>
+        </div>
+        </div>
+        </SheetContent>
     </Sheet>
   );
 }

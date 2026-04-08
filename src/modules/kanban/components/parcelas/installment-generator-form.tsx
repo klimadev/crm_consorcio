@@ -45,19 +45,19 @@ function DataPreview({ dataPrimeira, quantidade }: { dataPrimeira: string; quant
   const restantes = quantidadeNum > 6 ? quantidadeNum - 6 : 0;
 
   return (
-    <div className="rounded-xl bg-slate-50 p-3">
-      <p className="mb-2 text-xs font-medium text-slate-600">Datas de vencimento:</p>
+    <div className="rounded-xl bg-muted p-3">
+      <p className="mb-2 text-xs font-medium text-foreground-muted">Datas de vencimento:</p>
       <div className="flex flex-wrap gap-1.5">
         {datas.map((data, idx) => (
           <span
             key={idx}
-            className="rounded-md bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow-sm"
+            className="rounded-md border border-border bg-background-surface px-2 py-1 text-xs font-medium text-foreground shadow-sm"
           >
             {formataData(data.toISOString())}
           </span>
         ))}
         {restantes > 0 && (
-          <span className="rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">
+            <span className="rounded-md bg-warning/10 px-2 py-1 text-xs font-medium text-warning">
             +{restantes} mais
           </span>
         )}
@@ -83,24 +83,24 @@ export function InstallmentGeneratorForm({
   const isFormValid = valorTotal && quantidadeParcelas && dataPrimeiroVencimento && qtdParcelas > 0;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <h3 className="text-sm font-semibold text-slate-800">Gerar Plano de Pagamento</h3>
-      <p className="mt-1 text-xs text-slate-500">Defina o valor total, quantidade de parcelas e primeira data de vencimento.</p>
+    <div className="rounded-2xl border border-border bg-background-surface p-4 shadow-sm">
+      <h3 className="text-sm font-semibold text-foreground">Gerar Plano de Pagamento</h3>
+      <p className="mt-1 text-xs text-foreground-muted">Defina o valor total, quantidade de parcelas e primeira data de vencimento.</p>
 
       <div className="mt-4 space-y-3">
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-slate-600">Valor Total</label>
+          <label className="text-xs font-medium text-foreground-muted">Valor Total</label>
           <Input
             value={valorTotal}
             onChange={(event) => onValorTotalChange(event.target.value)}
             placeholder="0,00"
             inputMode="numeric"
-            className="h-10 rounded-xl border-slate-200"
+            className="h-10 rounded-xl border-border"
           />
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-slate-600">Quantidade de Parcelas</label>
+          <label className="text-xs font-medium text-foreground-muted">Quantidade de Parcelas</label>
           <Input
             type="number"
             min={1}
@@ -108,27 +108,27 @@ export function InstallmentGeneratorForm({
             value={quantidadeParcelas}
             onChange={(event) => onQuantidadeParcelasChange(event.target.value)}
             placeholder="Ex.: 60"
-            className="h-10 rounded-xl border-slate-200"
+            className="h-10 rounded-xl border-border"
           />
         </div>
 
         {valorPorParcela > 0 && qtdParcelas > 0 && (
-          <div className="rounded-xl bg-emerald-50 p-3 text-center">
-            <p className="text-xs text-emerald-600">Valor de cada parcela</p>
-            <p className="text-lg font-bold text-emerald-700">
+          <div className="rounded-xl bg-success/10 p-3 text-center">
+            <p className="text-xs text-success">Valor de cada parcela</p>
+            <p className="text-lg font-bold text-success">
               {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valorPorParcela)}
             </p>
           </div>
         )}
 
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-slate-600">Data do 1° Vencimento</label>
+          <label className="text-xs font-medium text-foreground-muted">Data do 1° Vencimento</label>
           <DatePickerWithWarning
             value={dataPrimeiroVencimento}
             onChange={onDataPrimeiroVencimentoChange}
             warningMessage="Atenção: data no passado. Parcelas serão geradas com vencimentos retroativos."
           />
-          <p className="text-xs text-slate-400">As parcelas vencerão todo dia {dataPrimeiroVencimento ? new Date(dataPrimeiroVencimento + "T00:00:00").getDate() : "..."} de cada mês</p>
+          <p className="text-xs text-foreground-disabled">As parcelas vencerão todo dia {dataPrimeiroVencimento ? new Date(dataPrimeiroVencimento + "T00:00:00").getDate() : "..."} de cada mês</p>
         </div>
 
         {/* Preview das datas */}
@@ -138,7 +138,7 @@ export function InstallmentGeneratorForm({
           type="button"
           onClick={onGerarPlano}
           disabled={gerando || !isFormValid}
-          className="w-full rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
+          className="w-full rounded-xl bg-success text-success-foreground hover:bg-success/90"
         >
           {gerando ? (
             <span className="inline-flex items-center gap-2">

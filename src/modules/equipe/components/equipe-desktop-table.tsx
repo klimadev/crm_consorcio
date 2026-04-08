@@ -28,11 +28,11 @@ export function EquipeDesktopTable({ vm }: EquipeDesktopTableProps) {
 
   function iconeOrdenacao(campo: "nome" | "email" | "cargo" | "status" | "pdv") {
     if (campoOrdenacao !== campo) {
-      return <ArrowUpDown className="h-4 w-4 text-slate-400" />;
+      return <ArrowUpDown className="h-4 w-4 text-foreground-disabled" />;
     }
     return vm.direcao === "asc" 
-      ? <ArrowUp className="h-4 w-4 text-slate-800 font-semibold" /> 
-      : <ArrowDown className="h-4 w-4 text-slate-800 font-semibold" />;
+      ? <ArrowUp className="h-4 w-4 text-foreground font-semibold" /> 
+      : <ArrowDown className="h-4 w-4 text-foreground font-semibold" />;
   }
 
   const todosDaPaginaSelecionados = vm.funcionarios.length > 0 && vm.funcionarios.every((item) => vm.idsSelecionados.includes(item.id));
@@ -43,21 +43,21 @@ export function EquipeDesktopTable({ vm }: EquipeDesktopTableProps) {
     const ehSemResultados = temFiltrosAtivos;
     
     return (
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200/60 bg-white py-16 text-center shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100">
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-background-surface py-16 text-center shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
           {ehSemResultados ? (
-            <Search className="h-8 w-8 text-slate-400" />
+            <Search className="h-8 w-8 text-foreground-disabled" />
           ) : (
-            <Users className="h-8 w-8 text-slate-400" />
+            <Users className="h-8 w-8 text-foreground-disabled" />
           )}
         </div>
         {ehSemResultados ? (
           <>
-            <p className="text-lg font-semibold text-slate-700">Nenhum resultado encontrado</p>
-            <p className="mt-1 max-w-xs text-sm text-slate-500">Tente ajustar os filtros ou buscar por outros termos.</p>
+            <p className="text-lg font-semibold text-foreground">Nenhum resultado encontrado</p>
+            <p className="mt-1 max-w-xs text-sm text-foreground-muted">Tente ajustar os filtros ou buscar por outros termos.</p>
             <Button 
               variant="outline"
-              className="mt-6 rounded-xl border-slate-300 font-medium text-slate-600 hover:bg-slate-50" 
+              className="mt-6 rounded-xl border-border font-medium text-foreground-muted hover:bg-background-surface" 
               onClick={vm.limparFiltros}
             >
               Limpar filtros
@@ -65,10 +65,10 @@ export function EquipeDesktopTable({ vm }: EquipeDesktopTableProps) {
           </>
         ) : (
           <>
-            <p className="text-lg font-semibold text-slate-700">Nenhum colaborador cadastrado</p>
-            <p className="mt-1 max-w-xs text-sm text-slate-500">Adicione seu primeiro colaborador para comecar a gerenciar sua equipe.</p>
+            <p className="text-lg font-semibold text-foreground">Nenhum colaborador cadastrado</p>
+            <p className="mt-1 max-w-xs text-sm text-foreground-muted">Adicione seu primeiro colaborador para comecar a gerenciar sua equipe.</p>
             {vm.podeGerenciarEmpresa && (
-              <Button className="mt-6 rounded-xl bg-slate-800 font-medium text-white hover:bg-slate-700" onClick={() => vm.setDialogNovoFuncionarioAberto(true)}>
+              <Button className="mt-6 rounded-xl bg-foreground font-medium text-background hover:bg-foreground/90" onClick={() => vm.setDialogNovoFuncionarioAberto(true)}>
                 Adicionar colaborador
               </Button>
             )}
@@ -79,17 +79,17 @@ export function EquipeDesktopTable({ vm }: EquipeDesktopTableProps) {
   }
 
   return (
-    <div className="hidden rounded-2xl border border-slate-200/60 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] md:block">
+    <div className="hidden rounded-2xl border border-border bg-background-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] md:block">
       <Table>
         <TableHeader>
-          <TableRow className="bg-slate-50/80">
+          <TableRow className="bg-muted/80">
             {vm.podeExecutarAcoesLote && (
               <TableHead className="w-12">
                 <input
                   type="checkbox"
                   checked={todosDaPaginaSelecionados}
                   onChange={(e) => vm.alternarSelecaoPagina(e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-slate-600 focus:ring-slate-400"
+                  className="h-4 w-4 rounded border-border text-foreground-muted focus:ring-ring"
                   aria-label="Selecionar todos os colaboradores desta pagina"
                 />
               </TableHead>
@@ -146,7 +146,7 @@ export function EquipeDesktopTable({ vm }: EquipeDesktopTableProps) {
           {vm.funcionarios.map((funcionario) => (
             <TableRow 
               key={funcionario.id} 
-              className="cursor-pointer border-slate-100 transition-all duration-200 hover:bg-slate-50/80 hover:shadow-sm"
+              className="cursor-pointer border-border/60 transition-all duration-200 hover:bg-muted/80 hover:shadow-sm"
               onClick={() => vm.iniciarEdicao(funcionario)}
             >
               {vm.podeExecutarAcoesLote && (
@@ -155,7 +155,8 @@ export function EquipeDesktopTable({ vm }: EquipeDesktopTableProps) {
                     type="checkbox"
                     checked={vm.idsSelecionados.includes(funcionario.id)}
                     onChange={(e) => vm.alternarSelecao(funcionario.id, e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-slate-600 focus:ring-slate-400"
+                    onClick={(e) => e.stopPropagation()}
+                    className="h-4 w-4 rounded border-border text-foreground-muted focus:ring-ring"
                     aria-label={`Selecionar ${funcionario.nome}`}
                   />
                 </TableCell>
@@ -163,14 +164,14 @@ export function EquipeDesktopTable({ vm }: EquipeDesktopTableProps) {
               <TableCell className="py-5">
                 <button
                   type="button"
-                  className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1 -mx-2 transition-all duration-200 hover:bg-slate-100 hover:shadow-sm"
+                  className="-mx-2 flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1 transition-all duration-200 hover:bg-background-surface hover:shadow-sm"
                   onClick={() => vm.iniciarEdicao(funcionario)}
                   title="Clique para editar"
                 >
                   <Avatar nome={funcionario.nome} tamanho="md" />
                   <div className="flex flex-col items-start">
-                    <p className="text-sm font-medium text-slate-800">{funcionario.nome}</p>
-                    <span className="flex items-center gap-1 text-xs text-blue-600 opacity-0 transition-opacity hover:opacity-100">
+                    <p className="text-sm font-medium text-foreground">{funcionario.nome}</p>
+                    <span className="flex items-center gap-1 text-xs text-info opacity-0 transition-opacity hover:opacity-100">
                       <Pencil className="h-3 w-3" />
                       Editar
                     </span>
@@ -178,12 +179,12 @@ export function EquipeDesktopTable({ vm }: EquipeDesktopTableProps) {
                 </button>
               </TableCell>
               <TableCell className="py-5">
-                <p className="text-sm text-slate-600">{funcionario.email}</p>
+                <p className="text-sm text-foreground-muted">{funcionario.email}</p>
               </TableCell>
               <TableCell className="py-5">
-                <span className="text-sm text-slate-600">{funcionario.cargo}</span>
+                <span className="text-sm text-foreground-muted">{funcionario.cargo}</span>
               </TableCell>
-              <TableCell className="py-5 text-slate-600">
+              <TableCell className="py-5 text-foreground-muted">
                 <span className="text-sm">{funcionario.pdv?.nome}</span>
               </TableCell>
               <TableCell className="py-5">

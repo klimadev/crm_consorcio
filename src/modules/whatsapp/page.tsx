@@ -58,14 +58,14 @@ function MiniDonut({ value }: { value: number }) {
   return (
     <div className="relative h-10 w-10">
       <svg viewBox="0 0 80 80" className="h-full w-full -rotate-90">
-        <circle
+          <circle
           cx="40"
           cy="40"
           r="36"
           fill="none"
           stroke="currentColor"
           strokeWidth="6"
-          className="text-slate-200"
+          className="text-border"
         />
         <circle
           cx="40"
@@ -80,7 +80,7 @@ function MiniDonut({ value }: { value: number }) {
           className="text-emerald-500 transition-all duration-700 ease-out"
         />
       </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-slate-700">
+      <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-foreground">
         {value}%
       </span>
     </div>
@@ -134,17 +134,17 @@ export function ModuloWhatsapp() {
 
       <InlineStatusAlert variant="success" message={sucesso} icon={<CheckCircle2 className="h-5 w-5" />} className="animate-fade-in" />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card className="relative overflow-hidden rounded-2xl border border-white/40 bg-white/60 shadow-xl backdrop-blur-xl">
-          <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent" />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+        <Card className="relative overflow-hidden rounded-2xl border border-border bg-background-surface shadow-xl backdrop-blur-xl">
+          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent dark:from-white/5" />
           <CardContent className="relative flex items-center justify-between p-5">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50">
                 <Wifi className="h-6 w-6 text-emerald-600" />
               </div>
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Saúde</p>
-                <p className="text-2xl font-bold text-slate-800">{connectedCount}</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-foreground-muted">Saúde</p>
+                <p className="text-2xl font-bold text-foreground">{connectedCount}</p>
                 <p className="text-xs text-emerald-600">Instâncias Ativas</p>
               </div>
             </div>
@@ -152,16 +152,16 @@ export function ModuloWhatsapp() {
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden rounded-2xl border border-white/40 bg-white/60 shadow-xl backdrop-blur-xl">
-          <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent" />
+        <Card className="relative overflow-hidden rounded-2xl border border-border bg-background-surface shadow-xl backdrop-blur-xl">
+          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent dark:from-white/5" />
           <CardContent className="relative flex items-center justify-between p-5">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50">
                 <MessageCircle className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Volume</p>
-                <p className="text-2xl font-bold text-slate-800">{jobsVm.resumo.enviadosHoje}</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-foreground-muted">Volume</p>
+                <p className="text-2xl font-bold text-foreground">{jobsVm.resumo.enviadosHoje}</p>
                 <p className="text-xs text-blue-600">Mensagens Hoje</p>
               </div>
             </div>
@@ -171,16 +171,16 @@ export function ModuloWhatsapp() {
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden rounded-2xl border border-white/40 bg-white/60 shadow-xl backdrop-blur-xl">
-          <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent" />
+        <Card className="relative overflow-hidden rounded-2xl border border-border bg-background-surface shadow-xl backdrop-blur-xl">
+          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent dark:from-white/5" />
           <CardContent className="relative flex items-center justify-between p-5">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50">
                 <TrendingUp className="h-6 w-6 text-amber-600" />
               </div>
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Eficiência</p>
-                <p className="text-2xl font-bold text-slate-800">{successRate}%</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-foreground-muted">Eficiência</p>
+                <p className="text-2xl font-bold text-foreground">{successRate}%</p>
                 <p className="text-xs text-amber-600">Taxa de Sucesso</p>
               </div>
             </div>
@@ -189,18 +189,18 @@ export function ModuloWhatsapp() {
         </Card>
       </div>
 
-      <Card className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm transition-shadow hover:shadow-md">
+      <Card className="overflow-hidden rounded-2xl border border-border bg-background-surface shadow-sm transition-shadow hover:shadow-md">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold text-slate-800">Nova Conexão WhatsApp</CardTitle>
+          <CardTitle className="text-base font-semibold text-foreground">Nova Conexão WhatsApp</CardTitle>
         </CardHeader>
         <CardContent>
-          <form className="flex gap-3" onSubmit={handleCriar}>
+          <form className="flex flex-col gap-3 sm:flex-row" onSubmit={handleCriar}>
             <div className="relative flex-1">
               <Input
-                className={`h-11 rounded-xl border-slate-200 bg-slate-50/80 pr-4 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 transition-all ${
+                className={`h-11 rounded-xl border-border bg-background-surface pr-4 text-sm text-foreground placeholder:text-foreground-muted focus:border-emerald-400 focus:bg-background-surface focus:ring-2 transition-all ${
                   focused 
                     ? "ring-2 ring-emerald-500/20 border-emerald-400" 
-                    : "ring-slate-200/50"
+                    : "ring-border/50"
                 }`}
                 placeholder="Ex: WhatsApp Vendas, Suporte..."
                 value={nomeInstancia}
@@ -237,8 +237,8 @@ export function ModuloWhatsapp() {
 
       {vm.carregando ? (
         <div className="flex flex-col items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-          <p className="mt-3 text-sm text-slate-500">Carregando suas conexões...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-foreground-muted" />
+          <p className="mt-3 text-sm text-foreground-muted">Carregando suas conexões...</p>
         </div>
       ) : (
         <InstanciasList

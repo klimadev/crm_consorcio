@@ -24,18 +24,19 @@ export function AutomationFlowItem({
 }: AutomationFlowItemProps) {
   const isFollowUp = automacao.evento === "LEAD_FOLLOW_UP";
   const isError = automacao.status === "ERRO_CONFIG" || automacao.status === "ERRO_JOB";
+  const nomeAutomacao = isFollowUp ? "automação de follow-up" : "automação de mudança de estágio";
 
   return (
     <Card
       className={`group overflow-hidden rounded-xl border transition-all hover:shadow-md ${
         isError
           ? "border-rose-200/60 bg-rose-50/30"
-          : "border-slate-200/60 bg-white hover:border-slate-300/60"
+          : "border-border bg-background-surface hover:border-border/80"
       }`}
     >
       <CardContent className="p-0">
         <div className="flex items-center gap-0">
-          <div className="flex-1 bg-gradient-to-r from-slate-50 to-white p-4 border-r border-slate-100">
+          <div className="flex-1 border-r border-border bg-gradient-to-r from-muted to-background p-4">
             <div className="flex items-center gap-2">
               <div
                 className={`flex h-8 w-8 items-center justify-center rounded-lg ${
@@ -45,35 +46,35 @@ export function AutomationFlowItem({
                 <Zap className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-800">
+                <p className="text-sm font-medium text-foreground">
                   {isFollowUp ? "Follow-up Timeline" : "Mudança de Estágio"}
                 </p>
-                <p className="text-xs text-slate-500">{instanciaNome}</p>
+                <p className="text-xs text-foreground-muted">{instanciaNome}</p>
               </div>
             </div>
           </div>
 
-          <div className="flex h-12 w-12 items-center justify-center bg-slate-50">
-            <ArrowRight className="h-4 w-4 text-slate-400" />
+          <div className="flex h-12 w-12 items-center justify-center bg-muted">
+            <ArrowRight className="h-4 w-4 text-foreground-muted" />
           </div>
 
-          <div className="flex-1 bg-gradient-to-r from-white to-slate-50 p-4">
+            <div className="flex-1 bg-gradient-to-r from-background-surface to-background-elevated p-4">
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
                 {isFollowUp ? (
                   <div className="flex items-center gap-2">
                     <Clock3 className="h-4 w-4 text-amber-500" />
-                    <span className="text-sm font-medium text-slate-700">
+                    <span className="text-sm font-medium text-foreground">
                       {automacao.etapas?.length ?? 0} etapa
                       {automacao.etapas?.length !== 1 ? "s" : ""}
                     </span>
                   </div>
                 ) : (
-                  <p className="truncate text-sm text-slate-600 max-w-[200px]">
+                  <p className="truncate text-sm text-foreground-muted max-w-[200px]">
                     {automacao.mensagem || "Sem mensagem"}
                   </p>
                 )}
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-foreground-muted">
                   {automacao.tipo_destino === "FIXO"
                     ? automacao.telefone_destino
                     : "Telefone do lead"}
@@ -86,7 +87,7 @@ export function AutomationFlowItem({
                     ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                     : isError
                     ? "bg-rose-50 text-rose-700 border-rose-200"
-                    : "bg-slate-100 text-slate-500 border-slate-200"
+                    : "bg-muted text-foreground-muted border-border"
                 }`}
               >
                 {automacao.status === "ATIVA" && automacao.ativo ? (
@@ -106,7 +107,7 @@ export function AutomationFlowItem({
                   </>
                 ) : (
                   <>
-                    <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-foreground-muted" />
                     Inativo
                   </>
                 )}
@@ -114,16 +115,17 @@ export function AutomationFlowItem({
             </div>
           </div>
 
-          <div className="flex items-center gap-1 border-l border-slate-100 bg-slate-50/50 px-2">
+          <div className="flex items-center gap-1 border-l border-border bg-muted/50 px-2">
 <Tooltip content={automacao.ativo ? "Desativar" : "Ativar"}>
             <button
               type="button"
               className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${
                 automacao.ativo
                   ? "border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
-                  : "border-slate-200 bg-white text-slate-400 hover:bg-slate-100"
+                  : "border-border bg-background text-foreground-muted hover:bg-muted"
               }`}
               onClick={() => onToggle(automacao.id, !automacao.ativo)}
+              aria-label={automacao.ativo ? `Desativar ${nomeAutomacao}` : `Ativar ${nomeAutomacao}`}
             >
               {automacao.ativo ? (
                 <Check className="h-4 w-4" />
@@ -136,8 +138,9 @@ export function AutomationFlowItem({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-slate-400 hover:text-blue-600"
+              className="h-8 w-8 text-foreground-muted hover:text-blue-600"
               onClick={() => onEdit(automacao)}
+              aria-label={`Editar ${nomeAutomacao}`}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -159,8 +162,9 @@ export function AutomationFlowItem({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-slate-400 hover:text-rose-600"
+              className="h-8 w-8 text-foreground-muted hover:text-rose-600"
               onClick={() => onRequestDelete(automacao.id)}
+              aria-label={`Excluir ${nomeAutomacao}`}
             >
               <Trash2 className="h-4 w-4" />
             </Button>

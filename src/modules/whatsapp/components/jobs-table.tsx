@@ -41,14 +41,14 @@ function FilterPill({
       onClick={onClick}
       className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
         active
-          ? "bg-slate-800 text-white"
-          : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+          ? "bg-foreground text-background"
+          : "bg-background-surface text-foreground-muted border border-border hover:bg-muted"
       }`}
     >
       {icon}
       {label}
       <span className={`ml-0.5 rounded-full px-1.5 py-0.5 text-xs ${
-        active ? "bg-slate-700 text-slate-300" : "bg-slate-100 text-slate-500"
+        active ? "bg-foreground/10 text-foreground-muted" : "bg-muted text-foreground-muted"
       }`}>
         {count}
       </span>
@@ -59,33 +59,33 @@ function FilterPill({
 function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { bg: string; text: string; border: string; icon: React.ReactNode }> = {
     PENDENTE: {
-      bg: "bg-amber-50",
-      text: "text-amber-700",
-      border: "border-amber-100",
+      bg: "bg-warning/10",
+      text: "text-warning",
+      border: "border-warning/25",
       icon: <Clock className="h-3 w-3" />,
     },
     PROCESSANDO: {
-      bg: "bg-blue-50",
-      text: "text-blue-700",
-      border: "border-blue-100",
+      bg: "bg-info/10",
+      text: "text-info",
+      border: "border-info/25",
       icon: <Loader2 className="h-3 w-3 animate-spin" />,
     },
     ENVIADO: {
-      bg: "bg-gradient-to-r from-emerald-50 to-emerald-100",
-      text: "text-emerald-700",
-      border: "border-emerald-200",
+      bg: "bg-success/10",
+      text: "text-success",
+      border: "border-success/25",
       icon: <CheckCircle2 className="h-3 w-3" />,
     },
     FALHA: {
-      bg: "bg-rose-50",
-      text: "text-rose-700",
-      border: "border-rose-100",
+      bg: "bg-destructive/10",
+      text: "text-destructive",
+      border: "border-destructive/25",
       icon: <XCircle className="h-3 w-3" />,
     },
     CANCELADO: {
-      bg: "bg-slate-50",
-      text: "text-slate-600",
-      border: "border-slate-100",
+      bg: "bg-muted",
+      text: "text-foreground-muted",
+      border: "border-border",
       icon: <XCircle className="h-3 w-3" />,
     },
   };
@@ -128,17 +128,17 @@ function ErrorTooltip({
         {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
       </button>
       {expanded && (
-        <div className="mt-2 rounded-lg border border-rose-200 bg-rose-50/50 p-3 text-left">
+        <div className="mt-2 rounded-lg border border-destructive/25 bg-destructive/10 p-3 text-left">
           <div className="space-y-1">
             <p className="font-semibold text-rose-700">
               Erro: {erroCodigo || "Desconhecido"}
             </p>
             {erroCategoria && (
-              <p className="text-xs text-rose-600">Categoria: {erroCategoria}</p>
+              <p className="text-xs text-destructive">Categoria: {erroCategoria}</p>
             )}
-            <p className="text-xs text-slate-600">{erroDetalhe || erroOriginal}</p>
+            <p className="text-xs text-foreground-muted">{erroDetalhe || erroOriginal}</p>
             {acaoRecomendada && (
-              <p className="text-xs font-medium text-emerald-600 pt-1 border-t border-rose-200 mt-1">
+                <p className="mt-1 border-t border-destructive/25 pt-1 text-xs font-medium text-success">
                 {acaoRecomendada}
               </p>
             )}
@@ -173,7 +173,7 @@ function CountdownTimer({ targetDate, status }: { targetDate: string; status: st
   }
 
   if (status === "CANCELADO") {
-    return <span className="text-xs text-slate-500">Cancelado</span>;
+    return <span className="text-xs text-foreground-muted">Cancelado</span>;
   }
 
   if (status === "FALHA") {
@@ -194,26 +194,26 @@ function CountdownTimer({ targetDate, status }: { targetDate: string; status: st
 
   if (hours > 0) {
     return (
-      <span className="font-mono text-xs text-slate-600">
-        <span className="text-slate-800 font-semibold">{hours}h</span>
-        <span className="text-slate-400 mx-0.5">:</span>
-        <span className="text-slate-800 font-semibold">{minutes.toString().padStart(2, "0")}m</span>
-        <span className="text-slate-400 mx-0.5">:</span>
-        <span className="text-slate-800 font-semibold">{seconds.toString().padStart(2, "0")}s</span>
+      <span className="font-mono text-xs text-foreground-muted">
+        <span className="font-semibold text-foreground">{hours}h</span>
+        <span className="mx-0.5 text-foreground-disabled">:</span>
+        <span className="font-semibold text-foreground">{minutes.toString().padStart(2, "0")}m</span>
+        <span className="mx-0.5 text-foreground-disabled">:</span>
+        <span className="font-semibold text-foreground">{seconds.toString().padStart(2, "0")}s</span>
       </span>
     );
   }
 
   if (minutes > 0) {
     return (
-      <span className="font-mono text-xs text-amber-600 font-medium">
+      <span className="font-mono text-xs font-medium text-warning">
         {minutes}m {seconds}s
       </span>
     );
   }
 
   return (
-    <span className="font-mono text-xs text-rose-600 font-medium animate-pulse">
+    <span className="font-mono text-xs font-medium text-destructive animate-pulse">
       {seconds}s
     </span>
   );
@@ -289,25 +289,25 @@ export function JobsTable({ resumo, jobs, carregando, erro, onRetryJob }: JobsTa
 
   if (carregando && jobs.length === 0) {
     return (
-      <div className="rounded-xl border border-slate-200/60 bg-white p-8">
+      <div className="rounded-xl border border-border bg-background-surface p-8">
         <div className="flex flex-col items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-          <p className="mt-3 text-sm text-slate-500">Carregando jobs...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-foreground-muted" />
+          <p className="mt-3 text-sm text-foreground-muted">Carregando jobs...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border border-slate-200/60 bg-white overflow-hidden">
-      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 bg-slate-50/50">
+    <div className="rounded-xl border border-border bg-background-surface overflow-hidden">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3 bg-muted/50">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-50">
             <TimerReset className="h-5 w-5 text-cyan-600" />
           </div>
           <div>
-            <p className="text-lg font-bold text-slate-800">Fila de Envios em Tempo Real</p>
-            <p className="text-xs text-slate-500">{resumo.pendentes + resumo.processando} jobs agendados</p>
+            <p className="text-lg font-bold text-foreground">Fila de Envios em Tempo Real</p>
+            <p className="text-xs text-foreground-muted">{resumo.pendentes + resumo.processando} jobs agendados</p>
           </div>
         </div>
 
@@ -358,8 +358,8 @@ export function JobsTable({ resumo, jobs, carregando, erro, onRetryJob }: JobsTa
 
       <div className="max-h-[400px] overflow-auto">
         <Table>
-          <TableHeader className="sticky top-0 bg-slate-50">
-            <TableRow className="hover:bg-slate-50">
+          <TableHeader className="sticky top-0 bg-muted">
+            <TableRow className="hover:bg-muted">
               <TableHead className="w-[100px]">Status</TableHead>
               <TableHead className="w-[80px]">ID</TableHead>
               <TableHead>Lead</TableHead>
@@ -372,9 +372,9 @@ export function JobsTable({ resumo, jobs, carregando, erro, onRetryJob }: JobsTa
           <TableBody>
             {filteredJobs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="py-8 text-center text-slate-500">
+                <TableCell colSpan={7} className="py-8 text-center text-foreground-muted">
                   <div className="flex flex-col items-center gap-2">
-                    <TimerReset className="h-8 w-8 text-slate-300" />
+                    <TimerReset className="h-8 w-8 text-foreground-muted/60" />
                     <p className="text-sm">Nenhum job encontrado</p>
                   </div>
                 </TableCell>
@@ -396,7 +396,7 @@ export function JobsTable({ resumo, jobs, carregando, erro, onRetryJob }: JobsTa
                       <StatusBadge status={job.status} />
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1 text-xs text-slate-500">
+                      <div className="flex items-center gap-1 text-xs text-foreground-muted">
                         <span>#{job.id.slice(0, 6)}</span>
                         {job.tentativas > 0 && (
                           <span className="text-amber-600" title={`${job.tentativas} tentativas`}>
@@ -422,10 +422,10 @@ export function JobsTable({ resumo, jobs, carregando, erro, onRetryJob }: JobsTa
                     </TableCell>
                     <TableCell>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-slate-800 max-w-[150px]">
+                        <p className="truncate text-sm font-medium text-foreground max-w-[150px]">
                           {contexto?.lead_nome || "—"}
                         </p>
-                        <p className="truncate text-xs text-slate-500 max-w-[150px]">
+                        <p className="truncate text-xs text-foreground-muted max-w-[150px]">
                           {contexto?.lead_telefone || "—"}
                         </p>
                       </div>
@@ -433,14 +433,14 @@ export function JobsTable({ resumo, jobs, carregando, erro, onRetryJob }: JobsTa
                     <TableCell>
                       {contexto?.estagio_novo && (
                         <div className="flex items-center gap-1 text-xs">
-                          <span className="text-slate-600">{contexto.estagio_anterior}</span>
-                          <ArrowRight className="h-3 w-3 text-slate-400" />
+                          <span className="text-foreground-muted">{contexto.estagio_anterior}</span>
+                          <ArrowRight className="h-3 w-3 text-foreground-muted" />
                           <span className="font-medium text-emerald-600">{contexto.estagio_novo}</span>
                         </div>
                       )}
                     </TableCell>
                     <TableCell>
-                      <p className="truncate text-xs text-slate-600 max-w-[180px]" title={job.mensagem_template}>
+                      <p className="truncate text-xs text-foreground-muted max-w-[180px]" title={job.mensagem_template}>
                         {truncate(job.mensagem_template, 40)}
                       </p>
                       <ErrorTooltip 
@@ -452,7 +452,7 @@ export function JobsTable({ resumo, jobs, carregando, erro, onRetryJob }: JobsTa
                       />
                     </TableCell>
                     <TableCell>
-                      <span className="text-xs text-slate-600 whitespace-nowrap">
+                      <span className="text-xs text-foreground-muted whitespace-nowrap">
                         {formatDate(job.agendado_para)}
                       </span>
                     </TableCell>
@@ -468,8 +468,8 @@ export function JobsTable({ resumo, jobs, carregando, erro, onRetryJob }: JobsTa
       </div>
 
       {filteredJobs.length > 0 && (
-        <div className="flex items-center justify-between border-t border-slate-100 px-4 py-2 bg-slate-50/50">
-          <span className="text-xs text-slate-500">
+        <div className="flex items-center justify-between border-t border-border px-4 py-2 bg-muted/50">
+          <span className="text-xs text-foreground-muted">
             Mostrando <strong>{filteredJobs.length}</strong> de <strong>{jobs.length}</strong> jobs
           </span>
           {filterCounts.falhas > 0 && filter !== "falhas" && (

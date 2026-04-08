@@ -246,6 +246,13 @@ function obterOrigemResultadoMeta(meta: Pick<MetaComRelacionamentos, "periodo_re
   return (meta.periodo_ref?.template?.origem_resultado as OrigemResultadoMeta | undefined) ?? "PAGAMENTOS";
 }
 
+function mesmaMedicaoMeta(
+  meta: Pick<MetaComRelacionamentos, "tipo_meta" | "periodo_ref">,
+  payload: Pick<MetaPayload, "tipo_meta" | "origem_resultado">,
+) {
+  return meta.tipo_meta === payload.tipo_meta && obterOrigemResultadoMeta(meta) === (payload.origem_resultado ?? "PAGAMENTOS");
+}
+
 function intervaloRegistroMeta(meta: {
   id_empresa: string;
   id_pdv: string | null;
@@ -394,7 +401,7 @@ export async function validarMeta(params: {
   const dataInicio = inicioDoDia(params.payload.data_inicio);
   const dataFim = fimDoDia(params.payload.data_fim);
 
-  const metaConflitante = await prismaMetas.meta.findFirst({
+  const metasSobrepostas = await prismaMetas.meta.findMany({
     where: {
       id_empresa: params.id_empresa,
       ativo: true,
@@ -404,8 +411,22 @@ export async function validarMeta(params: {
       data_fim: { gte: dataInicio },
       ...(params.id_meta_atual ? { NOT: { id: params.id_meta_atual } } : {}),
     },
-    select: { id: true },
+    select: {
+      id: true,
+      tipo_meta: true,
+      periodo_ref: {
+        select: {
+          template: {
+            select: {
+              origem_resultado: true,
+            },
+          },
+        },
+      },
+    },
   });
+
+  const metaConflitante = metasSobrepostas.find((meta: Pick<MetaComRelacionamentos, "tipo_meta" | "periodo_ref">) => mesmaMedicaoMeta(meta, params.payload));
 
   if (metaConflitante) {
     return { ok: false, erro: "Ja existe uma meta ativa para essa equipe nesse periodo." };

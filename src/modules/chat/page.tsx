@@ -13,6 +13,9 @@ type ModuloChatProps = {
 };
 
 export function ModuloChat({ perfil, idUsuario }: ModuloChatProps) {
+  void perfil;
+  void idUsuario;
+
   const chatList = useChatList();
   const modulo = useChatModule();
   const [leadDados, setLeadDados] = useState<LeadDadosChat | null>(null);
@@ -79,7 +82,7 @@ export function ModuloChat({ perfil, idUsuario }: ModuloChatProps) {
   }, [modulo.conversaSelecionada, carregarDadosLead]);
 
   return (
-    <section className="flex min-h-0 flex-1 overflow-hidden lg:h-[calc(100vh-4rem)] lg:max-h-[calc(100vh-4rem)] lg:min-h-[calc(100vh-4rem)] lg:py-0">
+    <section className="flex min-h-0 flex-1 overflow-hidden lg:h-[calc(100vh-2rem)] lg:max-h-[calc(100vh-2rem)] lg:min-h-[calc(100vh-2rem)] lg:py-0 xl:h-[calc(100vh-2.5rem)] xl:max-h-[calc(100vh-2.5rem)] xl:min-h-[calc(100vh-2.5rem)]">
       <ChatLayout
         conversaSelecionada={modulo.conversaSelecionada}
         mostrarDadosCliente={modulo.mostrarDadosCliente}

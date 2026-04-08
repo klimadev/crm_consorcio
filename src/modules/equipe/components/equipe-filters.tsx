@@ -38,12 +38,12 @@ export function EquipeFilters({ vm }: EquipeFiltersProps) {
   }, [buscaTempoReal, vm.busca, vm]);
 
   return (
-    <section className="rounded-xl border border-slate-200/70 bg-slate-50/70 px-4 py-3">
+    <section className="rounded-xl border border-border bg-muted px-4 py-3">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="relative w-full md:max-w-sm">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-disabled" aria-hidden="true" />
           <Input
-            className="h-11 rounded-xl border-slate-200 bg-slate-50/80 pl-10 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200/50"
+            className="h-11 rounded-xl border-border bg-background-surface pl-10 text-sm text-foreground placeholder:text-foreground-disabled focus:border-ring focus:bg-background focus:ring-2 focus:ring-ring/30"
             placeholder="Buscar por nome, email ou PDV..."
             value={buscaTempoReal}
             onChange={(e) => setBuscaTempoReal(e.target.value)}
@@ -52,14 +52,14 @@ export function EquipeFilters({ vm }: EquipeFiltersProps) {
           {/* Indicador discreto de atualização em segundo plano */}
           {vm.atualizando && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-200 border-t-blue-500" />
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-border border-t-info" />
             </div>
           )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <Select value={vm.statusFiltro} onValueChange={(valor) => vm.atualizarParametrosUrl({ status: valor }, true)}>
-            <SelectTrigger className="h-10 w-auto min-w-[140px] rounded-xl border-slate-200 bg-slate-50/80 px-4 text-sm font-medium text-slate-600">
+            <SelectTrigger className="h-10 w-auto min-w-[140px] rounded-xl border-border bg-background-surface px-4 text-sm font-medium text-foreground-muted">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -70,7 +70,7 @@ export function EquipeFilters({ vm }: EquipeFiltersProps) {
           </Select>
 
           <Select value={vm.cargoFiltro} onValueChange={(valor) => vm.atualizarParametrosUrl({ cargo: valor }, true)}>
-            <SelectTrigger className="h-10 w-auto min-w-[140px] rounded-xl border-slate-200 bg-slate-50/80 px-4 text-sm font-medium text-slate-600">
+            <SelectTrigger className="h-10 w-auto min-w-[140px] rounded-xl border-border bg-background-surface px-4 text-sm font-medium text-foreground-muted">
               <SelectValue placeholder="Cargo" />
             </SelectTrigger>
             <SelectContent>
@@ -85,7 +85,7 @@ export function EquipeFilters({ vm }: EquipeFiltersProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-10 rounded-xl px-3 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+              className="h-10 rounded-xl px-3 text-sm font-medium text-foreground-muted hover:bg-background-surface hover:text-foreground"
               onClick={vm.limparFiltros}
             >
               <X className="mr-1.5 h-4 w-4" />

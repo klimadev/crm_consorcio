@@ -35,24 +35,27 @@ export function EquipeMobileList({ vm }: EquipeMobileListProps) {
     <div className="md:hidden space-y-2">
       <div className="flex items-center gap-2 px-2">
         <input
+          id="selecionar-todos-mobile"
           type="checkbox"
           checked={todosDaPaginaSelecionados}
           onChange={(e) => vm.alternarSelecaoPagina(e.target.checked)}
           className="h-4 w-4 rounded border-slate-300 text-slate-600 focus:ring-slate-400"
         />
-        <span className="text-sm text-slate-500">Selecionar todos</span>
+        <label htmlFor="selecionar-todos-mobile" className="text-sm text-slate-500">Selecionar todos</label>
       </div>
       
       {vm.funcionarios.map((funcionario) => {
         const isSelected = vm.idsSelecionados.includes(funcionario.id);
 
         return (
-          <div
+          <button
+            type="button"
             key={funcionario.id}
-            className={`relative cursor-pointer rounded-xl border bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
+            className={`relative cursor-pointer rounded-xl border bg-white p-4 text-left shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
               isSelected ? "border-blue-300 bg-blue-50/30" : "border-slate-200"
             }`}
             onClick={() => vm.iniciarEdicao(funcionario)}
+            aria-label={`Editar colaborador ${funcionario.nome}`}
           >
             <div className="flex items-start gap-3">
               <input
@@ -78,13 +81,13 @@ export function EquipeMobileList({ vm }: EquipeMobileListProps) {
                   <span className="font-medium">{funcionario.cargo}</span>
                   <span>{funcionario.pdv?.nome || "Sem PDV"}</span>
                 </div>
-                <div className="mt-2 flex items-center gap-1 text-xs text-blue-600 opacity-0 transition-opacity hover:opacity-100">
+                <div className="mt-2 flex items-center gap-1 text-xs text-blue-600">
                   <Pencil className="h-3 w-3" />
-                  <span>Clique para editar</span>
+                  <span>Toque para editar</span>
                 </div>
               </div>
             </div>
-          </div>
+          </button>
         );
       })}
     </div>

@@ -44,7 +44,7 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
     setLoading(true);
     setError(null);
 
-    const resultado = await listarParcelasLead(leadId);
+    const resultado = await listarParcelasLead(leadId, { limit: 300 });
     if (!resultado.ok) {
       setError(resultado.erro);
       setLoading(false);

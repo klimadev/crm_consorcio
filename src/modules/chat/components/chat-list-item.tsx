@@ -75,24 +75,24 @@ export function ChatListItem({ conversa, ativa, onClick }: Props) {
       type="button"
       onClick={onClick}
       className={cn(
-        "group relative flex w-full items-center gap-3 px-4 py-3 text-left transition-all duration-200 hover:bg-slate-100 hover:shadow-sm hover:shadow-slate-200/50 cursor-pointer",
-        ativa && "bg-emerald-50 hover:bg-emerald-50 shadow-sm shadow-emerald-200/30",
+        "group relative flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-all duration-200 hover:bg-muted hover:shadow-sm hover:shadow-border/30",
+        ativa && "bg-success/10 hover:bg-success/10 shadow-sm shadow-success/10",
       )}
     >
       {/* Borda lateral colorida por origem */}
       <div
         className={cn(
           "absolute inset-y-0 left-0 w-1 rounded-r transition-opacity duration-200 group-hover:opacity-80",
-          conversa.leadOrigem === "ANUNCIO_CTWA" && "bg-purple-500",
-          conversa.leadOrigem === "SINCRONIZACAO_WHATSAPP" && "bg-emerald-500",
-          conversa.leadOrigem === "MANUAL" && "bg-blue-500",
+           conversa.leadOrigem === "ANUNCIO_CTWA" && "bg-info",
+           conversa.leadOrigem === "SINCRONIZACAO_WHATSAPP" && "bg-success",
+           conversa.leadOrigem === "MANUAL" && "bg-warning",
         )}
       />
 
       <div
         className={cn(
           "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition-transform duration-200 group-hover:scale-105",
-          ativa ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600 group-hover:bg-slate-300",
+           ativa ? "bg-success text-success-foreground" : "bg-muted text-foreground-muted group-hover:bg-muted/80",
         )}
       >
         {iniciais}
@@ -101,7 +101,7 @@ export function ChatListItem({ conversa, ativa, onClick }: Props) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <span className={cn("truncate text-sm font-medium transition-colors duration-200", ativa ? "text-emerald-900" : "text-slate-900 group-hover:text-slate-800")}>
+            <span className={cn("truncate text-sm font-medium transition-colors duration-200", ativa ? "text-foreground" : "text-foreground group-hover:text-foreground")}>
               {conversa.leadNome}
             </span>
             {/* Badge de origem */}
@@ -117,7 +117,7 @@ export function ChatListItem({ conversa, ativa, onClick }: Props) {
             </span>
           </div>
           {conversa.ultimaMensagem && (
-            <span className="shrink-0 text-xs text-slate-400 transition-colors duration-200 group-hover:text-slate-600">
+            <span className="shrink-0 text-xs text-foreground-muted transition-colors duration-200 group-hover:text-foreground-muted">
               {formatarTimestamp(conversa.ultimaMensagem.timestamp)}
             </span>
           )}
@@ -127,18 +127,18 @@ export function ChatListItem({ conversa, ativa, onClick }: Props) {
           <div className="min-w-0 flex-1">
             {/* Estágio abaixo do nome (mobile: só se não houver badge) */}
             {conversa.estagioNome && (
-              <p className="truncate text-[10px] text-slate-400 transition-colors duration-200 group-hover:text-slate-500">
+                <p className="truncate text-[10px] text-foreground-muted transition-colors duration-200 group-hover:text-foreground-muted">
                 {conversa.estagioNome}
               </p>
             )}
-            <p className="truncate text-xs text-slate-500 transition-colors duration-200 group-hover:text-slate-600">
+            <p className="truncate text-xs text-foreground-muted transition-colors duration-200 group-hover:text-foreground-muted">
               {conversa.ultimaMensagem
                 ? `${conversa.ultimaMensagem.fromMe ? "Você: " : ""}${truncar(conversa.ultimaMensagem.conteudo, 40)}`
                 : "Nenhuma mensagem"}
             </p>
           </div>
           {conversa.naoLidas > 0 && (
-            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 px-1.5 text-[10px] font-bold text-white transition-transform duration-200 group-hover:scale-110 group-hover:shadow-sm">
+            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-success px-1.5 text-[10px] font-bold text-success-foreground transition-transform duration-200 group-hover:scale-110 group-hover:shadow-sm">
               {conversa.naoLidas > 99 ? "99+" : conversa.naoLidas}
             </span>
           )}

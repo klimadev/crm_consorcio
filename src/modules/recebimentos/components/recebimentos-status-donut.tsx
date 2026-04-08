@@ -37,10 +37,10 @@ export function RecebimentosStatusDonut({ dados }: RecebimentosStatusDonutProps)
   }, []);
 
   return (
-    <Card className="rounded-2xl border-slate-200/70 bg-white shadow-sm">
+    <Card className="rounded-2xl border-border bg-background-surface shadow-sm">
       <CardHeader>
-        <CardTitle className="text-base font-semibold text-slate-800">Distribuicao por status</CardTitle>
-        <p className="text-sm text-slate-500">Veja rapidamente onde estao os gargalos e a tracao dos recebimentos.</p>
+        <CardTitle className="text-base font-semibold text-foreground">Distribuicao por status</CardTitle>
+        <p className="text-sm text-foreground-muted">Veja rapidamente onde estao os gargalos e a tracao dos recebimentos.</p>
       </CardHeader>
       <CardContent className="flex flex-col gap-6 md:flex-row md:items-center">
         <div className="mx-auto flex h-44 w-44 items-center justify-center">
@@ -62,22 +62,22 @@ export function RecebimentosStatusDonut({ dados }: RecebimentosStatusDonutProps)
             ))}
           </svg>
           <div className="absolute text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Parcelas</p>
-            <p className="text-3xl font-bold text-slate-900">{dados.reduce((acc, item) => acc + item.quantidade, 0)}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground-muted">Parcelas</p>
+            <p className="text-3xl font-bold text-foreground">{dados.reduce((acc, item) => acc + item.quantidade, 0)}</p>
           </div>
         </div>
 
         <div className="flex-1 space-y-3">
           {dados.map((item) => (
-            <div key={item.status} className="flex items-center justify-between rounded-xl border border-slate-200/70 bg-slate-50/70 px-3 py-2">
+            <div key={item.status} className="flex items-center justify-between rounded-xl border border-border bg-muted/50 px-3 py-2">
               <div className="flex items-center gap-3">
                 <span className="h-3 w-3 rounded-full" style={{ backgroundColor: cores[item.status] }} />
                 <div>
-                  <p className="text-sm font-medium text-slate-900">{labels[item.status]}</p>
-                  <p className="text-xs text-slate-500">{item.quantidade} parcelas</p>
+                  <p className="text-sm font-medium text-foreground">{labels[item.status]}</p>
+                  <p className="text-xs text-foreground-muted">{item.quantidade} parcelas</p>
                 </div>
               </div>
-              <p className="text-sm font-semibold text-slate-700">{formataMoeda(item.valor)}</p>
+              <p className="text-sm font-semibold text-foreground">{formataMoeda(item.valor)}</p>
             </div>
           ))}
         </div>
