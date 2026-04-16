@@ -153,7 +153,7 @@ export type UseKanbanModuleReturn = {
   salvarDetalhesLead: (
     lead: Lead,
     urlDocumento?: string,
-    opcoes?: { atualizarSelecionado?: boolean; arquivoUpload?: File | null }
+    opcoes?: { atualizarSelecionado?: boolean; arquivoUpload?: File | null; dataVenda?: string }
   ) => Promise<void>;
   removerDocumento: () => Promise<void>;
   setLeadSelecionado: (lead: Lead | null) => void;

@@ -11,10 +11,11 @@ export function useResumoModule({ perfil }: UseResumoModuleProps): UseResumoModu
   const [erro, setErro] = useState<string | null>(null);
   const [dados, setDados] = useState<ResumoResposta | null>(null);
   const [chaveRecarga, setChaveRecarga] = useState(0);
+  const [periodoSelecionado, setPeriodoSelecionado] = useState<"todo" | "mensal" | "semanal">("mensal");
 
   const carregar = useCallback(async () => {
     setCarregando(true);
-    const resultado = await buscarResumo();
+    const resultado = await buscarResumo({ periodo: periodoSelecionado });
     if (!resultado.ok) {
       setErro(resultado.erro);
       setDados(null);
@@ -24,7 +25,7 @@ export function useResumoModule({ perfil }: UseResumoModuleProps): UseResumoModu
     setDados(resultado.dados);
     setErro(null);
     setCarregando(false);
-  }, []);
+  }, [periodoSelecionado]);
 
   useEffect(() => {
     // Carregamento inicial do painel
@@ -49,5 +50,7 @@ export function useResumoModule({ perfil }: UseResumoModuleProps): UseResumoModu
     kpis,
     perfil,
     recarregar: async () => setChaveRecarga((atual) => atual + 1),
+    periodoSelecionado,
+    setPeriodoSelecionado,
   };
 }

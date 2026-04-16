@@ -34,6 +34,7 @@ export type PayloadAtualizarLeadKanban = {
   valor_consorcio: number;
   documento_aprovacao_url: string | null;
   id_funcionario: Lead["id_funcionario"];
+  data_venda?: string;
 };
 
 export type PayloadRedistribuirEmAtendimentoKanban = {
@@ -189,9 +190,14 @@ export async function uploadDocumentoKanban(arquivo: File): Promise<ResultadoApi
   return { ok: true, dados: { url: json.url } };
 }
 
-export async function aprovarLeadKanban(idLead: string): Promise<ResultadoApi<{ lead?: Lead }>> {
+export async function aprovarLeadKanban(
+  idLead: string,
+  payload?: { data_aprovacao?: string },
+): Promise<ResultadoApi<{ lead?: Lead }>> {
   const resposta = await fetch(`/api/leads/${idLead}/aprovar`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload ?? {}),
   });
 
   const json = await lerJsonSeguro<{ lead?: Lead } & ApiErro>(resposta);

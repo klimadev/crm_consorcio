@@ -61,7 +61,12 @@ export function useKanbanDetalhesLead({
     async (
       lead: Lead,
       urlDocumento?: string,
-      opcoes?: { atualizarSelecionado?: boolean; arquivoUpload?: File | null; origem?: "manual" | "automatica" },
+      opcoes?: {
+        atualizarSelecionado?: boolean;
+        arquivoUpload?: File | null;
+        origem?: "manual" | "automatica";
+        dataVenda?: string;
+      },
     ) => {
       const atualizarSelecionado = opcoes?.atualizarSelecionado ?? true;
       const arquivoParaUpload = opcoes?.arquivoUpload ?? arquivoSelecionado;
@@ -100,6 +105,7 @@ export function useKanbanDetalhesLead({
           valor_consorcio: Number(lead.valor_consorcio),
           documento_aprovacao_url: docUrl || null,
           id_funcionario: lead.id_funcionario,
+          data_venda: opcoes?.dataVenda,
         });
 
         if (!resposta.ok) {

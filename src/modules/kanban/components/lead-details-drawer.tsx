@@ -20,6 +20,14 @@ import { LeadDeleteConfirmDialog } from "./lead-delete-confirm-dialog";
 import { LeadDetailsTabContent } from "./lead-details-tab-content";
 import { LeadParcelasTab } from "./lead-parcelas-tab";
 
+function obterDataLocalAtual() {
+  const hoje = new Date();
+  const ano = hoje.getFullYear();
+  const mes = String(hoje.getMonth() + 1).padStart(2, "0");
+  const dia = String(hoje.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+}
+
 type LeadDetailsDrawerProps = {
   leadSelecionado: Lead | null;
   pendenciasLead: PendenciaDinamica[];
@@ -45,7 +53,7 @@ type LeadDetailsDrawerProps = {
   onSalvarDetalhesLead: (
     lead: Lead,
     urlDocumento?: string,
-    opcoes?: { atualizarSelecionado?: boolean; arquivoUpload?: File | null },
+    opcoes?: { atualizarSelecionado?: boolean; arquivoUpload?: File | null; dataVenda?: string },
   ) => Promise<void>;
   onRemoverDocumento: () => Promise<void>;
 };
@@ -87,6 +95,7 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
   const [erroExclusaoLead, setErroExclusaoLead] = useState<string | null>(null);
   const [mostrarTrocaDocumento, setMostrarTrocaDocumento] = useState(false);
   const [modoDocumento, setModoDocumento] = useState<"arquivo" | "url">("arquivo");
+  const [dataAprovacao, setDataAprovacao] = useState(obterDataLocalAtual());
 
   const initialUrl = leadSelecionado?.documento_aprovacao_url ?? "";
   const hasChanges = temAlteracoes || documentoAprovacaoUrl !== initialUrl;
@@ -246,13 +255,22 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
     setTemAlteracoes(false);
   }, [documentoAprovacaoUrl, leadSelecionado, onSalvarDetalhesLead]);
 
+  const handleSalvarDataVenda = useCallback(async () => {
+    if (!leadSelecionado) return;
+    await onSalvarDetalhesLead(leadSelecionado, documentoAprovacaoUrl, {
+      atualizarSelecionado: false,
+      dataVenda: dataAprovacao,
+    });
+    setTemAlteracoes(false);
+  }, [dataAprovacao, documentoAprovacaoUrl, leadSelecionado, onSalvarDetalhesLead]);
+
   const handleAprovarLead = async () => {
     if (!leadSelecionado) return;
     setAprovando(true);
     setErroDetalhesLead(null);
 
     try {
-      const resultado = await aprovarLeadKanban(leadSelecionado.id);
+      const resultado = await aprovarLeadKanban(leadSelecionado.id, { data_aprovacao: dataAprovacao });
       if (!resultado.ok) {
         setErroDetalhesLead(resultado.erro);
         return;
@@ -326,12 +344,24 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
     }
 
     if (!leadSelecionado) {
+      setDataAprovacao(obterDataLocalAtual());
       setTemAlteracoes(false);
       setErroExclusaoLead(null);
       setConfirmarFechamentoAberto(false);
       setConfirmarExclusaoAberta(false);
     }
   }, [leadSelecionado, statusSalvamentoDetalhes]);
+
+  useEffect(() => {
+    if (!leadSelecionado) return;
+
+    if (leadSelecionado.aprovado_em) {
+      setDataAprovacao(leadSelecionado.aprovado_em.slice(0, 10));
+      return;
+    }
+
+    setDataAprovacao(obterDataLocalAtual());
+  }, [leadSelecionado]);
 
   return (
     <>
@@ -431,10 +461,13 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
                   onEnviarArquivo={handleEnviarArquivo}
                   onSalvarUrlDocumento={handleSalvarUrlDocumento}
                   onAprovarLead={handleAprovarLead}
+                  dataAprovacao={dataAprovacao}
+                  setDataAprovacao={setDataAprovacao}
                   onExcluir={() => {
                     setErroExclusaoLead(null);
                     setConfirmarExclusaoAberta(true);
                   }}
+                  onSalvarDataVenda={handleSalvarDataVenda}
                   hasChanges={hasChanges}
                   aprovando={aprovando}
                   mostrarTrocaDocumento={mostrarTrocaDocumento}

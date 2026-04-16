@@ -14,6 +14,9 @@ vi.mock("@/lib/prisma", () => ({
     lead: {
       findMany: vi.fn(),
     },
+    metaPeriodo: {
+      findMany: vi.fn(),
+    },
   },
 }));
 
@@ -48,6 +51,7 @@ describe("GET /api/resumo", () => {
     });
 
     vi.mocked(detectarPendenciasDinamicas).mockResolvedValue([]);
+    vi.mocked(prisma.metaPeriodo.findMany).mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -59,6 +63,7 @@ describe("GET /api/resumo", () => {
       {
         id: "lead-recente",
         criado_em: new Date("2026-04-01T12:00:00.000Z"),
+        aprovado_em: new Date("2026-04-06T12:00:00.000Z"),
         valor_consorcio: 1000,
         estagio: { tipo: "GANHO", nome: "Fechado" },
         funcionario: { id: "func-1", nome: "Ana", email: "ana@test.com", id_pdv: "pdv-1" },
@@ -66,6 +71,7 @@ describe("GET /api/resumo", () => {
       {
         id: "lead-antigo",
         criado_em: new Date("2026-02-15T12:00:00.000Z"),
+        aprovado_em: null,
         valor_consorcio: 500,
         estagio: { tipo: "ABERTO", nome: "Novo" },
         funcionario: { id: "func-2", nome: "Bruno", email: "bruno@test.com", id_pdv: "pdv-1" },
@@ -93,7 +99,7 @@ describe("GET /api/resumo", () => {
       },
     );
 
-    expect(json.resumo.totalNegocios).toBe(2);
+    expect(json.resumo.totalNegocios).toBe(1);
     expect(json.graficos.participacaoAtendentes).toEqual([
       expect.objectContaining({
         funcionarioId: "func-1",
@@ -108,5 +114,13 @@ describe("GET /api/resumo", () => {
         valorTotal: 1000,
       }),
     ]);
+    expect(json.graficos.evolucaoSemanal).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          cotas: 1,
+          volume: 1000,
+        }),
+      ]),
+    );
   });
 });

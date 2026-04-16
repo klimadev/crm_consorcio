@@ -105,6 +105,11 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       ...whereLeads,
     },
     include: {
+      estagio: {
+        select: {
+          tipo: true,
+        },
+      },
       funcionario: {
         select: {
           id_pdv: true,
@@ -158,6 +163,19 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     }
   }
 
+  let dataVendaNormalizada: Date | undefined;
+  if (dadosValidados.data_venda !== undefined) {
+    if (auth.sessao.perfil !== "EMPRESA") {
+      return forbidden("Apenas EMPRESA pode alterar a data da venda.");
+    }
+
+    if (lead.estagio.tipo !== "GANHO" || !lead.aprovado_em) {
+      return badRequest("So e permitido alterar data de venda para leads ja vendidos.");
+    }
+
+    dataVendaNormalizada = new Date(`${dadosValidados.data_venda}T12:00:00.000Z`);
+  }
+
   const atualizado = await prisma.lead.update({
     where: { id: lead.id },
     data: {
@@ -167,6 +185,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       motivo_perda: dadosValidados.motivo_perda,
       documento_aprovacao_url: dadosValidados.documento_aprovacao_url,
       id_funcionario: idFuncionarioDestino,
+      aprovado_em: dataVendaNormalizada,
     },
     include: {
       funcionario: {

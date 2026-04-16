@@ -1,6 +1,8 @@
 import type { ResumoResposta, ResumoKpi } from "@/lib/api/resumo";
 import type { Perfil } from "@/lib/tipos";
 
+export type FiltroPeriodoResumo = "todo" | "mensal" | "semanal";
+
 export type UseResumoModuleProps = {
   perfil: Perfil;
   idUsuario: string;
@@ -14,4 +16,6 @@ export type UseResumoModuleReturn = {
   kpis: ResumoKpi[];
   recarregar: () => Promise<void>;
   perfil: Perfil;
+  periodoSelecionado: FiltroPeriodoResumo;
+  setPeriodoSelecionado: (periodo: FiltroPeriodoResumo) => void;
 };

@@ -13,6 +13,24 @@ export type ResumoKpi = {
 
 export type ResumoSerieMensal = { label: string; ganhos: number; perdidos: number; abertos: number };
 
+export type ResumoSerieSemanal = {
+  label: string;
+  cotas: number;
+  volume: number;
+  metaCotas: number;
+  metaVolume: number;
+  bateuMetaCotas: boolean;
+  bateuMetaVolume: boolean;
+};
+
+export type ResumoPeriodoFiltro = "todo" | "mensal" | "semanal";
+
+export type ResumoPeriodoFaixa = {
+  tipo: ResumoPeriodoFiltro;
+  inicio: string;
+  fim: string;
+};
+
 export type ResumoParticipacaoAtendente = {
   funcionarioId: string;
   nome: string;
@@ -55,6 +73,7 @@ export type ResumoResposta = {
   };
   graficos: {
     evolucaoMensal: ResumoSerieMensal[];
+    evolucaoSemanal: ResumoSerieSemanal[];
     participacaoAtendentes: ResumoParticipacaoAtendente[];
   };
   rankings: {
@@ -74,16 +93,26 @@ export type ResumoResposta = {
     visaoEquipe: boolean;
     visaoIndividual: boolean;
   };
+  filtro: {
+    periodo: ResumoPeriodoFaixa;
+  };
 };
 
-type FiltrosResumo = Record<string, never>;
+type FiltrosResumo = {
+  periodo?: ResumoPeriodoFiltro;
+};
 
 async function lerJsonSeguro<T>(resposta: Response): Promise<T> {
   return (await resposta.json().catch(() => ({}))) as T;
 }
 
-export async function buscarResumo(_: FiltrosResumo = {}): Promise<ResultadoApi<ResumoResposta>> {
-  const resposta = await fetch("/api/resumo", { cache: "no-store" });
+export async function buscarResumo(filtros: FiltrosResumo = {}): Promise<ResultadoApi<ResumoResposta>> {
+  const searchParams = new URLSearchParams();
+  if (filtros.periodo) {
+    searchParams.set("periodo", filtros.periodo);
+  }
+  const query = searchParams.toString();
+  const resposta = await fetch(`/api/resumo${query ? `?${query}` : ""}`, { cache: "no-store" });
   const json = await lerJsonSeguro<ResumoResposta & ApiErro>(resposta);
 
   if (!resposta.ok) {

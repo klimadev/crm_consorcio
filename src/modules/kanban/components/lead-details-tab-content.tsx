@@ -1,5 +1,6 @@
 import { AlertCircle, Building2, CheckCircle2, Clock3, FileText, Phone, ShieldCheck, Trash2, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,15 +15,6 @@ const LABELS_PENDENCIA: Record<string, string> = {
   APROVACAO_GERENCIA_PENDENTE: "Pendência de Análise da EMPRESA",
   ESTAGIO_PARADO: "Lead Parado no Estágio",
 };
-
-function formatarDataBrUtc(dataIso: string): string {
-  const data = new Date(dataIso);
-  if (Number.isNaN(data.getTime())) return "";
-  const dia = String(data.getUTCDate()).padStart(2, "0");
-  const mes = String(data.getUTCMonth() + 1).padStart(2, "0");
-  const ano = String(data.getUTCFullYear());
-  return `${dia}/${mes}/${ano}`;
-}
 
 type LeadDetailsTabContentProps = {
   leadSelecionado: Lead;
@@ -44,6 +36,9 @@ type LeadDetailsTabContentProps = {
   onSalvarUrlDocumento: () => Promise<void>;
   onRemoverDocumento: () => Promise<void>;
   onAprovarLead: () => Promise<void>;
+  onSalvarDataVenda: () => Promise<void>;
+  dataAprovacao: string;
+  setDataAprovacao: (value: string) => void;
   onExcluir: () => void;
   hasChanges: boolean;
   aprovando: boolean;
@@ -76,6 +71,9 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
     onSalvarUrlDocumento,
     onRemoverDocumento,
     onAprovarLead,
+    onSalvarDataVenda,
+    dataAprovacao,
+    setDataAprovacao,
     onExcluir,
     hasChanges,
     aprovando,
@@ -157,10 +155,35 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
             </ActionButton>
           ) : null}
 
-          {emPreAprovacao && leadSelecionado.documento_aprovacao_url && !leadSelecionado.aprovado_em && perfil !== "COLABORADOR" ? (
-            <ActionButton className="mt-3 w-full rounded-xl bg-warning font-medium text-warning-foreground hover:bg-warning/90" onClick={() => void onAprovarLead()} disabled={aprovando} loading={aprovando} loadingText="Aprovando lead...">
-              Aprovar lead
-            </ActionButton>
+          {perfil === "EMPRESA" && (emPreAprovacao || leadSelecionado.aprovado_em) ? (
+            <div className="mt-3 space-y-2">
+              <label className="text-xs font-medium text-foreground-muted">Data da venda</label>
+              <DatePicker
+                value={dataAprovacao}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={(value) => {
+                  setDataAprovacao(value);
+                  setTemAlteracoes(true);
+                }}
+                disabled={aprovando || salvando || uploadando}
+              />
+              {emPreAprovacao && leadSelecionado.documento_aprovacao_url && !leadSelecionado.aprovado_em ? (
+                <ActionButton className="w-full rounded-xl bg-warning font-medium text-warning-foreground hover:bg-warning/90" onClick={() => void onAprovarLead()} disabled={aprovando || !dataAprovacao} loading={aprovando} loadingText="Aprovando lead...">
+                  Aprovar lead
+                </ActionButton>
+              ) : null}
+              {leadSelecionado.aprovado_em ? (
+                <ActionButton
+                  className="w-full rounded-xl bg-success text-sm font-medium hover:bg-success/90"
+                  onClick={() => void onSalvarDataVenda()}
+                  disabled={salvando || uploadando || aprovando || !dataAprovacao}
+                  loading={salvando}
+                  loadingText="Salvando data da venda..."
+                >
+                  Salvar data da venda
+                </ActionButton>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>
@@ -370,13 +393,6 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
           )}
         </div>
       </div>
-
-      {leadSelecionado.aprovado_em ? (
-        <div className="rounded-xl border border-success/25 bg-success/10 p-4 text-sm text-foreground">
-          <p className="font-semibold text-success">Lead aprovado</p>
-          <p className="mt-1 text-xs text-foreground-muted">Aprovado em {formatarDataBrUtc(leadSelecionado.aprovado_em)}</p>
-        </div>
-      ) : null}
 
       {erroDetalhesLead ? (
         <p className="rounded-xl bg-destructive/10 p-3 text-sm font-medium text-destructive">

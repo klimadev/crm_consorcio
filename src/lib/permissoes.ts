@@ -71,7 +71,7 @@ export function podeExecutarAcoesEmLote(sessao: SessaoToken) {
 }
 
 export function podeAprovarLead(sessao: SessaoToken) {
-  return isAdmin(sessao) || sessao.perfil === "GERENTE";
+  return isAdmin(sessao);
 }
 
 export function podeAcessarPainelMetas(sessao: SessaoToken) {

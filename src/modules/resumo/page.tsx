@@ -18,7 +18,10 @@ export function ModuloResumo({ perfil, idUsuario, idPdv }: { perfil: Perfil; idU
 
   return (
     <ModulePageShell spacing="lg" className="bg-[radial-gradient(circle_at_top_left,rgba(79,140,255,0.12),transparent_26%),radial-gradient(circle_at_top_right,rgba(70,211,154,0.10),transparent_28%),linear-gradient(180deg,#0b1120_0%,#10192b_100%)]">
-      <ResumoHeader />
+      <ResumoHeader
+        periodoSelecionado={vm.periodoSelecionado}
+        onPeriodoChange={vm.setPeriodoSelecionado}
+      />
       <InlineStatusAlert variant="error" message={vm.erro} />
 
       <div className="flex flex-col gap-3 rounded-[1.5rem] border border-border bg-background-elevated/90 p-4 shadow-sm shadow-black/20 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
@@ -35,7 +38,10 @@ export function ModuloResumo({ perfil, idUsuario, idPdv }: { perfil: Perfil; idU
       <ResumoKpis itens={vm.kpis} carregando={vm.carregando} />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <ResumoFunnelChart dados={vm.dados?.graficos.evolucaoMensal ?? []} />
+        <ResumoFunnelChart
+          dados={vm.dados?.graficos.evolucaoSemanal ?? []}
+          periodo={vm.dados?.filtro.periodo.tipo ?? vm.periodoSelecionado}
+        />
         <ResumoAtendentesDonut
           dados={(vm.dados?.graficos.participacaoAtendentes ?? []).map((item) => ({
             nome: item.nome,

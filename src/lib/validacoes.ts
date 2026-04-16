@@ -203,6 +203,35 @@ export const esquemaMoverLead = z.object({
   motivo_perda: z.string().trim().optional(),
 });
 
+export const esquemaAprovarLead = z.object({
+  data_aprovacao: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Data de aprovacao invalida. Use o formato YYYY-MM-DD.")
+    .optional(),
+}).superRefine((dados, ctx) => {
+  if (!dados.data_aprovacao) return;
+
+  const dataAprovacao = new Date(`${dados.data_aprovacao}T12:00:00.000Z`);
+  if (Number.isNaN(dataAprovacao.getTime())) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["data_aprovacao"],
+      message: "Data de aprovacao invalida.",
+    });
+    return;
+  }
+
+  const hoje = new Date();
+  hoje.setHours(23, 59, 59, 999);
+  if (dataAprovacao.getTime() > hoje.getTime()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["data_aprovacao"],
+      message: "Data de aprovacao nao pode estar no futuro.",
+    });
+  }
+});
+
 export const esquemaRedistribuirLeadsEmAtendimento = z.object({
   minutosSemAtendimento: z.coerce.number().int().min(1, "Minutos deve ser maior que zero.").max(24 * 60, "Minutos maximo de 24 horas.").default(30),
   limite: z.coerce.number().int().min(1, "Limite minimo de 1 lead.").max(200, "Limite maximo de 200 leads por execucao.").default(50),
@@ -234,6 +263,33 @@ export const esquemaAtualizarLead = z
       .nullable()
       .optional(),
     id_funcionario: z.string().trim().min(1, "Funcionario obrigatorio.").optional(),
+    data_venda: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Data de venda invalida. Use o formato YYYY-MM-DD.")
+      .optional(),
+  })
+  .superRefine((dados, ctx) => {
+    if (!dados.data_venda) return;
+
+    const dataVenda = new Date(`${dados.data_venda}T12:00:00.000Z`);
+    if (Number.isNaN(dataVenda.getTime())) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["data_venda"],
+        message: "Data de venda invalida.",
+      });
+      return;
+    }
+
+    const hoje = new Date();
+    hoje.setHours(23, 59, 59, 999);
+    if (dataVenda.getTime() > hoje.getTime()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["data_venda"],
+        message: "Data de venda nao pode estar no futuro.",
+      });
+    }
   })
   .refine(
     (dados) =>
@@ -242,7 +298,8 @@ export const esquemaAtualizarLead = z
       dados.valor_consorcio !== undefined ||
       dados.motivo_perda !== undefined ||
       dados.documento_aprovacao_url !== undefined ||
-      dados.id_funcionario !== undefined,
+      dados.id_funcionario !== undefined ||
+      dados.data_venda !== undefined,
     {
       message: "Informe ao menos um campo para atualizar.",
     },
