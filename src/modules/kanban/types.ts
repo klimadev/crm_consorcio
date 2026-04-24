@@ -47,6 +47,9 @@ export type Lead = {
 export type Funcionario = {
   id: string;
   nome: string;
+  cargo?: "GERENTE" | "COLABORADOR" | "ADMINISTRADOR";
+  id_pdv?: string | null;
+  pdv?: Pdv | null;
 };
 
 export type PendenciaDinamica = {
@@ -121,6 +124,7 @@ export type UseKanbanModuleReturn = {
   leads: Lead[];
   funcionarios: Funcionario[];
   pdvs: Pdv[];
+  carregandoInicial: boolean;
   leadsPorEstagio: Record<string, Lead[]>;
   leadsFiltradosPorEstagio: Record<string, Lead[]>;
   pendenciasPorLead: Record<string, PendenciaLeadInfo>;

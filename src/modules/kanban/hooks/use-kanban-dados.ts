@@ -17,6 +17,7 @@ export function useKanbanDados({ addToast }: UseKanbanDadosParams = {}) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
   const [pdvs, setPdvs] = useState<Pdv[]>([]);
+  const [carregandoInicial, setCarregandoInicial] = useState(true);
   const leadsRef = useRef<Lead[]>([]);
 
   const {
@@ -31,14 +32,18 @@ export function useKanbanDados({ addToast }: UseKanbanDadosParams = {}) {
   const bootstrapRef = useRef<() => Promise<void> | null>(null);
 
   const bootstrap = useCallback(async () => {
-    const { listarKanban } = await import("@/lib/api/kanban");
-    const resposta = await listarKanban();
-    if (!resposta.ok) return;
+    try {
+      const { listarKanban } = await import("@/lib/api/kanban");
+      const resposta = await listarKanban();
+      if (!resposta.ok) return;
 
-    setEstagios(resposta.dados.estagios);
-    setLeads(resposta.dados.leads);
-    setFuncionarios(resposta.dados.funcionarios);
-    setPdvs(resposta.dados.pdvs);
+      setEstagios(resposta.dados.estagios);
+      setLeads(resposta.dados.leads);
+      setFuncionarios(resposta.dados.funcionarios);
+      setPdvs(resposta.dados.pdvs);
+    } finally {
+      setCarregandoInicial(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -99,6 +104,7 @@ export function useKanbanDados({ addToast }: UseKanbanDadosParams = {}) {
     setFuncionarios,
     pdvs,
     setPdvs,
+    carregandoInicial,
     bootstrap,
     registrarMovimentoLocal,
     resumoPendencias,

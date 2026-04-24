@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { aplicaMascaraMoedaBr, aplicaMascaraTelefoneBr, cn, converteMoedaBrParaNumero } from "@/lib/utils";
 import type { Estagio, Funcionario, Lead, PendenciaDinamica } from "../types";
 import { ActionButton } from "./action-button";
+import { FuncionarioSelectOptions, obterResumoFuncionario } from "./funcionario-select-options";
 import { MENSAGENS_KANBAN } from "../utils/mensagens";
 import { validarArquivoDocumentoLead, validarDocumentoLeadUrl, validarTelefoneLead } from "../utils/validacoes";
 
@@ -103,8 +104,13 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
   const mensagemTelefoneInvalido = validarTelefoneLead(leadSelecionado.telefone);
   const mensagemUrlDocumento = modoDocumento === "url" ? validarDocumentoLeadUrl(documentoDigitado) : null;
   const tamanhoArquivoSelecionado = arquivoSelecionado ? `${(arquivoSelecionado.size / (1024 * 1024)).toFixed(1)} MB` : null;
-  const nomeGestorAprovacao = funcionarios.find((funcionario) => funcionario.id === leadSelecionado.gestor_id)?.nome;
-  const nomeConsultorAprovacao = funcionarios.find((funcionario) => funcionario.id === leadSelecionado.consultor_id)?.nome;
+  const funcionariosGerentes = funcionarios.filter((funcionario) => funcionario.cargo !== "COLABORADOR");
+  const funcionariosConsultores = funcionarios.filter((funcionario) => funcionario.cargo !== "GERENTE");
+  const funcionarioResponsavel = funcionarios.find((funcionario) => funcionario.id === leadSelecionado.id_funcionario);
+  const gestorAprovacao = funcionarios.find((funcionario) => funcionario.id === leadSelecionado.gestor_id);
+  const consultorAprovacao = funcionarios.find((funcionario) => funcionario.id === leadSelecionado.consultor_id);
+  const nomeGestorAprovacao = gestorAprovacao?.nome;
+  const nomeConsultorAprovacao = consultorAprovacao?.nome;
   const totalPendencias = pendenciasLead.length;
   const proximoPasso = temPendenciaDocumento
     ? "Enviar documento de aprovação"
@@ -188,15 +194,17 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
                     <SelectTrigger className="h-10 rounded-xl">
                       <SelectValue placeholder="Selecione o gestor" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-80">
                       <SelectItem value="sem_gestor">Sem gestor</SelectItem>
-                      {funcionarios.map((funcionario) => (
-                        <SelectItem key={funcionario.id} value={funcionario.id}>
-                          {funcionario.nome}
-                        </SelectItem>
-                      ))}
+                      <FuncionarioSelectOptions
+                        funcionarios={funcionariosGerentes.length > 0 ? funcionariosGerentes : funcionarios}
+                        funcionarioAtualId={gestorIdAprovacao}
+                      />
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-foreground-muted">
+                    {obterResumoFuncionario(gestorAprovacao)}
+                  </p>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-foreground-muted">Consultor</label>
@@ -208,15 +216,17 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
                     <SelectTrigger className="h-10 rounded-xl">
                       <SelectValue placeholder="Selecione o consultor" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-80">
                       <SelectItem value="sem_consultor">Sem consultor</SelectItem>
-                      {funcionarios.map((funcionario) => (
-                        <SelectItem key={funcionario.id} value={funcionario.id}>
-                          {funcionario.nome}
-                        </SelectItem>
-                      ))}
+                      <FuncionarioSelectOptions
+                        funcionarios={funcionariosConsultores.length > 0 ? funcionariosConsultores : funcionarios}
+                        funcionarioAtualId={consultorIdAprovacao}
+                      />
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-foreground-muted">
+                    {obterResumoFuncionario(consultorAprovacao)}
+                  </p>
                 </div>
               </div>
               {leadSelecionado.aprovado_em && (leadSelecionado.gestor_id || leadSelecionado.consultor_id) ? (
@@ -317,14 +327,16 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
                 <SelectTrigger className="h-11 rounded-xl">
                   <SelectValue placeholder="Selecione o responsável" />
                 </SelectTrigger>
-                <SelectContent>
-                  {funcionarios.map((funcionario) => (
-                    <SelectItem key={funcionario.id} value={funcionario.id}>
-                      {funcionario.nome}
-                    </SelectItem>
-                  ))}
+                <SelectContent className="max-h-80">
+                  <FuncionarioSelectOptions
+                    funcionarios={funcionarios}
+                    funcionarioAtualId={leadSelecionado.id_funcionario}
+                  />
                 </SelectContent>
               </Select>
+              <p className="text-xs text-foreground-muted">
+                {obterResumoFuncionario(funcionarioResponsavel)}
+              </p>
             </div>
           ) : null}
 

@@ -106,6 +106,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         sincronizarWhatsapp={vm.sincronizarWhatsapp}
         redistribuindoEmAtendimento={vm.redistribuindoEmAtendimento}
         redistribuirLeadsEmAtendimento={vm.redistribuirLeadsEmAtendimento}
+        carregandoInicial={vm.carregandoInicial}
       />
 
       <KanbanBoard
@@ -119,6 +120,7 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         funcionarios={vm.funcionarios}
         resumoPorEstagio={vm.resumoPorEstagio}
         excluirTodosIndefinidos={vm.excluirTodosIndefinidos}
+        carregando={vm.carregandoInicial}
       />
 
       <PerdaDialog

@@ -47,7 +47,18 @@ export async function GET(request: NextRequest) {
       where: auth.sessao.perfil === "GERENTE" && auth.sessao.id_pdv
         ? { id_empresa: auth.sessao.id_empresa, ativo: true, id_pdv: auth.sessao.id_pdv }
         : { id_empresa: auth.sessao.id_empresa, ativo: true },
-      select: { id: true, nome: true, id_pdv: true },
+      select: {
+        id: true,
+        nome: true,
+        cargo: true,
+        id_pdv: true,
+        pdv: {
+          select: {
+            id: true,
+            nome: true,
+          },
+        },
+      },
       orderBy: { nome: "asc" },
     }),
     // Only return PDVs for EMPRESA profile
