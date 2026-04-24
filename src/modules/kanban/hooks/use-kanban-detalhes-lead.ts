@@ -99,14 +99,15 @@ export function useKanbanDetalhesLead({
           setArquivoSelecionado(null);
         }
 
-        const resposta = await atualizarLeadKanban(lead.id, {
-          observacoes: lead.observacoes,
-          telefone: lead.telefone,
-          valor_consorcio: Number(lead.valor_consorcio),
-          documento_aprovacao_url: docUrl || null,
-          id_funcionario: lead.id_funcionario,
-          data_venda: opcoes?.dataVenda,
-        });
+const resposta = await atualizarLeadKanban(lead.id, {
+            nome: lead.nome,
+            observacoes: lead.observacoes,
+            telefone: lead.telefone,
+           valor_consorcio: lead.valor_consorcio !== null ? Number(lead.valor_consorcio) : null,
+           documento_aprovacao_url: docUrl || null,
+           id_funcionario: lead.id_funcionario,
+           data_venda: opcoes?.dataVenda,
+         });
 
         if (!resposta.ok) {
           setErroDetalhesLead(resposta.erro);
@@ -155,6 +156,7 @@ export function useKanbanDetalhesLead({
 
     try {
       const resposta = await atualizarLeadKanban(leadSelecionado.id, {
+        nome: leadSelecionado.nome,
         observacoes: leadSelecionado.observacoes,
         telefone: leadSelecionado.telefone,
         valor_consorcio: Number(leadSelecionado.valor_consorcio),

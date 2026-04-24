@@ -29,9 +29,10 @@ export type PayloadMoverLeadKanban = {
 };
 
 export type PayloadAtualizarLeadKanban = {
+  nome?: string;
   observacoes: Lead["observacoes"];
   telefone: Lead["telefone"];
-  valor_consorcio: number;
+  valor_consorcio: number | null;
   documento_aprovacao_url: string | null;
   id_funcionario: Lead["id_funcionario"];
   data_venda?: string;
@@ -192,7 +193,7 @@ export async function uploadDocumentoKanban(arquivo: File): Promise<ResultadoApi
 
 export async function aprovarLeadKanban(
   idLead: string,
-  payload?: { data_aprovacao?: string },
+  payload?: { data_aprovacao?: string; gestor_id?: string | null; consultor_id?: string | null },
 ): Promise<ResultadoApi<{ lead?: Lead }>> {
   const resposta = await fetch(`/api/leads/${idLead}/aprovar`, {
     method: "POST",

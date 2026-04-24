@@ -208,6 +208,8 @@ export const esquemaAprovarLead = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Data de aprovacao invalida. Use o formato YYYY-MM-DD.")
     .optional(),
+  gestor_id: z.string().trim().min(1, "Gestor invalido.").optional().nullable(),
+  consultor_id: z.string().trim().min(1, "Consultor invalido.").optional().nullable(),
 }).superRefine((dados, ctx) => {
   if (!dados.data_aprovacao) return;
 
@@ -241,13 +243,14 @@ export const esquemaRedistribuirLeadsEmAtendimento = z.object({
 
 export const esquemaAtualizarLead = z
   .object({
+    nome: z.string().trim().min(2, "Nome deve ter pelo menos 2 caracteres.").max(200, "Nome muito longo.").optional(),
     observacoes: z.string().trim().max(5000, "Observacoes muito longas.").nullable().optional(),
     telefone: z
       .string()
       .trim()
       .refine((valor) => valor.replace(/\D/g, "").length >= 10, "Telefone invalido.")
       .optional(),
-    valor_consorcio: z.number().positive("Valor do consorcio deve ser maior que zero.").optional(),
+    valor_consorcio: z.union([z.number().min(0, "Valor do consorcio não pode ser negativo."), z.null()]).optional(),
     motivo_perda: z.string().trim().max(1000, "Motivo da perda muito longo.").nullable().optional(),
     documento_aprovacao_url: z
       .string()

@@ -96,6 +96,8 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
   const [mostrarTrocaDocumento, setMostrarTrocaDocumento] = useState(false);
   const [modoDocumento, setModoDocumento] = useState<"arquivo" | "url">("arquivo");
   const [dataAprovacao, setDataAprovacao] = useState(obterDataLocalAtual());
+  const [gestorIdAprovacao, setGestorIdAprovacao] = useState<string | null>(null);
+  const [consultorIdAprovacao, setConsultorIdAprovacao] = useState<string | null>(null);
 
   const initialUrl = leadSelecionado?.documento_aprovacao_url ?? "";
   const hasChanges = temAlteracoes || documentoAprovacaoUrl !== initialUrl;
@@ -270,7 +272,11 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
     setErroDetalhesLead(null);
 
     try {
-      const resultado = await aprovarLeadKanban(leadSelecionado.id, { data_aprovacao: dataAprovacao });
+      const resultado = await aprovarLeadKanban(leadSelecionado.id, {
+        data_aprovacao: dataAprovacao,
+        gestor_id: gestorIdAprovacao,
+        consultor_id: consultorIdAprovacao,
+      });
       if (!resultado.ok) {
         setErroDetalhesLead(resultado.erro);
         return;
@@ -345,6 +351,8 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
 
     if (!leadSelecionado) {
       setDataAprovacao(obterDataLocalAtual());
+      setGestorIdAprovacao(null);
+      setConsultorIdAprovacao(null);
       setTemAlteracoes(false);
       setErroExclusaoLead(null);
       setConfirmarFechamentoAberto(false);
@@ -357,10 +365,14 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
 
     if (leadSelecionado.aprovado_em) {
       setDataAprovacao(leadSelecionado.aprovado_em.slice(0, 10));
+      setGestorIdAprovacao(leadSelecionado.gestor_id ?? null);
+      setConsultorIdAprovacao(leadSelecionado.consultor_id ?? null);
       return;
     }
 
     setDataAprovacao(obterDataLocalAtual());
+    setGestorIdAprovacao(leadSelecionado.gestor_id ?? null);
+    setConsultorIdAprovacao(leadSelecionado.consultor_id ?? null);
   }, [leadSelecionado]);
 
   return (
@@ -463,6 +475,10 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
                   onAprovarLead={handleAprovarLead}
                   dataAprovacao={dataAprovacao}
                   setDataAprovacao={setDataAprovacao}
+                  gestorIdAprovacao={gestorIdAprovacao}
+                  setGestorIdAprovacao={setGestorIdAprovacao}
+                  consultorIdAprovacao={consultorIdAprovacao}
+                  setConsultorIdAprovacao={setConsultorIdAprovacao}
                   onExcluir={() => {
                     setErroExclusaoLead(null);
                     setConfirmarExclusaoAberta(true);

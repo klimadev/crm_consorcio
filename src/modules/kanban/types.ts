@@ -23,18 +23,21 @@ export type Lead = {
   id_funcionario: string;
   nome: string;
   telefone: string;
-  valor_consorcio: number;
+  valor_consorcio: number | null;
   observacoes: string | null;
   motivo_perda: string | null;
   documento_aprovacao_url: string | null;
   aprovado_em: string | null;
   aprovado_por: string | null;
   origem?: OrigemLead;
+  criado_em: string;
   atualizado_em: string;
   quantidade_parcelas?: number;
   id_pdv?: string | null;
   pdv?: Pdv | null;
   gestores?: Array<{ nome: string }> | null;
+  gestor_id?: string | null;
+  consultor_id?: string | null;
   // Campos de Anúncio (CTWA)
   anuncio_titulo?: string | null;
   anuncio_descricao?: string | null;
@@ -93,6 +96,8 @@ export type KanbanFilters = {
   tipo: FiltroTipo;
   pdv: string | null;
   origem: FiltroOrigem;
+  data_inicio: string | null;
+  data_fim: string | null;
 };
 
 export type OrdenacaoKanban = "valor_maior" | "valor_menor" | "recente" | "antigo" | "nome";

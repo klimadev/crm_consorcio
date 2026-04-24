@@ -32,11 +32,14 @@ export function aplicaMascaraMoedaBr(valor: string) {
   const digitos = valor.replace(/\D/g, "");
   if (!digitos) return "";
 
-  const numero = Number(digitos) / 100;
+  // Convert BigInt para evitar perda de precisão com números grandes
+  const centavos = BigInt(digitos);
+  const reais = Number(centavos) / 100;
+  
   return new Intl.NumberFormat("pt-BR", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(numero);
+  }).format(reais);
 }
 
 export function converteMoedaBrParaNumero(valor: string) {

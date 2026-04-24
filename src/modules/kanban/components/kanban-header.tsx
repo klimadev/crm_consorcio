@@ -130,7 +130,14 @@ export function KanbanHeader({
 }: KanbanHeaderProps) {
   const { addToast } = useToast();
   const [apenasAnuncios, setApenasAnuncios] = useState(false);
-  const filtrosAtivos = filtros.status !== "todos" || filtros.gravidade !== "todas" || filtros.tipo !== "todos" || filtros.pdv !== null || filtros.origem !== "todos";
+  const filtrosAtivos =
+    filtros.status !== "todos" ||
+    filtros.gravidade !== "todas" ||
+    filtros.tipo !== "todos" ||
+    filtros.pdv !== null ||
+    filtros.origem !== "todos" ||
+    filtros.data_inicio !== null ||
+    filtros.data_fim !== null;
   const inputBuscaRef = useRef<HTMLInputElement>(null);
   const inputNomeNovoLeadRef = useRef<HTMLInputElement>(null);
   const [agoraMs, setAgoraMs] = useState(() => Date.now());
@@ -209,7 +216,15 @@ export function KanbanHeader({
   }, [dialogNovoLeadAberto]);
 
   const limparFiltros = () => {
-    setFiltros({ status: "todos", gravidade: "todas", tipo: "todos", pdv: null, origem: "todos" });
+    setFiltros({
+      status: "todos",
+      gravidade: "todas",
+      tipo: "todos",
+      pdv: null,
+      origem: "todos",
+      data_inicio: null,
+      data_fim: null,
+    });
   };
 
   const metricasTopo = [
@@ -485,6 +500,23 @@ export function KanbanHeader({
                 <SelectItem value="MANUAL">Manual</SelectItem>
               </SelectContent>
             </Select>
+
+              <div className="flex flex-wrap gap-2">
+                <Input
+                  type="date"
+                  value={filtros.data_inicio || ""}
+                  onChange={(e) => setFiltros({ ...filtros, data_inicio: e.target.value || null })}
+                  className="h-10 w-[150px] rounded-xl border-border bg-background text-sm text-foreground"
+                  aria-label="Data inicial"
+                />
+                <Input
+                  type="date"
+                  value={filtros.data_fim || ""}
+                  onChange={(e) => setFiltros({ ...filtros, data_fim: e.target.value || null })}
+                  className="h-10 w-[150px] rounded-xl border-border bg-background text-sm text-foreground"
+                  aria-label="Data final"
+                />
+              </div>
 
             {perfil === "EMPRESA" && pdvs.length > 0 && (
               <Select

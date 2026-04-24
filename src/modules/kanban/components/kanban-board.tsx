@@ -353,7 +353,7 @@ export function KanbanBoard({
                                          <p className="mt-1 text-sm text-foreground-muted">{lead.telefone}</p>
 
                                          <p className="mt-3 text-xl font-bold text-success">
-                                           {formataMoeda(lead.valor_consorcio)}
+                                            {lead.valor_consorcio ? formataMoeda(lead.valor_consorcio) : null}
                                          </p>
 
                                          <div className="mt-3 rounded-xl border border-border/70 bg-background px-3 py-2">

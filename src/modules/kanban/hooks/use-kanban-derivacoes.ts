@@ -28,7 +28,7 @@ function leadPassaFiltros(
     if (!pendenciaInfo.tipos.includes(filtros.tipo)) return false;
   }
 
-  // Filter by origin
+  // Filtro por origem
   if (filtros.origem !== "todos") {
     const leadOrigem = lead.origem ?? "MANUAL";
     const matchesOrigem =
@@ -36,6 +36,22 @@ function leadPassaFiltros(
       (filtros.origem === "SINCRONIZACAO_WHATSAPP" && leadOrigem === "SINCRONIZACAO_WHATSAPP") ||
       (filtros.origem === "MANUAL" && (leadOrigem === "MANUAL" || !lead.origem));
     if (!matchesOrigem) return false;
+  }
+
+  // Filtro por periodo de criacao do lead
+  if (filtros.data_inicio || filtros.data_fim) {
+    const dataCriacao = new Date(lead.criado_em);
+    if (Number.isNaN(dataCriacao.getTime())) return false;
+
+    if (filtros.data_inicio) {
+      const dataInicio = new Date(`${filtros.data_inicio}T00:00:00.000`);
+      if (dataCriacao < dataInicio) return false;
+    }
+
+    if (filtros.data_fim) {
+      const dataFim = new Date(`${filtros.data_fim}T23:59:59.999`);
+      if (dataCriacao > dataFim) return false;
+    }
   }
 
   return true;
@@ -58,6 +74,8 @@ export function useKanbanDerivacoes({
     tipo: "todos",
     pdv: null,
     origem: "todos",
+    data_inicio: null,
+    data_fim: null,
   });
   const [modoFocoPendencias, setModoFocoPendencias] = useState(false);
   const [busca, setBusca] = useState("");
@@ -121,7 +139,15 @@ export function useKanbanDerivacoes({
 
   const leadsFiltradosPorEstagio = useMemo(() => {
     const filtrosAtivos = modoFocoPendencias
-      ? { status: "com_pendencia" as const, gravidade: "todas" as const, tipo: "todos" as const, pdv: filtros.pdv, origem: filtros.origem }
+      ? {
+          status: "com_pendencia" as const,
+          gravidade: "todas" as const,
+          tipo: "todos" as const,
+          pdv: filtros.pdv,
+          origem: filtros.origem,
+          data_inicio: filtros.data_inicio,
+          data_fim: filtros.data_fim,
+        }
       : filtros;
 
     const mapa: Record<string, Lead[]> = {};
@@ -132,7 +158,7 @@ export function useKanbanDerivacoes({
     for (const lead of leads) {
       if (!mapa[lead.id_estagio]) continue;
 
-      // Filter by PDV
+      // Filtro por PDV
       if (filtrosAtivos.pdv && lead.id_pdv !== filtrosAtivos.pdv) continue;
 
       const pendenciaInfo = pendenciasPorLead[lead.id];
@@ -154,9 +180,9 @@ export function useKanbanDerivacoes({
       mapa[estagioId] = [...mapa[estagioId]].sort((a, b) => {
         switch (ordenacao) {
           case "valor_maior":
-            return b.valor_consorcio - a.valor_consorcio;
+            return (b.valor_consorcio || 0) - (a.valor_consorcio || 0);
           case "valor_menor":
-            return a.valor_consorcio - b.valor_consorcio;
+            return (a.valor_consorcio || 0) - (b.valor_consorcio || 0);
           case "recente":
             return new Date(b.atualizado_em).getTime() - new Date(a.atualizado_em).getTime();
           case "antigo":
@@ -233,7 +259,7 @@ export function useKanbanDerivacoes({
       }
 
       if (!estagiosFechados.has(lead.id_estagio)) {
-        valorTotalEmAberto += lead.valor_consorcio;
+        valorTotalEmAberto += lead.valor_consorcio || 0;
 
         const diasParados = Math.floor(
           (agoraMs - new Date(lead.atualizado_em).getTime()) / (1000 * 60 * 60 * 24),
@@ -269,7 +295,7 @@ export function useKanbanDerivacoes({
       if (!resumo) continue;
 
       resumo.quantidade += 1;
-      resumo.valorTotal += lead.valor_consorcio;
+      resumo.valorTotal += lead.valor_consorcio || 0;
 
       const pendenciaInfo = pendenciasPorLead[lead.id];
       if (pendenciaInfo?.naoResolvidas) {

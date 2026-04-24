@@ -134,6 +134,8 @@ model Lead {
   anuncio_url             String?
   aprovado_em             DateTime?
   aprovado_por            String?
+  gestor_id               String?
+  consultor_id            String?
   estagio                 EstagioFunil       @relation(fields: [id_estagio], references: [id])
   funcionario             Funcionario        @relation(fields: [id_funcionario], references: [id])
   empresa                 Empresa            @relation(fields: [id_empresa], references: [id])

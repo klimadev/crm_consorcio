@@ -49,8 +49,8 @@ export function ConfirmDialog({
   const destrutivo = modo === "destrutivo";
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/70 p-4 backdrop-blur-sm">
-      <div role="dialog" aria-modal="true" aria-labelledby={tituloId} aria-describedby={descricaoId} className="w-full max-w-md animate-in zoom-in-95 rounded-2xl border border-border bg-background-surface p-6 shadow-2xl">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/70 p-4 backdrop-blur-sm pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-labelledby={tituloId} aria-describedby={descricaoId} className="w-full max-w-md animate-in zoom-in-95 rounded-2xl border border-border bg-background-surface p-6 shadow-2xl pointer-events-auto" onClick={(e) => e.stopPropagation()}>
         {icone ? (
           <div className="mb-4 flex items-center justify-center">
             <div
@@ -81,7 +81,11 @@ export function ConfirmDialog({
           <ActionButton
             variant={destrutivo ? "destructive" : "default"}
             className="flex-1 rounded-xl"
-            onClick={() => void onConfirmar()}
+            onClick={async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              await onConfirmar();
+            }}
             loading={confirmando}
             loadingText={textoConfirmando ?? textoConfirmar}
           >

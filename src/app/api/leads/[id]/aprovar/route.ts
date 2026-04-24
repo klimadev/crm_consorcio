@@ -72,11 +72,32 @@ export async function POST(request: NextRequest, { params }: Params) {
       return ok({ lead, mensagem: "Lead já foi aprovado." });
     }
 
+    const idsResponsaveis = [validacao.data.gestor_id, validacao.data.consultor_id].filter(
+      (id): id is string => Boolean(id),
+    );
+
+    if (idsResponsaveis.length > 0) {
+      const responsaveisValidos = await prisma.funcionario.count({
+        where: {
+          id: { in: idsResponsaveis },
+          id_empresa: sessao.id_empresa,
+          ativo: true,
+          id_pdv: lead.funcionario?.id_pdv,
+        },
+      });
+
+      if (responsaveisValidos !== idsResponsaveis.length) {
+        return badRequest("Gestor ou consultor invalido para o PDV do lead.");
+      }
+    }
+
     const leadAtualizado = await prisma.lead.update({
       where: { id: lead.id },
       data: {
         aprovado_em: dataAprovacao,
         aprovado_por: sessao.id_usuario,
+        gestor_id: validacao.data.gestor_id ?? null,
+        consultor_id: validacao.data.consultor_id ?? null,
       },
     });
 

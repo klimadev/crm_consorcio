@@ -33,6 +33,12 @@ export async function GET(request: NextRequest, { params }: Params) {
       anuncio_descricao: true,
       observacoes: true,
       valor_consorcio: true,
+      criado_em: true,
+      atualizado_em: true,
+      aprovado_em: true,
+      aprovado_por: true,
+      gestor_id: true,
+      consultor_id: true,
       estagio: { select: { id: true, nome: true } },
       funcionario: {
         select: {
@@ -179,9 +185,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const atualizado = await prisma.lead.update({
     where: { id: lead.id },
     data: {
+      nome: dadosValidados.nome,
       observacoes: dadosValidados.observacoes,
       telefone: dadosValidados.telefone,
-      valor_consorcio: dadosValidados.valor_consorcio,
+      valor_consorcio: dadosValidados.valor_consorcio ?? undefined,
       motivo_perda: dadosValidados.motivo_perda,
       documento_aprovacao_url: dadosValidados.documento_aprovacao_url,
       id_funcionario: idFuncionarioDestino,
@@ -202,11 +209,21 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     },
   });
 
+  const atualizadoComParcelas = await prisma.lead.findUnique({
+    where: { id: lead.id },
+    select: {
+      _count: {
+        select: { parcelas: true },
+      },
+    },
+  });
+
   return NextResponse.json({
     lead: {
       ...atualizado,
       id_pdv: atualizado.funcionario.id_pdv,
       pdv: atualizado.funcionario.pdv,
+      quantidade_parcelas: atualizadoComParcelas?._count.parcelas ?? 0,
     },
   });
 }

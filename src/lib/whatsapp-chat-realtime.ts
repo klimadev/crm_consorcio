@@ -91,7 +91,7 @@ type GlobalRealtimeState = {
 };
 
 declare global {
-  // eslint-disable-next-line no-var
+   
   var __whatsappChatRealtimeState: GlobalRealtimeState | undefined;
 }
 

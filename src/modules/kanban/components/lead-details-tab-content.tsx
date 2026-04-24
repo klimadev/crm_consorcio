@@ -1,4 +1,4 @@
-import { AlertCircle, Building2, CheckCircle2, Clock3, FileText, Phone, ShieldCheck, Trash2, UserCog } from "lucide-react";
+import { AlertCircle, Building2, CheckCircle2, Clock3, FileText, Phone, ShieldCheck, Trash2, User, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,10 @@ type LeadDetailsTabContentProps = {
   onSalvarDataVenda: () => Promise<void>;
   dataAprovacao: string;
   setDataAprovacao: (value: string) => void;
+  gestorIdAprovacao: string | null;
+  setGestorIdAprovacao: (value: string | null) => void;
+  consultorIdAprovacao: string | null;
+  setConsultorIdAprovacao: (value: string | null) => void;
   onExcluir: () => void;
   hasChanges: boolean;
   aprovando: boolean;
@@ -74,6 +78,10 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
     onSalvarDataVenda,
     dataAprovacao,
     setDataAprovacao,
+    gestorIdAprovacao,
+    setGestorIdAprovacao,
+    consultorIdAprovacao,
+    setConsultorIdAprovacao,
     onExcluir,
     hasChanges,
     aprovando,
@@ -95,6 +103,8 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
   const mensagemTelefoneInvalido = validarTelefoneLead(leadSelecionado.telefone);
   const mensagemUrlDocumento = modoDocumento === "url" ? validarDocumentoLeadUrl(documentoDigitado) : null;
   const tamanhoArquivoSelecionado = arquivoSelecionado ? `${(arquivoSelecionado.size / (1024 * 1024)).toFixed(1)} MB` : null;
+  const nomeGestorAprovacao = funcionarios.find((funcionario) => funcionario.id === leadSelecionado.gestor_id)?.nome;
+  const nomeConsultorAprovacao = funcionarios.find((funcionario) => funcionario.id === leadSelecionado.consultor_id)?.nome;
   const totalPendencias = pendenciasLead.length;
   const proximoPasso = temPendenciaDocumento
     ? "Enviar documento de aprovação"
@@ -167,6 +177,54 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
                 }}
                 disabled={aprovando || salvando || uploadando}
               />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground-muted">Gestor</label>
+                  <Select
+                    value={gestorIdAprovacao ?? "sem_gestor"}
+                    onValueChange={(value) => setGestorIdAprovacao(value === "sem_gestor" ? null : value)}
+                    disabled={aprovando || salvando || uploadando || Boolean(leadSelecionado.aprovado_em)}
+                  >
+                    <SelectTrigger className="h-10 rounded-xl">
+                      <SelectValue placeholder="Selecione o gestor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sem_gestor">Sem gestor</SelectItem>
+                      {funcionarios.map((funcionario) => (
+                        <SelectItem key={funcionario.id} value={funcionario.id}>
+                          {funcionario.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground-muted">Consultor</label>
+                  <Select
+                    value={consultorIdAprovacao ?? "sem_consultor"}
+                    onValueChange={(value) => setConsultorIdAprovacao(value === "sem_consultor" ? null : value)}
+                    disabled={aprovando || salvando || uploadando || Boolean(leadSelecionado.aprovado_em)}
+                  >
+                    <SelectTrigger className="h-10 rounded-xl">
+                      <SelectValue placeholder="Selecione o consultor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sem_consultor">Sem consultor</SelectItem>
+                      {funcionarios.map((funcionario) => (
+                        <SelectItem key={funcionario.id} value={funcionario.id}>
+                          {funcionario.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {leadSelecionado.aprovado_em && (leadSelecionado.gestor_id || leadSelecionado.consultor_id) ? (
+                <div className="rounded-xl border border-success/25 bg-success/10 px-3 py-2 text-xs text-success">
+                  {leadSelecionado.gestor_id ? <p>Gestor: {nomeGestorAprovacao ?? "Não encontrado"}</p> : null}
+                  {leadSelecionado.consultor_id ? <p>Consultor: {nomeConsultorAprovacao ?? "Não encontrado"}</p> : null}
+                </div>
+              ) : null}
               {emPreAprovacao && leadSelecionado.documento_aprovacao_url && !leadSelecionado.aprovado_em ? (
                 <ActionButton className="w-full rounded-xl bg-warning font-medium text-warning-foreground hover:bg-warning/90" onClick={() => void onAprovarLead()} disabled={aprovando || !dataAprovacao} loading={aprovando} loadingText="Aprovando lead...">
                   Aprovar lead
@@ -207,6 +265,18 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-2">
           <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <User className="h-4 w-4 text-success" />
+            Nome
+          </label>
+          <Input
+            className="h-11 rounded-xl"
+            value={leadSelecionado.nome}
+            onChange={(e) => onMudarLead({ ...leadSelecionado, nome: e.target.value.trim() })}
+          />
+          </div>
+
+          <div className="space-y-2">
+          <label className="flex items-center gap-2 text-sm font-medium text-foreground">
             <Phone className="h-4 w-4 text-success" />
             Telefone
           </label>
@@ -228,9 +298,16 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
             <Input
               className="h-11 rounded-xl"
               inputMode="numeric"
-              value={aplicaMascaraMoedaBr(String(Math.round(leadSelecionado.valor_consorcio * 100)))}
-              onChange={(e) => onMudarLead({ ...leadSelecionado, valor_consorcio: converteMoedaBrParaNumero(e.target.value) })}
+              value={leadSelecionado.valor_consorcio ? aplicaMascaraMoedaBr(String(Math.round(leadSelecionado.valor_consorcio * 100))) : ""}
+              placeholder="R$ 0,00"
+              onChange={(e) => onMudarLead({ 
+                ...leadSelecionado, 
+                valor_consorcio: e.target.value.trim() === "" ? null : converteMoedaBrParaNumero(e.target.value) 
+              })}
             />
+            <p className="text-xs text-foreground-muted">
+              Insira o valor do crédito desejado ou estime se o valor for incerto. Deixe em branco se não definido.
+            </p>
           </div>
 
           {perfil !== "COLABORADOR" ? (

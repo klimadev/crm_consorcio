@@ -93,6 +93,7 @@ export function useKanbanOperacoes({
       const id_funcionario = perfil === "COLABORADOR" ? idUsuario : validacao.dados.idFuncionario;
 
       const idTemporario = `temp-${Date.now()}`;
+      const agoraIso = new Date().toISOString();
       const leadTemporario: Lead = {
         id: idTemporario,
         id_estagio: idEstagio,
@@ -105,7 +106,8 @@ export function useKanbanOperacoes({
         documento_aprovacao_url: null,
         aprovado_em: null,
         aprovado_por: null,
-        atualizado_em: new Date().toISOString(),
+        criado_em: agoraIso,
+        atualizado_em: agoraIso,
       };
 
       setCriandoLead(true);
