@@ -18,6 +18,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ erro: mensagemErroValidacao(validacao.error) }, { status: 400 });
   }
 
+  const isSecure = request.headers.get("x-forwarded-proto") === "https";
+
   const nome = validacao.data.nome.trim();
   const email = validacao.data.email.trim().toLowerCase();
   const senha = validacao.data.senha;
@@ -61,6 +63,6 @@ export async function POST(request: Request) {
   });
 
   const resposta = NextResponse.json({ ok: true });
-  definirCookieSessao(resposta, token);
+  definirCookieSessao(resposta, token, isSecure);
   return resposta;
 }

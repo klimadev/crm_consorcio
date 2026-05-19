@@ -3,37 +3,83 @@
 import { useEffect, Component, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 
+type ErrorFallbackRender = (props: {
+  error?: Error;
+  errorInfo?: React.ErrorInfo;
+  errorId: string;
+  reset: () => void;
+}) => ReactNode;
+
+type ErrorBoundaryProps = {
+  children: ReactNode;
+  fallback?: ReactNode | ErrorFallbackRender;
+};
+
+type ErrorBoundaryState = {
+  error?: Error;
+  errorId: string;
+  errorInfo?: React.ErrorInfo;
+  hasError: boolean;
+};
+
 class ErrorBoundary extends Component<
-  { children: ReactNode; fallback?: ReactNode },
-  { hasError: boolean; error?: Error }
+  ErrorBoundaryProps,
+  ErrorBoundaryState
 > {
-  constructor(props: { children: ReactNode; fallback?: ReactNode }) {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { errorId: "", hasError: false };
   }
 
   static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
+    return { error, errorId: `erro-${Date.now().toString(36)}`, hasError: true };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("ErrorBoundary caught an error:", error, errorInfo);
+    this.setState({ errorInfo });
+
+    const diagnostico = {
+      componentStack: errorInfo.componentStack,
+      message: error.message,
+      name: error.name,
+      path: typeof window !== "undefined" ? window.location.href : "server",
+      stack: error.stack,
+      timestamp: new Date().toISOString(),
+      id: this.state.errorId,
+    };
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("crm:last-error-boundary", JSON.stringify(diagnostico));
+    }
+
+    console.error("ErrorBoundary caught an error:", diagnostico, errorInfo);
   }
 
   reset = () => {
-    this.setState({ hasError: false, error: undefined });
+    this.setState({ error: undefined, errorId: "", errorInfo: undefined, hasError: false });
   };
 
   render() {
     if (this.state.hasError) {
-      return this.props.fallback || <DefaultErrorFallback error={this.state.error} reset={this.reset} />;
+      if (typeof this.props.fallback === "function") {
+        return this.props.fallback({
+          error: this.state.error,
+          errorId: this.state.errorId,
+          errorInfo: this.state.errorInfo,
+          reset: this.reset,
+        });
+      }
+
+      return this.props.fallback || (
+        <DefaultErrorFallback error={this.state.error} errorId={this.state.errorId} reset={this.reset} />
+      );
     }
 
     return this.props.children;
   };
 }
 
-function DefaultErrorFallback({ error, reset }: { error?: Error; reset: () => void }) {
+function DefaultErrorFallback({ error, errorId, reset }: { error?: Error; errorId: string; reset: () => void }) {
   useEffect(() => {
     if (error) {
       console.error("ErrorBoundary caught an error:", error);
@@ -62,6 +108,7 @@ function DefaultErrorFallback({ error, reset }: { error?: Error; reset: () => vo
         <p className="mt-1 text-sm text-foreground-muted">
           Ocorreu um erro inesperado. Por favor, tente novamente.
         </p>
+        {errorId ? <p className="mt-2 text-xs text-foreground-disabled">Código: {errorId}</p> : null}
         {process.env.NODE_ENV === "development" && error && (
           <pre className="mt-4 max-w-md overflow-auto rounded-lg bg-muted p-4 text-left text-xs text-foreground-muted">
             {error.message}

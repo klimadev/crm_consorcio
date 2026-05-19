@@ -507,6 +507,8 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
                   error={whatsappChat.error}
                   blockedState={whatsappChat.blockedState}
                   onSendMessage={whatsappChat.sendMessage}
+                  onSendMedia={whatsappChat.sendMedia}
+                  onSendAudio={whatsappChat.sendAudio}
                   onRetryMessage={whatsappChat.retryMessage}
                 />
               </TabsContent>

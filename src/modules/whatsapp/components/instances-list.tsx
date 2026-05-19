@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { OptimisticSync } from "@/components/ui/optimistic-sync";
 import { Card, CardContent } from "@/components/ui/card";
-import { RefreshCw, Trash2, Smartphone, Clock, Wifi, WifiOff, QrCode, Loader2, Zap, RotateCcw } from "lucide-react";
+import { RefreshCw, Trash2, Smartphone, Clock, Wifi, WifiOff, QrCode, Loader2, Zap, RotateCcw, AlertTriangle } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { WhatsappInstancia } from "../types";
 
@@ -24,7 +24,7 @@ interface StatusConfig {
   labelShort: string;
   labelDetailed: string;
   className: string;
-  icon: "connected" | "disconnected" | "qrcode" | "loading" | "error";
+  icon: "connected" | "degraded" | "disconnected" | "qrcode" | "loading" | "error";
 }
 
 function getStatusBadge(status: string): StatusConfig {
@@ -32,11 +32,21 @@ function getStatusBadge(status: string): StatusConfig {
   
   if (statusLower === "connected" || statusLower === "open") {
     return {
-      label: "Conectado",
-      labelShort: "Online",
-      labelDetailed: "Sincronizado e Pronto",
+      label: "Autenticado",
+      labelShort: "QR lido",
+      labelDetailed: "QR Code escaneado — sessao ativa",
        className: "bg-success/10 text-success border-success/25",
       icon: "connected",
+    };
+  }
+  
+  if (statusLower === "degraded") {
+    return {
+      label: "Instavel",
+      labelShort: "Instavel",
+      labelDetailed: "Falha na verificacao de saude — verifique",
+       className: "bg-warning/10 text-warning border-warning/25",
+      icon: "degraded",
     };
   }
   
@@ -84,6 +94,7 @@ function StatusIcon({ status }: { status: string }) {
   
   const iconClasses = {
     connected: "text-success",
+    degraded: "text-warning",
     disconnected: "text-foreground-disabled",
     qrcode: "text-warning animate-pulse",
     loading: "text-info animate-pulse",
@@ -92,6 +103,7 @@ function StatusIcon({ status }: { status: string }) {
 
   const icons = {
     connected: <Wifi className="h-4 w-4" />,
+    degraded: <AlertTriangle className="h-4 w-4" />,
     disconnected: <WifiOff className="h-4 w-4" />,
     qrcode: <QrCode className="h-4 w-4" />,
     loading: <Loader2 className="h-4 w-4 animate-spin" />,
@@ -346,7 +358,7 @@ function InstanceCard({
                   }`}
                 >
                   <StatusIcon status={instancia.status} />
-                  {isConnected ? "Sincronizado e Pronto" : badge.labelShort}
+                  {isConnected ? "Sessao ativa" : badge.labelShort}
                 </span>
               </div>
             </div>

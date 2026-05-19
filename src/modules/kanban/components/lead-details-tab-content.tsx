@@ -17,6 +17,8 @@ const LABELS_PENDENCIA: Record<string, string> = {
   ESTAGIO_PARADO: "Lead Parado no Estágio",
 };
 
+const RESPONSAVEL_NAO_ENCONTRADO = "responsavel_nao_encontrado";
+
 type LeadDetailsTabContentProps = {
   leadSelecionado: Lead;
   perfil: "EMPRESA" | "GERENTE" | "COLABORADOR";
@@ -109,6 +111,7 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
   const funcionarioResponsavel = funcionarios.find((funcionario) => funcionario.id === leadSelecionado.id_funcionario);
   const gestorAprovacao = funcionarios.find((funcionario) => funcionario.id === leadSelecionado.gestor_id);
   const consultorAprovacao = funcionarios.find((funcionario) => funcionario.id === leadSelecionado.consultor_id);
+  const valorResponsavel = funcionarioResponsavel?.id ?? RESPONSAVEL_NAO_ENCONTRADO;
   const nomeGestorAprovacao = gestorAprovacao?.nome;
   const nomeConsultorAprovacao = consultorAprovacao?.nome;
   const totalPendencias = pendenciasLead.length;
@@ -323,14 +326,25 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
           {perfil !== "COLABORADOR" ? (
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Responsável</label>
-              <Select value={leadSelecionado.id_funcionario} onValueChange={(id_funcionario) => onMudarLead({ ...leadSelecionado, id_funcionario })}>
+              <Select
+                value={valorResponsavel}
+                onValueChange={(id_funcionario) => {
+                  if (id_funcionario === RESPONSAVEL_NAO_ENCONTRADO) return;
+                  onMudarLead({ ...leadSelecionado, id_funcionario });
+                }}
+              >
                 <SelectTrigger className="h-11 rounded-xl">
                   <SelectValue placeholder="Selecione o responsável" />
                 </SelectTrigger>
                 <SelectContent className="max-h-80">
+                  {!funcionarioResponsavel ? (
+                    <SelectItem value={RESPONSAVEL_NAO_ENCONTRADO} disabled>
+                      Responsável atual não encontrado
+                    </SelectItem>
+                  ) : null}
                   <FuncionarioSelectOptions
                     funcionarios={funcionarios}
-                    funcionarioAtualId={leadSelecionado.id_funcionario}
+                    funcionarioAtualId={funcionarioResponsavel?.id}
                   />
                 </SelectContent>
               </Select>

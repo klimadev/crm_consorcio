@@ -177,7 +177,7 @@ export type UseKanbanModuleReturn = {
     criados?: number;
     instanciasIgnoradas?: Array<{ id: string; nome: string; motivo: string }>;
   }>;
-  redistribuirLeadsEmAtendimento: () => Promise<
+  redistribuirLeadsEmAtendimento: (modo?: "indefinidos" | "parados") => Promise<
     | { ok: false; erro: string }
     | {
         ok: true;

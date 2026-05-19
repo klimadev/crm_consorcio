@@ -186,6 +186,12 @@ export const esquemaReconectarWhatsappInstancia = z.object({
   forcarQrCode: z.boolean().optional(),
 });
 
+export const esquemaExportarWhatsapp = z.object({
+  instanceIds: z.array(z.string().uuid()).min(1, "Selecione pelo menos uma instancia."),
+  chatLimit: z.number().int().min(1).max(1000),
+  messagesPerChat: z.number().int().min(1).max(100),
+});
+
 export const esquemaAtualizarPdv = z.object({
   nome: z.string().trim().min(1, "Nome do PDV e obrigatorio.").optional(),
   id_whatsapp_instancia: z
@@ -235,10 +241,9 @@ export const esquemaAprovarLead = z.object({
 });
 
 export const esquemaRedistribuirLeadsEmAtendimento = z.object({
-  minutosSemAtendimento: z.coerce.number().int().min(1, "Minutos deve ser maior que zero.").max(24 * 60, "Minutos maximo de 24 horas.").default(30),
-  limite: z.coerce.number().int().min(1, "Limite minimo de 1 lead.").max(200, "Limite maximo de 200 leads por execucao.").default(50),
+  modo: z.enum(["indefinidos", "parados"]).default("indefinidos"),
+  limite: z.coerce.number().int().min(1, "Limite minimo de 1 lead.").max(500, "Limite maximo de 500 leads por execucao.").optional(),
   id_pdv: z.string().trim().min(1, "PDV invalido.").optional(),
-  nomeEstagio: z.string().trim().min(1, "Nome do estagio invalido.").optional(),
 });
 
 export const esquemaAtualizarLead = z
@@ -793,4 +798,42 @@ export const esquemaWhatsappChatSendMessage = z.object({
 
 export const esquemaWhatsappChatMarkRead = z.object({
   leadId: z.string().trim().min(1, "Lead obrigatorio."),
+});
+
+const TAMANHO_MAX_BASE64_AUDIO = 27 * 1024 * 1024;
+const TAMANHO_MAX_BASE64_DOCUMENTO = 134 * 1024 * 1024;
+
+export const esquemaWhatsappChatSendMedia = z.object({
+  leadId: z.string().trim().min(1, "Lead obrigatorio."),
+  mediaBase64: z
+    .string()
+    .trim()
+    .min(1, "Arquivo obrigatorio.")
+    .refine(
+      (val) => {
+        return val.length <= TAMANHO_MAX_BASE64_DOCUMENTO;
+      },
+      { message: "Arquivo muito grande. Limite: 100MB." },
+    ),
+  mimeType: z.string().trim().min(1, "Tipo de arquivo obrigatorio."),
+  fileName: z.string().trim().min(1, "Nome do arquivo obrigatorio.").max(255),
+  caption: z.string().trim().max(1024).optional(),
+  clientTempId: z.string().trim().min(1, "ID temporario obrigatorio."),
+});
+
+export const esquemaWhatsappChatSendAudio = z.object({
+  leadId: z.string().trim().min(1, "Lead obrigatorio."),
+  audioBase64: z
+    .string()
+    .trim()
+    .min(1, "Audio obrigatorio.")
+    .refine(
+      (val) => {
+        return val.length <= TAMANHO_MAX_BASE64_AUDIO;
+      },
+      { message: "Audio muito grande. Limite: 20MB." },
+    ),
+  mimeType: z.string().trim().min(1, "Tipo de audio obrigatorio."),
+  duration: z.number().min(0).max(300).optional(),
+  clientTempId: z.string().trim().min(1, "ID temporario obrigatorio."),
 });

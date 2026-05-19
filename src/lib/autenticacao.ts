@@ -41,21 +41,21 @@ export async function validarTokenSessao(token: string) {
   }
 }
 
-export function definirCookieSessao(resposta: NextResponse, token: string) {
+export function definirCookieSessao(resposta: NextResponse, token: string, secure = false) {
   resposta.cookies.set(NOME_COOKIE_SESSAO, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: false,
+    secure,
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
   });
 }
 
-export function limparCookieSessao(resposta: NextResponse) {
+export function limparCookieSessao(resposta: NextResponse, secure = false) {
   resposta.cookies.set(NOME_COOKIE_SESSAO, "", {
     httpOnly: true,
     sameSite: "lax",
-    secure: false,
+    secure,
     path: "/",
     expires: new Date(0),
   });

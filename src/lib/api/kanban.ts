@@ -39,10 +39,9 @@ export type PayloadAtualizarLeadKanban = {
 };
 
 export type PayloadRedistribuirEmAtendimentoKanban = {
-  minutosSemAtendimento?: number;
+  modo?: "indefinidos" | "parados";
   limite?: number;
   id_pdv?: string;
-  nomeEstagio?: string;
 };
 
 async function lerJsonSeguro<T>(resposta: Response): Promise<T> {

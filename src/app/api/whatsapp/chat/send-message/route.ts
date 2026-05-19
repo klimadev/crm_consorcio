@@ -52,9 +52,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const connectionStatus = await buscarConnectionStatus(instancia.instanceName);
+    const connectionStatus = await buscarConnectionStatus(instancia.instanceName, instancia.id);
     if (connectionStatus !== "online") {
-      return conflict("WhatsApp desconectado.");
+      return conflict(
+        connectionStatus === "degraded"
+          ? "WhatsApp com problemas de conexao. Tente novamente ou reconecte a instancia."
+          : "WhatsApp desconectado.",
+      );
     }
 
     try {

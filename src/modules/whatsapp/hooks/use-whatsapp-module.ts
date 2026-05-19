@@ -194,6 +194,18 @@ export function useWhatsappModule(): UseWhatsappModuleReturn {
     return () => clearInterval(intervalo);
   }, [instancias, atualizarStatus]);
 
+  useEffect(() => {
+    const intervalo = setInterval(() => {
+      instancias.forEach((instancia) => {
+        if (instancia.phone && !instancia.id.startsWith("temp-")) {
+          atualizarStatus(instancia.id);
+        }
+      });
+    }, 30000);
+
+    return () => clearInterval(intervalo);
+  }, [instancias, atualizarStatus]);
+
   const getQrCode = useCallback((id: string): string | null => {
     return qrCodes[id] ?? null;
   }, [qrCodes]);

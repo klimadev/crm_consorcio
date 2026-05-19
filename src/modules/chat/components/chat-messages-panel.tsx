@@ -37,6 +37,8 @@ export function ChatMessagesPanel({ leadId, leadNome }: Props) {
       error={chat.error}
       blockedState={chat.blockedState}
       onSendMessage={chat.sendMessage}
+      onSendMedia={chat.sendMedia}
+      onSendAudio={chat.sendAudio}
       onRetryMessage={chat.retryMessage}
     />
   );

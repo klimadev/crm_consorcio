@@ -302,7 +302,7 @@ export async function obterSnapshotMensagens(sessao: SessaoToken, leadId: string
     let connectionStatus: ChatConnectionStatus = "offline";
 
     try {
-      connectionStatus = await buscarConnectionStatus(instancia.instanceName);
+      connectionStatus = await buscarConnectionStatus(instancia.instanceName, instancia.id);
       const payload = await buscarMensagensEvolution(instancia.instanceName, remoteJidInfo.remoteJid);
       const targetNumber = remoteJidInfo.waNumber.replace(/\D/g, "");
 

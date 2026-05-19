@@ -91,7 +91,7 @@ type KanbanHeaderProps = {
   }>;
   redistribuindoEmAtendimento: boolean;
   carregandoInicial?: boolean;
-  redistribuirLeadsEmAtendimento: () => Promise<
+  redistribuirLeadsEmAtendimento: (modo?: "indefinidos" | "parados") => Promise<
     | { ok: false; erro: string }
     | {
         ok: true;
@@ -706,7 +706,7 @@ export function KanbanHeader({
                 loading={redistribuindoEmAtendimento}
                 loadingText="Redistribuindo..."
                 onClick={async () => {
-                  const resultado = await redistribuirLeadsEmAtendimento();
+                  const resultado = await redistribuirLeadsEmAtendimento("indefinidos");
                   if (!resultado.ok) {
                     addToast({
                       type: "error",
@@ -718,14 +718,44 @@ export function KanbanHeader({
 
                   addToast({
                     type: "success",
-                    title: "Redistribuição concluída",
+                    title: "Indefinidos redistribuídos",
                     description: `${resultado.reatribuidos} lead(s) reatribuído(s) de ${resultado.elegiveis} elegível(is).`,
                   });
                 }}
-                title="Reatribuir leads sem responsável para o gerente"
+                title="Reatribuir todos os leads no estágio Indefinido ao colaborador menos carregado"
+                iconeEsquerda={<Filter className="h-4 w-4" />}
+              >
+                Reatribuir Indefinidos
+              </ActionButton>
+
+              <ActionButton
+                variant="outline"
+                size="sm"
+                className="h-10 rounded-2xl border-border bg-background"
+                disabled={redistribuindoEmAtendimento}
+                loading={redistribuindoEmAtendimento}
+                loadingText="Redistribuindo..."
+                onClick={async () => {
+                  const resultado = await redistribuirLeadsEmAtendimento("parados");
+                  if (!resultado.ok) {
+                    addToast({
+                      type: "error",
+                      title: "Falha na redistribuição",
+                      description: resultado.erro,
+                    });
+                    return;
+                  }
+
+                  addToast({
+                    type: "success",
+                    title: "Parados redistribuídos",
+                    description: `${resultado.reatribuidos} lead(s) reatribuído(s) de ${resultado.elegiveis} elegível(is).`,
+                  });
+                }}
+                title="Reatribuir leads parados (sem atualização há 3+ dias) ao colaborador menos carregado"
                 iconeEsquerda={<RefreshCw className="h-4 w-4" />}
               >
-                Reatribuir
+                Reatribuir Parados
               </ActionButton>
 
               <Button

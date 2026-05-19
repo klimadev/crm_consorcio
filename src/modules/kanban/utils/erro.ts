@@ -5,7 +5,7 @@ type ErroComMensagem = {
 export const MENSAGENS_FALLBACK_KANBAN = {
   criarLead: "Erro ao criar lead.",
   sincronizarWhatsapp: "Erro ao sincronizar contatos do WhatsApp.",
-  redistribuirEmAtendimento: "Erro ao redistribuir leads em atendimento.",
+  redistribuirEmAtendimento: "Erro ao redistribuir leads.",
   excluirLead: "Erro ao excluir lead.",
 } as const;
 

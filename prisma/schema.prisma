@@ -32,6 +32,7 @@ model Pdv {
   id_empresa            String
   id_whatsapp_instancia String?
   nome                  String
+  round_robin_indice    Int                @default(0)
   criado_em             DateTime           @default(now())
   atualizado_em         DateTime           @default(now()) @updatedAt
   funcionarios          Funcionario[]

@@ -27,6 +27,7 @@ export type EvolutionConnectionState = {
   phoneNumber: string | null;
   profileName: string | null;
   profilePic: string | null;
+  disconnectionReasonCode: string | null;
 };
 
 export type EvolutionQrCode = {
@@ -107,6 +108,12 @@ function extrairTelefone(raw: unknown): string | null {
   return raw.replace("@s.whatsapp.net", "").replace("@lid", "");
 }
 
+function extrairCodigoDesconexao(raw: unknown): string | null {
+  if (typeof raw === "number") return String(raw);
+  if (typeof raw === "string" && raw.trim().length > 0) return raw.trim();
+  return null;
+}
+
 function normalizarStatusEvolution(raw: unknown): string {
   if (typeof raw !== "string" || raw.trim().length === 0) return "unknown";
   return raw.trim().toLowerCase();
@@ -167,6 +174,9 @@ export async function obterEstadoConexao(instanceName: string): Promise<Evolutio
     const status = normalizarStatusEvolution(data.state ?? data.status ?? json.state ?? json.status);
     const phoneNumber = extrairTelefone(data.owner ?? data.phoneNumber ?? json.owner ?? json.phoneNumber);
     const connected = status === "open" || status === "connected" || phoneNumber !== null;
+    const disconnectionReasonCode = extrairCodigoDesconexao(
+      data.disconnectionReasonCode ?? json.disconnectionReasonCode,
+    );
 
     return {
       instanceName:
@@ -196,6 +206,7 @@ export async function obterEstadoConexao(instanceName: string): Promise<Evolutio
           : typeof json.profilePicUrl === "string"
             ? json.profilePicUrl
             : null,
+      disconnectionReasonCode,
     };
   } catch {
     return null;
@@ -244,6 +255,102 @@ export async function criarInstancia(params: CriarInstanciaParams): Promise<{
   } catch (erro) {
     console.error("Erro ao criar instância na Evolution:", erro);
     throw erro;
+  }
+}
+
+export type ResultadoSaudeInstancia = {
+  saudavel: boolean;
+  status: string;
+  phoneNumber: string | null;
+  motivo?: string;
+};
+
+/**
+ * Sonda real da Evolution API para verificar se a instancia esta OPERACIONAL.
+ * 
+ * Diferente do `obterEstadoConexao` que retorna `state: "open"` assim que
+ * o socket WebSocket e autenticado, esta funcao faz uma chamada que EXIGE
+ * conexao WebSocket viva (`fetchProfile`) — diferente de `findMessages` que
+ * le do cache local do Baileys e retorna 200 mesmo em zombies.
+ *
+ * `phoneNumber` opcional: se disponivel, usa `fetchProfile` (probe real);
+ * se ausente, cai para `findMessages` (menos confiavel — falso positivo em zombies).
+ */
+export async function verificarSaudeInstancia(
+  instanceName: string,
+  phoneNumber?: string | null,
+): Promise<ResultadoSaudeInstancia> {
+  const estado = await obterEstadoConexao(instanceName);
+
+  if (!estado) {
+    return { saudavel: false, status: "offline", phoneNumber: null, motivo: "Instancia nao encontrada na Evolution API" };
+  }
+
+  if (!estado.connected) {
+    return { saudavel: false, status: estado.status, phoneNumber: estado.phoneNumber, motivo: `Estado: ${estado.status}` };
+  }
+
+  const phone = phoneNumber || estado.phoneNumber;
+
+  if (phone) {
+    try {
+      const resposta = await fetch(`${EVOLUTION_API_URL}/chat/fetchProfile/${instanceName}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ number: phone }),
+      });
+
+      if (!resposta.ok) {
+        return {
+          saudavel: false,
+          status: estado.status,
+          phoneNumber: estado.phoneNumber,
+          motivo: `fetchProfile retornou HTTP ${resposta.status}`,
+        };
+      }
+
+      return { saudavel: true, status: estado.status, phoneNumber: estado.phoneNumber };
+    } catch (erro) {
+      const msg = erro instanceof Error ? erro.message : String(erro);
+      return {
+        saudavel: false,
+        status: estado.status,
+        phoneNumber: estado.phoneNumber,
+        motivo: `Erro ao sondar fetchProfile: ${msg}`,
+      };
+    }
+  }
+
+  console.warn(
+    `[verificarSaudeInstancia] Sem numero de telefone para "${instanceName}" — ` +
+    `usando findMessages (menos confiavel, pode dar falso positivo em zombies).`,
+  );
+
+  try {
+    const resposta = await fetch(`${EVOLUTION_API_URL}/chat/findMessages/${instanceName}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ page: 1, offset: 1 }),
+    });
+
+    if (!resposta.ok) {
+      return {
+        saudavel: false,
+        status: estado.status,
+        phoneNumber: estado.phoneNumber,
+        motivo: `findMessages retornou HTTP ${resposta.status}`,
+      };
+    }
+
+    return { saudavel: true, status: estado.status, phoneNumber: estado.phoneNumber };
+  } catch (erro) {
+    const msg = erro instanceof Error ? erro.message : String(erro);
+    return {
+      saudavel: false,
+      status: estado.status,
+      phoneNumber: estado.phoneNumber,
+      motivo: `Erro ao sondar findMessages: ${msg}`,
+    };
   }
 }
 
@@ -378,6 +485,91 @@ export async function enviarMensagemTexto(params: EnviarMensagemTextoParams): Pr
       `${mensagemErro} (status=${resposta.status}, instancia=${params.instanceName}, numero=${mascararTelefoneParaLog(numeroNormalizado.waNumber)})`,
     );
   }
+}
+
+type EnviarMidiaParams = {
+  instanceName: string;
+  telefone: string;
+  mediaType: "image" | "video" | "document";
+  media: string;
+  fileName: string;
+  caption?: string;
+};
+
+export async function enviarMidiaEvolution(params: EnviarMidiaParams) {
+  const numeroNormalizado = normalizarTelefoneParaWhatsapp(params.telefone);
+  if (!numeroNormalizado.valido || !numeroNormalizado.waNumber) {
+    throw new Error(numeroNormalizado.motivoErro ?? "Telefone invalido para envio WhatsApp.");
+  }
+
+  const body: Record<string, unknown> = {
+    number: `+${numeroNormalizado.waNumber}`,
+    mediatype: params.mediaType,
+    media: params.media,
+    fileName: params.fileName,
+  };
+  if (params.caption) body.caption = params.caption;
+
+  const resposta = await fetch(`${EVOLUTION_API_URL}/message/sendMedia/${params.instanceName}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+
+  if (!resposta.ok) {
+    const erro = await resposta.json().catch(() => ({}));
+    const mensagemErro =
+      typeof erro.message === "string"
+        ? erro.message
+        : typeof erro.error === "string"
+          ? erro.error
+          : "Erro ao enviar midia WhatsApp";
+    throw new Error(
+      `${mensagemErro} (status=${resposta.status}, instancia=${params.instanceName})`,
+    );
+  }
+
+  return resposta.json().catch(() => ({}));
+}
+
+type EnviarAudioParams = {
+  instanceName: string;
+  telefone: string;
+  audio: string;
+};
+
+export async function enviarAudioEvolution(params: EnviarAudioParams) {
+  const numeroNormalizado = normalizarTelefoneParaWhatsapp(params.telefone);
+  if (!numeroNormalizado.valido || !numeroNormalizado.waNumber) {
+    throw new Error(numeroNormalizado.motivoErro ?? "Telefone invalido para envio WhatsApp.");
+  }
+
+  const resposta = await fetch(
+    `${EVOLUTION_API_URL}/message/sendWhatsAppAudio/${params.instanceName}`,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        number: `+${numeroNormalizado.waNumber}`,
+        audio: params.audio,
+      }),
+    },
+  );
+
+  if (!resposta.ok) {
+    const erro = await resposta.json().catch(() => ({}));
+    const mensagemErro =
+      typeof erro.message === "string"
+        ? erro.message
+        : typeof erro.error === "string"
+          ? erro.error
+          : "Erro ao enviar audio WhatsApp";
+    throw new Error(
+      `${mensagemErro} (status=${resposta.status}, instancia=${params.instanceName})`,
+    );
+  }
+
+  return resposta.json().catch(() => ({}));
 }
 
 export async function buscarContatos(instanceName: string): Promise<EvolutionContato[]> {
@@ -530,6 +722,15 @@ export async function buscarConversasEvolution(
     }));
 }
 
+export type EvolutionChatMessage = {
+  remoteJid: string;
+  pushName: string | null;
+  messageType: string;
+  messageText: string | null;
+  messageTimestamp: number;
+  fromMe: boolean;
+};
+
 export type EvolutionMensagem = {
   remoteJid: string;
   remoteJidAlt: string | null;
@@ -624,4 +825,116 @@ export async function buscarMensagens(instanceName: string, limitePorPagina: num
   }
 
   return Array.from(contactosUnicos.values());
+}
+
+export async function buscarMensagensPorChat(
+  instanceName: string,
+  remoteJid: string,
+  limite: number = 30,
+): Promise<EvolutionChatMessage[]> {
+  const todasMensagens: EvolutionChatMessage[] = [];
+  let pagina = 1;
+  const limitePorPagina = Math.min(limite, 100);
+
+  while (todasMensagens.length < limite) {
+    try {
+      const resposta = await fetch(
+        `${EVOLUTION_API_URL}/chat/findMessages/${instanceName}`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            where: {
+              key: {
+                remoteJid,
+              },
+            },
+            page: pagina,
+            offset: limitePorPagina,
+          }),
+        },
+      );
+
+      if (!resposta.ok) {
+        const erro = await resposta.json().catch(() => ({}));
+        throw new Error(erro.message ?? "Erro ao buscar mensagens do chat na Evolution");
+      }
+
+      const json = (await resposta.json().catch(() => ({}))) as {
+        messages?: {
+          records?: Array<{
+            key?: {
+              remoteJid?: string;
+              fromMe?: boolean;
+            };
+            pushName?: string | null;
+            messageType?: string;
+            messageTimestamp?: number;
+            message?: {
+              conversation?: string;
+              imageMessage?: unknown;
+              videoMessage?: unknown;
+              audioMessage?: unknown;
+              documentMessage?: unknown;
+              stickerMessage?: unknown;
+              extendedTextMessage?: { text?: string };
+            };
+          }>;
+          pages?: number;
+        };
+      };
+
+      const registros = json.messages?.records ?? [];
+      if (registros.length === 0) break;
+
+      for (const msg of registros) {
+        if (todasMensagens.length >= limite) break;
+
+        const jid = msg.key?.remoteJid ?? "";
+        if (!jid || jid.includes("@g.us") || jid === "status@broadcast") continue;
+
+        const messageType = msg.messageType ?? "unknown";
+        let messageText: string | null = null;
+
+        if (msg.message) {
+          if (msg.message.conversation) {
+            messageText = msg.message.conversation;
+          } else if (msg.message.extendedTextMessage?.text) {
+            messageText = msg.message.extendedTextMessage.text;
+          } else if (msg.message.imageMessage) {
+            messageText = "[Midia: imagem]";
+          } else if (msg.message.videoMessage) {
+            messageText = "[Midia: video]";
+          } else if (msg.message.audioMessage) {
+            messageText = "[Audio]";
+          } else if (msg.message.documentMessage) {
+            messageText = "[Documento]";
+          } else if (msg.message.stickerMessage) {
+            messageText = "[Sticker]";
+          }
+        }
+
+        todasMensagens.push({
+          remoteJid: jid,
+          pushName: msg.pushName ?? null,
+          messageType,
+          messageText,
+          messageTimestamp: msg.messageTimestamp ?? 0,
+          fromMe: msg.key?.fromMe ?? false,
+        });
+      }
+
+      const totalPaginas = json.messages?.pages ?? 1;
+      if (pagina >= totalPaginas) break;
+      pagina += 1;
+    } catch (erro) {
+      console.error(
+        `Erro ao buscar mensagens do chat ${remoteJid} na instancia ${instanceName}:`,
+        erro,
+      );
+      throw erro;
+    }
+  }
+
+  return todasMensagens;
 }

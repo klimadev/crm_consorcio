@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { assinarMensagensWhatsapp, enviarMensagemWhatsapp, listarMensagensWhatsapp, marcarMensagensComoLidas } from "@/lib/api/whatsapp";
-import type { ChatConnectionStatus, ChatMessageStatus, WhatsappChatBlockedState, WhatsappChatMessage } from "@/modules/whatsapp/types";
+import { assinarMensagensWhatsapp, enviarMensagemWhatsapp, enviarMidiaWhatsapp, enviarAudioWhatsapp, listarMensagensWhatsapp, marcarMensagensComoLidas } from "@/lib/api/whatsapp";
+import type { ChatConnectionStatus, ChatMessageKind, ChatMessageStatus, WhatsappChatBlockedState, WhatsappChatMessage } from "@/modules/whatsapp/types";
 
 type UseWhatsappChatParams = {
   leadId?: string;
@@ -219,6 +219,224 @@ export function useWhatsappChat({ leadId, enabled, markReadEnabled, pollMs = 300
     [sendMessage],
   );
 
+  const sendMedia = useCallback(
+    async (file: File, caption?: string) => {
+      if (!leadId || !enabled) return;
+
+      const reader = new FileReader();
+      const readFile = (): Promise<string> =>
+        new Promise((resolve, reject) => {
+          reader.onload = () => {
+            const result = reader.result as string;
+            const base64 = result.includes("base64,") ? result.split("base64,")[1] : result;
+            resolve(base64);
+          };
+          reader.onerror = () => reject(new Error("Erro ao ler arquivo."));
+          reader.readAsDataURL(file);
+        });
+
+      let mediaBase64: string;
+      try {
+        mediaBase64 = await readFile();
+      } catch {
+        setError("Erro ao ler arquivo.");
+        return;
+      }
+
+      const mimeType = file.type || "application/octet-stream";
+      const isImage = mimeType.startsWith("image/");
+      const kind: ChatMessageKind = isImage ? "image" : "document";
+
+      const tempId = `temp-${Date.now()}`;
+      const timestamp = Math.floor(Date.now() / 1000);
+      const optimisticMessage: WhatsappChatMessage = {
+        id: tempId,
+        messageId: tempId,
+        leadId,
+        remoteJid: "",
+        remoteJidAlt: null,
+        fromMe: true,
+        direction: "outgoing",
+        text: caption ?? "",
+        kind,
+        tipoLabel: isImage ? "Imagem" : "Documento",
+        status: "PENDING",
+        timestamp,
+        timestampIso: new Date().toISOString(),
+        createdAtIso: new Date().toISOString(),
+        readAtIso: null,
+        optimistic: true,
+        error: null,
+        dadosAd: null,
+        fileName: file.name,
+        mimeType,
+        caption,
+      };
+
+      setError(null);
+      setSending(true);
+      setMessages((prev) => mergeMessages(prev, [optimisticMessage]));
+
+      try {
+        const resultado = await enviarMidiaWhatsapp({
+          leadId,
+          mediaBase64,
+          mimeType,
+          fileName: file.name,
+          caption,
+          clientTempId: tempId,
+        });
+
+        if (!resultado.ok) {
+          if (resultado.codigo === "PDV_SEM_INSTANCIA") {
+            setBlockedState({
+              type: "missing_pdv_instance",
+              message: resultado.erro,
+              actionLabel: resultado.rotaConfiguracao ? "Configurar WhatsApp deste PDV" : undefined,
+              actionHref: resultado.rotaConfiguracao ?? undefined,
+            });
+          }
+          throw new Error(resultado.erro);
+        }
+
+        setBlockedState(null);
+        const serverMessage = resultado.dados.message;
+
+        setMessages((prev) => {
+          const replaced = prev.map((message) =>
+            message.id === (resultado.dados.clientTempId ?? tempId)
+              ? { ...serverMessage, optimistic: false }
+              : message,
+          );
+          return mergeMessages(replaced, [serverMessage]);
+        });
+      } catch (err) {
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === tempId
+              ? {
+                  ...message,
+                  status: "ERROR",
+                  error: err instanceof Error ? err.message : "Erro ao enviar midia.",
+                  optimistic: false,
+                }
+              : message,
+          ),
+        );
+      } finally {
+        setSending(false);
+      }
+    },
+    [leadId, enabled],
+  );
+
+  const sendAudio = useCallback(
+    async (blob: Blob, duration: number) => {
+      if (!leadId || !enabled) return;
+
+      const reader = new FileReader();
+      const readBlob = (): Promise<string> =>
+        new Promise((resolve, reject) => {
+          reader.onload = () => {
+            const result = reader.result as string;
+            const base64 = result.includes("base64,") ? result.split("base64,")[1] : result;
+            resolve(base64);
+          };
+          reader.onerror = () => reject(new Error("Erro ao ler audio."));
+          reader.readAsDataURL(blob);
+        });
+
+      let audioBase64: string;
+      try {
+        audioBase64 = await readBlob();
+      } catch {
+        setError("Erro ao ler audio.");
+        return;
+      }
+
+      const mimeType = blob.type || "audio/webm";
+
+      const tempId = `temp-${Date.now()}`;
+      const timestamp = Math.floor(Date.now() / 1000);
+      const optimisticMessage: WhatsappChatMessage = {
+        id: tempId,
+        messageId: tempId,
+        leadId,
+        remoteJid: "",
+        remoteJidAlt: null,
+        fromMe: true,
+        direction: "outgoing",
+        text: "",
+        kind: "audio",
+        tipoLabel: "Audio",
+        status: "PENDING",
+        timestamp,
+        timestampIso: new Date().toISOString(),
+        createdAtIso: new Date().toISOString(),
+        readAtIso: null,
+        optimistic: true,
+        error: null,
+        dadosAd: null,
+        mimeType,
+        mediaDuration: duration,
+      };
+
+      setError(null);
+      setSending(true);
+      setMessages((prev) => mergeMessages(prev, [optimisticMessage]));
+
+      try {
+        const resultado = await enviarAudioWhatsapp({
+          leadId,
+          audioBase64,
+          mimeType,
+          duration,
+          clientTempId: tempId,
+        });
+
+        if (!resultado.ok) {
+          if (resultado.codigo === "PDV_SEM_INSTANCIA") {
+            setBlockedState({
+              type: "missing_pdv_instance",
+              message: resultado.erro,
+              actionLabel: resultado.rotaConfiguracao ? "Configurar WhatsApp deste PDV" : undefined,
+              actionHref: resultado.rotaConfiguracao ?? undefined,
+            });
+          }
+          throw new Error(resultado.erro);
+        }
+
+        setBlockedState(null);
+        const serverMessage = resultado.dados.message;
+
+        setMessages((prev) => {
+          const replaced = prev.map((message) =>
+            message.id === (resultado.dados.clientTempId ?? tempId)
+              ? { ...serverMessage, optimistic: false }
+              : message,
+          );
+          return mergeMessages(replaced, [serverMessage]);
+        });
+      } catch (err) {
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === tempId
+              ? {
+                  ...message,
+                  status: "ERROR",
+                  error: err instanceof Error ? err.message : "Erro ao enviar audio.",
+                  optimistic: false,
+                }
+              : message,
+          ),
+        );
+      } finally {
+        setSending(false);
+      }
+    },
+    [leadId, enabled],
+  );
+
   const markRead = useCallback(async () => {
     if (!leadId || !markReadEnabled || markReadInFlightRef.current) return;
     markReadInFlightRef.current = true;
@@ -304,6 +522,8 @@ export function useWhatsappChat({ leadId, enabled, markReadEnabled, pollMs = 300
     blockedState,
     canSend,
     sendMessage,
+    sendMedia,
+    sendAudio,
     retryMessage,
     markRead,
     reload,

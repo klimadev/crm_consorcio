@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { whereLeadsPorPerfil } from "@/lib/permissoes";
 import { normalizarTelefoneParaWhatsapp } from "@/lib/phone";
 import { normalizarTimestampParaIso, traduzirTipoMensagem, extrairDadosAd, type DadosAd } from "@/lib/whatsapp-utils";
+import { verificarSaudeInstancia } from "@/lib/evolution-api";
 import type { SessaoToken } from "@/lib/tipos";
 import type { Prisma } from "@prisma/client";
 import type { ChatConnectionStatus, ChatMessageStatus, WhatsappChatMessage } from "@/modules/whatsapp/types";
@@ -379,7 +380,10 @@ export function normalizarRemoteJidParaLead(telefone: string) {
   };
 }
 
-export async function buscarConnectionStatus(instanceName: string): Promise<ChatConnectionStatus> {
+export async function buscarConnectionStatus(
+  instanceName: string,
+  dbInstanceId?: string,
+): Promise<ChatConnectionStatus> {
   try {
     const response = await fetch(`${EVOLUTION_API_URL}/instance/connectionState/${instanceName}`, {
       method: "GET",
@@ -391,9 +395,68 @@ export async function buscarConnectionStatus(instanceName: string): Promise<Chat
     const instance = (json.instance ?? json) as Record<string, unknown>;
     const state = String(instance.state ?? instance.status ?? "").toLowerCase();
     if (!state) return "unknown";
-    return state === "open" ? "online" : "offline";
+    if (state !== "open") return "offline";
+
+    // Sinal 1: disconnectionReasonCode registrado indica que houve uma desconexao
+    const rawDisconnection = instance.disconnectionReasonCode ?? json.disconnectionReasonCode ?? null;
+    if (rawDisconnection !== null && rawDisconnection !== undefined) {
+      return "degraded";
+    }
+
+    // Sinal 2: verifica se as ultimas mensagens enviadas tem erro consecutivo
+    if (dbInstanceId) {
+      const temErrosConsecutivos = await verificarErrosConsecutivosEnvio(dbInstanceId);
+      if (temErrosConsecutivos) {
+        return "degraded";
+      }
+
+      // Sinal 3: health probe com fetchProfile (detecta zombies que nao sao pegos pelos sinais 1 e 2)
+      const phone = await obterPhoneDaInstancia(dbInstanceId);
+      const saude = await verificarSaudeInstancia(instanceName, phone);
+      if (!saude.saudavel) {
+        return "degraded";
+      }
+    }
+
+    return "online";
   } catch {
     return "offline";
+  }
+}
+
+async function obterPhoneDaInstancia(dbInstanceId: string): Promise<string | null> {
+  try {
+    const i = await prisma.whatsappInstancia.findUnique({
+      where: { id: dbInstanceId },
+      select: { phone: true },
+    });
+    return i?.phone ?? null;
+  } catch {
+    return null;
+  }
+}
+
+const JANELA_ERROS_RECENTES_MS = 15 * 60 * 1000;
+const LIMITE_ERROS_CONSECUTIVOS = 3;
+
+export async function verificarErrosConsecutivosEnvio(dbInstanceId: string): Promise<boolean> {
+  try {
+    const recentes = await prisma.whatsappMensagem.findMany({
+      where: {
+        id_whatsapp_instancia: dbInstanceId,
+        from_me: true,
+        criado_em: { gte: new Date(Date.now() - JANELA_ERROS_RECENTES_MS) },
+      },
+      orderBy: { criado_em: "desc" },
+      take: LIMITE_ERROS_CONSECUTIVOS,
+      select: { status: true },
+    });
+
+    if (recentes.length < LIMITE_ERROS_CONSECUTIVOS) return false;
+
+    return recentes.every((m) => m.status === "ERROR");
+  } catch {
+    return false;
   }
 }
 
@@ -579,6 +642,79 @@ export async function enviarMensagemEvolution(instanceName: string, number: stri
   return response.json().catch(() => ({}));
 }
 
+export async function enviarMidiaWhatsapp(
+  instanceName: string,
+  number: string,
+  base64: string,
+  fileName: string,
+  mimeType: string,
+  caption?: string,
+) {
+  const mediaType = mimeType.startsWith("image/")
+    ? "image"
+    : mimeType.startsWith("video/")
+      ? "video"
+      : "document";
+
+  const body: Record<string, unknown> = {
+    number: `+${number}`,
+    mediatype: mediaType,
+    media: base64,
+    fileName,
+  };
+  if (caption) body.caption = caption;
+
+  const response = await fetch(`${EVOLUTION_API_URL}/message/sendMedia/${instanceName}`, {
+    method: "POST",
+    headers: payloadHeaders(),
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const erro = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+    const erroTexto =
+      typeof erro.message === "string"
+        ? erro.message
+        : typeof erro.error === "string"
+          ? erro.error
+          : "Erro ao enviar midia.";
+    throw new Error(erroTexto);
+  }
+
+  return response.json().catch(() => ({}));
+}
+
+export async function enviarAudioWhatsapp(
+  instanceName: string,
+  number: string,
+  audioBase64: string,
+) {
+  const response = await fetch(
+    `${EVOLUTION_API_URL}/message/sendWhatsAppAudio/${instanceName}`,
+    {
+      method: "POST",
+      headers: payloadHeaders(),
+      body: JSON.stringify({
+        number: `+${number}`,
+        audio: audioBase64,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const erro = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+    const erroTexto =
+      typeof erro.message === "string"
+        ? erro.message
+        : typeof erro.error === "string"
+          ? erro.error
+          : "Erro ao enviar audio.";
+    throw new Error(erroTexto);
+  }
+
+  return response.json().catch(() => ({}));
+}
+
 const statusWeight: Record<ChatMessageStatus, number> = {
   ERROR: 5,
   READ: 4,
@@ -693,22 +829,73 @@ export function mapearMensagemDbParaCanonica(registro: {
   lida_no_crm_em: Date | null;
   erro: string | null;
   mensagem_id: string;
+  payload_json?: string | null;
 }): WhatsappChatMessage {
   const status = mapearStatusMensagem(registro.status, registro.from_me);
   const timestampIso = normalizarTimestampParaIso(registro.timestamp);
-  
-  // Mapear tipo
-  const kind: WhatsappChatMessage["kind"] = registro.tipo === "text" ? "text" : 
-    registro.tipo === "audioMessage" ? "audio" :
-    (registro.tipo as WhatsappChatMessage["kind"]) ?? "unsupported";
+
+  const kind: WhatsappChatMessage["kind"] =
+    registro.tipo === "text"
+      ? "text"
+      : registro.tipo === "audioMessage"
+        ? "audio"
+        : registro.tipo === "imageMessage"
+          ? "image"
+          : registro.tipo === "videoMessage"
+            ? "video"
+            : registro.tipo === "documentMessage"
+              ? "document"
+              : registro.tipo === "stickerMessage"
+                ? "sticker"
+                : (registro.tipo as WhatsappChatMessage["kind"]) ?? "unsupported";
   const tipoLabel = traduzirTipoMensagem(registro.tipo);
+
+  let fileName: string | undefined;
+  let mimeType: string | undefined;
+  let mediaDuration: number | undefined;
+  let caption: string | undefined;
+
+  if (registro.payload_json) {
+    try {
+      const payload = JSON.parse(registro.payload_json) as Record<string, unknown>;
+      const message = payload.message as Record<string, unknown> | undefined;
+
+      if (message) {
+        const docMsg = message.documentMessage as Record<string, unknown> | undefined;
+        const imgMsg = message.imageMessage as Record<string, unknown> | undefined;
+        const audMsg = message.audioMessage as Record<string, unknown> | undefined;
+        const vidMsg = message.videoMessage as Record<string, unknown> | undefined;
+
+        const mediaMsg = docMsg ?? imgMsg ?? audMsg ?? vidMsg;
+        if (mediaMsg) {
+          fileName = typeof mediaMsg.fileName === "string" ? mediaMsg.fileName : undefined;
+          mimeType = typeof mediaMsg.mimetype === "string" ? mediaMsg.mimetype : undefined;
+          mediaDuration =
+            typeof mediaMsg.seconds === "number" && mediaMsg.seconds > 0
+              ? mediaMsg.seconds
+              : typeof mediaMsg.duration === "number" && mediaMsg.duration > 0
+                ? mediaMsg.duration
+                : undefined;
+        }
+
+        if (imgMsg || vidMsg || docMsg) {
+          const possibleCaption = message.imageMessage ?? message.videoMessage ?? message.documentMessage;
+          if (possibleCaption && typeof (possibleCaption as Record<string, unknown>).caption === "string") {
+            caption = (possibleCaption as Record<string, unknown>).caption as string;
+          }
+        }
+      }
+    } catch {
+      // ignora erro de parse
+    }
+  }
 
   return {
     id: registro.id,
     messageId: registro.mensagem_id,
     leadId: registro.id_lead,
     remoteJid: registro.remote_jid,
-    remoteJidAlt: null, // Não disponível no registro do banco
+    remoteJidAlt: null,
     fromMe: registro.from_me,
     direction: registro.from_me ? "outgoing" : "incoming",
     text: registro.conteudo ?? "",
@@ -721,7 +908,11 @@ export function mapearMensagemDbParaCanonica(registro: {
     readAtIso: registro.lida_no_crm_em ? registro.lida_no_crm_em.toISOString() : null,
     optimistic: false,
     error: registro.erro,
-    dadosAd: null, // Não disponível no registro do banco
+    dadosAd: null,
+    fileName,
+    mimeType,
+    mediaDuration,
+    caption,
   };
 }
 

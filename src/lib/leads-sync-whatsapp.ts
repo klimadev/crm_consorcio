@@ -3,6 +3,7 @@ import { buscarTodasMensagensDaInstancia, extrairNomeDoLeadDoMapa, extrairDadosA
 import { normalizarTelefoneParaWhatsapp } from "@/lib/phone";
 import { obterEstagioIndefinido } from "@/lib/estagios-fixos";
 import { aplicaMascaraTelefoneBr } from "@/lib/utils";
+import { proximoColaboradorRoundRobin, obterIndicesRoundRobin, salvarIndiceRoundRobin } from "@/lib/distribuicao-leads";
 import type { SessaoToken } from "@/lib/tipos";
 import type { DadosAd } from "@/lib/whatsapp-utils";
 
@@ -38,11 +39,6 @@ export type ResultadoSyncWhatsapp = {
   empresas_processadas?: EmpresaProcessada[];
   motivo?: string;
 };
-
-function avancarIndiceRoundRobin(indiceAtual: number, total: number) {
-  if (total <= 0) return 0;
-  return (indiceAtual + 1) % total;
-}
 
 function extrairNumeroWhatsapp(rawId: string) {
   const semDominio = rawId.split("@")[0] ?? "";
@@ -198,7 +194,22 @@ async function sincronizarEmpresa(idEmpresa: string, sessao?: SessaoToken, orige
   let invalidos = 0;
   const telefonesLoteAtual = new Set<string>();
   const digitosLoteAtual = new Set<string>();
-  const indiceRoundRobinPorPdv = new Map<string, number>();
+
+  const idsPdvs = Array.from(new Set(instanciasValidas.map((instancia) => pdvsElegiveisPorInstancia.get(instancia.id)!.id)));
+  const indicesRoundRobin = idsPdvs.length > 0 ? await obterIndicesRoundRobin(idsPdvs) : new Map<string, number>();
+  const indicePorPdv = new Map<string, number>();
+
+  for (const instancia of instanciasValidas) {
+    const pdv = pdvsElegiveisPorInstancia.get(instancia.id);
+    if (!pdv) continue;
+
+    if (indicePorPdv.has(pdv.id)) continue;
+
+    const colaboradores = colaboradoresPorPdv.get(pdv.id) ?? [];
+    if (!colaboradores.length) continue;
+
+    indicePorPdv.set(pdv.id, indicesRoundRobin.get(pdv.id) ?? 0);
+  }
 
   // Busca TODAS as mensagens de cada instância uma única vez (otimização N+1 -> 1 chamada)
   const mapaMensagensPorInstancia = new Map<string, Map<string, { pushName: string | null; dadosAd: DadosAd | null; timestamp: number; remoteJidAlt: string }>>();
@@ -227,7 +238,7 @@ async function sincronizarEmpresa(idEmpresa: string, sessao?: SessaoToken, orige
     if (!mapaMensagens) continue;
 
     // Iterar sobre os contatos únicos no mapa de mensagens
-    for (const [remoteJidAlt, dadosMensagem] of mapaMensagens) {
+    for (const [remoteJidAlt] of mapaMensagens) {
       processados += 1;
 
       // Usar remoteJidAlt para extrair o número
@@ -287,8 +298,9 @@ async function sincronizarEmpresa(idEmpresa: string, sessao?: SessaoToken, orige
         observacoes = observacoes ? observacoes + infoAd : infoAd;
       }
 
-      const indiceAtual = indiceRoundRobinPorPdv.get(pdv.id) ?? 0;
-      const colaboradorResponsavel = colaboradores[indiceAtual];
+      const indiceAtual = indicePorPdv.get(pdv.id) ?? 0;
+      const { colaborador: colaboradorResponsavel, proximoIndice } = proximoColaboradorRoundRobin(colaboradores, indiceAtual);
+      indicePorPdv.set(pdv.id, proximoIndice);
 
       await prisma.lead.create({
         data: {
@@ -300,15 +312,16 @@ async function sincronizarEmpresa(idEmpresa: string, sessao?: SessaoToken, orige
           valor_consorcio: 0,
           observacoes,
           origem,
-          // Campos de Anúncio (CTWA)
           anuncio_titulo: dadosAd?.titulo ?? null,
           anuncio_descricao: dadosAd?.corpo ?? null,
           anuncio_url: dadosAd?.urlOrigem ?? null,
         },
       });
 
+      // Salva o índice a cada lead para garantir persistência mesmo em caso de crash/timeout
+      await salvarIndiceRoundRobin(pdv.id, proximoIndice);
+
       criados += 1;
-      indiceRoundRobinPorPdv.set(pdv.id, avancarIndiceRoundRobin(indiceAtual, colaboradores.length));
       telefonesLoteAtual.add(waNumber);
       telefonesExistentes.add(waNumber);
       digitosLoteAtual.add(digits);

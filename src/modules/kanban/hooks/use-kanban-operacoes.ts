@@ -228,14 +228,14 @@ export function useKanbanOperacoes({
     [addToast, setLeads, setLeadSelecionado, setErroDetalhesLead],
   );
 
-  const redistribuirLeadsEmAtendimento = useCallback(async () => {
+  const redistribuirLeadsEmAtendimento = useCallback(async (modo?: "indefinidos" | "parados") => {
     if (redistribuindoEmAtendimento) {
       return { ok: false as const, erro: "Redistribuicao ja em andamento." };
     }
 
     setRedistribuindoEmAtendimento(true);
     try {
-      const resposta = await redistribuirLeadsEmAtendimentoKanban({});
+      const resposta = await redistribuirLeadsEmAtendimentoKanban({ modo });
       if (!resposta.ok) {
         return { ok: false as const, erro: resposta.erro ?? MENSAGENS_FALLBACK_KANBAN.redistribuirEmAtendimento };
       }

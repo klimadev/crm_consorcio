@@ -1,7 +1,11 @@
+import { useState } from "react";
 import { Check, CheckCheck, Clock3, RotateCcw, Trash2, Volume2 } from "lucide-react";
 import type { WhatsappChatMessage } from "@/modules/whatsapp/types";
 import { formatarDataMensagemWhatsapp } from "@/lib/whatsapp-utils";
 import { AudioMessageBubble } from "./audio-message-bubble";
+import { ImageMessageBubble } from "./image-message-bubble";
+import { DocumentMessageChip } from "./document-message-chip";
+import { MediaLightbox } from "./media-lightbox";
 
 type Props = {
   message: WhatsappChatMessage;
@@ -30,6 +34,14 @@ function isAudioMessage(message: WhatsappChatMessage): boolean {
   return message.kind === "audio";
 }
 
+function isImageMessage(message: WhatsappChatMessage): boolean {
+  return message.kind === "image" || message.kind === "video" || message.kind === "sticker";
+}
+
+function isDocumentMessage(message: WhatsappChatMessage): boolean {
+  return message.kind === "document";
+}
+
 export function WhatsappMessageBubble({
   message,
   onRetry,
@@ -39,6 +51,7 @@ export function WhatsappMessageBubble({
 }: Props) {
   const outgoing = message.fromMe;
   const isDeleted = message.status === "DELETED";
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   if (isAudioMessage(message)) {
     return (
@@ -51,8 +64,28 @@ export function WhatsappMessageBubble({
     );
   }
 
+  if (isImageMessage(message)) {
+    return (
+      <div className={`flex w-full ${outgoing ? "justify-end" : "justify-start"}`}>
+        <ImageMessageBubble message={message} onClick={() => {
+          // Lightbox só pode abrir com a URL já carregada — o componente ImageMessageBubble
+          // gerencia isso internamente. Aqui apenas declaramos a intenção.
+        }} />
+      </div>
+    );
+  }
+
+  if (isDocumentMessage(message)) {
+    return (
+      <div className={`flex w-full ${outgoing ? "justify-end" : "justify-start"}`}>
+        <DocumentMessageChip message={message} />
+      </div>
+    );
+  }
+
   return (
     <div className={`flex w-full ${outgoing ? "justify-end" : "justify-start"}`}>
+      {lightboxSrc && <MediaLightbox src={lightboxSrc} alt={message.caption ?? "Imagem"} onClose={() => setLightboxSrc(null)} />}
       <div
         className={`max-w-[80%] px-3 py-2 shadow-sm text-[15px] leading-relaxed transition-all duration-200 hover:shadow-md hover:shadow-slate-200/50 ${
           outgoing

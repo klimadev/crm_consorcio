@@ -9,6 +9,24 @@ import type { ChatMessageStatus } from "@/modules/whatsapp/types";
 // CONSTANTES
 // ============================================================================
 
+export const LIMITES_ARQUIVO = {
+  IMAGEM: 10 * 1024 * 1024,
+  AUDIO: 20 * 1024 * 1024,
+  DOCUMENTO: 100 * 1024 * 1024,
+} as const;
+
+export function validarTamanhoArquivoCliente(
+  bytes: number,
+  tipo: keyof typeof LIMITES_ARQUIVO,
+): { ok: true } | { ok: false; erro: string } {
+  const limite = LIMITES_ARQUIVO[tipo];
+  if (bytes > limite) {
+    const tamanhoMB = (limite / (1024 * 1024)).toFixed(0);
+    return { ok: false, erro: `Arquivo muito grande. Limite: ${tamanhoMB}MB` };
+  }
+  return { ok: true };
+}
+
 /**
  * Mapeamento de tipos de mensagem da Evolution API para labels de interface
  */

@@ -16,6 +16,7 @@ import {
   X,
   MessageCircle,
   ChevronDown,
+  FlaskConical,
 } from "lucide-react";
 import { BotaoSair } from "@/components/botao-sair";
 import { SessaoToken } from "@/lib/tipos";
@@ -23,6 +24,8 @@ import { DadosUsuarioLogado } from "@/lib/autenticacao";
 import { cn } from "@/lib/utils";
 import { usePendenciasGlobais } from "@/modules/kanban/hooks/use-pendencias-globais";
 import { TOUR_TARGETS } from "@/modules/onboarding/lib/selectors";
+import { useRouter } from "next/navigation";
+import { ModalSenhaDev } from "@/components/modal-senha-dev";
 
 type ItemMenu = {
   href: string;
@@ -31,6 +34,7 @@ type ItemMenu = {
   tourTarget?: string;
   children?: ItemMenu[];
   badge?: string;
+  devLock?: boolean;
 };
 
 type Props = {
@@ -113,12 +117,14 @@ function MenuItemComBadge({
 
 export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
   const pathname = usePathname();
+  const router = useRouter();
   const baseSubmenuId = useId();
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const [sidebarAberta, setSidebarAberta] = useState(false);
   const [submenuAberto, setSubmenuAberto] = useState<string | null>(
     pathname.startsWith("/equipe") ? "/equipe" : null
   );
+  const [modalSenhaAberto, setModalSenhaAberto] = useState(false);
   const { resumo } = usePendenciasGlobais();
 
   const toggleSubmenu = (href: string) => {
@@ -169,6 +175,12 @@ const secoes: Secao[] = [
         ...(sessao.perfil === "EMPRESA"
           ? [{ href: "/configs", label: "Configurações", icon: Settings2, tourTarget: TOUR_TARGETS.sidebarConfigs }]
           : []),
+      ],
+    },
+    {
+      titulo: "DESENVOLVIMENTO",
+      itens: [
+        { href: "/laboratorio", label: "Laboratório", icon: FlaskConical, badge: "DEV", devLock: true },
       ],
     },
   ];
@@ -316,6 +328,33 @@ const secoes: Secao[] = [
                   );
                 }
 
+                // Item com devLock (Laboratorio)
+                if (item.devLock) {
+                  return (
+                    <button
+                      key={item.href}
+                      type="button"
+                      onClick={() => {
+                        setSidebarAberta(false);
+                        setModalSenhaAberto(true);
+                      }}
+                      className={cn(
+                        "relative flex w-full items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-amber-500 transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-400",
+                        ativo && "bg-amber-500/10 pl-4 text-amber-400",
+                      )}
+                    >
+                      {ativo ? <span className="absolute left-1 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-amber-500" /> : null}
+                      <Icone className={cn("h-4 w-4", ativo ? "text-amber-400" : "text-amber-500")} />
+                      <span className="flex-1">{item.label}</span>
+                      {item.badge && (
+                        <span className="rounded-full bg-amber-900/50 px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none text-amber-400">
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                }
+
                 // Item normal sem submenu
                 return (
                   <Link
@@ -403,6 +442,15 @@ const secoes: Secao[] = [
           </div>
         )}
       </aside>
+
+      <ModalSenhaDev
+        aberto={modalSenhaAberto}
+        onClose={() => setModalSenhaAberto(false)}
+        onSuccess={() => {
+          setModalSenhaAberto(false);
+          router.push("/laboratorio");
+        }}
+      />
     </>
   );
 }

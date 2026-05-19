@@ -1,10 +1,12 @@
 import { ensureSqliteOptimizations, prisma } from "@/lib/prisma";
-import { conectarInstancia, obterEstadoConexao, reiniciarInstancia } from "@/lib/evolution-api";
+import { conectarInstancia, obterEstadoConexao, reiniciarInstancia, verificarSaudeInstancia } from "@/lib/evolution-api";
+import { verificarErrosConsecutivosEnvio } from "@/lib/whatsapp-chat";
 import { withRetry } from "@/lib/api/retry";
 
 type InstanciaDbMinima = {
   id: string;
   instance_name: string;
+  phone?: string | null;
 };
 
 export type ResultadoConexaoWhatsapp = {
@@ -78,8 +80,10 @@ export async function sincronizarEstadoWhatsapp(instancia: InstanciaDbMinima): P
     return offline;
   }
 
+  const statusEfetivo = await computarStatusEfetivo(instancia, estado);
+
   const resultado: ResultadoConexaoWhatsapp = {
-    status: estado.status,
+    status: statusEfetivo,
     conectado: estado.connected,
     phone: estado.phoneNumber,
     profile_name: estado.profileName,
@@ -91,6 +95,23 @@ export async function sincronizarEstadoWhatsapp(instancia: InstanciaDbMinima): P
 
   await persistirEstadoInstancia(instancia.id, resultado);
   return resultado;
+}
+
+async function computarStatusEfetivo(
+  instancia: InstanciaDbMinima,
+  estado: { status: string; disconnectionReasonCode: string | null },
+): Promise<string> {
+  if (estado.status !== "open") return estado.status;
+
+  if (estado.disconnectionReasonCode !== null) return "degraded";
+
+  const temErrosConsecutivos = await verificarErrosConsecutivosEnvio(instancia.id);
+  if (temErrosConsecutivos) return "degraded";
+
+  const saude = await verificarSaudeInstancia(instancia.instance_name, instancia.phone);
+  if (!saude.saudavel) return "degraded";
+
+  return estado.status;
 }
 
 export async function reconectarInstanciaWhatsapp(

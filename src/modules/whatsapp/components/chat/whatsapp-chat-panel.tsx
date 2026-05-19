@@ -19,6 +19,8 @@ type Props = {
   error: string | null;
   blockedState?: WhatsappChatBlockedState | null;
   onSendMessage: (text: string) => Promise<void>;
+  onSendMedia: (file: File, caption?: string) => Promise<void>;
+  onSendAudio: (blob: Blob, duration: number) => Promise<void>;
   onRetryMessage: (message: WhatsappChatMessage) => Promise<void>;
 };
 
@@ -32,6 +34,8 @@ export function WhatsappChatPanel({
   error,
   blockedState,
   onSendMessage,
+  onSendMedia,
+  onSendAudio,
   onRetryMessage,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -51,7 +55,7 @@ export function WhatsappChatPanel({
           </div>
           <div>
             <p className="text-sm font-semibold text-success-foreground">{leadNome}</p>
-            <p className="text-xs text-success-foreground/80">Online</p>
+            <p className="text-xs text-success-foreground/80">Canal ativo</p>
           </div>
         </div>
         <WhatsappConnectionBadge status={connectionStatus} />
@@ -94,7 +98,7 @@ export function WhatsappChatPanel({
         )}
         {!blockedState && !canSend && (
           <div className="mb-2 flex items-center justify-between gap-2 rounded-lg border border-warning/25 bg-warning/10 px-3 py-2">
-            <p className="text-xs text-warning">WhatsApp desconectado.</p>
+            <p className="text-xs text-warning">Canal indisponivel.</p>
             <Button asChild size="sm" variant="outline" className="h-7 rounded-lg border-warning/30 bg-background-surface text-warning hover:bg-warning/10 text-xs">
               <Link href="/whatsapp">
                 <MessageCircle className="mr-1 h-3.5 w-3.5" />
@@ -105,7 +109,7 @@ export function WhatsappChatPanel({
         )}
       </div>
 
-      <WhatsappMessageInput disabled={Boolean(blockedState) || !canSend} sending={sending} onSend={onSendMessage} />
+      <WhatsappMessageInput disabled={Boolean(blockedState) || !canSend} sending={sending} onSend={onSendMessage} onSendMedia={onSendMedia} onSendAudio={onSendAudio} />
     </div>
   );
 }

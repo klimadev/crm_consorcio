@@ -276,6 +276,79 @@ export async function enviarMensagemWhatsapp(payload: {
   };
 }
 
+export async function enviarMidiaWhatsapp(payload: {
+  leadId: string;
+  mediaBase64: string;
+  mimeType: string;
+  fileName: string;
+  caption?: string;
+  clientTempId: string;
+}): Promise<
+  | { ok: true; dados: { message: WhatsappChatMessage; clientTempId: string } }
+  | { ok: false; erro: string; codigo?: string; pdv?: { id: string; nome: string } | null; rotaConfiguracao?: string | null }
+> {
+  const resposta = await fetch("/api/whatsapp/chat/send-media", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const json = await lerJsonSeguro<{ message?: WhatsappChatMessage; clientTempId?: string } & ChatApiErro>(resposta);
+
+  if (!resposta.ok || !json.message) {
+    return {
+      ok: false,
+      erro: json.erro ?? "Erro ao enviar midia.",
+      codigo: json.codigo,
+      pdv: json.pdv,
+      rotaConfiguracao: json.rotaConfiguracao,
+    };
+  }
+
+  return {
+    ok: true,
+    dados: {
+      message: json.message,
+      clientTempId: json.clientTempId ?? payload.clientTempId,
+    },
+  };
+}
+
+export async function enviarAudioWhatsapp(payload: {
+  leadId: string;
+  audioBase64: string;
+  mimeType: string;
+  duration?: number;
+  clientTempId: string;
+}): Promise<
+  | { ok: true; dados: { message: WhatsappChatMessage; clientTempId: string } }
+  | { ok: false; erro: string; codigo?: string; pdv?: { id: string; nome: string } | null; rotaConfiguracao?: string | null }
+> {
+  const resposta = await fetch("/api/whatsapp/chat/send-audio", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const json = await lerJsonSeguro<{ message?: WhatsappChatMessage; clientTempId?: string } & ChatApiErro>(resposta);
+
+  if (!resposta.ok || !json.message) {
+    return {
+      ok: false,
+      erro: json.erro ?? "Erro ao enviar audio.",
+      codigo: json.codigo,
+      pdv: json.pdv,
+      rotaConfiguracao: json.rotaConfiguracao,
+    };
+  }
+
+  return {
+    ok: true,
+    dados: {
+      message: json.message,
+      clientTempId: json.clientTempId ?? payload.clientTempId,
+    },
+  };
+}
+
 export async function marcarMensagensComoLidas(leadId: string): Promise<ResultadoApi<{ unreadCount: number }>> {
   const resposta = await fetch("/api/whatsapp/chat/mark-read", {
     method: "POST",

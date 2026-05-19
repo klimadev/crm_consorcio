@@ -1,6 +1,6 @@
 export type ConnectionQuality = "excellent" | "good" | "unstable" | "offline" | "unknown";
 export type ConnectionDataSource = "evolution_live" | "db_cache" | "unavailable";
-export type ChatConnectionStatus = "online" | "offline" | "unknown";
+export type ChatConnectionStatus = "online" | "degraded" | "offline" | "unknown";
 export type ChatMessageStatus = "PENDING" | "SENT" | "DELIVERED" | "READ" | "ERROR" | "DELETED" | "PLAYED";
 
 export type MessageKind = "text" | "image" | "video" | "audio" | "document" | "sticker" | "unsupported";
@@ -47,6 +47,10 @@ export type WhatsappChatMessage = {
   optimistic: boolean;
   error: string | null;
   dadosAd: DadosAdInfo;
+  fileName?: string;
+  mimeType?: string;
+  mediaDuration?: number;
+  caption?: string;
 };
 
 export type WhatsappChatSnapshot = {
