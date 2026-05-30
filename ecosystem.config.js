@@ -18,11 +18,13 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: '3333',
         HOSTNAME: '0.0.0.0',
+        NEXT_PUBLIC_DEV_PASSWORD: 'dev123',
       },
       env_production: {
         NODE_ENV: 'production',
         PORT: '3333',
         HOSTNAME: '0.0.0.0',
+        NEXT_PUBLIC_DEV_PASSWORD: 'dev123',
       },
       max_memory_restart: '900M',
       autorestart: true,
