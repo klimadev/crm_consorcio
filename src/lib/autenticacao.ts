@@ -85,6 +85,21 @@ export async function obterDadosUsuarioLogado(
 ): Promise<DadosUsuarioLogado | null> {
   try {
     if (sessao.perfil === "EMPRESA") {
+      const funcionario = await prisma.funcionario.findUnique({
+        where: { id: sessao.id_usuario },
+        include: { empresa: true },
+      });
+
+      if (funcionario) {
+        return {
+          id: funcionario.id,
+          nome: funcionario.nome,
+          email: funcionario.email,
+          cargo: LABEL_PERFIL_USUARIO.EMPRESA,
+          nomeEmpresa: funcionario.empresa.nome,
+        };
+      }
+
       const empresa = await prisma.empresa.findUnique({
         where: { id: sessao.id_usuario },
       });

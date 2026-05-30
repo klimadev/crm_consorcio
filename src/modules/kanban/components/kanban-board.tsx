@@ -9,8 +9,9 @@ import type { Estagio, Lead, PendenciaLeadInfo, Funcionario, ResumoEstagioKanban
 import { getClasseBordaGravidade } from "./pendencia-badge";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { Trash2, Loader2, FileWarning, Clock, CheckCircle, AlertTriangle, Users, GripVertical, Megaphone, MessageCircle, PenLine, TrendingUp } from "lucide-react";
+import { Trash2, Loader2, FileWarning, Clock, CheckCircle, AlertTriangle, Users, GripVertical, Megaphone, MessageCircle, PenLine, TrendingUp, Send } from "lucide-react";
 import { EmptyState } from "./empty-state";
+import { TransferenciaCard } from "./transferencia-card";
 
 type KanbanBoardProps = {
   estagios: Estagio[];
@@ -24,6 +25,10 @@ type KanbanBoardProps = {
   resumoPorEstagio: Record<string, ResumoEstagioKanban>;
   excluirTodosIndefinidos?: () => Promise<void>;
   carregando?: boolean;
+  leadsTransferencia?: Lead[];
+  idUsuario?: string;
+  onAceitarTransferencia?: (leadId: string) => Promise<void>;
+  onRecusarTransferencia?: (leadId: string) => Promise<void>;
 };
 
 const CARDS_INICIAIS_POR_COLUNA = 12;
@@ -275,6 +280,10 @@ export function KanbanBoard({
   resumoPorEstagio,
   excluirTodosIndefinidos,
   carregando = false,
+  leadsTransferencia = [],
+  idUsuario,
+  onAceitarTransferencia,
+  onRecusarTransferencia,
 }: KanbanBoardProps) {
   // Sempre usa leadsFiltradosPorEstagio - que já inclui ordenação e é idêntico a leadsPorEstagio quando não há filtros
   const [agoraMs, setAgoraMs] = useState<number | null>(() => typeof window === "undefined" ? null : Date.now());
@@ -327,6 +336,41 @@ export function KanbanBoard({
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <div className={cn("flex gap-3 overflow-x-auto pb-5", SCROLLBAR_CLEAN)}>
+          {leadsTransferencia.length > 0 && onAceitarTransferencia && onRecusarTransferencia ? (
+            <div
+              className={cn(
+                "w-[284px] shrink-0 rounded-3xl border border-info/30 bg-info/5 p-2.5 shadow-sm shadow-black/15 lg:w-[304px]",
+                "min-h-0 max-h-[calc(100vh-260px)] overflow-y-auto",
+                SCROLLBAR_CLEAN,
+              )}
+            >
+              <div className="mb-2.5 rounded-2xl border border-info/20 bg-info/10 px-2.5 py-2">
+                <div className="flex items-center gap-2.5">
+                  <Send className="h-4 w-4 text-info" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-foreground">
+                      Transferências Recebidas
+                    </p>
+                    <p className="text-xs text-foreground-muted">
+                      {leadsTransferencia.length} pendente{leadsTransferencia.length > 1 ? "s" : ""}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {leadsTransferencia.map((lead) => (
+                  <TransferenciaCard
+                    key={lead.id}
+                    lead={lead}
+                    onAceitar={onAceitarTransferencia}
+                    onRecusar={onRecusarTransferencia}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           {estagios.map((estagio) => {
             const leads = leadsDiferidosPorEstagio[estagio.id] ?? [];
             const quantidadeVisivel = Math.min(
@@ -484,13 +528,22 @@ export function KanbanBoard({
                                            </div>
                                          </div>
 
-                                          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+                                           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
                                             <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-medium", getClasseBadgeOrigem(lead.origem))}>
                                              {lead.origem === "ANUNCIO_CTWA" ? <Megaphone className="h-3.5 w-3.5" /> : null}
                                              {lead.origem === "SINCRONIZACAO_WHATSAPP" ? <MessageCircle className="h-3.5 w-3.5" /> : null}
                                              {lead.origem === "MANUAL" || !lead.origem ? <PenLine className="h-3.5 w-3.5" /> : null}
                                              {lead.origem === "ANUNCIO_CTWA" ? "Anúncio" : lead.origem === "SINCRONIZACAO_WHATSAPP" ? "WhatsApp" : "Manual"}
-                                           </span>
+                                            </span>
+
+                                           {lead.transferencia_pendente &&
+                                             lead.transferencia_pendente.status === "PENDENTE" &&
+                                             lead.transferencia_pendente.funcionario_origem.id === idUsuario ? (
+                                              <span className="inline-flex items-center gap-1 rounded-full border border-info/30 bg-info/10 px-2 py-0.5 font-medium text-foreground">
+                                                <Send className="h-3 w-3" />
+                                                Transferindo...
+                                              </span>
+                                           ) : null}
 
                                            {pendencias?.naoResolvidas ? (
                                               <span className={cn(

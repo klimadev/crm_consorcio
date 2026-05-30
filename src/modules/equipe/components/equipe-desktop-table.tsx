@@ -4,6 +4,8 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Loader2,
+  LogIn,
   Pencil,
   Search,
   Users,
@@ -189,6 +191,28 @@ export function EquipeDesktopTable({ vm }: EquipeDesktopTableProps) {
               </TableCell>
               <TableCell className="py-5">
                 <StatusBadge ativo={funcionario.ativo} />
+              </TableCell>
+              <TableCell className="py-5 text-right">
+                {vm.podeGerenciarEmpresa && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      vm.loginComo(funcionario.id);
+                    }}
+                    disabled={vm.loginComoLoading === funcionario.id}
+                    title="Login como"
+                    aria-label={`Login como ${funcionario.nome}`}
+                    className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-foreground-muted hover:bg-background-surface hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {vm.loginComoLoading === funcionario.id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <LogIn className="h-3.5 w-3.5" />
+                    )}
+                    Login
+                  </button>
+                )}
               </TableCell>
             </TableRow>
           ))}

@@ -77,16 +77,16 @@ async function main() {
       {
         id_empresa: empresa.id,
         id_pdv: pdvCentro.id,
-        nome: "Joao Vendas",
-        email: "colaborador1.demo@crmconsorcio.com",
+        nome: "Colaborador A",
+        email: "a@demo.com",
         senha_hash: senhaEquipe,
         cargo: "COLABORADOR",
       },
       {
         id_empresa: empresa.id,
-        id_pdv: pdvZonaSul.id,
-        nome: "Ana Vendas",
-        email: "colaborador2.demo@crmconsorcio.com",
+        id_pdv: pdvCentro.id,
+        nome: "Colaborador B",
+        email: "b@demo.com",
         senha_hash: senhaEquipe,
         cargo: "COLABORADOR",
       },
@@ -146,7 +146,8 @@ async function main() {
   console.log("Seed concluido com sucesso.");
   console.log("Empresa:", empresaEmail, "| senha: 123456");
   console.log("Gerente: gerente.demo@crmconsorcio.com | senha: 123456");
-  console.log("Colaboradores: colaborador1.demo@crmconsorcio.com, colaborador2.demo@crmconsorcio.com | senha: 123456");
+  console.log("Colaborador A: a@demo.com | senha: 123456");
+  console.log("Colaborador B: b@demo.com | senha: 123456");
 }
 
 main()

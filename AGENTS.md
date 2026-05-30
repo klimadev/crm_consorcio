@@ -48,6 +48,7 @@ Antes de gerar código:
 ## 6. Comandos de Desenvolvimento
 - **Desenvolvimento:** `pnpm dev` - Inicia o servidor de desenvolvimento na porta 3334
 - **Build:** `pnpm build` - Cria a build de produção
+- **Pós-build (OBRIGATÓRIO):** Após todo build bem-sucedido, RESTARTAR o PM2 com `pm2 restart crmconsorcio` — senão o app de produção continuará rodando a build antiga e o app ficará quebrado.
 - **Iniciar Produção:** `pnpm start` - Inicia o servidor de produção na porta 3333
 - **Linting:** `pnpm lint` - Executa o ESLint em todo o projeto
 - **Testes:** 

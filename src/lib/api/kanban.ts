@@ -1,4 +1,4 @@
-import type { Estagio, Funcionario, Lead } from "@/modules/kanban/types";
+import type { Estagio, Funcionario, Lead, TransferenciaPendente } from "@/modules/kanban/types";
 
 type ApiErro = {
   erro?: string;
@@ -275,4 +275,55 @@ export async function redistribuirLeadsEmAtendimentoKanban(
       ignoradosSemDestino: json.ignoradosSemDestino ?? 0,
     },
   };
+}
+
+export async function criarTransferenciaKanban(
+  idLead: string,
+  idFuncionarioDestino: string,
+): Promise<ResultadoApi<TransferenciaPendente>> {
+  const resposta = await fetch(`/api/leads/${idLead}/transferencia`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id_funcionario_destino: idFuncionarioDestino }),
+  });
+
+  const json = await lerJsonSeguro<TransferenciaPendente & ApiErro>(resposta);
+  if (!resposta.ok) {
+    return { ok: false, erro: json.erro ?? "Erro ao criar transferencia." };
+  }
+
+  return { ok: true, dados: json };
+}
+
+export async function responderTransferenciaKanban(
+  idLead: string,
+  acao: "ACEITAR" | "RECUSAR",
+): Promise<ResultadoApi<{ mensagem?: string }>> {
+  const resposta = await fetch(`/api/leads/${idLead}/transferencia`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ acao }),
+  });
+
+  const json = await lerJsonSeguro<{ mensagem?: string } & ApiErro>(resposta);
+  if (!resposta.ok) {
+    return { ok: false, erro: json.erro ?? "Erro ao responder transferencia." };
+  }
+
+  return { ok: true, dados: { mensagem: json.mensagem } };
+}
+
+export async function cancelarTransferenciaKanban(
+  idLead: string,
+): Promise<ResultadoApi<{ mensagem?: string }>> {
+  const resposta = await fetch(`/api/leads/${idLead}/transferencia`, {
+    method: "DELETE",
+  });
+
+  const json = await lerJsonSeguro<{ mensagem?: string } & ApiErro>(resposta);
+  if (!resposta.ok) {
+    return { ok: false, erro: json.erro ?? "Erro ao cancelar transferencia." };
+  }
+
+  return { ok: true, dados: { mensagem: json.mensagem } };
 }

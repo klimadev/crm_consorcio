@@ -1,9 +1,15 @@
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn, formataData, formataMoeda } from "@/lib/utils";
 import type { UseRecebimentosModuleReturn } from "../types";
+
+function hojeIso() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 function StatusBadge({ status }: { status: "PAGO" | "PENDENTE" | "ATRASADO" }) {
   const estilos = {
@@ -26,11 +32,14 @@ type RecebimentosTableProps = {
 };
 
 export function RecebimentosTable({ vm }: RecebimentosTableProps) {
+  const [pagamentoAberto, setPagamentoAberto] = useState<string | null>(null);
+  const [dataPagamento, setDataPagamento] = useState(hojeIso());
+
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-background-surface shadow-sm">
       <div className="border-b border-border px-4 py-3">
         <h2 className="text-sm font-semibold text-foreground">Operacao detalhada</h2>
-        <p className="text-xs text-foreground-muted">Acompanhe cada recebimento e navegue rapidamente para o lead no Kanban.</p>
+        <p className="text-xs text-foreground-muted">Acompanhe cada recebimento, registre pagamentos e navegue para o lead no Kanban.</p>
       </div>
 
       <Table className="min-w-[860px]">
@@ -69,12 +78,71 @@ export function RecebimentosTable({ vm }: RecebimentosTableProps) {
                <TableCell className="py-4 text-foreground-muted">{item.pdv?.nome ?? "-"}</TableCell>
                <TableCell className="py-4 text-foreground-muted">{item.responsavel.nome}</TableCell>
               <TableCell className="py-4 text-right">
-                <Button asChild variant="ghost" size="sm" className="text-info hover:bg-info/10 hover:text-info">
-                  <Link href={`/kanban?lead=${item.lead.id}`}>
-                    <ArrowUpRight className="mr-1 h-4 w-4" />
-                    Abrir lead
-                  </Link>
-                </Button>
+                {vm.pagando === item.id ? (
+                  <div className="flex items-center justify-end gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-success" />
+                    <span className="text-xs text-foreground-muted">Registrando...</span>
+                  </div>
+                ) : item.status === "PAGO" ? (
+                  <Button asChild variant="ghost" size="sm" className="text-info hover:bg-info/10 hover:text-info">
+                    <Link href={`/kanban?lead=${item.lead.id}`}>
+                      <ArrowUpRight className="mr-1 h-4 w-4" />
+                      Abrir lead
+                    </Link>
+                  </Button>
+                ) : pagamentoAberto === item.id ? (
+                  <div className="flex items-center justify-end gap-2 flex-wrap">
+                    <Input
+                      type="date"
+                      value={dataPagamento}
+                      onChange={(event) => setDataPagamento(event.target.value)}
+                      className="h-8 w-32 rounded-lg border-border"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="bg-success text-success-foreground hover:bg-success/90"
+                      onClick={() => {
+                        const dataIso = new Date(dataPagamento + "T00:00:00").toISOString();
+                        void vm.pagarParcela(item.id, dataIso);
+                        setPagamentoAberto(null);
+                      }}
+                    >
+                      Confirmar
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setPagamentoAberto(null)}
+                      disabled={vm.pagando !== null}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-end gap-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="text-success hover:bg-success/10 hover:text-success"
+                      onClick={() => {
+                        setDataPagamento(hojeIso());
+                        setPagamentoAberto(item.id);
+                      }}
+                      disabled={vm.pagando !== null}
+                    >
+                      <CheckCircle2 className="mr-1 h-4 w-4" />
+                      Marcar como Pago
+                    </Button>
+                    <Button asChild variant="ghost" size="sm" className="text-info hover:bg-info/10 hover:text-info">
+                      <Link href={`/kanban?lead=${item.lead.id}`}>
+                        <ArrowUpRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                )}
               </TableCell>
             </TableRow>
           ))}

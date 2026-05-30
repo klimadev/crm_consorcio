@@ -54,4 +54,6 @@ export type UseRecebimentosModuleReturn = {
   limparFiltros: () => void;
   irParaPagina: (pagina: number) => void;
   recarregar: () => Promise<void>;
+  pagando: string | null;
+  pagarParcela: (idParcela: string, dataPagamento?: string) => Promise<void>;
 };

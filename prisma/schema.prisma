@@ -46,22 +46,24 @@ model Pdv {
 }
 
 model Funcionario {
-  id              String         @id @default(uuid())
-  id_empresa      String
-  id_pdv          String
-  nome            String
-  email           String         @unique
-  senha_hash      String
-  cargo           String
-  ativo           Boolean        @default(true)
-  criado_em       DateTime       @default(now())
-  atualizado_em   DateTime       @default(now()) @updatedAt
-  inativado_em    DateTime?
-  metas           Meta[]
-  metas_templates MetaTemplate[]
-  pdv             Pdv            @relation(fields: [id_pdv], references: [id])
-  empresa         Empresa        @relation(fields: [id_empresa], references: [id])
-  leads           Lead[]
+  id                       String               @id @default(uuid())
+  id_empresa               String
+  id_pdv                   String
+  nome                     String
+  email                    String               @unique
+  senha_hash               String
+  cargo                    String
+  ativo                    Boolean              @default(true)
+  criado_em                DateTime             @default(now())
+  atualizado_em            DateTime             @default(now()) @updatedAt
+  inativado_em             DateTime?
+  metas                    Meta[]
+  metas_templates          MetaTemplate[]
+  pdv                      Pdv                  @relation(fields: [id_pdv], references: [id])
+  empresa                  Empresa              @relation(fields: [id_empresa], references: [id])
+  leads                    Lead[]
+  transferencias_enviadas  TransferenciaLead[]  @relation("TransferenciasEnviadas")
+  transferencias_recebidas TransferenciaLead[]  @relation("TransferenciasRecebidas")
 
   @@index([id_empresa])
   @@index([id_pdv])
@@ -79,6 +81,24 @@ model ReatribuicaoFuncionario {
   criado_em              DateTime @default(now())
 
   @@index([id_empresa])
+  @@index([id_funcionario_origem])
+  @@index([id_funcionario_destino])
+}
+
+model TransferenciaLead {
+  id                     String     @id @default(uuid())
+  id_lead                String
+  id_funcionario_origem  String
+  id_funcionario_destino String
+  status                 String     @default("PENDENTE")
+  criado_em              DateTime   @default(now())
+  respondido_em          DateTime?
+
+  lead                   Lead        @relation(fields: [id_lead], references: [id], onDelete: Cascade)
+  funcionario_origem     Funcionario @relation("TransferenciasEnviadas", fields: [id_funcionario_origem], references: [id])
+  funcionario_destino    Funcionario @relation("TransferenciasRecebidas", fields: [id_funcionario_destino], references: [id])
+
+  @@index([id_lead])
   @@index([id_funcionario_origem])
   @@index([id_funcionario_destino])
 }
@@ -144,6 +164,7 @@ model Lead {
   pendencias              Pendencia[]
   parcelas                Parcela[]
   whatsapp_mensagens      WhatsappMensagem[]
+  transferencias          TransferenciaLead[]
 
   @@index([id_empresa])
   @@index([id_funcionario])

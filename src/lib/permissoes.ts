@@ -186,11 +186,28 @@ export function respostaSemPermissao() {
 }
 
 export async function whereLeadsPorPerfil(sessao: SessaoToken) {
-  // COLABORADOR: only sees leads where they are the responsible
+  // COLABORADOR: sees own leads + leads with pending transfer to them
   if (sessao.perfil === "COLABORADOR") {
+    const transferencias = await prisma.transferenciaLead.findMany({
+      where: {
+        id_funcionario_destino: sessao.id_usuario,
+        status: "PENDENTE",
+      },
+      select: { id_lead: true },
+    });
+    const idsLeadsTransferidos = transferencias.map((t) => t.id_lead);
+
+    const or: Record<string, unknown>[] = [
+      { id_funcionario: sessao.id_usuario },
+    ];
+
+    if (idsLeadsTransferidos.length > 0) {
+      or.push({ id: { in: idsLeadsTransferidos } });
+    }
+
     return {
       id_empresa: sessao.id_empresa,
-      id_funcionario: sessao.id_usuario,
+      OR: or,
     };
   }
 

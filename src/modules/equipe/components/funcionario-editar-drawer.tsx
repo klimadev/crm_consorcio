@@ -15,7 +15,10 @@ import {
   HelpCircle,
   UserMinus,
   History,
-  Key
+  Key,
+  Eye,
+  EyeOff,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +27,16 @@ import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetT
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/toast";
+import { alterarSenhaFuncionario } from "@/lib/api/equipe";
 import type { Funcionario, UseEquipeModuleReturn, DadosEdicao } from "../types";
 
 type FuncionarioEditarDrawerProps = {
@@ -105,9 +118,17 @@ function ColaboradorAvatar({ nome, tamanho = "lg" }: { nome: string, tamanho?: "
 }
 
 export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: FuncionarioEditarDrawerProps) {
+  const { addToast } = useToast();
   const [dados, setDados] = useState<DadosEdicao | null>(null);
   const [erros, setErros] = useState<Record<string, string>>({});
   const [mostrarMenuAcoes, setMostrarMenuAcoes] = useState(false);
+
+  const [dialogSenhaAberto, setDialogSenhaAberto] = useState(false);
+  const [novaSenha, setNovaSenha] = useState("");
+  const [confirmarSenha, setConfirmarSenha] = useState("");
+  const [erroSenha, setErroSenha] = useState("");
+  const [redefinindoSenha, setRedefinindoSenha] = useState(false);
+  const [mostrarSenha, setMostrarSenha] = useState(false);
 
   useEffect(() => {
     if (aberto && funcionario) {
@@ -139,7 +160,7 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
     if (!dados.nome.trim() || dados.nome.trim().length < 2) {
       novosErros.nome = "Nome deve ter ao menos 2 caracteres.";
     }
-    if (!dados.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dados.email.trim())) {
+    if (dados.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dados.email.trim())) {
       novosErros.email = "E-mail inválido.";
     }
     if (!dados.id_pdv.trim()) {
@@ -164,9 +185,53 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
     }
   };
 
-  const handleResetarSenha = () => {
-    // TODO: Implementar reset de senha
+  const handleAbrirDialogSenha = () => {
+    setNovaSenha("");
+    setConfirmarSenha("");
+    setErroSenha("");
+    setMostrarSenha(false);
+    setDialogSenhaAberto(true);
     setMostrarMenuAcoes(false);
+  };
+
+  const handleRedefinirSenha = async () => {
+    if (!funcionario) return;
+
+    setErroSenha("");
+
+    if (novaSenha.length < 6) {
+      setErroSenha("Senha precisa ter ao menos 6 caracteres.");
+      return;
+    }
+
+    if (novaSenha !== confirmarSenha) {
+      setErroSenha("Senhas não conferem.");
+      return;
+    }
+
+    setRedefinindoSenha(true);
+
+    try {
+      const resultado = await alterarSenhaFuncionario(funcionario.id, novaSenha);
+
+      if (!resultado.ok) {
+        setErroSenha(resultado.erro);
+        return;
+      }
+
+      addToast({
+        type: "success",
+        title: "Senha redefinida",
+        description: `A senha de ${funcionario.nome} foi alterada com sucesso.`,
+        duration: 4000,
+      });
+
+      setDialogSenhaAberto(false);
+    } catch {
+      setErroSenha("Erro ao redefinir senha. Tente novamente.");
+    } finally {
+      setRedefinindoSenha(false);
+    }
   };
 
   const handleVerHistorico = () => {
@@ -383,11 +448,11 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
                 <Button 
                   variant="outline" 
                   className="w-full justify-start gap-3 h-11 rounded-xl border-slate-200 hover:bg-slate-100"
-                  onClick={handleResetarSenha}
+                  onClick={handleAbrirDialogSenha}
                 >
                   <Key className="w-4 h-4 text-slate-500" />
                   <span className="flex-1 text-left">Redefinir senha</span>
-                  <span className="text-xs text-slate-400">Enviar link por e-mail</span>
+                  <span className="text-xs text-slate-400">Definir nova senha manualmente</span>
                 </Button>
                 
                 <Button 
@@ -457,7 +522,7 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
                 </button>
                 <button 
                   className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
-                  onClick={handleResetarSenha}
+                  onClick={handleAbrirDialogSenha}
                 >
                   <Key className="w-4 h-4 text-slate-400" />
                   Redefinir senha
@@ -495,6 +560,100 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
         </div>
         </div>
         </SheetContent>
+
+      {/* Dialog de redefinição de senha */}
+      <Dialog open={dialogSenhaAberto} onOpenChange={setDialogSenhaAberto}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="w-5 h-5 text-emerald-500" />
+              Redefinir senha
+            </DialogTitle>
+            <DialogDescription>
+              Defina uma nova senha para <strong>{funcionario?.nome}</strong>.
+              A senha deve ter ao menos 6 caracteres.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-700">
+                Nova senha
+              </label>
+              <div className="relative">
+                <Input
+                  type={mostrarSenha ? "text" : "password"}
+                  value={novaSenha}
+                  onChange={(e) => { setNovaSenha(e.target.value); setErroSenha(""); }}
+                  placeholder="••••••••"
+                  className="h-11 rounded-xl pr-10"
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  onClick={() => setMostrarSenha(!mostrarSenha)}
+                >
+                  {mostrarSenha ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-700">
+                Confirmar senha
+              </label>
+              <Input
+                type={mostrarSenha ? "text" : "password"}
+                value={confirmarSenha}
+                onChange={(e) => { setConfirmarSenha(e.target.value); setErroSenha(""); }}
+                placeholder="••••••••"
+                className="h-11 rounded-xl"
+                autoComplete="new-password"
+              />
+            </div>
+
+            {erroSenha && (
+              <p className="flex items-center gap-1.5 text-sm text-rose-600 font-medium">
+                <AlertCircle className="w-4 h-4" />
+                {erroSenha}
+              </p>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              className="rounded-xl h-11"
+              onClick={() => setDialogSenhaAberto(false)}
+              disabled={redefinindoSenha}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="rounded-xl h-11 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold shadow-lg shadow-emerald-500/20 gap-2 min-w-[120px]"
+              onClick={handleRedefinirSenha}
+              disabled={redefinindoSenha || !novaSenha || !confirmarSenha}
+            >
+              {redefinindoSenha ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Redefinindo...
+                </>
+              ) : (
+                <>
+                  <Lock className="w-4 h-4" />
+                  Redefinir
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Sheet>
   );
 }

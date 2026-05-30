@@ -175,6 +175,21 @@ export async function editarFuncionario(id: string, dados: {
   return { ok: true, dados: null };
 }
 
+export async function alterarSenhaFuncionario(id: string, senha: string): Promise<ResultadoApi<null>> {
+  const resposta = await fetch(`/api/funcionarios/${id}/senha`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ senha }),
+  });
+  const json = await lerJsonSeguro<ApiErro>(resposta);
+
+  if (!resposta.ok) {
+    return { ok: false, erro: json.erro ?? "Erro ao redefinir senha." };
+  }
+
+  return { ok: true, dados: null };
+}
+
 export async function inativarFuncionario(
   id: string,
   dados: { id_funcionario_destino: string; observacao?: string },

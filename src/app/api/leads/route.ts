@@ -40,11 +40,22 @@ export async function GET(request: NextRequest) {
         _count: {
           select: { parcelas: true },
         },
+        transferencias: {
+          where: { status: "PENDENTE" },
+          select: {
+            id: true,
+            status: true,
+            criado_em: true,
+            funcionario_origem: { select: { id: true, nome: true } },
+            funcionario_destino: { select: { id: true, nome: true } },
+          },
+          take: 1,
+        },
       },
     }),
-    // Filter employees by PDV for GERENTE
+    // Filter employees by PDV for GERENTE and COLABORADOR
     prisma.funcionario.findMany({
-      where: auth.sessao.perfil === "GERENTE" && auth.sessao.id_pdv
+      where: (auth.sessao.perfil === "GERENTE" || auth.sessao.perfil === "COLABORADOR") && auth.sessao.id_pdv
         ? { id_empresa: auth.sessao.id_empresa, ativo: true, id_pdv: auth.sessao.id_pdv }
         : { id_empresa: auth.sessao.id_empresa, ativo: true },
       select: {
@@ -92,6 +103,7 @@ export async function GET(request: NextRequest) {
         pdv: lead.funcionario.pdv,
         gestores,
         quantidade_parcelas: lead._count.parcelas,
+        transferencia_pendente: lead.transferencias[0] ?? null,
       };
     })
   );

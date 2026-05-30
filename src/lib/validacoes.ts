@@ -746,7 +746,7 @@ export const schemaCriarTemplateMeta = z.never();
 
 export const schemaAtualizarFuncionario = z.object({
   nome: z.string().trim().min(2, "Nome deve ter ao menos 2 caracteres."),
-  email: z.string().trim().email("E-mail invalido."),
+  email: z.string().trim().email("E-mail invalido.").optional().or(z.literal("")),
   cargo: z.enum(CARGOS_EQUIPE, { message: "Cargo invalido." }),
   id_pdv: z.string().trim().min(1, "PDV obrigatorio."),
 });
@@ -765,6 +765,10 @@ export const schemaListarFuncionarios = z.object({
   direcao: z.enum(["asc", "desc"]).default("asc"),
   pagina: z.coerce.number().int().min(1).default(1),
   por_pagina: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export const schemaAlterarSenhaFuncionario = z.object({
+  senha: z.string().min(6, "Senha precisa ter ao menos 6 caracteres.").max(100, "Senha muito longa."),
 });
 
 export const schemaAcaoLoteFuncionarios = z.object({
@@ -836,4 +840,24 @@ export const esquemaWhatsappChatSendAudio = z.object({
   mimeType: z.string().trim().min(1, "Tipo de audio obrigatorio."),
   duration: z.number().min(0).max(300).optional(),
   clientTempId: z.string().trim().min(1, "ID temporario obrigatorio."),
+});
+
+// ============================================
+// Transferência de Lead entre Colaboradores
+// ============================================
+
+export const esquemaCriarTransferencia = z.object({
+  id_funcionario_destino: z.string().trim().min(1, "Destinatario obrigatorio."),
+});
+
+export const esquemaResponderTransferencia = z.object({
+  acao: z.enum(["ACEITAR", "RECUSAR"], { message: "Acao deve ser ACEITAR ou RECUSAR." }),
+});
+
+// ============================================
+// Login como (impersonação de funcionário)
+// ============================================
+
+export const esquemaLoginComo = z.object({
+  id_funcionario: z.string().trim().min(1, "id_funcionario obrigatorio."),
 });

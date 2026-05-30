@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, Users } from "lucide-react";
+import { Loader2, LogIn, Pencil, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "./shared/status-badge";
 import { Avatar } from "./shared/avatar";
@@ -74,7 +74,28 @@ export function EquipeMobileList({ vm }: EquipeMobileListProps) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <p className="font-medium text-slate-900 truncate">{funcionario.nome}</p>
-                  <StatusBadge ativo={funcionario.ativo} />
+                  <div className="flex items-center gap-1.5">
+                    <StatusBadge ativo={funcionario.ativo} />
+                    {vm.podeGerenciarEmpresa && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          vm.loginComo(funcionario.id);
+                        }}
+                        disabled={vm.loginComoLoading === funcionario.id}
+                        title="Login como"
+                        aria-label={`Login como ${funcionario.nome}`}
+                        className="inline-flex items-center justify-center h-7 w-7 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {vm.loginComoLoading === funcionario.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <LogIn className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <p className="text-sm text-slate-500 truncate">{funcionario.email}</p>
                 <div className="mt-2 flex items-center gap-4 text-xs text-slate-500">

@@ -16,7 +16,9 @@ describe("whereLeadsPorPerfil", () => {
     vi.restoreAllMocks();
   });
 
-  it("filtra colaborador por empresa e usuario", async () => {
+  it("filtra colaborador por empresa e usuario (proprios leads + transferencias pendentes recebidas)", async () => {
+    vi.spyOn(prisma.transferenciaLead, "findMany").mockResolvedValue([]);
+
     const where = await whereLeadsPorPerfil({
       id_usuario: "func-1",
       id_empresa: "emp-1",
@@ -24,7 +26,34 @@ describe("whereLeadsPorPerfil", () => {
       id_pdv: "pdv-1",
     });
 
-    expect(where).toEqual({ id_empresa: "emp-1", id_funcionario: "func-1" });
+    expect(where).toEqual({
+      id_empresa: "emp-1",
+      OR: [
+        { id_funcionario: "func-1" },
+      ],
+    });
+  });
+
+  it("filtra colaborador incluindo leads com transferencia pendente recebida", async () => {
+    vi.spyOn(prisma.transferenciaLead, "findMany").mockResolvedValue([
+      { id_lead: "lead-1" } as any,
+      { id_lead: "lead-2" } as any,
+    ]);
+
+    const where = await whereLeadsPorPerfil({
+      id_usuario: "func-1",
+      id_empresa: "emp-1",
+      perfil: "COLABORADOR",
+      id_pdv: "pdv-1",
+    });
+
+    expect(where).toEqual({
+      id_empresa: "emp-1",
+      OR: [
+        { id_funcionario: "func-1" },
+        { id: { in: ["lead-1", "lead-2"] } },
+      ],
+    });
   });
 
   it("filtra gerente por PDV", async () => {

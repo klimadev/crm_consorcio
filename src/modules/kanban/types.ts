@@ -42,6 +42,16 @@ export type Lead = {
   anuncio_titulo?: string | null;
   anuncio_descricao?: string | null;
   announcement_url?: string | null;
+  // Transferência pendente entre colaboradores
+  transferencia_pendente?: TransferenciaPendente | null;
+};
+
+export type TransferenciaPendente = {
+  id: string;
+  status: "PENDENTE" | "ACEITA" | "RECUSADA";
+  criado_em: string;
+  funcionario_origem: { id: string; nome: string };
+  funcionario_destino: { id: string; nome: string };
 };
 
 export type Funcionario = {
@@ -122,6 +132,7 @@ export type StatusSalvamentoDetalhesLead =
 export type UseKanbanModuleReturn = {
   estagios: Estagio[];
   leads: Lead[];
+  leadsTransferencia: Lead[];
   funcionarios: Funcionario[];
   pdvs: Pdv[];
   carregandoInicial: boolean;
@@ -213,4 +224,10 @@ export type UseKanbanModuleReturn = {
   notificacoesAtivadas: boolean;
   alternarNotificacoes: () => Promise<boolean>;
   permissaoNotificacao: () => NotificationPermission | "unknown";
+  enviandoTransferencia: boolean;
+  cancelandoTransferencia: boolean;
+  criarTransferencia: (leadId: string, idFuncionarioDestino: string) => Promise<void>;
+  aceitarTransferencia: (leadId: string) => Promise<void>;
+  recusarTransferencia: (leadId: string) => Promise<void>;
+  cancelarTransferencia: (leadId: string) => Promise<void>;
 };

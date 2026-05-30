@@ -5,6 +5,13 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+const USUARIOS_TESTE = process.env.NODE_ENV === "development" ? [
+  { label: "Empresa", email: "empresa.demo@crmconsorcio.com", senha: "123456" },
+  { label: "Gerente", email: "gerente.demo@crmconsorcio.com", senha: "123456" },
+  { label: "Colaborador A", email: "a@demo.com", senha: "123456" },
+  { label: "Colaborador B", email: "b@demo.com", senha: "123456" },
+] : [];
+
 export default function PaginaLogin() {
   const router = useRouter();
   const [erro, setErro] = useState<string | null>(null);
@@ -54,6 +61,31 @@ export default function PaginaLogin() {
     router.push("/resumo");
   }
 
+  async function loginRapido(email: string, senha: string) {
+    setErro(null);
+    setCarregando(true);
+
+    try {
+      const resposta = await fetch("/api/autenticacao/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, senha }),
+      });
+
+      if (!resposta.ok) {
+        const json = await resposta.json().catch(() => ({}));
+        setErro((json as { erro?: string }).erro ?? "Falha ao fazer login.");
+        setCarregando(false);
+        return;
+      }
+
+      router.push("/resumo");
+    } catch {
+      setErro("Erro de conexao.");
+      setCarregando(false);
+    }
+  }
+
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
       <section className="w-full max-w-md rounded-xl border border-border bg-background-surface p-6 shadow-md shadow-black/20">
@@ -76,6 +108,26 @@ export default function PaginaLogin() {
             {carregando ? "Entrando..." : "Entrar"}
           </Button>
         </form>
+
+        {USUARIOS_TESTE.length > 0 ? (
+          <div className="mt-6 space-y-2">
+            <p className="text-xs font-medium uppercase tracking-wider text-foreground-muted">Login rápido (teste)</p>
+            <div className="grid grid-cols-2 gap-2">
+              {USUARIOS_TESTE.map((u) => (
+                <Button
+                  key={u.label}
+                  variant="outline"
+                  size="sm"
+                  className="h-9 rounded-xl text-xs"
+                  onClick={() => loginRapido(u.email, u.senha)}
+                  disabled={carregando}
+                >
+                  {u.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <p className="mt-4 text-sm text-foreground-muted">
           Sem conta? <a className="font-medium underline" href="/cadastro">Cadastre sua empresa</a>

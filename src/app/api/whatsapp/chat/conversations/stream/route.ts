@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
     return criarRespostaSse({
       tipo: "conversations",
-      chave: criarChaveConversasStream(sessao.id_empresa, busca, naoLidas, limite),
+      chave: criarChaveConversasStream(sessao.id_empresa, sessao.id_usuario, busca, naoLidas, limite),
       pollMs: 10000,
       carregarSnapshot: () => obterSnapshotConversas(sessao, {
         busca,

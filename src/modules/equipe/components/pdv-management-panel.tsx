@@ -9,7 +9,12 @@ import {
   ArrowUpDown,
   Building2,
   CheckCircle2,
+  Eye,
+  EyeOff,
+  Key,
   Loader2,
+  Lock,
+  LogIn,
   Pencil,
   Plus,
   Save,
@@ -23,6 +28,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/toast";
+import { alterarSenhaFuncionario } from "@/lib/api/equipe";
 import type { UseEquipeModuleReturn } from "../types";
 import { Avatar } from "./shared/avatar";
 import { StatusBadge } from "./shared/status-badge";
@@ -34,6 +41,7 @@ type PdvManagementPanelProps = {
 };
 
 export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAberto }: PdvManagementPanelProps) {
+  const { addToast } = useToast();
   const VALOR_SEM_INSTANCIA = "__SEM_INSTANCIA__";
   const [nomeEdicao, setNomeEdicao] = useState("");
   const [instanciaEdicao, setInstanciaEdicao] = useState<string>("");
@@ -49,6 +57,12 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
   const [errosLocal, setErrosLocal] = useState<{ nome?: string; email?: string; senha?: string }>({});
   const [dadosEdicaoFuncionario, setDadosEdicaoFuncionario] = useState<{ nome: string; email: string; cargo: string; id_pdv: string } | null>(null);
   const [errosEdicao, setErrosEdicao] = useState<Record<string, string>>({});
+  const [dialogSenhaAberto, setDialogSenhaAberto] = useState(false);
+  const [novaSenha, setNovaSenha] = useState("");
+  const [confirmarSenha, setConfirmarSenha] = useState("");
+  const [erroSenha, setErroSenha] = useState("");
+  const [redefinindoSenha, setRedefinindoSenha] = useState(false);
+  const [mostrarSenha, setMostrarSenha] = useState(false);
 
   const totalPdvsSemInstancia = useMemo(() => vm.pdvs.filter((pdv) => !pdv.whatsapp_instancia).length, [vm.pdvs]);
 
@@ -62,7 +76,8 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
     const base = pdvSelecionadoNoDrawer?.funcionarios ?? [];
 
     const enriquecidos = base.map((funcionarioResumo) => {
-      const completo = vm.funcionarios.find((funcionario) => funcionario.id === funcionarioResumo.id);
+      const completo = vm.todosFuncionarios.find((funcionario) => funcionario.id === funcionarioResumo.id)
+        ?? vm.funcionarios.find((funcionario) => funcionario.id === funcionarioResumo.id);
 
       return {
         id: funcionarioResumo.id,
@@ -101,13 +116,13 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
       return [];
     }
 
-    return vm.funcionarios.filter(
+    return vm.todosFuncionarios.filter(
       (funcionario) =>
         funcionario.ativo &&
         funcionario.pdv?.id === idPdvAtual &&
         !vm.idsSelecionados.includes(funcionario.id),
     );
-  }, [pdvSelecionadoNoDrawer?.id, vm.funcionarios, vm.idsSelecionados]);
+  }, [pdvSelecionadoNoDrawer?.id, vm.todosFuncionarios, vm.idsSelecionados]);
   const todosSelecionadosNoDrawer =
     colaboradoresDrawerOrdenados.length > 0 &&
     colaboradoresDrawerOrdenados.every((funcionario) => vm.idsSelecionados.includes(funcionario.id));
@@ -215,7 +230,8 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
   };
 
   const iniciarEdicaoFuncionarioDrawer = (id: string) => {
-    const func = vm.funcionarios.find((item) => item.id === id);
+    const func = vm.todosFuncionarios.find((item) => item.id === id)
+      ?? vm.funcionarios.find((item) => item.id === id);
     if (!func) {
       return;
     }
@@ -234,6 +250,45 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
     setEditandoFuncionarioNoDrawer(null);
     setDadosEdicaoFuncionario(null);
     setErrosEdicao({});
+  };
+
+  const handleRedefinirSenhaDrawer = async () => {
+    if (!editandoFuncionarioNoDrawer) return;
+
+    setErroSenha("");
+
+    if (novaSenha.length < 6) {
+      setErroSenha("Senha precisa ter ao menos 6 caracteres.");
+      return;
+    }
+
+    if (novaSenha !== confirmarSenha) {
+      setErroSenha("Senhas não conferem.");
+      return;
+    }
+
+    setRedefinindoSenha(true);
+
+    try {
+      const resultado = await alterarSenhaFuncionario(editandoFuncionarioNoDrawer, novaSenha);
+      if (!resultado.ok) {
+        setErroSenha(resultado.erro);
+        return;
+      }
+
+      addToast({
+        type: "success",
+        title: "Senha redefinida",
+        description: "A senha foi alterada com sucesso.",
+        duration: 4000,
+      });
+
+      setDialogSenhaAberto(false);
+    } catch {
+      setErroSenha("Erro ao redefinir senha. Tente novamente.");
+    } finally {
+      setRedefinindoSenha(false);
+    }
   };
 
   const salvarEdicaoFuncionarioDrawer = async () => {
@@ -257,7 +312,8 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
       return;
     }
 
-    const func = vm.funcionarios.find((f) => f.id === editandoFuncionarioNoDrawer);
+    const func = vm.todosFuncionarios.find((f) => f.id === editandoFuncionarioNoDrawer)
+      ?? vm.funcionarios.find((f) => f.id === editandoFuncionarioNoDrawer);
     if (!func) {
       return;
     }
@@ -519,11 +575,30 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
                       </Select>
                       {errosEdicao.id_pdv ? <p className="text-xs text-destructive">{errosEdicao.id_pdv}</p> : null}
                     </div>
+                  </div>
+
+                    <div className="border-t border-border pt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start gap-2 h-10 rounded-lg"
+                        onClick={() => {
+                          setNovaSenha("");
+                          setConfirmarSenha("");
+                          setErroSenha("");
+                          setMostrarSenha(false);
+                          setDialogSenhaAberto(true);
+                        }}
+                      >
+                        <Key className="w-4 h-4 text-slate-500" />
+                        Redefinir senha
+                      </Button>
+                    </div>
+
                     {vm.statusSalvamento.id === editandoFuncionarioNoDrawer && vm.statusSalvamento.estado === "error" ? (
                       <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{vm.statusSalvamento.mensagem}</div>
                     ) : null}
                   </div>
-                </div>
 
                 <SheetFooter className="mt-auto px-4 pb-4 pt-4">
                   <Button className="w-full" onClick={salvarEdicaoFuncionarioDrawer} disabled={vm.statusSalvamento.id === editandoFuncionarioNoDrawer && vm.statusSalvamento.estado === "saving"}>
@@ -532,6 +607,81 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
                   </Button>
                   <Button variant="outline" className="w-full" onClick={cancelarEdicaoFuncionarioDrawer}>Cancelar</Button>
                 </SheetFooter>
+
+                {/* Dialog de redefinição de senha */}
+                <Dialog open={dialogSenhaAberto} onOpenChange={setDialogSenhaAberto}>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <Lock className="w-5 h-5 text-emerald-500" />
+                        Redefinir senha
+                      </DialogTitle>
+                      <DialogDescription>
+                        Defina uma nova senha para este colaborador.
+                        A senha deve ter ao menos 6 caracteres.
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-2">
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-slate-700">Nova senha</label>
+                        <div className="relative">
+                          <Input
+                            type={mostrarSenha ? "text" : "password"}
+                            value={novaSenha}
+                            onChange={(e) => { setNovaSenha(e.target.value); setErroSenha(""); }}
+                            placeholder="••••••••"
+                            className="h-11 rounded-xl pr-10"
+                            autoComplete="new-password"
+                          />
+                          <button
+                            type="button"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                            onClick={() => setMostrarSenha(!mostrarSenha)}
+                          >
+                            {mostrarSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-slate-700">Confirmar senha</label>
+                        <Input
+                          type={mostrarSenha ? "text" : "password"}
+                          value={confirmarSenha}
+                          onChange={(e) => { setConfirmarSenha(e.target.value); setErroSenha(""); }}
+                          placeholder="••••••••"
+                          className="h-11 rounded-xl"
+                          autoComplete="new-password"
+                        />
+                      </div>
+
+                      {erroSenha && (
+                        <p className="flex items-center gap-1.5 text-sm text-rose-600 font-medium">
+                          <AlertCircle className="w-4 h-4" />
+                          {erroSenha}
+                        </p>
+                      )}
+                    </div>
+
+                    <DialogFooter className="gap-2">
+                      <Button variant="outline" className="rounded-xl h-11" onClick={() => setDialogSenhaAberto(false)} disabled={redefinindoSenha}>
+                        Cancelar
+                      </Button>
+                      <Button
+                        className="rounded-xl h-11 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold shadow-lg shadow-emerald-500/20 gap-2 min-w-[120px]"
+                        onClick={handleRedefinirSenhaDrawer}
+                        disabled={redefinindoSenha || !novaSenha || !confirmarSenha}
+                      >
+                        {redefinindoSenha ? (
+                          <><Loader2 className="w-4 h-4 animate-spin" /> Redefinindo...</>
+                        ) : (
+                          <><Lock className="w-4 h-4" /> Redefinir</>
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </>
             ) : (
               <>
@@ -800,6 +950,23 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
 
                               {podeGerenciarColaboradorNoDrawer ? (
                                 <div className="mt-3 flex flex-wrap justify-end gap-2">
+                                  {vm.podeGerenciarEmpresa && (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 rounded-lg text-foreground-muted"
+                                      disabled={vm.loginComoLoading === funcionario.id}
+                                      onClick={() => vm.loginComo(funcionario.id)}
+                                    >
+                                      {vm.loginComoLoading === funcionario.id ? (
+                                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                      ) : (
+                                        <LogIn className="mr-1.5 h-3.5 w-3.5" />
+                                      )}
+                                      Login
+                                    </Button>
+                                  )}
                                   <Button type="button" size="sm" variant="outline" className="h-8 rounded-lg text-foreground-muted" onClick={() => iniciarEdicaoFuncionarioDrawer(funcionario.id)}>
                                     <Pencil className="mr-1.5 h-3.5 w-3.5" />Editar
                                   </Button>
@@ -810,7 +977,8 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
                                       variant="outline"
                                       className="h-8 rounded-lg text-destructive hover:bg-destructive/10 hover:text-destructive"
                                       onClick={() => {
-                                        const alvo = vm.funcionarios.find((item) => item.id === funcionario.id);
+                                        const alvo = vm.todosFuncionarios.find((item) => item.id === funcionario.id)
+                                          ?? vm.funcionarios.find((item) => item.id === funcionario.id);
                                         if (alvo) {
                                           vm.abrirModalInativacao(alvo);
                                         }
@@ -824,7 +992,8 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
                                       size="sm"
                                       className="h-8 rounded-lg bg-success text-success-foreground hover:bg-success/90"
                                       onClick={() => {
-                                        const alvo = vm.funcionarios.find((item) => item.id === funcionario.id);
+                                        const alvo = vm.todosFuncionarios.find((item) => item.id === funcionario.id)
+                                          ?? vm.funcionarios.find((item) => item.id === funcionario.id);
                                         if (alvo) {
                                           void vm.reativarFuncionarioIndividual(alvo);
                                         }

@@ -6,8 +6,11 @@ import { validarNovoLead } from "../utils/validacoes";
 import { useToast } from "@/components/ui/toast";
 import {
   criarLeadKanban,
+  criarTransferenciaKanban,
   excluirLeadKanban,
   redistribuirLeadsEmAtendimentoKanban,
+  responderTransferenciaKanban,
+  cancelarTransferenciaKanban,
   sincronizarWhatsappKanban,
 } from "@/lib/api/kanban";
 
@@ -18,7 +21,7 @@ type UseKanbanOperacoesParams = {
   valorNovoLead: string;
   cargoNovoLead: { id_funcionario: string } | null;
   setLeads: Dispatch<SetStateAction<Lead[]>>;
-  setLeadSelecionado: (lead: Lead | null) => void;
+  setLeadSelecionado: Dispatch<SetStateAction<Lead | null>>;
   setDialogNovoLeadAberto: (aberto: boolean) => void;
   setCargoNovoLead: (cargo: { id_funcionario: string } | null) => void;
   setEstagioNovoLead: (estagio: string) => void;
@@ -59,6 +62,8 @@ export function useKanbanOperacoes({
   const [criandoLead, setCriandoLead] = useState(false);
   const [sincronizandoWhatsapp, setSincronizandoWhatsapp] = useState(false);
   const [redistribuindoEmAtendimento, setRedistribuindoEmAtendimento] = useState(false);
+  const [enviandoTransferencia, setEnviandoTransferencia] = useState(false);
+  const [cancelandoTransferencia, setCancelandoTransferencia] = useState(false);
 
   const criarLead = useCallback(
     async (evento: FormEvent<HTMLFormElement>) => {
@@ -286,6 +291,144 @@ export function useKanbanOperacoes({
     [addToast, setLeads],
   );
 
+  const criarTransferencia = useCallback(
+    async (leadId: string, idFuncionarioDestino: string) => {
+      setEnviandoTransferencia(true);
+      try {
+        const resposta = await criarTransferenciaKanban(leadId, idFuncionarioDestino);
+        if (!resposta.ok) {
+          addToast({
+            type: "error",
+            title: "Erro ao transferir",
+            description: resposta.erro,
+          });
+          return;
+        }
+
+        setLeads((atual) =>
+          atual.map((lead) =>
+            lead.id === leadId
+              ? { ...lead, transferencia_pendente: resposta.dados }
+              : lead,
+          ),
+        );
+
+        setLeadSelecionado((prev) =>
+          prev && prev.id === leadId
+            ? { ...prev, transferencia_pendente: resposta.dados }
+            : prev,
+        );
+
+        addToast({
+          type: "success",
+          title: "Convite enviado",
+          description: "O lead foi enviado como convite de transferência.",
+        });
+      } finally {
+        setEnviandoTransferencia(false);
+      }
+    },
+    [addToast, setLeads, setLeadSelecionado],
+  );
+
+  const aceitarTransferencia = useCallback(
+    async (leadId: string) => {
+      const resposta = await responderTransferenciaKanban(leadId, "ACEITAR");
+      if (!resposta.ok) {
+        addToast({
+          type: "error",
+          title: "Erro ao aceitar",
+          description: resposta.erro,
+        });
+        return;
+      }
+
+      await bootstrap();
+
+      addToast({
+        type: "success",
+        title: "Transferência aceita",
+        description: "O lead agora está sob sua responsabilidade.",
+      });
+    },
+    [addToast, bootstrap],
+  );
+
+  const recusarTransferencia = useCallback(
+    async (leadId: string) => {
+      const resposta = await responderTransferenciaKanban(leadId, "RECUSAR");
+      if (!resposta.ok) {
+        addToast({
+          type: "error",
+          title: "Erro ao recusar",
+          description: resposta.erro,
+        });
+        return;
+      }
+
+      setLeads((atual) =>
+        atual.map((lead) =>
+          lead.id === leadId
+            ? { ...lead, transferencia_pendente: undefined }
+            : lead,
+        ),
+      );
+
+      setLeadSelecionado((prev) =>
+        prev && prev.id === leadId
+          ? { ...prev, transferencia_pendente: undefined }
+          : prev,
+      );
+
+      addToast({
+        type: "success",
+        title: "Transferência recusada",
+        description: "O lead foi devolvido ao remetente.",
+      });
+    },
+    [addToast, setLeads, setLeadSelecionado],
+  );
+
+  const cancelarTransferencia = useCallback(
+    async (leadId: string) => {
+      setCancelandoTransferencia(true);
+      try {
+        const resposta = await cancelarTransferenciaKanban(leadId);
+        if (!resposta.ok) {
+          addToast({
+            type: "error",
+            title: "Erro ao cancelar",
+            description: resposta.erro,
+          });
+          return;
+        }
+
+        setLeads((atual) =>
+          atual.map((lead) =>
+            lead.id === leadId
+              ? { ...lead, transferencia_pendente: undefined }
+              : lead,
+          ),
+        );
+
+        setLeadSelecionado((prev) =>
+          prev && prev.id === leadId
+            ? { ...prev, transferencia_pendente: undefined }
+            : prev,
+        );
+
+        addToast({
+          type: "success",
+          title: "Convite cancelado",
+          description: "A transferência foi cancelada.",
+        });
+      } finally {
+        setCancelandoTransferencia(false);
+      }
+    },
+    [addToast, setLeads, setLeadSelecionado],
+  );
+
   return {
     erroNovoLead,
     setErroNovoLead,
@@ -297,5 +440,11 @@ export function useKanbanOperacoes({
     redistribuirLeadsEmAtendimento,
     excluirLead,
     excluirTodosIndefinidos,
+    enviandoTransferencia,
+    cancelandoTransferencia,
+    criarTransferencia,
+    aceitarTransferencia,
+    recusarTransferencia,
+    cancelarTransferencia,
   };
 }

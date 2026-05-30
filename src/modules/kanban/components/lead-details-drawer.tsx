@@ -56,6 +56,12 @@ type LeadDetailsDrawerProps = {
     opcoes?: { atualizarSelecionado?: boolean; arquivoUpload?: File | null; dataVenda?: string },
   ) => Promise<void>;
   onRemoverDocumento: () => Promise<void>;
+  onTransferirLead: (idFuncionarioDestino: string) => Promise<void>;
+  onCancelarTransferencia: () => Promise<void>;
+  enviandoTransferencia: boolean;
+  cancelandoTransferencia: boolean;
+  idPdvUsuario: string;
+  idUsuario: string;
 };
 
 export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
@@ -84,6 +90,12 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
     onExcluirLead,
     onSalvarDetalhesLead,
     onRemoverDocumento,
+    onTransferirLead,
+    onCancelarTransferencia,
+    enviandoTransferencia,
+    cancelandoTransferencia,
+    idPdvUsuario,
+    idUsuario,
   } = props;
 
   const [temAlteracoes, setTemAlteracoes] = useState(false);
@@ -493,6 +505,12 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
                   temAlteracoes={temAlteracoes}
                   setTemAlteracoes={setTemAlteracoes}
                   onRemoverDocumento={onRemoverDocumento}
+                  onTransferirLead={onTransferirLead}
+                  onCancelarTransferencia={onCancelarTransferencia}
+                  enviandoTransferencia={enviandoTransferencia}
+                  cancelandoTransferencia={cancelandoTransferencia}
+                  idPdvUsuario={idPdvUsuario}
+                  idUsuario={idUsuario}
                 />
               </TabsContent>
 

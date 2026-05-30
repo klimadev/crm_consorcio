@@ -36,7 +36,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   const { nome, cargo, id_pdv } = validacao.data;
-  const email = validacao.data.email.toLowerCase();
+  const email = validacao.data.email ? validacao.data.email.toLowerCase() : undefined;
 
   const funcionarioAtual = await prisma.funcionario.findFirst({
     where: {
@@ -92,7 +92,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         },
         data: {
           nome,
-          email,
+          ...(email ? { email } : {}),
           cargo,
           id_pdv,
         },
@@ -100,7 +100,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
       const auditorias = [
         { campo: "nome", anterior: funcionarioAtual.nome, novo: nome },
-        { campo: "email", anterior: funcionarioAtual.email, novo: email },
+        ...(email ? [{ campo: "email", anterior: funcionarioAtual.email, novo: email }] : []),
         { campo: "cargo", anterior: funcionarioAtual.cargo, novo: cargo },
         { campo: "id_pdv", anterior: funcionarioAtual.id_pdv, novo: id_pdv },
       ].filter((item) => item.anterior !== item.novo);

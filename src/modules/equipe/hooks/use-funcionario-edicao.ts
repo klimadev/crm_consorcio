@@ -21,7 +21,7 @@ function validarDadosEdicao(dados: DadosEdicao): ErrosEdicao {
     erros.nome = "Nome deve ter ao menos 2 caracteres.";
   }
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dados.email.trim())) {
+  if (dados.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dados.email.trim())) {
     erros.email = "E-mail invalido.";
   }
 

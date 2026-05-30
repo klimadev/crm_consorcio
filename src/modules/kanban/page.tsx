@@ -121,6 +121,10 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         resumoPorEstagio={vm.resumoPorEstagio}
         excluirTodosIndefinidos={vm.excluirTodosIndefinidos}
         carregando={vm.carregandoInicial}
+        leadsTransferencia={vm.leadsTransferencia}
+        idUsuario={idUsuario}
+        onAceitarTransferencia={vm.aceitarTransferencia}
+        onRecusarTransferencia={vm.recusarTransferencia}
       />
 
       <PerdaDialog
@@ -155,6 +159,16 @@ export function ModuloKanban({ perfil, idUsuario }: Props) {
         onExcluirLead={vm.excluirLead}
         onSalvarDetalhesLead={vm.salvarDetalhesLead}
         onRemoverDocumento={vm.removerDocumento}
+        onTransferirLead={(idFuncionarioDestino) =>
+          vm.criarTransferencia(vm.leadSelecionado!.id, idFuncionarioDestino)
+        }
+        onCancelarTransferencia={() =>
+          vm.cancelarTransferencia(vm.leadSelecionado!.id)
+        }
+        enviandoTransferencia={vm.enviandoTransferencia}
+        cancelandoTransferencia={vm.cancelandoTransferencia}
+        idPdvUsuario={vm.funcionarios.find((f) => f.id === idUsuario)?.id_pdv ?? ""}
+        idUsuario={idUsuario}
       />
     </ModulePageShell>
   );

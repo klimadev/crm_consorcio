@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/ui/toast";
 import { criarFuncionario } from "@/lib/api/equipe";
-import type { Props, UseEquipeModuleReturn } from "../types";
+import type { Funcionario, Props, UseEquipeModuleReturn } from "../types";
 import { useEquipeFiltros } from "./use-equipe-filtros";
 import { useEquipeLista } from "./use-equipe-lista";
 import { useFuncionarioEdicao } from "./use-funcionario-edicao";
@@ -32,6 +32,7 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
   const [cargoSelecionado, setCargoSelecionado] = useState("COLABORADOR");
   const [pdvSelecionado, setPdvSelecionado] = useState("");
   const [dialogNovoFuncionarioAberto, setDialogNovoFuncionarioAberto] = useState(false);
+  const [loginComoLoading, setLoginComoLoading] = useState<string | null>(null);
 
   // Callback para abrir o dialog com valores corretos para o perfil
   const abrirDialogNovoFuncionario = useCallback(
@@ -81,13 +82,37 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     setErroLista,
     carregarFuncionarios,
     contadoresFiltro,
-    funcionariosAtivosParaDestino,
+    funcionariosAtivosParaDestino: _funcionariosAtivosParaDestino,
     todosDaPaginaSelecionados,
   } = useEquipeLista({
     searchParams,
     idsSelecionados,
     setIdsSelecionados,
   });
+
+  const todosFuncionarios = useMemo(() => {
+    const map = new Map<string, Funcionario>();
+    pdvs.forEach((pdv) => {
+      (pdv.funcionarios ?? []).forEach((f) => {
+        if (!map.has(f.id)) {
+          map.set(f.id, {
+            id: f.id,
+            nome: f.nome,
+            email: f.email ?? "",
+            cargo: f.cargo,
+            ativo: f.ativo ?? true,
+            pdv: { id: pdv.id, nome: pdv.nome },
+          });
+        }
+      });
+    });
+    return Array.from(map.values());
+  }, [pdvs]);
+
+  const funcionariosAtivosParaDestino = useMemo(
+    () => todosFuncionarios.filter((f) => f.ativo),
+    [todosFuncionarios],
+  );
 
   const {
     executandoLote,
@@ -182,7 +207,7 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     confirmarInativacaoIndividual,
     reativarFuncionarioIndividual,
   } = useFuncionarioInativacao({
-    funcionarios,
+    funcionarios: todosFuncionarios,
     funcionariosAtivosParaDestino,
     setFuncionarios,
     setErroLista,
@@ -234,8 +259,49 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     [carregarFuncionarios, carregarPdvs, addToast],
   );
 
+  const loginComo = useCallback(
+    async (id: string) => {
+      setLoginComoLoading(id);
+      try {
+        const res = await fetch("/api/autenticacao/login-como", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id_funcionario: id }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          addToast({
+            type: "error",
+            title: "Erro ao logar como funcionario",
+            description: data.erro ?? "Tente novamente.",
+            duration: 5000,
+          });
+          return;
+        }
+        addToast({
+          type: "success",
+          title: "Login realizado",
+          description: `Voce agora esta logado como ${data.nome}.`,
+          duration: 3000,
+        });
+        setTimeout(() => window.location.reload(), 300);
+      } catch {
+        addToast({
+          type: "error",
+          title: "Erro de conexao",
+          description: "Verifique sua internet e tente novamente.",
+          duration: 5000,
+        });
+      } finally {
+        setLoginComoLoading(null);
+      }
+    },
+    [addToast],
+  );
+
   return {
     funcionarios,
+    todosFuncionarios,
     pdvs,
     paginacao,
     kpis,
@@ -336,5 +402,7 @@ export function useEquipeModule({ perfil, id_pdv }: Props): UseEquipeModuleRetur
     contadoresFiltro,
     temAlteracoesNaoSalvas,
     limparFiltros,
+    loginComo,
+    loginComoLoading,
   };
 }

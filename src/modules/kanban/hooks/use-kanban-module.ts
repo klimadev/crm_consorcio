@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import type { Lead, UseKanbanModuleReturn, Props } from "../types";
 import { useToast } from "@/components/ui/toast";
 import { useKanbanDerivacoes } from "./use-kanban-derivacoes";
@@ -125,6 +125,12 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     redistribuirLeadsEmAtendimento,
     excluirLead,
     excluirTodosIndefinidos,
+    enviandoTransferencia,
+    cancelandoTransferencia,
+    criarTransferencia,
+    aceitarTransferencia,
+    recusarTransferencia,
+    cancelarTransferencia,
   } = useKanbanOperacoes({
     perfil,
     idUsuario,
@@ -143,9 +149,19 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     aoSincronizarWhatsapp: setUltimaSincronizacaoWhatsapp,
   });
 
+  const leadsTransferencia = useMemo(() => {
+    return leads.filter(
+      (lead) =>
+        lead.transferencia_pendente &&
+        lead.transferencia_pendente.status === "PENDENTE" &&
+        lead.transferencia_pendente.funcionario_destino.id === idUsuario,
+    );
+  }, [leads, idUsuario]);
+
   return {
     estagios,
     leads,
+    leadsTransferencia,
     funcionarios,
     pdvs,
     carregandoInicial,
@@ -219,5 +235,11 @@ export function useKanbanModule({ perfil, idUsuario }: Props): UseKanbanModuleRe
     notificacoesAtivadas,
     alternarNotificacoes,
     permissaoNotificacao,
+    enviandoTransferencia,
+    cancelandoTransferencia,
+    criarTransferencia,
+    aceitarTransferencia,
+    recusarTransferencia,
+    cancelarTransferencia,
   };
 }

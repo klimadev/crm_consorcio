@@ -8,6 +8,8 @@ import {
   type OrdenacaoRecebimentos,
   type RecebimentosResposta,
 } from "@/lib/api/recebimentos";
+import { pagarParcela as apiPagarParcela } from "@/lib/api/parcelas";
+import { useToast } from "@/components/ui/toast";
 import { formataMoeda } from "@/lib/utils";
 import type { RecebimentosFiltroForm, UseRecebimentosModuleReturn } from "../types";
 
@@ -31,6 +33,7 @@ function criarPromiseRecebimentos(filtros: RecebimentosFiltroForm, pagina: numbe
 }
 
 export function useRecebimentosModule(): UseRecebimentosModuleReturn {
+  const { addToast } = useToast();
   const [filtros, setFiltros] = useState<RecebimentosFiltroForm>(FILTROS_INICIAIS);
   const [pagina, setPagina] = useState(1);
   const [limite] = useState(20);
@@ -38,6 +41,7 @@ export function useRecebimentosModule(): UseRecebimentosModuleReturn {
   const [erro, setErro] = useState<string | null>(null);
   const [dados, setDados] = useState<RecebimentosResposta | null>(null);
   const [chaveRecarga, setChaveRecarga] = useState(0);
+  const [pagando, setPagando] = useState<string | null>(null);
 
   useEffect(() => {
     let ativo = true;
@@ -108,6 +112,51 @@ export function useRecebimentosModule(): UseRecebimentosModuleReturn {
     ];
   }, [dados]);
 
+  const pagarParcelaModule = useCallback(
+    async (idParcela: string, dataPagamento?: string) => {
+      const dataEfetiva = dataPagamento ?? new Date().toISOString();
+      setPagando(idParcela);
+      setErro(null);
+
+      const backup = dados;
+      setDados((anterior) => {
+        if (!anterior) return null;
+        return {
+          ...anterior,
+          lista: anterior.lista.map((item) =>
+            item.id === idParcela
+              ? { ...item, status: "PAGO" as const, data_pagamento: dataEfetiva, dias_em_atraso: 0 }
+              : item,
+          ),
+        };
+      });
+
+      const resultado = await apiPagarParcela(idParcela, { data_pagamento: dataEfetiva });
+
+      if (!resultado.ok) {
+        setDados(backup);
+        setErro(resultado.erro);
+        addToast({
+          type: "error",
+          title: "Erro ao registrar pagamento",
+          description: resultado.erro,
+        });
+        setPagando(null);
+        return;
+      }
+
+      addToast({
+        type: "success",
+        title: "Pagamento registrado",
+        description: "A parcela foi marcada como paga com sucesso.",
+      });
+
+      setPagando(null);
+      setChaveRecarga((atual) => atual + 1);
+    },
+    [addToast, dados],
+  );
+
   return {
     carregando,
     erro,
@@ -142,5 +191,7 @@ export function useRecebimentosModule(): UseRecebimentosModuleReturn {
     recarregar: async () => {
       setChaveRecarga((atual) => atual + 1);
     },
+    pagando,
+    pagarParcela: pagarParcelaModule,
   };
 }

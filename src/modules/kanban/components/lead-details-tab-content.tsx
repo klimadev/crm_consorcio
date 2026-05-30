@@ -1,4 +1,5 @@
-import { AlertCircle, Building2, CheckCircle2, Clock3, FileText, Phone, ShieldCheck, Trash2, User, UserCog } from "lucide-react";
+import { AlertCircle, Building2, CheckCircle2, Clock3, FileText, Phone, Send, ShieldCheck, Trash2, User, UserCog, XCircle } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import { ActionButton } from "./action-button";
 import { FuncionarioSelectOptions, obterResumoFuncionario } from "./funcionario-select-options";
 import { MENSAGENS_KANBAN } from "../utils/mensagens";
 import { validarArquivoDocumentoLead, validarDocumentoLeadUrl, validarTelefoneLead } from "../utils/validacoes";
+import { TransferirLeadDialog } from "./transferir-lead-dialog";
 
 const LABELS_PENDENCIA: Record<string, string> = {
   DOCUMENTO_APROVACAO_PENDENTE: "Documento de Aprovação (Pdf/Link) Pendente",
@@ -55,6 +57,12 @@ type LeadDetailsTabContentProps = {
   setModoDocumento: (value: "arquivo" | "url") => void;
   temAlteracoes: boolean;
   setTemAlteracoes: (value: boolean) => void;
+  onTransferirLead: (idFuncionarioDestino: string) => Promise<void>;
+  onCancelarTransferencia: () => Promise<void>;
+  enviandoTransferencia: boolean;
+  cancelandoTransferencia: boolean;
+  idPdvUsuario: string;
+  idUsuario: string;
 };
 
 export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
@@ -93,6 +101,12 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
     modoDocumento,
     setModoDocumento,
     setTemAlteracoes,
+    onTransferirLead,
+    onCancelarTransferencia,
+    enviandoTransferencia,
+    cancelandoTransferencia,
+    idPdvUsuario,
+    idUsuario,
   } = props;
 
   const estagioAtual = estagios.find((estagio) => estagio.id === leadSelecionado.id_estagio) ?? null;
@@ -113,6 +127,15 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
   const consultorAprovacao = funcionarios.find((funcionario) => funcionario.id === leadSelecionado.consultor_id);
   const valorResponsavel = funcionarioResponsavel?.id ?? RESPONSAVEL_NAO_ENCONTRADO;
   const nomeGestorAprovacao = gestorAprovacao?.nome;
+  const [dialogTransferirAberto, setDialogTransferirAberto] = useState(false);
+
+  const temTransferenciaPendente =
+    leadSelecionado.transferencia_pendente &&
+    leadSelecionado.transferencia_pendente.status === "PENDENTE";
+
+  const transferenciaOrigemSelf =
+    temTransferenciaPendente &&
+    leadSelecionado.transferencia_pendente?.funcionario_origem.id === idUsuario;
   const nomeConsultorAprovacao = consultorAprovacao?.nome;
   const totalPendencias = pendenciasLead.length;
   const proximoPasso = temPendenciaDocumento
@@ -351,6 +374,55 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
               <p className="text-xs text-foreground-muted">
                 {obterResumoFuncionario(funcionarioResponsavel)}
               </p>
+              {/* TEMPORÁRIO: botão de teste para GERENTE/EMPRESA */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-xl border-info/30 text-info hover:bg-info/10 hover:text-info"
+                onClick={() => setDialogTransferirAberto(true)}
+                disabled={enviandoTransferencia}
+              >
+                <Send className="mr-1.5 h-3.5 w-3.5" />
+                Transferir Lead (teste)
+              </Button>
+            </div>
+          ) : transferenciaOrigemSelf ? (
+            <div className="space-y-2 rounded-xl border border-info/30 bg-info/5 p-3">
+              <div className="flex items-center gap-2">
+                <Send className="h-4 w-4 text-info" />
+                <span className="text-sm font-medium text-foreground">
+                  Transferência pendente para{" "}
+                  {leadSelecionado.transferencia_pendente?.funcionario_destino.nome}
+                </span>
+              </div>
+              <p className="text-xs text-foreground-muted">
+                Aguardando aceitação do destinatário.
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-1 h-8 rounded-xl border border-border/70 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={onCancelarTransferencia}
+                disabled={cancelandoTransferencia}
+              >
+                <XCircle className="mr-1.5 h-3.5 w-3.5" />
+                {cancelandoTransferencia ? "Cancelando..." : "Cancelar Transferência"}
+              </Button>
+            </div>
+          ) : perfil === "COLABORADOR" && !temTransferenciaPendente ? (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Responsável</label>
+              <p className="text-sm text-foreground">{funcionarioResponsavel?.nome ?? "Você"}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 rounded-xl border-info/30 text-info hover:bg-info/10 hover:text-info"
+                onClick={() => setDialogTransferirAberto(true)}
+                disabled={enviandoTransferencia}
+              >
+                <Send className="mr-1.5 h-3.5 w-3.5" />
+                Transferir Lead
+              </Button>
             </div>
           ) : null}
 
@@ -512,6 +584,16 @@ export function LeadDetailsTabContent(props: LeadDetailsTabContentProps) {
           Excluir Lead
         </Button>
       </div>
+
+      <TransferirLeadDialog
+        aberto={dialogTransferirAberto}
+        onOpenChange={setDialogTransferirAberto}
+        funcionarios={funcionarios}
+        idPdvUsuario={idPdvUsuario}
+        nomeLead={leadSelecionado.nome}
+        enviando={enviandoTransferencia}
+        onConfirmar={onTransferirLead}
+      />
     </div>
   );
 }

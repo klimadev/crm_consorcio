@@ -14,6 +14,7 @@ export type Pdv = {
   funcionarios?: Array<{
     id: string;
     nome: string;
+    email?: string;
     cargo: string;
     ativo?: boolean;
   }>;
@@ -95,6 +96,7 @@ export type AcaoLote = "ATIVAR" | "INATIVAR" | "ALTERAR_CARGO" | "ALTERAR_PDV";
 
 export type UseEquipeModuleReturn = {
   funcionarios: Funcionario[];
+  todosFuncionarios: Funcionario[];
   pdvs: Pdv[];
   paginacao: Paginacao;
   kpis: KpisEquipe;
@@ -198,4 +200,6 @@ export type UseEquipeModuleReturn = {
   };
   temAlteracoesNaoSalvas: boolean;
   limparFiltros: () => void;
+  loginComo: (id: string) => Promise<void>;
+  loginComoLoading: string | null;
 };

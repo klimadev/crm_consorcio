@@ -522,6 +522,6 @@ export function criarChaveChatStream(idEmpresa: string, idInstancia: string, lea
   return `chat:${idEmpresa}:${idInstancia}:${leadId}`;
 }
 
-export function criarChaveConversasStream(idEmpresa: string, busca: string, naoLidas: boolean, limite: number) {
-  return `conversation-list:${idEmpresa}:${busca || "_"}:${naoLidas ? "unread" : "all"}:${limite}`;
+export function criarChaveConversasStream(idEmpresa: string, idUsuario: string, busca: string, naoLidas: boolean, limite: number) {
+  return `conversation-list:${idEmpresa}:${idUsuario}:${busca || "_"}:${naoLidas ? "unread" : "all"}:${limite}`;
 }

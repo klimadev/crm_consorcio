@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
         select: {
           id: true,
           nome: true,
+          email: true,
           cargo: true,
           ativo: true,
         },
