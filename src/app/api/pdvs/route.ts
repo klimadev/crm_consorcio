@@ -12,8 +12,17 @@ export async function GET(request: NextRequest) {
     return auth.erro;
   }
 
+  // GERENTE só vê seu próprio PDV
+  const idPdvGerente = auth.sessao.perfil === "GERENTE" ? auth.sessao.id_pdv : null;
+  if (auth.sessao.perfil === "GERENTE" && !idPdvGerente) {
+    return NextResponse.json({ pdvs: [] });
+  }
+
   const pdvs = await prisma.pdv.findMany({
-    where: { id_empresa: auth.sessao.id_empresa },
+    where: {
+      id_empresa: auth.sessao.id_empresa,
+      ...(idPdvGerente ? { id: idPdvGerente } : {}),
+    },
     select: {
       id: true,
       nome: true,

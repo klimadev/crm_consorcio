@@ -1,6 +1,6 @@
 "use client";
 
-import { BriefcaseBusiness, Plus, ShieldCheck, UserMinus, Users } from "lucide-react";
+import { BriefcaseBusiness, MapPin, Plus, ShieldCheck, UserMinus, Users } from "lucide-react";
 import type { ComponentType } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -41,8 +41,16 @@ export function EquipeHeader({ vm, onAbrirNovoPdv }: EquipeHeaderProps) {
   const temFiltrosAtivos = vm.busca || vm.idPdvFiltro || vm.statusFiltro !== "TODOS" || vm.cargoFiltro !== "TODOS";
   const kpisExibir = temFiltrosAtivos ? vm.kpis : vm.kpisTotais;
   const colaboradoresAtivos = `${kpisExibir.ativos} ${kpisExibir.ativos === 1 ? "colaborador ativo" : "colaboradores ativos"}`;
-  const contextoDados = temFiltrosAtivos ? "Visao filtrada da equipe" : "Visao geral da operacao";
   const destaqueGerencia = `${kpisExibir.gerentes} ${kpisExibir.gerentes === 1 ? "gerente" : "gerentes"}`;
+  const ehGerente = Boolean(vm.idPdvGerenciado);
+  const pdvGerenciado = ehGerente
+    ? vm.pdvs.find((pdv) => pdv.id === vm.idPdvGerenciado)?.nome
+    : null;
+  const contextoDados = pdvGerenciado
+    ? `Gestao do PDV: ${pdvGerenciado}`
+    : temFiltrosAtivos
+      ? "Visao filtrada da equipe"
+      : "Visao geral da operacao";
 
   return (
     <header className="overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-background-surface via-muted/70 to-background shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
@@ -65,6 +73,12 @@ export function EquipeHeader({ vm, onAbrirNovoPdv }: EquipeHeaderProps) {
                 {temFiltrosAtivos ? (
                   <span className="rounded-full border border-warning/25 bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning">
                     filtros aplicados
+                  </span>
+                ) : null}
+                {pdvGerenciado ? (
+                  <span className="rounded-full border border-info/25 bg-info/10 px-2.5 py-1 text-xs font-medium text-info flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    {pdvGerenciado}
                   </span>
                 ) : null}
               </div>

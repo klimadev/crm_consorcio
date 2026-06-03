@@ -109,6 +109,7 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
     return lista;
   }, [colaboradoresDrawer, direcaoDrawer, ordenacaoDrawer]);
 
+  // GERENTE pode editar colaboradores do próprio PDV (inline)
   const podeGerenciarColaboradorNoDrawer = vm.podeGerenciarEmpresa || vm.podeExecutarAcoesLote;
   const opcoesDestinoLoteNoDrawer = useMemo(() => {
     const idPdvAtual = pdvSelecionadoNoDrawer?.id;
@@ -230,6 +231,12 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
   };
 
   const iniciarEdicaoFuncionarioDrawer = (id: string) => {
+    // Toggle: if already editing this one, cancel instead
+    if (editandoFuncionarioNoDrawer === id) {
+      cancelarEdicaoFuncionarioDrawer();
+      return;
+    }
+
     const func = vm.todosFuncionarios.find((item) => item.id === id)
       ?? vm.funcionarios.find((item) => item.id === id);
     if (!func) {
@@ -525,167 +532,7 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
       >
         <SheetContent side="right" className="h-[100dvh] max-h-[100dvh] w-full max-w-md overflow-hidden">
           <div className="flex h-full min-h-0 flex-col">
-            {editandoFuncionarioNoDrawer ? (
-              <>
-                <SheetHeader>
-                  <div className="flex items-center gap-3">
-                    <Button type="button" variant="outline" size="sm" className="h-8 w-8 rounded-lg p-0" onClick={cancelarEdicaoFuncionarioDrawer}>
-                      <ArrowLeft className="h-4 w-4" />
-                    </Button>
-                    <div>
-                      <SheetTitle>Editar colaborador</SheetTitle>
-                      <SheetDescription>Altere os dados do colaborador.</SheetDescription>
-                    </div>
-                  </div>
-                </SheetHeader>
-
-                <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
-                  <div className="mt-6 space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">Nome</label>
-                      <Input value={dadosEdicaoFuncionario?.nome ?? ""} onChange={(e) => setDadosEdicaoFuncionario((prev) => (prev ? { ...prev, nome: e.target.value } : null))} placeholder="Nome completo" className={errosEdicao.nome ? "border-destructive/30" : ""} />
-                      {errosEdicao.nome ? <p className="text-xs text-destructive">{errosEdicao.nome}</p> : null}
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">E-mail</label>
-                      <Input type="email" value={dadosEdicaoFuncionario?.email ?? ""} onChange={(e) => setDadosEdicaoFuncionario((prev) => (prev ? { ...prev, email: e.target.value } : null))} placeholder="email@exemplo.com" className={errosEdicao.email ? "border-destructive/30" : ""} />
-                      {errosEdicao.email ? <p className="text-xs text-destructive">{errosEdicao.email}</p> : null}
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">Cargo</label>
-                      <Select value={dadosEdicaoFuncionario?.cargo ?? ""} onValueChange={(valor) => setDadosEdicaoFuncionario((prev) => (prev ? { ...prev, cargo: valor } : null))}>
-                        <SelectTrigger className={errosEdicao.cargo ? "border-destructive/30" : ""}><SelectValue placeholder="Selecione o cargo" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="COLABORADOR">Colaborador</SelectItem>
-                          <SelectItem value="GERENTE">Gerente</SelectItem>
-                          <SelectItem value="ADMINISTRADOR">Administrador</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {errosEdicao.cargo ? <p className="text-xs text-destructive">{errosEdicao.cargo}</p> : null}
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">PDV</label>
-                      <Select value={dadosEdicaoFuncionario?.id_pdv ?? ""} onValueChange={(valor) => setDadosEdicaoFuncionario((prev) => (prev ? { ...prev, id_pdv: valor } : null))}>
-                        <SelectTrigger className={errosEdicao.id_pdv ? "border-destructive/30" : ""}><SelectValue placeholder="Selecione o PDV" /></SelectTrigger>
-                        <SelectContent>
-                          {vm.pdvs.map((pdv) => (
-                            <SelectItem key={pdv.id} value={pdv.id}>{pdv.nome}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {errosEdicao.id_pdv ? <p className="text-xs text-destructive">{errosEdicao.id_pdv}</p> : null}
-                    </div>
-                  </div>
-
-                    <div className="border-t border-border pt-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full justify-start gap-2 h-10 rounded-lg"
-                        onClick={() => {
-                          setNovaSenha("");
-                          setConfirmarSenha("");
-                          setErroSenha("");
-                          setMostrarSenha(false);
-                          setDialogSenhaAberto(true);
-                        }}
-                      >
-                        <Key className="w-4 h-4 text-slate-500" />
-                        Redefinir senha
-                      </Button>
-                    </div>
-
-                    {vm.statusSalvamento.id === editandoFuncionarioNoDrawer && vm.statusSalvamento.estado === "error" ? (
-                      <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{vm.statusSalvamento.mensagem}</div>
-                    ) : null}
-                  </div>
-
-                <SheetFooter className="mt-auto px-4 pb-4 pt-4">
-                  <Button className="w-full" onClick={salvarEdicaoFuncionarioDrawer} disabled={vm.statusSalvamento.id === editandoFuncionarioNoDrawer && vm.statusSalvamento.estado === "saving"}>
-                    {vm.statusSalvamento.id === editandoFuncionarioNoDrawer && vm.statusSalvamento.estado === "saving" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    {vm.statusSalvamento.id === editandoFuncionarioNoDrawer && vm.statusSalvamento.estado === "saving" ? "Salvando..." : "Salvar alteracoes"}
-                  </Button>
-                  <Button variant="outline" className="w-full" onClick={cancelarEdicaoFuncionarioDrawer}>Cancelar</Button>
-                </SheetFooter>
-
-                {/* Dialog de redefinição de senha */}
-                <Dialog open={dialogSenhaAberto} onOpenChange={setDialogSenhaAberto}>
-                  <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle className="flex items-center gap-2">
-                        <Lock className="w-5 h-5 text-emerald-500" />
-                        Redefinir senha
-                      </DialogTitle>
-                      <DialogDescription>
-                        Defina uma nova senha para este colaborador.
-                        A senha deve ter ao menos 6 caracteres.
-                      </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="space-y-4 py-2">
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-700">Nova senha</label>
-                        <div className="relative">
-                          <Input
-                            type={mostrarSenha ? "text" : "password"}
-                            value={novaSenha}
-                            onChange={(e) => { setNovaSenha(e.target.value); setErroSenha(""); }}
-                            placeholder="••••••••"
-                            className="h-11 rounded-xl pr-10"
-                            autoComplete="new-password"
-                          />
-                          <button
-                            type="button"
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                            onClick={() => setMostrarSenha(!mostrarSenha)}
-                          >
-                            {mostrarSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-700">Confirmar senha</label>
-                        <Input
-                          type={mostrarSenha ? "text" : "password"}
-                          value={confirmarSenha}
-                          onChange={(e) => { setConfirmarSenha(e.target.value); setErroSenha(""); }}
-                          placeholder="••••••••"
-                          className="h-11 rounded-xl"
-                          autoComplete="new-password"
-                        />
-                      </div>
-
-                      {erroSenha && (
-                        <p className="flex items-center gap-1.5 text-sm text-rose-600 font-medium">
-                          <AlertCircle className="w-4 h-4" />
-                          {erroSenha}
-                        </p>
-                      )}
-                    </div>
-
-                    <DialogFooter className="gap-2">
-                      <Button variant="outline" className="rounded-xl h-11" onClick={() => setDialogSenhaAberto(false)} disabled={redefinindoSenha}>
-                        Cancelar
-                      </Button>
-                      <Button
-                        className="rounded-xl h-11 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold shadow-lg shadow-emerald-500/20 gap-2 min-w-[120px]"
-                        onClick={handleRedefinirSenhaDrawer}
-                        disabled={redefinindoSenha || !novaSenha || !confirmarSenha}
-                      >
-                        {redefinindoSenha ? (
-                          <><Loader2 className="w-4 h-4 animate-spin" /> Redefinindo...</>
-                        ) : (
-                          <><Lock className="w-4 h-4" /> Redefinir</>
-                        )}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </>
-            ) : (
-              <>
-                <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
                   <div className="mt-6 space-y-3">
                     <SheetHeader className="px-0">
                       <div className="flex items-start justify-between gap-3">
@@ -927,8 +774,88 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
                         <div className="mt-4 rounded-xl border border-border bg-background-surface p-4 text-sm text-foreground-muted">Nenhum colaborador encontrado neste PDV.</div>
                       ) : (
                         <ul className="mt-4 space-y-2">
-                          {colaboradoresDrawerOrdenados.map((funcionario) => (
+                          {colaboradoresDrawerOrdenados.map((funcionario) => {
+                            const editandoEstaRow = editandoFuncionarioNoDrawer === funcionario.id;
+                            return (
                             <li key={funcionario.id} className={cn("rounded-xl border bg-background-surface px-3 py-3", funcionario.ativo ? "border-border" : "border-amber-200 bg-amber-50/50")}>
+                              {editandoEstaRow ? (
+                                /* ——— Inline edit mode ——— */
+                                <div className="space-y-3">
+                                  <div className="flex items-start gap-2">
+                                    <Avatar nome={funcionario.nome} tamanho="sm" />
+                                    <div className="min-w-0 flex-1 space-y-2">
+                                      <Input
+                                        value={dadosEdicaoFuncionario?.nome ?? ""}
+                                        onChange={(e) => setDadosEdicaoFuncionario((prev) => (prev ? { ...prev, nome: e.target.value } : null))}
+                                        placeholder="Nome completo"
+                                        className={cn("h-9 text-sm", errosEdicao.nome ? "border-destructive/30" : "")}
+                                      />
+                                      {errosEdicao.nome ? <p className="text-xs text-destructive">{errosEdicao.nome}</p> : null}
+                                      <Input
+                                        type="email"
+                                        value={dadosEdicaoFuncionario?.email ?? ""}
+                                        onChange={(e) => setDadosEdicaoFuncionario((prev) => (prev ? { ...prev, email: e.target.value } : null))}
+                                        placeholder="email@exemplo.com"
+                                        className={cn("h-9 text-sm", errosEdicao.email ? "border-destructive/30" : "")}
+                                      />
+                                      {errosEdicao.email ? <p className="text-xs text-destructive">{errosEdicao.email}</p> : null}
+                                      <Select value={dadosEdicaoFuncionario?.cargo ?? ""} onValueChange={(valor) => setDadosEdicaoFuncionario((prev) => (prev ? { ...prev, cargo: valor } : null))}>
+                                        <SelectTrigger className={cn("h-9", errosEdicao.cargo ? "border-destructive/30" : "")}>
+                                          <SelectValue placeholder="Selecione o cargo" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="COLABORADOR">Colaborador</SelectItem>
+                                          <SelectItem value="GERENTE">Gerente</SelectItem>
+                                          <SelectItem value="ADMINISTRADOR">Administrador</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                      {errosEdicao.cargo ? <p className="text-xs text-destructive">{errosEdicao.cargo}</p> : null}
+                                    </div>
+                                  </div>
+
+                                  {vm.statusSalvamento.id === editandoFuncionarioNoDrawer && vm.statusSalvamento.estado === "error" ? (
+                                    <div className="rounded-lg bg-destructive/10 p-2 text-xs text-destructive">{vm.statusSalvamento.mensagem}</div>
+                                  ) : null}
+
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      className="h-8 rounded-lg bg-success text-success-foreground hover:bg-success/90"
+                                      onClick={salvarEdicaoFuncionarioDrawer}
+                                      disabled={vm.statusSalvamento.id === editandoFuncionarioNoDrawer && vm.statusSalvamento.estado === "saving"}
+                                    >
+                                      {vm.statusSalvamento.id === editandoFuncionarioNoDrawer && vm.statusSalvamento.estado === "saving" ? (
+                                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                      ) : (
+                                        <Save className="mr-1.5 h-3.5 w-3.5" />
+                                      )}
+                                      {vm.statusSalvamento.id === editandoFuncionarioNoDrawer && vm.statusSalvamento.estado === "saving" ? "Salvando..." : "Salvar"}
+                                    </Button>
+                                    <Button type="button" size="sm" variant="outline" className="h-8 rounded-lg" onClick={cancelarEdicaoFuncionarioDrawer}>
+                                      Cancelar
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 rounded-lg text-foreground-muted"
+                                      onClick={() => {
+                                        setNovaSenha("");
+                                        setConfirmarSenha("");
+                                        setErroSenha("");
+                                        setMostrarSenha(false);
+                                        setDialogSenhaAberto(true);
+                                      }}
+                                    >
+                                      <Key className="mr-1.5 h-3.5 w-3.5" />
+                                      Senha
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                /* ——— View mode ——— */
+                                <>
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex min-w-0 flex-1 items-start gap-2">
                                   <Avatar nome={funcionario.nome} tamanho="sm" />
@@ -967,8 +894,8 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
                                       Login
                                     </Button>
                                   )}
-                                  <Button type="button" size="sm" variant="outline" className="h-8 rounded-lg text-foreground-muted" onClick={() => iniciarEdicaoFuncionarioDrawer(funcionario.id)}>
-                                    <Pencil className="mr-1.5 h-3.5 w-3.5" />Editar
+                                  <Button type="button" size="sm" variant="outline" className={cn("h-8 rounded-lg", editandoEstaRow ? "bg-success/10 text-success" : "text-foreground-muted")} onClick={() => iniciarEdicaoFuncionarioDrawer(funcionario.id)}>
+                                    <Pencil className="mr-1.5 h-3.5 w-3.5" />{editandoEstaRow ? "Editando..." : "Editar"}
                                   </Button>
                                   {funcionario.ativo ? (
                                     <Button
@@ -1004,16 +931,91 @@ export function PdvManagementPanel({ vm, drawerNovoPdvAberto, setDrawerNovoPdvAb
                                   )}
                                 </div>
                               ) : null}
+                              </>
+                              )}
                             </li>
-                          ))}
+                            );
+                          })}
                         </ul>
                       )}
                     </div>
                   </div>
                 </div>
-              </>
-            )}
-          </div>
+              </div>
+
+            <Dialog open={dialogSenhaAberto} onOpenChange={setDialogSenhaAberto}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Lock className="w-5 h-5 text-emerald-500" />
+                    Redefinir senha
+                  </DialogTitle>
+                  <DialogDescription>
+                    Defina uma nova senha para este colaborador.
+                    A senha deve ter ao menos 6 caracteres.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 py-2">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-700">Nova senha</label>
+                    <div className="relative">
+                      <Input
+                        type={mostrarSenha ? "text" : "password"}
+                        value={novaSenha}
+                        onChange={(e) => { setNovaSenha(e.target.value); setErroSenha(""); }}
+                        placeholder="••••••••"
+                        className="h-11 rounded-xl pr-10"
+                        autoComplete="new-password"
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        onClick={() => setMostrarSenha(!mostrarSenha)}
+                      >
+                        {mostrarSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-700">Confirmar senha</label>
+                    <Input
+                      type={mostrarSenha ? "text" : "password"}
+                      value={confirmarSenha}
+                      onChange={(e) => { setConfirmarSenha(e.target.value); setErroSenha(""); }}
+                      placeholder="••••••••"
+                      className="h-11 rounded-xl"
+                      autoComplete="new-password"
+                    />
+                  </div>
+
+                  {erroSenha && (
+                    <p className="flex items-center gap-1.5 text-sm text-rose-600 font-medium">
+                      <AlertCircle className="w-4 h-4" />
+                      {erroSenha}
+                    </p>
+                  )}
+                </div>
+
+                <DialogFooter className="gap-2">
+                  <Button variant="outline" className="rounded-xl h-11" onClick={() => setDialogSenhaAberto(false)} disabled={redefinindoSenha}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    className="rounded-xl h-11 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold shadow-lg shadow-emerald-500/20 gap-2 min-w-[120px]"
+                    onClick={handleRedefinirSenhaDrawer}
+                    disabled={redefinindoSenha || !novaSenha || !confirmarSenha}
+                  >
+                    {redefinindoSenha ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Redefinindo...</>
+                    ) : (
+                      <><Lock className="w-4 h-4" /> Redefinir</>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
         </SheetContent>
       </Sheet>
     </div>
