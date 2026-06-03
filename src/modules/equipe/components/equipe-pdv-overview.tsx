@@ -13,11 +13,15 @@ export function EquipePdvOverview({ vm }: EquipePdvOverviewProps) {
   const totalAtivos = vm.pdvs.reduce((acc, pdv) => acc + (pdv.funcionarios?.length ?? 0), 0);
 
   return (
-    <section className="space-y-3 rounded-2xl border border-slate-200/60 bg-white px-4 py-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)] md:px-5">
+    <section className="space-y-3 rounded-2xl border border-border/60 bg-background-surface px-4 py-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)] md:px-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Presenca por PDV</p>
-          <p className="text-sm text-slate-600">Clique em um PDV para ver os membros daquele time</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-foreground-muted">
+            Presença por PDV
+          </p>
+          <p className="text-sm text-foreground-muted">
+            Clique em um PDV para ver os membros daquele time
+          </p>
         </div>
         {vm.idPdvFiltro ? (
           <Button
@@ -37,7 +41,9 @@ export function EquipePdvOverview({ vm }: EquipePdvOverviewProps) {
           type="button"
           className={cn(
             "rounded-xl border p-3 text-left transition",
-            !vm.idPdvFiltro ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-slate-50 hover:bg-slate-100",
+            !vm.idPdvFiltro
+              ? "border-foreground bg-foreground text-background"
+              : "border-border bg-muted hover:bg-muted/80",
           )}
           onClick={() => vm.atualizarParametrosUrl({ id_pdv: null }, true)}
         >
@@ -46,7 +52,9 @@ export function EquipePdvOverview({ vm }: EquipePdvOverviewProps) {
             <Users className="h-4 w-4" />
           </div>
           <p className="mt-3 text-xl font-bold">{totalAtivos}</p>
-          <p className={cn("text-xs", !vm.idPdvFiltro ? "text-slate-200" : "text-slate-500")}>colaboradores ativos</p>
+          <p className={cn("text-xs", !vm.idPdvFiltro ? "text-background/80" : "text-foreground-muted")}>
+            colaboradores ativos
+          </p>
         </button>
 
         {vm.pdvs.map((pdv) => {
@@ -59,16 +67,24 @@ export function EquipePdvOverview({ vm }: EquipePdvOverviewProps) {
               type="button"
               className={cn(
                 "rounded-xl border p-3 text-left transition",
-                selecionado ? "border-emerald-300 bg-emerald-50" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50",
+                selecionado
+                  ? "border-success/30 bg-success/10"
+                  : "border-border hover:border-border/80 hover:bg-muted",
               )}
               onClick={() => vm.atualizarParametrosUrl({ id_pdv: pdv.id }, true)}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="line-clamp-1 text-sm font-semibold text-slate-800">{pdv.nome}</span>
-                {selecionado ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <Building2 className="h-4 w-4 text-slate-400" />}
+                <span className="line-clamp-1 text-sm font-semibold text-foreground">
+                  {pdv.nome}
+                </span>
+                {selecionado ? (
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
+                ) : (
+                  <Building2 className="h-4 w-4 shrink-0 text-foreground-disabled" />
+                )}
               </div>
-              <p className="mt-3 text-xl font-bold text-slate-900">{total}</p>
-              <p className="text-xs text-slate-500">membros ativos</p>
+              <p className="mt-3 text-xl font-bold text-foreground">{total}</p>
+              <p className="text-xs text-foreground-muted">membros ativos</p>
             </button>
           );
         })}

@@ -155,7 +155,6 @@ export type UseEquipeModuleReturn = {
   salvandoPdvId: string | null;
   excluindoPdvId: string | null;
   erroGestaoPdvs: string | null;
-  pdvFocoEdicaoId: string | null;
   criarPdv: (nome: string) => Promise<boolean>;
   editarPdv: (id: string, nome: string, id_whatsapp_instancia?: string | null) => Promise<boolean>;
   excluirPdv: (id: string) => Promise<void>;
