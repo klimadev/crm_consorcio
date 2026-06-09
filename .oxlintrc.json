@@ -1,0 +1,13 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "style": "warn",
+    "perf": "warn"
+  },
+  "rules": {
+    "react/display-name": "off"
+  },
+  "ignorePatterns": [".next/**", "out/**", "build/**", "node_modules/**", "next-env.d.ts", "prisma/seed.js"]
+}
