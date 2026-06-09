@@ -1,0 +1,1 @@
+export { AiAgentPage } from "./page";

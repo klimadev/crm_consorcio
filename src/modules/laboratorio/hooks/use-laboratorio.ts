@@ -16,6 +16,13 @@ export function useLaboratorio() {
         icone: "message-circle",
         href: "/laboratorio",
       },
+      {
+        id: "ai-agent",
+        nome: "AI Agent",
+        descricao: "Analise conversas com IA e gere follow-ups personalizados.",
+        icone: "sparkles",
+        href: "/laboratorio/ai-agent",
+      },
     ],
     [],
   );

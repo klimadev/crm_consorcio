@@ -45,24 +45,11 @@ Antes de gerar código:
 3. Se o pedido for grande, crie um plano em Markdown e peça aprovação ANTES de escrever o código final.
 4. Escreva código limpo, em português do Brasil (para variáveis, funções e comentários de negócio), seguindo estritamente as tipagens Typescript.
 
-## 6. Comandos de Desenvolvimento
-- **Desenvolvimento:** `pnpm dev` - Inicia o servidor de desenvolvimento na porta 3334
-- **Build:** `pnpm build` - Cria a build de produção
-- **Pós-build (OBRIGATÓRIO):** Após todo build bem-sucedido, RESTARTAR o PM2 com `pm2 restart crmconsorcio` — senão o app de produção continuará rodando a build antiga e o app ficará quebrado.
-- **Iniciar Produção:** `pnpm start` - Inicia o servidor de produção na porta 3333
-- **Linting:** `pnpm lint` - Executa o ESLint em todo o projeto
-- **Testes:** 
-  - Todos os testes: `pnpm test` ou `vitest run`
-  - Teste específico: `vitest run src/caminho/para/arquivo.test.ts`
-  - Teste com watch: `vitest src/caminho/para/arquivo.test.ts`
-  - Teste com coverage: `vitest run --coverage`
-- **Prisma:**
-  - Gerar cliente: `prisma generate`
-  - Migrações: `prisma migrate dev`
-  - Seed: `pnpm seed`
-- **Outros:**
-  - Setup: `pnpm setup`
-  - Backup de metas: `pnpm backup:metas`
+## Produção (systemd, substituiu PM2)
+- **Verificar status:** `systemctl status crmconsorcio`
+- **Ver logs:** `journalctl -u crmconsorcio -f`
+- **Reiniciar:** `systemctl restart crmconsorcio`
+- **Após build:** `pnpm build && systemctl restart crmconsorcio`
 
 ## 7. Diretrizes de Estilo de Código
 

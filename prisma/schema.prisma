@@ -455,6 +455,19 @@ model WhatsappAutomacaoEtapa {
   @@index([id_whatsapp_automacao])
 }
 
+model LaboratorioAiConfig {
+  id         String   @id @default(uuid())
+  id_empresa String   @unique
+  base_url   String   @default("https://api.openai.com/v1")
+  api_key    String?
+  model      String   @default("gpt-4o")
+  enabled    Boolean  @default(false)
+  criado_em  DateTime @default(now())
+  atualizado_em DateTime @default(now()) @updatedAt
+
+  @@index([id_empresa])
+}
+
 model WhatsappAutomacaoAgendamento {
   id                    String                 @id @default(uuid())
   id_empresa            String

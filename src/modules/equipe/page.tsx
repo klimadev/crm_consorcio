@@ -6,6 +6,7 @@ import { InlineStatusAlert } from "@/components/shared/inline-status-alert";
 import { AccessDeniedCard } from "@/components/shared/access-denied-card";
 import { useEquipeModule } from "./hooks/use-equipe-module";
 import { EquipeHeader } from "./components/equipe-header";
+import { EquipeBreadcrumb } from "./components/equipe-breadcrumb";
 import { EquipeFilters } from "./components/equipe-filters";
 import { EquipeDesktopTable } from "./components/equipe-desktop-table";
 import { EquipeMobileList } from "./components/equipe-mobile-list";
@@ -20,6 +21,11 @@ export function ModuloEquipe({ perfil, id_pdv }: Props) {
   const vm = useEquipeModule({ perfil, id_pdv });
   const [drawerNovoPdvAberto, setDrawerNovoPdvAberto] = useState(false);
 
+  const pdvSelecionado = vm.idPdvFiltro
+    ? vm.pdvs.find((p) => p.id === vm.idPdvFiltro)
+    : null;
+  const modoDetail = Boolean(pdvSelecionado);
+
   if (perfil === "COLABORADOR") {
     return (
       <AccessDeniedCard
@@ -29,25 +35,56 @@ export function ModuloEquipe({ perfil, id_pdv }: Props) {
     );
   }
 
+  const voltarOverview = () => vm.atualizarParametrosUrl({ id_pdv: null }, true);
+
   return (
     <ModulePageShell className="space-y-4 pb-28 md:pb-28">
-      <EquipeHeader vm={vm} onAbrirNovoPdv={() => setDrawerNovoPdvAberto(true)} />
+      {/* Breadcrumb — navegação profunda "Equipe > Nome do PDV" */}
+      {modoDetail && pdvSelecionado && (
+        <EquipeBreadcrumb pdvNome={pdvSelecionado.nome} onVoltar={voltarOverview} />
+      )}
+
+      {/* Header adaptativo: overview vs detalhe PDV */}
+      <EquipeHeader
+        vm={vm}
+        onAbrirNovoPdv={() => setDrawerNovoPdvAberto(true)}
+        pdvFocado={pdvSelecionado}
+        onVoltarOverview={voltarOverview}
+      />
 
       <InlineStatusAlert variant="error" message={vm.erroLista} />
 
-      {vm.podeAdicionarFuncionario ? (
-        <div className="rounded-2xl border border-border bg-background-surface p-3 shadow-[0_2px_8px_rgba(0,0,0,0.04)] md:p-4">
-          <PdvManagementPanel vm={vm} drawerNovoPdvAberto={drawerNovoPdvAberto} setDrawerNovoPdvAberto={setDrawerNovoPdvAberto} />
-        </div>
-      ) : null}
+      {/* ── MODO DETAIL: foco na equipe de um PDV específico ── */}
+      {modoDetail && (
+        <>
+          <div className="rounded-2xl border border-border bg-background-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+            <EquipeFilters vm={vm} />
+            <EquipeDesktopTable vm={vm} modoDetail />
+            <EquipeMobileList vm={vm} />
+          </div>
+        </>
+      )}
 
-      <EquipeFilters vm={vm} />
+      {/* ── MODO OVERVIEW: gestão de PDVs + visão geral da equipe ── */}
+      {!modoDetail && (
+        <>
+          {vm.podeAdicionarFuncionario ? (
+            <div className="rounded-2xl border border-border bg-background-surface p-3 shadow-[0_2px_8px_rgba(0,0,0,0.04)] md:p-4">
+              <PdvManagementPanel
+                vm={vm}
+                drawerNovoPdvAberto={drawerNovoPdvAberto}
+                setDrawerNovoPdvAberto={setDrawerNovoPdvAberto}
+              />
+            </div>
+          ) : null}
 
-      {/* Tabela principal de colaboradores com edição por clique */}
-      <div className="rounded-2xl border border-border bg-background-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-        <EquipeDesktopTable vm={vm} />
-        <EquipeMobileList vm={vm} />
-      </div>
+          <div className="rounded-2xl border border-border bg-background-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+            <EquipeFilters vm={vm} />
+            <EquipeDesktopTable vm={vm} modoDetail={false} />
+            <EquipeMobileList vm={vm} />
+          </div>
+        </>
+      )}
 
       <EquipeBulkActions vm={vm} />
 

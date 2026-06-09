@@ -18,9 +18,10 @@ import type { UseEquipeModuleReturn } from "../types";
 
 type EquipeDesktopTableProps = {
   vm: UseEquipeModuleReturn;
+  modoDetail?: boolean;
 };
 
-export function EquipeDesktopTable({ vm }: EquipeDesktopTableProps) {
+export function EquipeDesktopTable({ vm, modoDetail }: EquipeDesktopTableProps) {
   const campoOrdenacao = vm.ordenarPor as "nome" | "email" | "cargo" | "status" | "pdv";
 
   function alternarOrdenacao(campo: "nome" | "email" | "cargo" | "status" | "pdv") {
@@ -123,15 +124,17 @@ export function EquipeDesktopTable({ vm }: EquipeDesktopTableProps) {
                 Cargo {iconeOrdenacao("cargo")}
               </button>
             </TableHead>
-            <TableHead aria-sort={campoOrdenacao === "pdv" ? (vm.direcao === "asc" ? "ascending" : "descending") : "none"}>
-              <button 
-                type="button" 
-                className="flex items-center gap-1 font-medium" 
-                onClick={() => alternarOrdenacao("pdv")}
-              >
-                PDV {iconeOrdenacao("pdv")}
-              </button>
-            </TableHead>
+            {!modoDetail && (
+              <TableHead aria-sort={campoOrdenacao === "pdv" ? (vm.direcao === "asc" ? "ascending" : "descending") : "none"}>
+                <button
+                  type="button"
+                  className="flex items-center gap-1 font-medium"
+                  onClick={() => alternarOrdenacao("pdv")}
+                >
+                  PDV {iconeOrdenacao("pdv")}
+                </button>
+              </TableHead>
+            )}
             <TableHead aria-sort={campoOrdenacao === "status" ? (vm.direcao === "asc" ? "ascending" : "descending") : "none"}>
               <button 
                 type="button" 
@@ -186,9 +189,11 @@ export function EquipeDesktopTable({ vm }: EquipeDesktopTableProps) {
               <TableCell className="py-5">
                 <span className="text-sm text-foreground-muted">{funcionario.cargo}</span>
               </TableCell>
-              <TableCell className="py-5 text-foreground-muted">
-                <span className="text-sm">{funcionario.pdv?.nome}</span>
-              </TableCell>
+              {!modoDetail && (
+                <TableCell className="py-5 text-foreground-muted">
+                  <span className="text-sm">{funcionario.pdv?.nome}</span>
+                </TableCell>
+              )}
               <TableCell className="py-5">
                 <StatusBadge ativo={funcionario.ativo} />
               </TableCell>
