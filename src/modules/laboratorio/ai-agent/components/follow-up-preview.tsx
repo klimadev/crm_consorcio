@@ -8,13 +8,13 @@ type Props = {
   rationale?: string;
 };
 
-export function FollowUpPreview({ followUpMessage, leadName, rationale }: Props) {
+export function FollowUpPreview({ followUpMessage, leadName: _leadName, rationale }: Props) {
   if (!followUpMessage) {
     return (
       <div className="flex items-center gap-2 rounded-lg bg-muted/20 p-3">
         <MessageSquareOff className="h-4 w-4 text-foreground-muted shrink-0" />
         <p className="text-xs text-foreground-muted">
-          Nenhum follow-up sugerido — lead frio
+          Nenhum follow-up sugerido (lead frio)
         </p>
       </div>
     );

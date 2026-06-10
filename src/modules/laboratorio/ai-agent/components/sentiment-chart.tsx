@@ -12,30 +12,28 @@ export function SentimentChart({ analysis }: Props) {
   const sentimentCounts = analysis.reduce(
     (acc, lead) => {
       const s = lead.sentiment;
-      acc[s] = (acc[s] ?? 0) + 1;
+      acc[s] = (acc[s] || 0) + 1;
       return acc;
     },
     {} as Record<string, number>,
   );
 
   const data = (Object.keys(SENTIMENTO_LABEL) as Sentimento[])
-    .filter((s) => (sentimentCounts[s] ?? 0) > 0)
+    .filter((s) => (sentimentCounts[s] || 0) > 0)
     .map((s) => ({
       name: SENTIMENTO_LABEL[s],
-      value: sentimentCounts[s] ?? 0,
+      value: sentimentCounts[s] || 0,
       color: SENTIMENTO_CORES[s],
     }));
 
-  if (data.length === 0) {
-    return null;
-  }
+  if (data.length === 0) return null;
 
   const total = data.reduce((acc, d) => acc + d.value, 0);
 
   return (
     <div className="rounded-xl border border-border bg-background-surface p-4">
       <h3 className="text-sm font-semibold text-foreground mb-3">
-        Distribuição de Sentimentos
+        Distribui&ccedil;&atilde;o de Sentimentos
       </h3>
       <div className="flex items-center justify-center">
         <ResponsiveContainer width="100%" height={220}>
@@ -54,9 +52,9 @@ export function SentimentChart({ analysis }: Props) {
               ))}
             </Pie>
             <Tooltip
-              formatter={(value) => [
-                `${value} lead${value !== 1 ? "s" : ""} (${((Number(value) / total) * 100).toFixed(0)}%)`,
-              ]}
+              formatter={(value: number) =>
+                `${value} lead${value !== 1 ? "s" : ""} (${((Number(value) / total) * 100).toFixed(0)}%)`
+              }
               contentStyle={{
                 background: "var(--color-background-surface)",
                 border: "1px solid var(--color-border)",

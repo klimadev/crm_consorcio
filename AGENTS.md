@@ -51,6 +51,22 @@ Antes de gerar código:
 - **Reiniciar:** `systemctl restart crmconsorcio`
 - **Após build:** `pnpm build && systemctl restart crmconsorcio`
 
+## 6. Lint (usar oxlint, NÃO tsc)
+
+**NUNCA** use `tsc` ou `npx tsc` para verificar código. Use **oxlint** que é ~100x mais rápido:
+
+```bash
+# Lint rápido (oxlint)
+npm run lint:fast
+
+# Lint completo (eslint - mais lento)
+npm run lint
+```
+
+O script `lint:fast` executa: `oxlint --nextjs-plugin --react-plugin --import-plugin --jsx-a11y-plugin --vitest-plugin`
+
+Sempre rode `npm run lint:fast` após alterações para verificar warnings/errors.
+
 ## 7. Diretrizes de Estilo de Código
 
 ### Importações

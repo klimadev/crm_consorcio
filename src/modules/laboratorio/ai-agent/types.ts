@@ -1,9 +1,5 @@
 import { z } from "zod";
 
-// ============================================
-// Schemas de análise de leads
-// ============================================
-
 export const SentimentoEnum = z.enum(["CALOR", "MORNO", "FRIO", "INDEFINIDO"]);
 export type Sentimento = z.infer<typeof SentimentoEnum>;
 
@@ -35,32 +31,38 @@ export const LeadAnalysisSchema = z.object({
     .string()
     .nullable()
     .describe(
-      "Mensagem de follow-up PERSONALIZADA baseada em FATOS da conversa. " +
-      "DEVE referenciar algo específico que o lead disse. " +
-      "Ex: 'Você mencionou que o valor das parcelas estava alto — " +
-      "consegui uma simulação com prazos maiores que pode ajudar.' " +
-      "NÃO pode ser genérica. Pode ser null se lead estiver frio.",
+      "Mensagem de follow-up PERSONALIZADA baseada em FATOS da conversa. DEVE referenciar algo específico que o lead disse. Ex: 'Você mencionou que o valor das parcelas estava alto e consegui uma simulação com prazos maiores que pode ajudar.' NÃO pode ser genérica. Pode ser null se o lead estiver frio.",
     ),
-  rationale: z.string().describe("Explicação de porque esta mensagem foi escolhida e quais fatos da conversa a embasam"),
+  rationale: z.string().describe("Explicação do porquê esta mensagem foi escolhida e quais fatos da conversa a embasam"),
+  valorCarta: z.number().positive().describe("Valor estimado da carta de consórcio do lead (em reais) baseado na conversa"),
 });
 
 export type LeadAnalysis = z.infer<typeof LeadAnalysisSchema>;
 
+export const BatchWarningSchema = z.object({
+  batch: z.number().int(),
+  erro: z.string(),
+});
+
+export type BatchWarning = z.infer<typeof BatchWarningSchema>;
+
 export const AnalysisResultSchema = z.object({
-  analysis: z.array(LeadAnalysisSchema).describe("Análise de cada lead identificado nas conversas"),
+  analysis: z.array(LeadAnalysisSchema).describe("Análise de cada lead identificado nas conversas (exceto frios)"),
   summary: z.object({
     totalLeads: z.number().int(),
     urgentes: z.number().int(),
     quentes: z.number().int(),
     frios: z.number().int(),
+    potencialFaturamento: z.number().describe("Soma total dos valores de carta de todos os leads"),
+    totalConversas: z.number().int().describe("Total de conversas processadas"),
+    totalBatches: z.number().int().describe("Total de lotes em que a requisição foi dividida"),
+    batchesProcessados: z.number().int().describe("Lotes processados com sucesso"),
+    batchesComErro: z.number().int().describe("Lotes que falharam na validação"),
   }),
+  warnings: z.array(BatchWarningSchema).optional().describe("Avisos de lotes que falharam"),
 });
 
 export type AnalysisResult = z.infer<typeof AnalysisResultSchema>;
-
-// ============================================
-// Schemas de requisição
-// ============================================
 
 export const AnalyzeRequestSchema = z.object({
   instanceIds: z.array(z.string()).min(1, "Selecione pelo menos uma instância."),
@@ -72,8 +74,8 @@ export type AnalyzeRequest = z.infer<typeof AnalyzeRequestSchema>;
 
 export const AiConfigSchema = z.object({
   base_url: z.string().url("URL base inválida.").default("https://api.openai.com/v1"),
-  api_key: z.string().min(1, "API Key é obrigatória.").optional(),
-  model: z.string().min(1, "Modelo é obrigatório.").default("gpt-4o"),
+  api_key: z.string().min(1, "API Key obrigatória.").optional(),
+  model: z.string().min(1, "Modelo obrigatório.").default("gpt-4o"),
   enabled: z.boolean().default(false),
 });
 
@@ -88,10 +90,6 @@ export const SendFollowUpSchema = z.object({
 
 export type SendFollowUpRequest = z.infer<typeof SendFollowUpSchema>;
 
-// ============================================
-// Constantes
-// ============================================
-
 export const PRIORIDADE_ORDER: Record<Prioridade, number> = {
   URGENTE: 0,
   ALTA: 1,
@@ -101,7 +99,7 @@ export const PRIORIDADE_ORDER: Record<Prioridade, number> = {
 
 export const PRIORIDADE_LABEL: Record<Prioridade, string> = {
   URGENTE: "🔥 Urgente",
-  ALTA: "⚡ Alta",
+  ALTA: "🔼 Alta",
   MEDIA: "⏳ Média",
   FRIA: "❄️ Fria",
 };
@@ -121,8 +119,15 @@ export const SENTIMENTO_CORES: Record<Sentimento, string> = {
 };
 
 export const SENTIMENTO_LABEL: Record<Sentimento, string> = {
-  CALOR: "Calor",
-  MORNO: "Morno",
-  FRIO: "Frio",
-  INDEFINIDO: "Indefinido",
+  CALOR: "🔥 Calor",
+  MORNO: "⏳ Morno",
+  FRIO: "❄️ Frio",
+  INDEFINIDO: "❓ Indefinido",
+};
+
+export const SENTIMENTO_EMOJI: Record<Sentimento, string> = {
+  CALOR: "🔥",
+  MORNO: "⏳",
+  FRIO: "❄️",
+  INDEFINIDO: "❓",
 };

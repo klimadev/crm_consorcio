@@ -12,6 +12,7 @@ import {
   Target,
   ThumbsDown,
   User,
+  DollarSign,
 } from "lucide-react";
 import type { LeadAnalysis } from "../types";
 import {
@@ -28,6 +29,14 @@ type Props = {
   sent: boolean;
 };
 
+function formatarMoeda(valor: number): string {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0,
+  }).format(valor);
+}
+
 export function LeadInsightCard({ lead, onSend, onCopy, sending, sent }: Props) {
   const [copiado, setCopiado] = useState(false);
 
@@ -39,7 +48,7 @@ export function LeadInsightCard({ lead, onSend, onCopy, sending, sent }: Props) 
     }
   };
 
-  const podeEnviar = lead.followUpMessage && lead.recommendedAction !== "SEM_ACAO";
+  const podeEnviar = !!lead.followUpMessage && lead.recommendedAction !== "SEM_ACAO";
 
   return (
     <div className="rounded-xl border border-border bg-background-surface p-4 space-y-3">
@@ -53,7 +62,7 @@ export function LeadInsightCard({ lead, onSend, onCopy, sending, sent }: Props) 
             </h3>
           </div>
           <p className="text-xs text-foreground-muted mt-0.5">
-            {lead.phoneNumber} · {lead.messageCount} mensagens
+            {lead.phoneNumber} &middot; {lead.messageCount} mensagens
           </p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -70,18 +79,28 @@ export function LeadInsightCard({ lead, onSend, onCopy, sending, sent }: Props) 
                 style={{ backgroundColor: SENTIMENTO_CORES[lead.sentiment] }}
               />
               {lead.sentiment === "CALOR"
-                ? "Calor"
+                ? "🔥 Calor"
                 : lead.sentiment === "MORNO"
-                  ? "Morno"
+                  ? "⏳ Morno"
                   : lead.sentiment === "FRIO"
-                    ? "Frio"
-                    : "Indefinido"}
+                    ? "❄️ Frio"
+                    : "❓ Indefinido"}
             </span>
           )}
         </div>
       </div>
 
-      {/* Profile & Interest */}
+      {/* Valor da Carta Badge */}
+      {lead.valorCarta && (
+        <div className="flex items-center gap-2 rounded-lg bg-emerald-500/5 border border-emerald-500/10 px-3 py-2">
+          <DollarSign className="h-4 w-4 text-emerald-400 shrink-0" />
+          <span className="text-sm font-semibold text-emerald-400 tabular-nums">
+            Carta estimada: {formatarMoeda(lead.valorCarta)}
+          </span>
+        </div>
+      )}
+
+      {/* Perfil e Interesse */}
       <div className="grid grid-cols-2 gap-3">
         {lead.perfil && (
           <div className="flex items-start gap-2">
@@ -207,7 +226,7 @@ export function LeadInsightCard({ lead, onSend, onCopy, sending, sent }: Props) 
 
         {!podeEnviar && (
           <span className="text-[11px] text-foreground-disabled" title="Lead frio sem follow-up sugerido">
-            Lead frio — sem follow-up sugerido
+            Lead frio sem follow-up sugerido
           </span>
         )}
       </div>

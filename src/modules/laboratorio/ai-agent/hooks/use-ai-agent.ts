@@ -1,13 +1,18 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { AnalysisResult, AnalyzeRequest, AiConfig, LeadAnalysis } from "../types";
+import type { AnalysisResult, AnalyzeRequest, BatchWarning } from "../types";
 
 type ProviderConfigForm = {
   base_url: string;
   api_key: string;
   model: string;
   enabled: boolean;
+};
+
+type BatchProgress = {
+  current: number;
+  total: number;
 };
 
 export function useAiAgent() {
@@ -17,6 +22,8 @@ export function useAiAgent() {
   const [error, setError] = useState<string | null>(null);
   const [sendingLeads, setSendingLeads] = useState<Set<string>>(new Set());
   const [sentLeads, setSentLeads] = useState<Set<string>>(new Set());
+  const [batchProgress, setBatchProgress] = useState<BatchProgress | null>(null);
+  const [warnings, setWarnings] = useState<BatchWarning[]>([]);
 
   const loadConfig = useCallback(async () => {
     try {
@@ -41,7 +48,7 @@ export function useAiAgent() {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ erro: "Erro ao salvar config" }));
-      throw new Error(err.erro ?? "Erro ao salvar config");
+      throw new Error(err.erro || "Erro ao salvar config");
     }
     setConfig(cfg);
   }, []);
@@ -54,7 +61,7 @@ export function useAiAgent() {
     });
     if (!res.ok) return false;
     const data = await res.json();
-    return data.success ?? false;
+    return data.success !== false;
   }, []);
 
   const listModels = useCallback(async (baseUrl: string, apiKey: string): Promise<string[]> => {
@@ -65,13 +72,15 @@ export function useAiAgent() {
     });
     if (!res.ok) return [];
     const data = await res.json();
-    return data.models ?? [];
+    return data.models || [];
   }, []);
 
   const analyze = useCallback(async (request: AnalyzeRequest) => {
     setAnalyzing(true);
     setError(null);
     setAnalysisResult(null);
+    setBatchProgress(null);
+    setWarnings([]);
 
     try {
       const res = await fetch("/api/dev/laboratorio/ai-agent/analyze", {
@@ -81,13 +90,78 @@ export function useAiAgent() {
       });
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ erro: "Erro ao analisar" }));
-        throw new Error(err.erro ?? "Erro ao analisar conversas");
+        try {
+          const err = await res.json();
+          throw new Error(err.erro || "Erro ao analisar conversas");
+        } catch {
+          throw new Error("Erro ao analisar conversas");
+        }
       }
 
-      const data = await res.json();
-      setAnalysisResult(data);
-      return data;
+      // Handle SSE stream
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("Resposta sem corpo");
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let result: AnalysisResult | null = null;
+      const accWarnings: BatchWarning[] = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Process complete SSE events
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() || "";
+
+        for (const part of parts) {
+          const lines = part.split("\n");
+          let eventType = "";
+          let dataStr = "";
+
+          for (const line of lines) {
+            if (line.startsWith("event: ")) eventType = line.slice(7);
+            if (line.startsWith("data: ")) dataStr = line.slice(6);
+          }
+
+          if (!dataStr) continue;
+
+          try {
+            const parsed = JSON.parse(dataStr);
+
+            switch (eventType) {
+              case "progress":
+                setBatchProgress({ current: parsed.current, total: parsed.total });
+                break;
+
+              case "batch_error":
+                accWarnings.push({ batch: parsed.batch, erro: parsed.erro });
+                setWarnings([...accWarnings]);
+                break;
+
+              case "complete":
+                result = parsed as AnalysisResult;
+                setAnalysisResult(result);
+                break;
+
+              case "error":
+                throw new Error(parsed.erro || "Erro durante análise");
+            }
+          } catch (e) {
+            if (e instanceof Error && e.message.startsWith("Erro durante")) throw e;
+            console.warn("SSE parse error:", e);
+          }
+        }
+      }
+
+      if (!result) {
+        throw new Error("Análise não retornou resultados");
+      }
+
+      return result;
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Erro ao analisar conversas";
       setError(msg);
@@ -115,7 +189,7 @@ export function useAiAgent() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ erro: "Erro ao enviar" }));
-        throw new Error(err.erro ?? "Erro ao enviar mensagem");
+        throw new Error(err.erro || "Erro ao enviar mensagem");
       }
 
       setSentLeads((prev) => new Set(prev).add(key));
@@ -146,6 +220,8 @@ export function useAiAgent() {
     analysisResult,
     analyzing,
     error,
+    batchProgress,
+    warnings,
     loadConfig,
     saveConfig,
     testConnection,

@@ -1,11 +1,17 @@
 "use client";
 
 import { useMemo } from "react";
-import { Loader2, AlertCircle, BarChart3 } from "lucide-react";
-import type { AnalysisResult, LeadAnalysis } from "../types";
+import {
+  Loader2,
+  AlertCircle,
+  BarChart3,
+  Layers,
+} from "lucide-react";
+import type { AnalysisResult, LeadAnalysis, BatchWarning } from "../types";
 import { PRIORIDADE_ORDER } from "../types";
 import { SentimentChart } from "./sentiment-chart";
 import { LeadInsightCard } from "./lead-insight-card";
+import { RoiPanel } from "./roi-panel";
 
 type Props = {
   result: AnalysisResult | null;
@@ -15,6 +21,8 @@ type Props = {
   onCopy: (text: string) => void;
   sendingMap: Record<string, boolean>;
   sentMap: Record<string, boolean>;
+  batchProgress: { current: number; total: number } | null;
+  warnings: BatchWarning[];
 };
 
 export function AnalysisReport({
@@ -25,6 +33,8 @@ export function AnalysisReport({
   onCopy,
   sendingMap,
   sentMap,
+  batchProgress,
+  warnings,
 }: Props) {
   const sortedAnalysis = useMemo(() => {
     if (!result?.analysis) return [];
@@ -40,12 +50,20 @@ export function AnalysisReport({
         <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
         <div className="text-center">
           <p className="text-sm font-medium text-foreground">
-            Analisando conversas com IA...
+            {batchProgress
+              ? `Analisando lote ${batchProgress.current} de ${batchProgress.total}...`
+              : "Analisando conversas com IA..."}
           </p>
           <p className="text-xs text-foreground-muted mt-1">
             Isso pode levar alguns segundos dependendo da quantidade de conversas.
           </p>
         </div>
+        {batchProgress && (
+          <div className="flex items-center gap-2 text-xs text-foreground-muted">
+            <Layers className="h-3.5 w-3.5" />
+            <span>Lote {batchProgress.current}/{batchProgress.total}</span>
+          </div>
+        )}
         {/* Skeleton */}
         <div className="w-full space-y-3 mt-4">
           {[1, 2, 3].map((i) => (
@@ -65,9 +83,7 @@ export function AnalysisReport({
       <div className="flex flex-col items-center justify-center py-12 space-y-4">
         <AlertCircle className="h-8 w-8 text-rose-400" />
         <div className="text-center">
-          <p className="text-sm font-medium text-foreground">
-            Erro na análise
-          </p>
+          <p className="text-sm font-medium text-foreground">Erro na análise</p>
           <p className="text-xs text-foreground-muted mt-1 max-w-md text-center">
             {error}
           </p>
@@ -76,17 +92,15 @@ export function AnalysisReport({
     );
   }
 
-  // Empty state
-  if (!result || result.analysis.length === 0) {
+  // Empty / invalid state
+  if (!result || !result.summary || !result.analysis || result.analysis.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 space-y-4">
         <BarChart3 className="h-8 w-8 text-foreground-muted" />
         <div className="text-center">
-          <p className="text-sm font-medium text-foreground">
-            Nenhum resultado
-          </p>
+          <p className="text-sm font-medium text-foreground">Nenhum resultado</p>
           <p className="text-xs text-foreground-muted mt-1">
-            Selecione instâncias e clique em "Analisar com IA" para começar.
+            Selecione instâncias e clique em &quot;Analisar com IA&quot; para come&ccedil;ar.
           </p>
         </div>
       </div>
@@ -96,37 +110,18 @@ export function AnalysisReport({
   // Success state
   return (
     <div className="space-y-6">
-      {/* Summary Header */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded-xl border border-border bg-background-surface p-3 text-center">
-          <p className="text-2xl font-bold text-foreground">{result.summary.totalLeads}</p>
-          <p className="text-xs text-foreground-muted">Total de Leads</p>
-        </div>
-        <div className="rounded-xl border border-border bg-background-surface p-3 text-center">
-          <p className="text-2xl font-bold text-emerald-400">{result.summary.urgentes}</p>
-          <p className="text-xs text-foreground-muted">🔥 Urgentes</p>
-        </div>
-        <div className="rounded-xl border border-border bg-background-surface p-3 text-center">
-          <p className="text-2xl font-bold text-amber-400">{result.summary.quentes}</p>
-          <p className="text-xs text-foreground-muted">⚡ Quentes</p>
-        </div>
-        <div className="rounded-xl border border-border bg-background-surface p-3 text-center">
-          <p className="text-2xl font-bold text-blue-400">{result.summary.frios}</p>
-          <p className="text-xs text-foreground-muted">❄️ Frios</p>
-        </div>
-      </div>
+      {/* ROI Panel */}
+      <RoiPanel result={result} warnings={warnings} />
 
       {/* Sentiment Chart */}
-      {result.analysis.length >= 2 && (
-        <SentimentChart analysis={result.analysis} />
-      )}
+      {result.analysis.length >= 2 && <SentimentChart analysis={result.analysis} />}
 
       {/* Cards */}
       <div className="space-y-3">
         <h3 className="text-sm font-semibold text-foreground">
           Leads Analisados
           <span className="text-foreground-muted font-normal">
-            {" "}· Ordenados por prioridade
+            {" "}&middot; Ordenados por prioridade
           </span>
         </h3>
         <div className="space-y-3">
@@ -136,8 +131,8 @@ export function AnalysisReport({
               lead={lead}
               onSend={onSend}
               onCopy={onCopy}
-              sending={sendingMap[lead.phoneNumber] ?? false}
-              sent={sentMap[lead.phoneNumber] ?? false}
+              sending={sendingMap[lead.phoneNumber] || false}
+              sent={sentMap[lead.phoneNumber] || false}
             />
           ))}
         </div>

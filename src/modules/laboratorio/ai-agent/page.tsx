@@ -15,6 +15,7 @@ export function AiAgentPage() {
 
   useEffect(() => {
     agent.loadConfig();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleAnalyze = () => {
@@ -27,8 +28,6 @@ export function AiAgentPage() {
   };
 
   const handleSend = async (lead: LeadAnalysis) => {
-    // We need to find which instance this lead belongs to
-    // For now, use the first selected instance
     const instanceName = exporter.instances.find(
       (i) => exporter.selectedIds.includes(i.id),
     )?.instance_name;
@@ -40,22 +39,19 @@ export function AiAgentPage() {
     navigator.clipboard.writeText(text);
   };
 
-  // Build sending/sent maps keyed by phone number for AnalysisReport
-  const sendingMap = agent.analysisResult?.analysis.reduce(
-    (acc, lead) => {
-      acc[lead.phoneNumber] = agent.isSending("", lead.phoneNumber);
-      return acc;
-    },
-    {} as Record<string, boolean>,
-  ) ?? {};
+  const sendingMap: Record<string, boolean> = {};
+  if (agent.analysisResult?.analysis) {
+    for (const lead of agent.analysisResult.analysis) {
+      sendingMap[lead.phoneNumber] = agent.isSending("", lead.phoneNumber);
+    }
+  }
 
-  const sentMap = agent.analysisResult?.analysis.reduce(
-    (acc, lead) => {
-      acc[lead.phoneNumber] = agent.isSent("", lead.phoneNumber);
-      return acc;
-    },
-    {} as Record<string, boolean>,
-  ) ?? {};
+  const sentMap: Record<string, boolean> = {};
+  if (agent.analysisResult?.analysis) {
+    for (const lead of agent.analysisResult.analysis) {
+      sentMap[lead.phoneNumber] = agent.isSent("", lead.phoneNumber);
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -71,10 +67,10 @@ export function AiAgentPage() {
       <div className="space-y-4">
         <div>
           <h2 className="text-base font-semibold text-foreground">
-            Selecione as instancias
+            Selecione as inst&acirc;ncias
           </h2>
           <p className="text-sm text-foreground-muted">
-            Escolha uma ou mais instancias WhatsApp para analisar as conversas.
+            Escolha uma ou mais inst&acirc;ncias WhatsApp para analisar as conversas.
           </p>
         </div>
 
@@ -87,11 +83,11 @@ export function AiAgentPage() {
         />
       </div>
 
-      {/* Config + Analyze Button */}
+      {/* Config & Analyze Button */}
       <div className="space-y-3">
         <div>
           <h2 className="text-base font-semibold text-foreground">
-            Configuracao da analise
+            Configura&ccedil;&atilde;o da an&aacute;lise
           </h2>
           <p className="text-sm text-foreground-muted">
             Defina quantos chats e mensagens por chat deseja analisar.
@@ -113,7 +109,9 @@ export function AiAgentPage() {
             {agent.analyzing ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Analisando...
+                {agent.batchProgress
+                  ? `Analisando lote ${agent.batchProgress.current}/${agent.batchProgress.total}...`
+                  : "Analisando..."}
               </>
             ) : (
               <>
@@ -134,6 +132,8 @@ export function AiAgentPage() {
         onCopy={handleCopy}
         sendingMap={sendingMap}
         sentMap={sentMap}
+        batchProgress={agent.batchProgress}
+        warnings={agent.warnings}
       />
     </div>
   );
