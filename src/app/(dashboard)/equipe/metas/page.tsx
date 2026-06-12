@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { AccessDeniedCard } from "@/components/shared/access-denied-card";
 import { obterSessaoNoServidor } from "@/lib/autenticacao";
-import { ModuloMetasEquipe } from "@/modules/equipe";
+import { MetasPage } from "@/modules/metas/metas-page";
 
 export default async function PaginaMetasEquipe() {
   const sessao = await obterSessaoNoServidor();
@@ -13,11 +13,11 @@ export default async function PaginaMetasEquipe() {
   if (sessao.perfil === "COLABORADOR") {
     return (
       <AccessDeniedCard
-        title="Sem permissao para gerenciar metas"
-        description="O painel de gestao de metas e exclusivo para administradores e gerentes do PDV."
+        title="Sem permissão para gerenciar metas"
+        description="O painel de gestão de metas é exclusivo para administradores e gerentes do PDV."
       />
     );
   }
 
-  return <ModuloMetasEquipe perfil={sessao.perfil} id_pdv={sessao.id_pdv} />;
+  return <MetasPage perfil={sessao.perfil} id_pdv={sessao.id_pdv} modo="painel" />;
 }

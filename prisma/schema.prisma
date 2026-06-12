@@ -17,10 +17,11 @@ model Empresa {
   estagios        EstagioFunil[]
   funcionarios    Funcionario[]
   leads           Lead[]
-  metas           Meta[]
-  metas_periodo   MetaPeriodo[]
-  metas_progresso MetaProgresso[]
-  metas_templates MetaTemplate[]
+  metas           Meta[] @ignore
+  metas_novas     MetaNova[]
+  metas_periodo   MetaPeriodo[] @ignore
+  metas_progresso MetaProgresso[] @ignore
+  metas_templates MetaTemplate[] @ignore
   produtos        Produto[]
   leads_produto   LeadProduto[]
   pdvs            Pdv[]
@@ -36,8 +37,9 @@ model Pdv {
   criado_em             DateTime           @default(now())
   atualizado_em         DateTime           @default(now()) @updatedAt
   funcionarios          Funcionario[]
-  metas                 Meta[]
-  metas_templates       MetaTemplate[]
+  metas                 Meta[] @ignore
+  metas_novas           MetaNova[]
+  metas_templates       MetaTemplate[] @ignore
   empresa               Empresa            @relation(fields: [id_empresa], references: [id])
   whatsapp_instancia    WhatsappInstancia? @relation(fields: [id_whatsapp_instancia], references: [id], onDelete: SetNull)
 
@@ -57,8 +59,8 @@ model Funcionario {
   criado_em                DateTime             @default(now())
   atualizado_em            DateTime             @default(now()) @updatedAt
   inativado_em             DateTime?
-  metas                    Meta[]
-  metas_templates          MetaTemplate[]
+  metas                    Meta[] @ignore
+  metas_templates          MetaTemplate[] @ignore
   pdv                      Pdv                  @relation(fields: [id_pdv], references: [id])
   empresa                  Empresa              @relation(fields: [id_empresa], references: [id])
   leads                    Lead[]
@@ -253,10 +255,33 @@ model Meta {
   progressos  MetaProgresso[]
   periodo_ref MetaPeriodo?
 
-  @@index([id_empresa, tipo, ativo])
-  @@index([id_empresa, ativo, data_inicio, data_fim])
-  @@index([id_pdv])
-  @@index([id_funcionario])
+  @@ignore
+}
+
+model MetaNova {
+  id             String   @id @default(uuid())
+  id_empresa     String
+  titulo         String   @default("")
+  tipo_meta      String
+  origem         String   @default("PAGAMENTOS")
+  alvo           Float
+  semana         Int
+  mes_referencia String
+  data_inicio    DateTime
+  data_fim       DateTime
+  ativo          Boolean  @default(true)
+  id_equipe      String
+  criado_em      DateTime @default(now())
+  atualizado_em  DateTime @default(now()) @updatedAt
+
+  empresa Empresa @relation(fields: [id_empresa], references: [id])
+  equipe  Pdv     @relation(fields: [id_equipe], references: [id])
+
+  @@index([id_empresa])
+  @@index([id_empresa, ativo])
+  @@index([id_equipe])
+  @@index([id_equipe, mes_referencia, semana, ativo])
+  @@index([mes_referencia])
 }
 
 model MetaTemplate {
@@ -288,6 +313,7 @@ model MetaTemplate {
   @@index([id_empresa, cadencia, recorrencia, ativo])
   @@index([id_pdv])
   @@index([id_funcionario])
+  @@ignore
 }
 
 model MetaPeriodo {
@@ -316,6 +342,7 @@ model MetaPeriodo {
   @@index([id_empresa, periodo_tipo, ano, mes])
   @@index([id_empresa, semana_do_mes, ano, mes])
   @@index([id_template])
+  @@ignore
 }
 
 model MetaProgresso {
@@ -334,6 +361,7 @@ model MetaProgresso {
   @@index([id_empresa, periodo])
   @@index([id_meta, periodo])
   @@index([id_meta_periodo, periodo])
+  @@ignore
 }
 
 model Pendencia {
