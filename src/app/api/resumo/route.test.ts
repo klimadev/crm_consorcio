@@ -14,7 +14,7 @@ vi.mock("@/lib/prisma", () => ({
     lead: {
       findMany: vi.fn(),
     },
-    metaPeriodo: {
+    metaNova: {
       findMany: vi.fn(),
     },
   },
@@ -51,7 +51,7 @@ describe("GET /api/resumo", () => {
     });
 
     vi.mocked(detectarPendenciasDinamicas).mockResolvedValue([]);
-    vi.mocked(prisma.metaPeriodo.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.metaNova.findMany).mockResolvedValue([]);
   });
 
   afterEach(() => {

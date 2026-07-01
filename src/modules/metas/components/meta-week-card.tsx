@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Archive, Edit2, TrendingUp } from "lucide-react";
+import { Archive, Edit2, TrendingUp, DollarSign, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn, formataMoeda } from "@/lib/utils";
 import type { Meta } from "@/modules/metas/types";
@@ -10,6 +10,8 @@ type Props = {
   meta: Meta;
   onEditar: (meta: Meta) => void;
   onArquivar: (id: string) => void;
+  /** Versão compacta para empilhamento no slot semanal */
+  compact?: boolean;
 };
 
 function statusLabel(status: string): string {
@@ -30,7 +32,25 @@ function statusColor(status: string): string {
   }
 }
 
-function statusDot(status: string): string {
+function statusBgBorder(status: string): string {
+  switch (status) {
+    case "no_ritmo": return "border-success/30 bg-success/[0.03]";
+    case "atencao": return "border-warning/30 bg-warning/[0.03]";
+    case "fora": return "border-destructive/30 bg-destructive/[0.03]";
+    default: return "border-border bg-muted/40";
+  }
+}
+
+function statusDotBg(status: string): string {
+  switch (status) {
+    case "no_ritmo": return "bg-success";
+    case "atencao": return "bg-warning";
+    case "fora": return "bg-destructive";
+    default: return "bg-foreground-disabled";
+  }
+}
+
+function statusBarBg(status: string): string {
   switch (status) {
     case "no_ritmo": return "bg-success";
     case "atencao": return "bg-warning";
@@ -44,10 +64,114 @@ function formatDateShort(iso: string): string {
   return d.toLocaleDateString("pt-BR", { timeZone: "UTC", day: "numeric", month: "short" });
 }
 
-export function MetaWeekCard({ meta, onEditar, onArquivar }: Props) {
+function tipoIcon(tipo: string, origem: string) {
+  if (tipo === "VOLUME") return <FileText className="h-3 w-3" />;
+  if (origem === "PAGAMENTOS") return <DollarSign className="h-3 w-3" />;
+  return <TrendingUp className="h-3 w-3" />;
+}
+
+function tipoLabel(meta: Meta): string {
+  if (meta.tipo_meta === "VOLUME") return "Contratos";
+  return meta.origem === "PAGAMENTOS" ? "Recebido" : "Fechado";
+}
+
+function CardCompact({ meta, onEditar, onArquivar }: Props) {
   const [confirmandoArquivo, setConfirmandoArquivo] = useState(false);
   const progresso = meta.progresso;
   const status = progresso?.status ?? "fora";
+
+  return (
+    <div
+      className={cn(
+        "group relative flex items-center gap-2 rounded-xl border px-3 py-2.5 transition-all duration-150",
+        statusBgBorder(status),
+        "hover:bg-muted/40",
+      )}
+    >
+      {/* Dot de status */}
+      <span className={cn("h-2 w-2 shrink-0 rounded-full", statusDotBg(status))} />
+
+      {/* Ícone do tipo */}
+      <span className="shrink-0 text-foreground-muted">
+        {tipoIcon(meta.tipo_meta, meta.origem)}
+      </span>
+
+      {/* Nome da meta */}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs font-medium text-foreground">
+          {meta.titulo || tipoLabel(meta)}
+        </p>
+        <div className="mt-1 flex items-center gap-2 text-[10px] text-foreground-muted">
+          <span>
+            {meta.tipo_meta === "VOLUME"
+              ? `${progresso?.realizado ?? 0}/${meta.alvo}`
+              : `${formataMoeda(progresso?.realizado ?? 0)} / ${formataMoeda(meta.alvo)}`}
+          </span>
+        </div>
+      </div>
+
+      {/* Mini barra */}
+      <div className="h-1 w-12 shrink-0 overflow-hidden rounded-full bg-muted">
+        <div
+          className={cn("h-full rounded-full transition-all duration-500", statusBarBg(status))}
+          style={{ width: `${Math.min(progresso?.percentual ?? 0, 100)}%` }}
+        />
+      </div>
+
+      {/* Percentual */}
+      <span
+        className={cn(
+          "min-w-[2.5rem] text-right text-xs font-bold tabular-nums",
+          status === "no_ritmo" && "text-success",
+          status === "atencao" && "text-warning",
+          status === "fora" && "text-destructive",
+        )}
+      >
+        {progresso?.percentual ?? 0}%
+      </span>
+
+      {/* Ações (aparecem no hover) */}
+      <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0"
+          onClick={(e) => { e.stopPropagation(); onEditar(meta); }}
+          title="Editar"
+        >
+          <Edit2 className="h-3 w-3" />
+        </Button>
+        {confirmandoArquivo ? (
+          <Button
+            variant="destructive"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onClick={(e) => { e.stopPropagation(); onArquivar(meta.id); setConfirmandoArquivo(false); }}
+            title="Confirmar arquivar"
+          >
+            <Archive className="h-3 w-3" />
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0 text-foreground-muted"
+            onClick={(e) => { e.stopPropagation(); setConfirmandoArquivo(true); }}
+            title="Arquivar"
+          >
+            <Archive className="h-3 w-3" />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CardFull({ meta, onEditar, onArquivar }: Props) {
+  const [confirmandoArquivo, setConfirmandoArquivo] = useState(false);
+  const progresso = meta.progresso;
+  const status = progresso?.status ?? "fora";
+  const sc = statusColor(status);
 
   if (!progresso) {
     return (
@@ -61,26 +185,29 @@ export function MetaWeekCard({ meta, onEditar, onArquivar }: Props) {
     <div
       className={cn(
         "relative flex flex-col gap-3 rounded-2xl border p-4 transition-all duration-200",
-        status === "no_ritmo" && "border-success/30 bg-success/[0.03]",
-        status === "atencao" && "border-warning/30 bg-warning/[0.03]",
-        status === "fora" && "border-destructive/30 bg-destructive/[0.03]",
+        statusBgBorder(status),
       )}
     >
       {/* Percentual grande */}
       <div className="flex items-center justify-between">
-        <span className={cn("text-3xl font-bold tabular-nums", statusColor(status).split(" ")[1])}>
+        <span className={cn("text-3xl font-bold tabular-nums", sc.split(" ")[1])}>
           {progresso.percentual}%
         </span>
         <span
           className={cn(
             "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium",
-            statusColor(status),
+            sc,
           )}
         >
-          <span className={cn("h-1.5 w-1.5 rounded-full", statusDot(status))} />
+          <span className={cn("h-1.5 w-1.5 rounded-full", statusDotBg(status))} />
           {statusLabel(status)}
         </span>
       </div>
+
+      {/* Título da meta */}
+      <p className="text-xs font-medium text-foreground leading-tight">
+        {meta.titulo || tipoLabel(meta)}
+      </p>
 
       {/* Datas */}
       <div className="text-xs text-foreground-muted">
@@ -112,12 +239,7 @@ export function MetaWeekCard({ meta, onEditar, onArquivar }: Props) {
       {/* Barra de progresso */}
       <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
         <div
-          className={cn(
-            "h-full rounded-full transition-all duration-500",
-            status === "no_ritmo" && "bg-success",
-            status === "atencao" && "bg-warning",
-            status === "fora" && "bg-destructive",
-          )}
+          className={cn("h-full rounded-full transition-all duration-500", statusBarBg(status))}
           style={{ width: `${Math.min(progresso.percentual, 100)}%` }}
         />
       </div>
@@ -161,4 +283,11 @@ export function MetaWeekCard({ meta, onEditar, onArquivar }: Props) {
       </div>
     </div>
   );
+}
+
+export function MetaWeekCard(props: Props) {
+  if (props.compact) {
+    return <CardCompact {...props} />;
+  }
+  return <CardFull {...props} />;
 }

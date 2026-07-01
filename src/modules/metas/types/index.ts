@@ -34,6 +34,7 @@ export interface ProgressoMeta {
 /** Dados do formulário de criação/edição de meta (2-step wizard) */
 export interface MetaFormData {
   id_equipe: string;
+  titulo?: string;
   tipo_meta: "VALOR" | "VOLUME";
   origem: "PAGAMENTOS" | "FECHADOS";
   alvo: number;

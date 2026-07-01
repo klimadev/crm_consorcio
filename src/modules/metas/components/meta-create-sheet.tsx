@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarDays, Loader2, Target, TrendingUp } from "lucide-react";
+import { CalendarDays, FileText, Loader2, Target, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -57,6 +57,7 @@ export function MetaCreateSheet({
   const isEdicao = !!metaEmEdicao;
 
   const [idEquipe, setIdEquipe] = useState(metaEmEdicao?.id_equipe ?? equipePadrao ?? "");
+  const [titulo, setTitulo] = useState(metaEmEdicao?.titulo ?? "");
   const [tipoMeta, setTipoMeta] = useState<"VALOR" | "VOLUME">(metaEmEdicao?.tipo_meta ?? "VALOR");
   const [origem, setOrigem] = useState<"PAGAMENTOS" | "FECHADOS">(metaEmEdicao?.origem ?? "PAGAMENTOS");
   const [alvo, setAlvo] = useState(metaEmEdicao ? String(metaEmEdicao.alvo) : "");
@@ -69,6 +70,7 @@ export function MetaCreateSheet({
   const reset = () => {
     if (!isEdicao) {
       setIdEquipe(equipePadrao ?? "");
+      setTitulo("");
       setTipoMeta("VALOR");
       setOrigem("PAGAMENTOS");
       setAlvo("");
@@ -116,6 +118,7 @@ export function MetaCreateSheet({
       alvo: alvoNumero,
       semana,
       mes_referencia: mesReferencia,
+      titulo: titulo.trim() || undefined,
     };
 
     setErroLocal(null);
@@ -201,6 +204,22 @@ export function MetaCreateSheet({
                 </Select>
               </div>
 
+              {/* Título (opcional) — ajuda a diferenciar múltiplas metas na mesma semana */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  Título <span className="text-foreground-muted font-normal">(opcional)</span>
+                </label>
+                <Input
+                  type="text"
+                  placeholder="Ex: Meta de faturamento"
+                  value={titulo}
+                  onChange={(e) => setTitulo(e.target.value)}
+                />
+                <p className="text-xs text-foreground-muted">
+                  Um nome curto para identificar esta meta entre outras da mesma semana.
+                </p>
+              </div>
+
               {/* Tipo de meta */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Tipo de medição</label>
@@ -278,6 +297,12 @@ export function MetaCreateSheet({
                       <Target className="h-4 w-4 text-success" />
                       {nomeEquipe}
                     </div>
+                    {titulo.trim() && (
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-info" />
+                        {titulo.trim()}
+                      </div>
+                    )}
                     <div className="flex items-center gap-2">
                       <TrendingUp className="h-4 w-4 text-success" />
                       {tipoLabel}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exigirSessao, respostaSemPermissao } from "@/lib/permissoes";
-import { badRequest, conflict, notFound } from "@/lib/api/http";
+import { badRequest, notFound } from "@/lib/api/http";
 import { handleRouteError } from "@/lib/api/route-errors";
 import { parseJson, validateBody, validateQuery } from "@/lib/api/route-validation";
 import { z } from "zod";
@@ -188,17 +188,8 @@ export async function POST(request: NextRequest) {
   });
   if (!equipe) return badRequest("Equipe não encontrada.");
 
-  // Verifica unicidade: mesma equipe + mês + semana + ativo
-  const existente = await prisma.metaNova.findFirst({
-    where: {
-      id_empresa: auth.sessao.id_empresa,
-      id_equipe: payload.id_equipe,
-      mes_referencia: payload.mes_referencia,
-      semana: payload.semana,
-      ativo: true,
-    },
-  });
-  if (existente) return conflict("Já existe uma meta ativa para esta equipe nesta semana.");
+  // Nota: não verificamos unicidade — múltiplas metas por equipe/semana são permitidas
+  // (ex: meta de valor + volume na mesma semana)
 
   // Calcula datas automaticamente
   const { data_inicio, data_fim } = calcularDatasSemana(payload.semana, payload.mes_referencia);

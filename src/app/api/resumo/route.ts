@@ -242,24 +242,24 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const metasGanhos = await prisma.metaPeriodo.findMany({
+  // Busca metas do novo modelo MetaNova (origem = FECHADOS = leads aprovados)
+  const metasGanhos = await prisma.metaNova.findMany({
     where: {
       id_empresa: auth.sessao.id_empresa,
       ativo: true,
+      origem: "FECHADOS",
       data_inicio: { lte: faixaSelecionada.fim },
       data_fim: { gte: faixaSelecionada.inicio },
-      template: {
-        ativo: true,
-        origem_resultado: "ESTAGIO_GANHO",
-        ...(auth.sessao.perfil === "GERENTE" ? { id_pdv: auth.sessao.id_pdv } : {}),
-      },
+      ...(auth.sessao.perfil === "GERENTE" && auth.sessao.id_pdv
+        ? { id_equipe: auth.sessao.id_pdv }
+        : {}),
     },
-    include: {
-      template: {
-        select: {
-          tipo_meta: true,
-        },
-      },
+    select: {
+      id: true,
+      tipo_meta: true,
+      alvo: true,
+      data_inicio: true,
+      data_fim: true,
     },
   });
 
@@ -277,7 +277,7 @@ export async function GET(request: NextRequest) {
         if (peso <= 0) continue;
 
         const alvoPonderado = meta.alvo * peso;
-        if (meta.template?.tipo_meta === "VOLUME") {
+        if (meta.tipo_meta === "VOLUME") {
           metaCotas += alvoPonderado;
         } else {
           metaVolume += alvoPonderado;
