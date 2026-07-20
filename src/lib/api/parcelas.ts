@@ -127,8 +127,11 @@ export async function atualizarParcela(idParcela: string, payload: PayloadAtuali
   return { ok: true, dados: { parcela: json.parcela } };
 }
 
-export async function excluirParcelasLead(idLead: string): Promise<ResultadoApi<{ excluidas: number; preservadas_pagas: number }>> {
-  const resposta = await fetch(`/api/parcelas?id_lead=${encodeURIComponent(idLead)}`, {
+export async function excluirParcelasLead(idLead: string, forcar = false): Promise<ResultadoApi<{ excluidas: number; preservadas_pagas: number }>> {
+  const params = new URLSearchParams({ id_lead: idLead });
+  if (forcar) params.set("forcar", "true");
+
+  const resposta = await fetch(`/api/parcelas?${params.toString()}`, {
     method: "DELETE",
   });
 
@@ -138,4 +141,17 @@ export async function excluirParcelasLead(idLead: string): Promise<ResultadoApi<
   }
 
   return { ok: true, dados: { excluidas: json.excluidas ?? 0, preservadas_pagas: json.preservadas_pagas ?? 0 } };
+}
+
+export async function excluirParcela(idParcela: string): Promise<ResultadoApi<{ excluida: true }>> {
+  const resposta = await fetch(`/api/parcelas/${encodeURIComponent(idParcela)}`, {
+    method: "DELETE",
+  });
+
+  const json = await lerJsonSeguro<{ excluida?: true } & ApiErro>(resposta);
+  if (!resposta.ok) {
+    return { ok: false, erro: json.erro ?? "Erro ao excluir parcela." };
+  }
+
+  return { ok: true, dados: { excluida: true } };
 }

@@ -8,6 +8,7 @@ import {
   pagarParcela as apiPagarParcela,
   atualizarParcela as apiAtualizarParcela,
   excluirParcelasLead,
+  excluirParcela as apiExcluirParcela,
   type Parcela,
 } from "@/lib/api/parcelas";
 import { computarStatusParcelas } from "@/lib/financeiro/parcelas";
@@ -35,6 +36,7 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
   const [pagando, setPagando] = useState<string | null>(null);
   const [removendo, setRemovendo] = useState(false);
   const [salvandoEdicao, setSalvandoEdicao] = useState<string | null>(null);
+  const [deletandoParcela, setDeletandoParcela] = useState<string | null>(null);
 
   const carregarParcelas = useCallback(async () => {
     if (!leadId) {
@@ -127,12 +129,12 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
     [parcelas],
   );
 
-  const removerPlano = useCallback(async () => {
+  const removerPlano = useCallback(async (forcar = false) => {
     if (!leadId) return;
     setRemovendo(true);
     setError(null);
 
-    const resultado = await excluirParcelasLead(leadId);
+    const resultado = await excluirParcelasLead(leadId, forcar);
 
     if (!resultado.ok) {
       setError(resultado.erro);
@@ -142,9 +144,10 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
 
     addToast({
       type: "success",
-      title: resultado.dados.preservadas_pagas > 0 ? "Pendentes removidas" : "Plano removido",
-      description:
-        resultado.dados.preservadas_pagas > 0
+      title: forcar ? "Plano removido" : resultado.dados.preservadas_pagas > 0 ? "Pendentes removidas" : "Plano removido",
+      description: forcar
+        ? `${resultado.dados.excluidas} parcelas foram removidas (incluindo pagas).`
+        : resultado.dados.preservadas_pagas > 0
           ? `${resultado.dados.excluidas} parcelas pendentes foram removidas e ${resultado.dados.preservadas_pagas} pagamento(s) ja registrado(s) foram preservados.`
           : `${resultado.dados.excluidas} parcelas foram removidas.`,
     });
@@ -152,6 +155,27 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
     setRemovendo(false);
     await carregarParcelas();
   }, [addToast, carregarParcelas, leadId]);
+
+  const excluirParcelaInd = useCallback(
+    async (idParcela: string) => {
+      setDeletandoParcela(idParcela);
+      setError(null);
+
+      const resultado = await apiExcluirParcela(idParcela);
+      if (!resultado.ok) {
+        if (resultado.erro && resultado.erro !== "Parcela nao encontrada.") {
+          setError(resultado.erro);
+        }
+        setDeletandoParcela(null);
+        return;
+      }
+
+      addToast({ type: "success", title: "Parcela excluida", description: "A parcela foi removida com sucesso." });
+      setDeletandoParcela(null);
+      await carregarParcelas();
+    },
+    [addToast, carregarParcelas],
+  );
 
   const editarParcela = useCallback(
     async (idParcela: string, dados: { valor: number; data_vencimento: string }) => {
@@ -206,6 +230,8 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
     removendo,
     editarParcela,
     salvandoEdicao,
+    deletandoParcela,
+    excluirParcela: excluirParcelaInd,
     limparFormulario,
   };
 }

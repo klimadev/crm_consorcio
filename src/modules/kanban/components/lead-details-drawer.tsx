@@ -532,7 +532,7 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
               </TabsContent>
 
               <TabsContent value="parcelas" className="m-0 flex-1 overflow-y-auto p-3">
-                <LeadParcelasTab leadId={leadSelecionado.id} />
+                <LeadParcelasTab leadId={leadSelecionado.id} perfil={perfil} />
               </TabsContent>
 
               {/* [HYPE CRM] Feature em desenvolvimento - Produtos será uma feature exclusiva do HYPE CRM */}

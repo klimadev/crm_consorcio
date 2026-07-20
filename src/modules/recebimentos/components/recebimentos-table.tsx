@@ -1,8 +1,9 @@
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, ChevronLeft, ChevronRight, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn, formataData, formataMoeda } from "@/lib/utils";
 import type { UseRecebimentosModuleReturn } from "../types";
@@ -34,6 +35,7 @@ type RecebimentosTableProps = {
 export function RecebimentosTable({ vm }: RecebimentosTableProps) {
   const [pagamentoAberto, setPagamentoAberto] = useState<string | null>(null);
   const [dataPagamento, setDataPagamento] = useState(hojeIso());
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-background-surface shadow-sm">
@@ -131,10 +133,20 @@ export function RecebimentosTable({ vm }: RecebimentosTableProps) {
                         setDataPagamento(hojeIso());
                         setPagamentoAberto(item.id);
                       }}
-                      disabled={vm.pagando !== null}
+                      disabled={vm.pagando !== null || vm.deletando !== null}
                     >
                       <CheckCircle2 className="mr-1 h-4 w-4" />
                       Marcar como Pago
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => setDeleteConfirmId(item.id)}
+                      disabled={vm.pagando !== null || vm.deletando !== null}
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                     <Button asChild variant="ghost" size="sm" className="text-info hover:bg-info/10 hover:text-info">
                       <Link href={`/kanban?lead=${item.lead.id}`}>
@@ -163,6 +175,41 @@ export function RecebimentosTable({ vm }: RecebimentosTableProps) {
           </Button>
         </div>
       </div>
+
+      <Dialog open={deleteConfirmId !== null} onOpenChange={(aberto) => !aberto && setDeleteConfirmId(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Excluir parcela</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir esta parcela? Esta acao nao pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setDeleteConfirmId(null)} disabled={vm.deletando !== null}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={vm.deletando !== null}
+              onClick={async () => {
+                if (!deleteConfirmId) return;
+                await vm.deletarParcela(deleteConfirmId);
+                setDeleteConfirmId(null);
+              }}
+            >
+              {vm.deletando === deleteConfirmId ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                "Excluir"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

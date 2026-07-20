@@ -39,7 +39,7 @@ Thumbs.db
 
 # Runtime, local database and generated files
 *.pem
-/prisma/dev.db
+/prisma/dev.db*
 /src/generated/prisma/
 
 # Temporary and ad-hoc exports

@@ -122,6 +122,16 @@ export async function DELETE(request: NextRequest) {
     return respostaSemPermissao();
   }
 
+  const forcar = searchParams.get("forcar") === "true";
+
+  if (forcar) {
+    const resultado = await prisma.parcela.deleteMany({
+      where: { id_lead: idLead },
+    });
+
+    return NextResponse.json({ ok: true, excluidas: resultado.count, preservadas_pagas: 0 });
+  }
+
   const parcelasPagas = await prisma.parcela.count({
     where: {
       id_lead: idLead,

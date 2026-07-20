@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { exigirSessao, respostaSemPermissao, whereLeadsPorPerfil } from "@/lib/permissoes";
 import { esquemaAtualizarParcela } from "@/lib/validacoes";
-import { notFound } from "@/lib/api/http";
+import { badRequest, notFound, ok } from "@/lib/api/http";
 import { parseJson, validateBody } from "@/lib/api/route-validation";
 
 type Params = {
@@ -74,4 +74,42 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   });
 
   return NextResponse.json({ parcela: atualizada });
+}
+
+export async function DELETE(request: NextRequest, { params }: Params) {
+  const auth = await exigirSessao(request);
+  if (auth.erro) return auth.erro;
+
+  if (auth.sessao.perfil === "COLABORADOR") {
+    return respostaSemPermissao();
+  }
+
+  const { id } = await params;
+
+  const parcela = await prisma.parcela.findFirst({
+    where: { id, id_empresa: auth.sessao.id_empresa },
+    include: { lead: { select: { id: true } } },
+  });
+
+  if (!parcela) {
+    return notFound("Parcela nao encontrada.");
+  }
+
+  if (parcela.status === "PAGO") {
+    return badRequest("Nao e possivel excluir uma parcela ja paga.");
+  }
+
+  const wherePermitido = await whereLeadsPorPerfil(auth.sessao);
+  const leadPermitido = await prisma.lead.findFirst({
+    where: { id: parcela.lead.id, ...wherePermitido },
+    select: { id: true },
+  });
+
+  if (!leadPermitido) {
+    return notFound("Parcela nao encontrada.");
+  }
+
+  await prisma.parcela.delete({ where: { id: parcela.id } });
+
+  return ok({ excluida: true, parcela });
 }

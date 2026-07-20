@@ -56,4 +56,6 @@ export type UseRecebimentosModuleReturn = {
   recarregar: () => Promise<void>;
   pagando: string | null;
   pagarParcela: (idParcela: string, dataPagamento?: string) => Promise<void>;
+  deletando: string | null;
+  deletarParcela: (idParcela: string) => Promise<void>;
 };

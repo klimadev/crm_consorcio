@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, Loader2, Trash2 } from "lucide-react";
+import { AlertCircle, Loader2, Trash2, TriangleAlert } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useLeadParcelas } from "../hooks/use-lead-parcelas";
 import { InstallmentCard } from "./parcelas/installment-card";
@@ -14,6 +14,7 @@ import type { Parcela } from "@/lib/api/parcelas";
 
 type LeadParcelasTabProps = {
   leadId: string;
+  perfil: "EMPRESA" | "GERENTE" | "COLABORADOR";
 };
 
 function ParcelasResumo({ parcelas }: { parcelas: { valor: number; status: string }[] }) {
@@ -60,7 +61,7 @@ function ParcelasResumo({ parcelas }: { parcelas: { valor: number; status: strin
   );
 }
 
-export function LeadParcelasTab({ leadId }: LeadParcelasTabProps) {
+export function LeadParcelasTab({ leadId, perfil }: LeadParcelasTabProps) {
   const vm = useLeadParcelas({ leadId });
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
   const [parcelaEmEdicao, setParcelaEmEdicao] = useState<Parcela | null>(null);
@@ -123,8 +124,10 @@ export function LeadParcelasTab({ leadId }: LeadParcelasTabProps) {
                 key={parcela.id}
                   parcela={parcela}
                   pagando={vm.pagando === parcela.id}
+                  excluindo={vm.deletandoParcela === parcela.id}
                   onPagar={vm.pagarParcela}
                   onEditar={abrirEdicao}
+                  onExcluir={vm.excluirParcela}
                 />
               ))}
             </div>
@@ -141,35 +144,94 @@ export function LeadParcelasTab({ leadId }: LeadParcelasTabProps) {
       ) : null}
 
       {/* Dialog de confirmação para remover */}
-      <ConfirmDialog
-        aberto={showRemoveDialog}
-        titulo="Remover Plano de Pagamento"
-        descricao={
-          <p>
-            Tem certeza que deseja ajustar o plano de <strong>{vm.parcelas.length} parcelas</strong>?
-            <br />
-            <span className="text-destructive">
-              {vm.parcelas.some((parcela) => parcela.status === "PAGO")
-                ? "As parcelas pendentes serao removidas e os pagamentos ja registrados serao preservados."
-                : "Esta ação não pode ser desfeita."}
-            </span>
-          </p>
-        }
-        erro={vm.error}
-        confirmando={vm.removendo}
-        textoConfirmar="Remover"
-        textoConfirmando="Removendo..."
-        textoCancel="Cancelar"
-        onCancelar={() => {
-          setShowRemoveDialog(false);
-        }}
-        onConfirmar={async () => {
-          await vm.removerPlano();
-          setShowRemoveDialog(false);
-        }}
-        modo="destrutivo"
-        icone={<Trash2 className="h-6 w-6" />}
-      />
+      {vm.parcelas.some((p) => p.status === "PAGO") && perfil !== "COLABORADOR" ? (
+        <Dialog open={showRemoveDialog} onOpenChange={(a) => !a && setShowRemoveDialog(false)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+                <TriangleAlert className="h-6 w-6 text-destructive" />
+              </div>
+              <DialogTitle className="text-center">Remover Plano de Pagamento</DialogTitle>
+              <DialogDescription className="text-center">
+                Este lead possui <strong>{vm.parcelas.length} parcelas</strong>, incluindo pagas.
+              </DialogDescription>
+            </DialogHeader>
+
+            {vm.error ? (
+              <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-3 text-sm text-destructive">
+                <p className="flex items-center gap-2 font-medium">
+                  <AlertCircle className="h-4 w-4" />
+                  {vm.error}
+                </p>
+              </div>
+            ) : null}
+
+            <DialogFooter className="flex-col gap-2 sm:flex-col">
+              <Button
+                type="button"
+                variant="destructive"
+                className="w-full"
+                disabled={vm.removendo}
+                onClick={async () => {
+                  await vm.removerPlano(true);
+                  setShowRemoveDialog(false);
+                }}
+              >
+                {vm.removendo ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Apagando...</>
+                ) : (
+                  <><Trash2 className="mr-2 h-4 w-4" /> Apagar plano inteiro (inclui pagas)</>
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={vm.removendo}
+                onClick={async () => {
+                  await vm.removerPlano(false);
+                  setShowRemoveDialog(false);
+                }}
+              >
+                Remover apenas pendentes
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                disabled={vm.removendo}
+                onClick={() => setShowRemoveDialog(false)}
+              >
+                Cancelar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : (
+        <ConfirmDialog
+          aberto={showRemoveDialog}
+          titulo="Remover Plano de Pagamento"
+          descricao={
+            <p>
+              Tem certeza que deseja remover o plano de <strong>{vm.parcelas.length} parcelas</strong>?
+              <br />
+              <span className="text-destructive">Esta acao nao pode ser desfeita.</span>
+            </p>
+          }
+          erro={vm.error}
+          confirmando={vm.removendo}
+          textoConfirmar="Remover"
+          textoConfirmando="Removendo..."
+          textoCancel="Cancelar"
+          onCancelar={() => setShowRemoveDialog(false)}
+          onConfirmar={async () => {
+            await vm.removerPlano(false);
+            setShowRemoveDialog(false);
+          }}
+          modo="destrutivo"
+          icone={<Trash2 className="h-6 w-6" />}
+        />
+      )}
 
       <Dialog open={Boolean(parcelaEmEdicao)} onOpenChange={(aberto) => !aberto && setParcelaEmEdicao(null)}>
         <DialogContent className="sm:max-w-md">

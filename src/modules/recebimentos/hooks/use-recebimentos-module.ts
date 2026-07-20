@@ -8,7 +8,7 @@ import {
   type OrdenacaoRecebimentos,
   type RecebimentosResposta,
 } from "@/lib/api/recebimentos";
-import { pagarParcela as apiPagarParcela } from "@/lib/api/parcelas";
+import { pagarParcela as apiPagarParcela, excluirParcela as apiExcluirParcela } from "@/lib/api/parcelas";
 import { useToast } from "@/components/ui/toast";
 import { formataMoeda } from "@/lib/utils";
 import type { RecebimentosFiltroForm, UseRecebimentosModuleReturn } from "../types";
@@ -42,6 +42,7 @@ export function useRecebimentosModule(): UseRecebimentosModuleReturn {
   const [dados, setDados] = useState<RecebimentosResposta | null>(null);
   const [chaveRecarga, setChaveRecarga] = useState(0);
   const [pagando, setPagando] = useState<string | null>(null);
+  const [deletando, setDeletando] = useState<string | null>(null);
 
   useEffect(() => {
     let ativo = true;
@@ -157,6 +158,29 @@ export function useRecebimentosModule(): UseRecebimentosModuleReturn {
     [addToast, dados],
   );
 
+  const deletarParcelaModule = useCallback(
+    async (idParcela: string) => {
+      setDeletando(idParcela);
+      setErro(null);
+
+      const resultado = await apiExcluirParcela(idParcela);
+
+      if (!resultado.ok) {
+        if (resultado.erro && resultado.erro !== "Parcela nao encontrada.") {
+          setErro(resultado.erro);
+          addToast({ type: "error", title: "Erro ao excluir parcela", description: resultado.erro });
+        }
+        setDeletando(null);
+        return;
+      }
+
+      addToast({ type: "success", title: "Parcela excluida", description: "A parcela foi removida com sucesso." });
+      setDeletando(null);
+      setChaveRecarga((atual) => atual + 1);
+    },
+    [addToast],
+  );
+
   return {
     carregando,
     erro,
@@ -193,5 +217,7 @@ export function useRecebimentosModule(): UseRecebimentosModuleReturn {
     },
     pagando,
     pagarParcela: pagarParcelaModule,
+    deletando,
+    deletarParcela: deletarParcelaModule,
   };
 }
