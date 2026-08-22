@@ -12,9 +12,10 @@ model Empresa {
   nome            String
   email           String          @unique
   senha_hash      String
-  criado_em       DateTime        @default(now())
-  atualizado_em   DateTime        @default(now()) @updatedAt
-  estagios        EstagioFunil[]
+  criado_em          DateTime        @default(now())
+  atualizado_em      DateTime        @default(now()) @updatedAt
+  premium_liberado   Boolean         @default(true)
+  estagios           EstagioFunil[]
   funcionarios    Funcionario[]
   leads           Lead[]
   metas           Meta[] @ignore

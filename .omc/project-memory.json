@@ -1,0 +1,585 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1786053439817,
+  "projectRoot": "/var/www/crmconsorcio",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      },
+      {
+        "name": "TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "tsconfig.json"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "next",
+        "version": "16.1.6",
+        "category": "fullstack"
+      },
+      {
+        "name": "react",
+        "version": "19.2.3",
+        "category": "frontend"
+      },
+      {
+        "name": "react-dom",
+        "version": "19.2.3",
+        "category": "frontend"
+      },
+      {
+        "name": "playwright",
+        "version": "1.59.1",
+        "category": "testing"
+      },
+      {
+        "name": "vitest",
+        "version": "3.2.4",
+        "category": "testing"
+      }
+    ],
+    "packageManager": "pnpm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": "pnpm build",
+    "testCommand": "pnpm test",
+    "lintCommand": "pnpm lint",
+    "devCommand": "pnpm dev",
+    "scripts": {
+      "dev": "next dev -p 3334",
+      "build": "next build",
+      "start": "next start -p 3333 -H 0.0.0.0",
+      "lint": "eslint",
+      "lint:fast": "oxlint --nextjs-plugin --react-plugin --import-plugin --jsx-a11y-plugin --vitest-plugin",
+      "test": "vitest run",
+      "backup:metas": "node scripts/backup-metas.mjs",
+      "seed": "prisma db seed",
+      "setup": "node scripts/setup-wizard.js",
+      "service:start": "sudo systemctl start crmconsorcio",
+      "service:stop": "sudo systemctl stop crmconsorcio",
+      "service:restart": "sudo systemctl restart crmconsorcio",
+      "service:logs": "sudo journalctl -u crmconsorcio --no-pager -n 50 -f",
+      "service:status": "sudo systemctl status crmconsorcio --no-pager -l",
+      "deploy": "npm run build && sudo systemctl restart crmconsorcio"
+    }
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": "type-based"
+  },
+  "structure": {
+    "isMonorepo": true,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs",
+      "public",
+      "scripts",
+      "src"
+    ],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "_plan_parcelas": {
+      "path": "_plan_parcelas",
+      "purpose": null,
+      "fileCount": 7,
+      "lastAccessed": 1786053439784,
+      "keyFiles": [
+        "01-overview.md",
+        "02-schema.md",
+        "03-api-endpoints.md",
+        "04-client-api-layer.md",
+        "05-hooks.md"
+      ]
+    },
+    "backups": {
+      "path": "backups",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1786053439784,
+      "keyFiles": []
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 7,
+      "lastAccessed": 1786053439797,
+      "keyFiles": [
+        "bug-sidebar-usuario-sem-nome.md",
+        "chat-module-study-case.md",
+        "plano-correcao-bugs-logica-negocio.md",
+        "plano-correcao-evolution-api.md",
+        "plano-kanban-origem-lead.md"
+      ]
+    },
+    "dx-reduction-plan": {
+      "path": "dx-reduction-plan",
+      "purpose": null,
+      "fileCount": 9,
+      "lastAccessed": 1786053439804,
+      "keyFiles": [
+        "01-audit-findings.md",
+        "02-file-matrix.md",
+        "03-ui-consolidation.md",
+        "04-hook-refactor.md",
+        "05-api-abstractions.md"
+      ]
+    },
+    "openspec": {
+      "path": "openspec",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1786053439804,
+      "keyFiles": [
+        "config.yaml"
+      ]
+    },
+    "plan_leads_funnel_refactor": {
+      "path": "plan_leads_funnel_refactor",
+      "purpose": null,
+      "fileCount": 7,
+      "lastAccessed": 1786053439805,
+      "keyFiles": [
+        "00_OVERVIEW.md",
+        "01_SCHEMA_CHANGES.md",
+        "02_STAGES_AND_SEED.md",
+        "03_BUSINESS_LOGIC.md",
+        "04_UI_RENAMING.md"
+      ]
+    },
+    "plans": {
+      "path": "plans",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1786053439805,
+      "keyFiles": []
+    },
+    "prisma": {
+      "path": "prisma",
+      "purpose": null,
+      "fileCount": 5,
+      "lastAccessed": 1786053439805,
+      "keyFiles": [
+        "dev.db",
+        "dev.db-shm",
+        "dev.db-wal",
+        "schema.prisma",
+        "seed.js"
+      ]
+    },
+    "public": {
+      "path": "public",
+      "purpose": "Public files",
+      "fileCount": 6,
+      "lastAccessed": 1786053439805,
+      "keyFiles": [
+        "file.svg",
+        "globe.svg",
+        "logo.png",
+        "next.svg",
+        "vercel.svg"
+      ]
+    },
+    "scripts": {
+      "path": "scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 4,
+      "lastAccessed": 1786053439805,
+      "keyFiles": [
+        "auditar-equipe-playwright.mjs",
+        "backup-metas.mjs",
+        "migrate-metas.ts",
+        "setup-wizard.js"
+      ]
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1786053439805,
+      "keyFiles": []
+    },
+    "whatsapp-chat-architecture-plan": {
+      "path": "whatsapp-chat-architecture-plan",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1786053439805,
+      "keyFiles": [
+        "AI_IMPLEMENTATION_BRIEF.md",
+        "README.md"
+      ]
+    },
+    "whatsapp-chat-plan": {
+      "path": "whatsapp-chat-plan",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1786053439806,
+      "keyFiles": [
+        "README.md"
+      ]
+    },
+    "whatsapp-module-overhaul-plan": {
+      "path": "whatsapp-module-overhaul-plan",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1786053439806,
+      "keyFiles": [
+        "README.md"
+      ]
+    },
+    "prisma/migrations": {
+      "path": "prisma/migrations",
+      "purpose": "Database migrations",
+      "fileCount": 2,
+      "lastAccessed": 1786053439814,
+      "keyFiles": [
+        "migrate_metas_legadas.sql",
+        "overhaul_metas.sql"
+      ]
+    },
+    "src/app": {
+      "path": "src/app",
+      "purpose": "Application code",
+      "fileCount": 5,
+      "lastAccessed": 1786053439814,
+      "keyFiles": [
+        "favicon.ico",
+        "globals.css",
+        "layout.tsx"
+      ]
+    },
+    "src/components": {
+      "path": "src/components",
+      "purpose": "UI components",
+      "fileCount": 7,
+      "lastAccessed": 1786053439814,
+      "keyFiles": [
+        "botao-sair.tsx",
+        "dashboard-error-boundary.tsx",
+        "error-boundary.tsx"
+      ]
+    },
+    "src/lib": {
+      "path": "src/lib",
+      "purpose": "Library code",
+      "fileCount": 25,
+      "lastAccessed": 1786053439814,
+      "keyFiles": [
+        "autenticacao.ts",
+        "calculo-pendencias.ts",
+        "distribuicao-leads.ts"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "src/modules/recebimentos/components/recebimentos-mobile-list.tsx",
+      "accessCount": 13,
+      "lastAccessed": 1782938644859,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/kanban/hooks/use-lead-parcelas.ts",
+      "accessCount": 11,
+      "lastAccessed": 1782940499107,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/kanban/components/lead-parcelas-tab.tsx",
+      "accessCount": 11,
+      "lastAccessed": 1782940565576,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/recebimentos/hooks/use-recebimentos-module.ts",
+      "accessCount": 8,
+      "lastAccessed": 1782938269497,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/recebimentos/components/recebimentos-table.tsx",
+      "accessCount": 8,
+      "lastAccessed": 1782938652101,
+      "type": "file"
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "accessCount": 7,
+      "lastAccessed": 1784587827191,
+      "type": "file"
+    },
+    {
+      "path": "src/app/api/leads/route.ts",
+      "accessCount": 6,
+      "lastAccessed": 1784588743734,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/kanban/components/parcelas/installment-card.tsx",
+      "accessCount": 5,
+      "lastAccessed": 1782938513767,
+      "type": "file"
+    },
+    {
+      "path": "src/app/api/parcelas/route.ts",
+      "accessCount": 5,
+      "lastAccessed": 1782940466920,
+      "type": "file"
+    },
+    {
+      "path": "src/lib/api/parcelas.ts",
+      "accessCount": 5,
+      "lastAccessed": 1782940480868,
+      "type": "file"
+    },
+    {
+      "path": "src/app/api/parcelas/[id]/route.ts",
+      "accessCount": 4,
+      "lastAccessed": 1782938175750,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/kanban/components/lead-details-drawer.tsx",
+      "accessCount": 4,
+      "lastAccessed": 1784585849659,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/kanban/types.ts",
+      "accessCount": 4,
+      "lastAccessed": 1784588487869,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/recebimentos/types.ts",
+      "accessCount": 3,
+      "lastAccessed": 1782938218054,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/kanban/page.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1784585696153,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/kanban/components/kanban-board.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1784585833345,
+      "type": "file"
+    },
+    {
+      "path": ".env",
+      "accessCount": 2,
+      "lastAccessed": 1784588991175,
+      "type": "file"
+    },
+    {
+      "path": "src/lib/permissoes.ts",
+      "accessCount": 1,
+      "lastAccessed": 1782937155697,
+      "type": "file"
+    },
+    {
+      "path": "src/lib/api/recebimentos.ts",
+      "accessCount": 1,
+      "lastAccessed": 1782937164455,
+      "type": "file"
+    },
+    {
+      "path": "src/app/api/recebimentos/route.ts",
+      "accessCount": 1,
+      "lastAccessed": 1782937193953,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/kanban/components/confirm-dialog.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1782937332727,
+      "type": "file"
+    },
+    {
+      "path": "src/lib/api/http.ts",
+      "accessCount": 1,
+      "lastAccessed": 1782938159273,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/recebimentos/page.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1782938294409,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/laboratorio/index.ts",
+      "accessCount": 1,
+      "lastAccessed": 1784583758434,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/laboratorio/page.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1784583759044,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/laboratorio/types.ts",
+      "accessCount": 1,
+      "lastAccessed": 1784583759402,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/laboratorio/ai-agent/index.ts",
+      "accessCount": 1,
+      "lastAccessed": 1784583760570,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/laboratorio/whatsapp-exporter/types.ts",
+      "accessCount": 1,
+      "lastAccessed": 1784583760682,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/laboratorio/ai-agent/types.ts",
+      "accessCount": 1,
+      "lastAccessed": 1784583760937,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/laboratorio/whatsapp-exporter/index.ts",
+      "accessCount": 1,
+      "lastAccessed": 1784583761147,
+      "type": "file"
+    },
+    {
+      "path": "src/app/(dashboard)/laboratorio/page.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1784583761199,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/laboratorio/whatsapp-exporter/page.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1784583798958,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/laboratorio/whatsapp-exporter/hooks/use-whatsapp-exporter.ts",
+      "accessCount": 1,
+      "lastAccessed": 1784583799542,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/laboratorio/ai-agent/page.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1784583799643,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/laboratorio/ai-agent/hooks/use-ai-agent.ts",
+      "accessCount": 1,
+      "lastAccessed": 1784583799956,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/laboratorio/ai-agent/lib/prompts.ts",
+      "accessCount": 1,
+      "lastAccessed": 1784583800534,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/laboratorio/ai-agent/lib/ai-client.ts",
+      "accessCount": 1,
+      "lastAccessed": 1784583800599,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/laboratorio/ai-agent/components/analysis-report.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1784583818641,
+      "type": "file"
+    },
+    {
+      "path": "src/app/api/dev/laboratorio/ai-agent/analyze/route.ts",
+      "accessCount": 1,
+      "lastAccessed": 1784583819228,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/resumo/types.ts",
+      "accessCount": 1,
+      "lastAccessed": 1784585832990,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/equipe/types.ts",
+      "accessCount": 1,
+      "lastAccessed": 1784585833734,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/kanban/hooks/use-kanban-dados.ts",
+      "accessCount": 1,
+      "lastAccessed": 1784585833826,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/resumo/page.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1784585850274,
+      "type": "file"
+    },
+    {
+      "path": "src/modules/equipe/constants.ts",
+      "accessCount": 1,
+      "lastAccessed": 1784585850518,
+      "type": "file"
+    },
+    {
+      "path": "src/lib/api/kanban.ts",
+      "accessCount": 1,
+      "lastAccessed": 1784585858511,
+      "type": "file"
+    },
+    {
+      "path": "src/lib/tipos.ts",
+      "accessCount": 1,
+      "lastAccessed": 1784585898072,
+      "type": "file"
+    },
+    {
+      "path": ".claude/prds/premium-inteligente.prd.md",
+      "accessCount": 1,
+      "lastAccessed": 1784587247297,
+      "type": "file"
+    },
+    {
+      "path": "src/lib/analise-inteligente/engine.ts",
+      "accessCount": 1,
+      "lastAccessed": 1784587958499,
+      "type": "file"
+    },
+    {
+      "path": "src/app/api/dev/premium/analise/route.ts",
+      "accessCount": 1,
+      "lastAccessed": 1784588181396,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

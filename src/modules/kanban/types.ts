@@ -44,6 +44,14 @@ export type Lead = {
   announcement_url?: string | null;
   // Transferência pendente entre colaboradores
   transferencia_pendente?: TransferenciaPendente | null;
+  // Alerta do motor de análise premium
+  alerta_premium?: {
+    tipo: string;
+    gravidade: string;
+    titulo: string;
+    mensagem: string;
+    valor?: number;
+  } | null;
 };
 
 export type TransferenciaPendente = {

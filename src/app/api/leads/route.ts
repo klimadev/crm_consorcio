@@ -5,6 +5,7 @@ import { esquemaCriarLead, mensagemErroValidacao } from "@/lib/validacoes";
 import { garantirEstagiosFixosEmpresa } from "@/lib/estagios-fixos";
 import { badRequest, forbidden } from "@/lib/api/http";
 import { handleRouteError } from "@/lib/api/route-errors";
+import { analisarLeads } from "@/lib/analise-inteligente/engine";
 
 
 export async function GET(request: NextRequest) {
@@ -108,7 +109,22 @@ export async function GET(request: NextRequest) {
     })
   );
 
-  return NextResponse.json({ estagios, leads: leadsComPdv, funcionarios, pdvs });
+  // Merge premium alerts into leads
+  const analise = await analisarLeads(auth.sessao.id_empresa).catch(() => null);
+  const alertaPorLead = new Map<string, (typeof analise)["alerts"][number]>();
+  if (analise?.premium) {
+    for (const alerta of analise.alerts) {
+      if (!alertaPorLead.has(alerta.leadId)) {
+        alertaPorLead.set(alerta.leadId, alerta);
+      }
+    }
+  }
+  const leadsComAlerta = leadsComPdv.map((lead) => ({
+    ...lead,
+    alerta_premium: alertaPorLead.get(lead.id) ?? null,
+  }));
+
+  return NextResponse.json({ estagios, leads: leadsComAlerta, funcionarios, pdvs });
 }
 
 export async function POST(request: NextRequest) {

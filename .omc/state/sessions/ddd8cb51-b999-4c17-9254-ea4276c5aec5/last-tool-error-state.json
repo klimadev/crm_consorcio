@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"git add .gitignore prisma/dev.db-shm prisma/dev.db-wal src/app/api/parcelas/ route.ts src/app/api/parcelas/[id]/route.ts src/lib/api/parcelas.ts src/modules/kanban/components/lead-details-...",
+  "error": "Exit code 128\nfatal: pathspec 'route.ts' did not match any files",
+  "timestamp": "2026-07-20T21:38:54.899Z",
+  "retry_count": 1
+}
