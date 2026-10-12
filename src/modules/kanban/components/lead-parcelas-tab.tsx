@@ -102,7 +102,7 @@ export function LeadParcelasTab({ leadId, perfil }: LeadParcelasTabProps) {
       ) : (
         <>
           <ParcelasResumo parcelas={vm.parcelas} />
-          
+
           {/* Botão para remover o plano */}
           <div className="flex justify-end">
             <Button
@@ -118,10 +118,10 @@ export function LeadParcelasTab({ leadId, perfil }: LeadParcelasTabProps) {
               ) : (
                 <Trash2 className="mr-2 h-4 w-4" />
               )}
-              {vm.parcelas.some((parcela) => parcela.status === "PAGA") ? "Remover Pendentes" : "Remover Plano"}
+              {vm.parcelas.some((parcela) => parcela.status === "PAGA") ? "Remover pendentes" : "Remover plano"}
             </Button>
           </div>
-          
+
           <div className="space-y-2">
             {vm.parcelas.map((parcela) => (
               <InstallmentCard
@@ -138,6 +138,7 @@ export function LeadParcelasTab({ leadId, perfil }: LeadParcelasTabProps) {
                   onExcluir={vm.excluirParcela}
                   onCancelar={setParcelaParaCancelar}
                   onReabrir={vm.reabrirParcela}
+                  onSalvarNota={vm.salvarObservacao}
                 />
               ))}
             </div>
@@ -158,12 +159,12 @@ export function LeadParcelasTab({ leadId, perfil }: LeadParcelasTabProps) {
         <Dialog open={showRemoveDialog} onOpenChange={(a) => !a && setShowRemoveDialog(false)}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
-                <TriangleAlert className="h-6 w-6 text-destructive" />
+              <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-warning/10">
+                <TriangleAlert className="h-6 w-6 text-warning" />
               </div>
-              <DialogTitle className="text-center">Remover Plano de Pagamento</DialogTitle>
+              <DialogTitle className="text-center">Remover plano de pagamento</DialogTitle>
               <DialogDescription className="text-center">
-                Este lead possui <strong>{vm.parcelas.length} parcelas</strong>, incluindo pagas.
+                O plano tem <strong>{vm.parcelas.length} parcelas</strong>, incluindo pagamentos já registrados.
               </DialogDescription>
             </DialogHeader>
 
@@ -176,23 +177,8 @@ export function LeadParcelasTab({ leadId, perfil }: LeadParcelasTabProps) {
               </div>
             ) : null}
 
+            {/* A ação segura vem primeiro; a destrutiva fica por último, em tom discreto. */}
             <DialogFooter className="flex-col gap-2 sm:flex-col">
-              <Button
-                type="button"
-                variant="destructive"
-                className="w-full"
-                disabled={vm.removendo}
-                onClick={async () => {
-                  await vm.removerPlano(true);
-                  setShowRemoveDialog(false);
-                }}
-              >
-                {vm.removendo ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Apagando...</>
-                ) : (
-                  <><Trash2 className="mr-2 h-4 w-4" /> Apagar plano inteiro (inclui pagas)</>
-                )}
-              </Button>
               <Button
                 type="button"
                 variant="outline"
@@ -203,7 +189,20 @@ export function LeadParcelasTab({ leadId, perfil }: LeadParcelasTabProps) {
                   setShowRemoveDialog(false);
                 }}
               >
-                Remover apenas pendentes
+                Manter pagas e remover pendentes
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+                disabled={vm.removendo}
+                onClick={async () => {
+                  await vm.removerPlano(true);
+                  setShowRemoveDialog(false);
+                }}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Excluir plano inteiro (inclui pagas)
               </Button>
               <Button
                 type="button"
@@ -220,12 +219,12 @@ export function LeadParcelasTab({ leadId, perfil }: LeadParcelasTabProps) {
       ) : (
         <ConfirmDialog
           aberto={showRemoveDialog}
-          titulo="Remover Plano de Pagamento"
+          titulo="Remover plano de pagamento"
           descricao={
             <p>
               Tem certeza que deseja remover o plano de <strong>{vm.parcelas.length} parcelas</strong>?
               <br />
-              <span className="text-destructive">Esta acao nao pode ser desfeita.</span>
+              <span className="text-destructive">Esta ação não pode ser desfeita.</span>
             </p>
           }
           erro={vm.error}
@@ -248,7 +247,7 @@ export function LeadParcelasTab({ leadId, perfil }: LeadParcelasTabProps) {
           <DialogHeader>
             <DialogTitle>Editar parcela</DialogTitle>
             <DialogDescription>
-              Corrija valor ou vencimento da parcela sem perder o historico do lead.
+              Corrija valor ou vencimento da parcela sem perder o histórico do lead.
             </DialogDescription>
           </DialogHeader>
 

@@ -40,7 +40,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   });
 
   if (!parcela) {
-    return notFound("Parcela nao encontrada.");
+    return notFound("Parcela não encontrada.");
   }
 
   const wherePermitido = await whereLeadsPorPerfil(auth.sessao);
@@ -50,15 +50,15 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   });
 
   if (!leadPermitido) {
-    return notFound("Parcela nao encontrada.");
+    return notFound("Parcela não encontrada.");
   }
 
   if (parcela.status === "PAGA" || parcela.data_pagamento) {
-    return badRequest("Parcela ja esta paga.");
+    return badRequest("Parcela já está paga.");
   }
 
   if (parcela.status === "CANCELADA" || parcela.status === "ABORTADA") {
-    return badRequest("Parcela cancelada ou abortada nao pode ser paga.");
+    return badRequest("Parcela cancelada ou encerrada não pode ser paga.");
   }
 
   const dataPagamento = new Date(validacao.data.data_pagamento);

@@ -8,11 +8,11 @@ export function badRequest(message: string) {
   return NextResponse.json({ erro: message }, { status: 400 });
 }
 
-export function forbidden(message = "Sem permissao.") {
+export function forbidden(message = "Sem permissão.") {
   return NextResponse.json({ erro: message }, { status: 403 });
 }
 
-export function notFound(message = "Nao encontrado.") {
+export function notFound(message = "Não encontrado.") {
   return NextResponse.json({ erro: message }, { status: 404 });
 }
 

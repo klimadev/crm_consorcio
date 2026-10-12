@@ -13,7 +13,7 @@ import {
 } from "@/lib/api/parcelas";
 import { computarStatusParcelas } from "@/lib/financeiro/parcelas";
 import type { ModoCancelamento } from "@/modules/parcelas/components/cancelar-parcela-dialog";
-import { aplicaMascaraMoedaBr, converteMoedaBrParaNumero } from "@/lib/utils";
+import { aplicaMascaraMoedaBr, converteMoedaBrParaNumero, formataMoeda } from "@/lib/utils";
 
 type UseLeadParcelasParams = {
   leadId?: string;
@@ -106,9 +106,36 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
     await carregarParcelas();
   }, [addToast, carregarParcelas, dataPrimeiroVencimento, leadId, quantidadeParcelas, valorTotal]);
 
+  // O backend já suporta reverter pagamento (data_pagamento: null volta a
+  // parcela para cobrança), então o toast de pagamento carrega um Desfazer.
+  const desfazerPagamento = useCallback(
+    async (idParcela: string) => {
+      const resultado = await apiAtualizarParcela(idParcela, { data_pagamento: null });
+
+      if (!resultado.ok) {
+        setError(resultado.erro);
+        addToast({ type: "error", title: "Erro ao desfazer pagamento", description: resultado.erro });
+        return;
+      }
+
+      setParcelas((atual) =>
+        computarStatusParcelas(
+          atual.map((parcela) => (parcela.id === idParcela ? resultado.dados.parcela : parcela)),
+        ),
+      );
+      addToast({
+        type: "info",
+        title: "Pagamento desfeito",
+        description: "A parcela voltou para a cobrança.",
+      });
+    },
+    [addToast],
+  );
+
   const pagarParcela = useCallback(
     async (idParcela: string, dataPagamento?: string) => {
       const dataEfetiva = dataPagamento ?? new Date().toISOString();
+      const parcelaAntiga = parcelas.find((parcela) => parcela.id === idParcela) ?? null;
       setPagando(idParcela);
       setError(null);
 
@@ -125,11 +152,24 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
       if (!resultado.ok) {
         setParcelas(backup);
         setError(resultado.erro);
+        addToast({ type: "error", title: "Erro ao registrar pagamento", description: resultado.erro });
+        setPagando(null);
+        return;
       }
+
+      addToast({
+        type: "success",
+        title: `Pagamento registrado${parcelaAntiga ? ` · ${formataMoeda(parcelaAntiga.valor)}` : ""}`,
+        description: parcelaAntiga
+          ? `Parcela ${parcelaAntiga.numero_parcela}/${parcelaAntiga.quantidade_total}`
+          : undefined,
+        action: { label: "Desfazer", run: () => void desfazerPagamento(idParcela) },
+        duration: 8000,
+      });
 
       setPagando(null);
     },
-    [parcelas],
+    [addToast, desfazerPagamento, parcelas],
   );
 
   const removerPlano = useCallback(async (forcar = false) => {
@@ -151,7 +191,7 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
       description: forcar
         ? `${resultado.dados.excluidas} parcelas foram removidas (incluindo pagas).`
         : resultado.dados.preservadas_pagas > 0
-          ? `${resultado.dados.excluidas} parcelas pendentes foram removidas e ${resultado.dados.preservadas_pagas} pagamento(s) ja registrado(s) foram preservados.`
+          ? `${resultado.dados.excluidas} parcelas pendentes foram removidas e ${resultado.dados.preservadas_pagas} pagamento(s) já registrado(s) foram preservados.`
           : `${resultado.dados.excluidas} parcelas foram removidas.`,
     });
 
@@ -166,14 +206,14 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
 
       const resultado = await apiExcluirParcela(idParcela);
       if (!resultado.ok) {
-        if (resultado.erro && resultado.erro !== "Parcela nao encontrada.") {
+        if (resultado.erro && resultado.erro !== "Parcela não encontrada.") {
           setError(resultado.erro);
         }
         setDeletandoParcela(null);
         return;
       }
 
-      addToast({ type: "success", title: "Parcela excluida", description: "A parcela foi removida com sucesso." });
+      addToast({ type: "success", title: "Parcela excluída", description: "A parcela foi removida com sucesso." });
       setDeletandoParcela(null);
       await carregarParcelas();
     },
@@ -208,8 +248,8 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
         title: "Parcela cancelada",
         description:
           json.abortadas && json.abortadas > 0
-            ? `A parcela foi cancelada e ${json.abortadas} parcela(s) futura(s) foram abortadas.`
-            : "A parcela foi marcada como cancelada.",
+            ? `A parcela foi cancelada e ${json.abortadas} parcela(s) futura(s) foram encerradas.`
+            : "A parcela foi cancelada.",
       });
 
       setCancelandoParcela(null);
@@ -240,7 +280,7 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
       addToast({
         type: "success",
         title: "Parcela reaberta",
-        description: "A parcela voltou para o fluxo de cobranca.",
+        description: "A parcela voltou para o fluxo de cobrança.",
       });
 
       setReabrindoParcela(null);
@@ -278,6 +318,24 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
     [addToast],
   );
 
+  // A nota de cobrança ("cliente pediu prazo até sexta") viaja com a parcela:
+  // PATCH /api/parcelas/[id] com observacao_cobranca.
+  const salvarObservacao = useCallback(
+    async (idParcela: string, observacao: string | null) => {
+      const resultado = await apiAtualizarParcela(idParcela, { observacao_cobranca: observacao });
+
+      if (!resultado.ok) {
+        setError(resultado.erro);
+        addToast({ type: "error", title: "Erro ao salvar observação", description: resultado.erro });
+        return false;
+      }
+
+      setParcelas((atual) => atual.map((parcela) => (parcela.id === idParcela ? resultado.dados.parcela : parcela)));
+      return true;
+    },
+    [addToast],
+  );
+
   const limparFormulario = useCallback(() => {
     setValorTotal("");
     setQuantidadeParcelas("");
@@ -309,6 +367,7 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
     cancelandoParcela,
     reabrirParcela,
     reabrindoParcela,
+    salvarObservacao,
     limparFormulario,
   };
 }

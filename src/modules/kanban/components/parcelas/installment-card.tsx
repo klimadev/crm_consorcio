@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formataData, formataMoeda, cn } from "@/lib/utils";
+import { ROTULOS_STATUS } from "@/lib/financeiro/vocabulario";
+import { NotaCobranca } from "@/modules/parcelas/components/nota-cobranca";
 import type { Parcela } from "@/lib/api/parcelas";
 
 type InstallmentCardProps = {
@@ -20,26 +22,8 @@ type InstallmentCardProps = {
   onExcluir: (idParcela: string) => void;
   onCancelar: (parcela: Parcela) => void;
   onReabrir: (idParcela: string) => void;
+  onSalvarNota: (idParcela: string, observacao: string | null) => Promise<boolean>;
 };
-
-function StatusBadgeParcela({ status }: { status: Parcela["status"] }) {
-  if (status === "ABORTADA") {
-    return (
-      <Badge variant="default" className="text-foreground-muted line-through">
-        Abortada
-      </Badge>
-    );
-  }
-
-  const config = {
-    AGUARDANDO: { variant: "info" as const, label: "Aguardando" },
-    ATRASADA: { variant: "error" as const, label: "Atrasada" },
-    PAGA: { variant: "success" as const, label: "Paga" },
-    CANCELADA: { variant: "warning" as const, label: "Cancelada" },
-  }[status];
-
-  return <Badge variant={config.variant}>{config.label}</Badge>;
-}
 
 export function InstallmentCard({
   parcela,
@@ -54,11 +38,13 @@ export function InstallmentCard({
   onExcluir,
   onCancelar,
   onReabrir,
+  onSalvarNota,
 }: InstallmentCardProps) {
   const [aberto, setAberto] = useState(false);
   const [dataPagamento, setDataPagamento] = useState(new Date().toISOString().slice(0, 10));
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
+  const statusVisual = ROTULOS_STATUS[parcela.status];
   const paga = parcela.status === "PAGA";
   const desativada = parcela.status === "CANCELADA" || parcela.status === "ABORTADA";
   const emAberto = parcela.status === "AGUARDANDO" || parcela.status === "ATRASADA";
@@ -86,9 +72,20 @@ export function InstallmentCard({
           <p className={cn("text-sm font-bold text-foreground", desativada && "text-foreground-muted line-through")}>
             {formataMoeda(parcela.valor)}
           </p>
-          <StatusBadgeParcela status={parcela.status} />
+          <Badge
+            variant={statusVisual.tom}
+            className={parcela.status === "ABORTADA" ? "line-through" : undefined}
+          >
+            {statusVisual.rotulo}
+          </Badge>
         </div>
       </div>
+
+      {desativada && parcela.motivo_cancelamento ? (
+        <p className="mt-2 rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-xs text-foreground-muted">
+          Motivo: {parcela.motivo_cancelamento}
+        </p>
+      ) : null}
 
       <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
         {!desativada ? (
@@ -119,7 +116,7 @@ export function InstallmentCard({
             ) : (
               <Ban className="mr-1 h-4 w-4" />
             )}
-            Cancelar Parcela...
+            Cancelar parcela…
           </Button>
         ) : null}
 
@@ -203,18 +200,24 @@ export function InstallmentCard({
               disabled={ocupada}
             >
               {pagando ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1 h-4 w-4" />}
-              Marcar como Pago
+              Marcar como pago
             </Button>
           )
         ) : null}
       </div>
+
+      {emAberto ? (
+        <div className="mt-3">
+          <NotaCobranca parcela={parcela} podeEditar onSalvar={(observacao) => onSalvarNota(parcela.id, observacao)} />
+        </div>
+      ) : null}
 
       <Dialog open={deleteDialogOpen} onOpenChange={(abertoDialog) => !abertoDialog && setDeleteDialogOpen(false)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Excluir parcela</DialogTitle>
             <DialogDescription>
-              Tem certeza que deseja excluir esta parcela? Esta acao nao pode ser desfeita.
+              Tem certeza que deseja excluir esta parcela? Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

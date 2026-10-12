@@ -514,22 +514,22 @@ export const esquemaAtualizarPendencia = z.object({
 });
 
 export const esquemaGerarParcelas = z.object({
-  id_lead: z.string().trim().min(1, "Lead obrigatorio."),
+  id_lead: z.string().trim().min(1, "Lead obrigatório."),
   valor_parcela: z.number().positive("Valor da parcela deve ser maior que zero."),
-  quantidade_parcelas: z.number().int().min(1, "Quantidade minima de 1 parcela.").max(360, "Quantidade maxima de 360 parcelas."),
+  quantidade_parcelas: z.number().int().min(1, "Quantidade mínima de 1 parcela.").max(360, "Quantidade máxima de 360 parcelas."),
   data_primeiro_vencimento: z
     .string()
     .trim()
-    .min(1, "Data do primeiro vencimento obrigatoria.")
-    .refine((valor) => !Number.isNaN(new Date(valor).getTime()), "Data do primeiro vencimento invalida."),
+    .min(1, "Data do primeiro vencimento obrigatória.")
+    .refine((valor) => !Number.isNaN(new Date(valor).getTime()), "Data do primeiro vencimento inválida."),
 });
 
 export const esquemaPagarParcela = z.object({
   data_pagamento: z
     .string()
     .trim()
-    .min(1, "Data de pagamento obrigatoria.")
-    .refine((valor) => !Number.isNaN(new Date(valor).getTime()), "Data de pagamento invalida."),
+    .min(1, "Data de pagamento obrigatória.")
+    .refine((valor) => !Number.isNaN(new Date(valor).getTime()), "Data de pagamento inválida."),
 });
 
 export const esquemaAtualizarParcela = z
@@ -538,17 +538,20 @@ export const esquemaAtualizarParcela = z
     data_vencimento: z
       .string()
       .trim()
-      .refine((valor) => !valor || !Number.isNaN(new Date(valor).getTime()), "Data de vencimento invalida.")
+      .refine((valor) => !valor || !Number.isNaN(new Date(valor).getTime()), "Data de vencimento inválida.")
       .optional(),
     data_pagamento: z
       .union([
         z
           .string()
           .trim()
-          .min(1, "Data de pagamento obrigatoria.")
-          .refine((valor) => !Number.isNaN(new Date(valor).getTime()), "Data de pagamento invalida."),
+          .min(1, "Data de pagamento obrigatória.")
+          .refine((valor) => !Number.isNaN(new Date(valor).getTime()), "Data de pagamento inválida."),
         z.null(),
       ])
+      .optional(),
+    observacao_cobranca: z
+      .union([z.string().trim().max(500, "Observação muito longa."), z.null()])
       .optional(),
     status: z.enum(["AGUARDANDO", "ATRASADA", "PAGA"]).optional(),
   })
@@ -557,7 +560,8 @@ export const esquemaAtualizarParcela = z
       dados.valor !== undefined ||
       dados.data_vencimento !== undefined ||
       dados.data_pagamento !== undefined ||
-      dados.status !== undefined,
+      dados.status !== undefined ||
+      dados.observacao_cobranca !== undefined,
     {
       message: "Informe ao menos um campo para atualizar.",
     },
@@ -579,7 +583,7 @@ export const esquemaAtualizarParcela = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["data_pagamento"],
-        message: "Parcela nao paga nao pode manter data de pagamento.",
+        message: "Parcela não paga não pode manter data de pagamento.",
       });
     }
   });
@@ -593,16 +597,11 @@ export const esquemaCancelarParcela = z.object({
 export const esquemaReabrirParcela = z.object({}).strict();
 
 export const esquemaListarRecebimentos = z.object({
-  aba: z.enum(["todos", "recebidos", "a_vencer", "atrasados", "canceladas"]).default("todos"),
   busca: z.string().trim().optional(),
   data_inicial: z.string().trim().optional(),
   data_final: z.string().trim().optional(),
   id_pdv: z.string().trim().optional(),
   id_funcionario: z.string().trim().optional(),
-  ordenar: z.enum(["vencimento", "pagamento", "valor"]).default("vencimento"),
-  direcao: z.enum(["asc", "desc"]).default("asc"),
-  pagina: z.coerce.number().int().min(1).default(1),
-  limite: z.coerce.number().int().min(1).max(100).default(20),
 });
 
 export const CARGOS_EQUIPE = ["COLABORADOR", "GERENTE", "ADMINISTRADOR"] as const;
@@ -799,7 +798,7 @@ export function normalizarBuscaFuncionarios(valor?: string) {
 }
 
 export function mensagemErroValidacao(erro: z.ZodError) {
-  return erro.issues[0]?.message ?? "Dados invalidos.";
+  return erro.issues[0]?.message ?? "Dados inválidos.";
 }
 
 export const esquemaWhatsappChatMessagesQuery = z.object({

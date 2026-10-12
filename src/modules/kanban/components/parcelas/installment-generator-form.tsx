@@ -84,13 +84,14 @@ export function InstallmentGeneratorForm({
 
   return (
     <div className="rounded-2xl border border-border bg-background-surface p-4 shadow-sm">
-      <h3 className="text-sm font-semibold text-foreground">Gerar Plano de Pagamento</h3>
-      <p className="mt-1 text-xs text-foreground-muted">Defina o valor total, quantidade de parcelas e primeira data de vencimento.</p>
+      <h3 className="text-sm font-semibold text-foreground">Gerar plano de pagamento</h3>
+      <p className="mt-1 text-xs text-foreground-muted">Defina o valor total, a quantidade de parcelas e a primeira data de vencimento.</p>
 
       <div className="mt-4 space-y-3">
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-foreground-muted">Valor Total</label>
+          <label htmlFor="gerador-valor-total" className="text-xs font-medium text-foreground-muted">Valor total</label>
           <Input
+            id="gerador-valor-total"
             value={valorTotal}
             onChange={(event) => onValorTotalChange(event.target.value)}
             placeholder="0,00"
@@ -100,8 +101,9 @@ export function InstallmentGeneratorForm({
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-foreground-muted">Quantidade de Parcelas</label>
+          <label htmlFor="gerador-quantidade-parcelas" className="text-xs font-medium text-foreground-muted">Quantidade de parcelas</label>
           <Input
+            id="gerador-quantidade-parcelas"
             type="number"
             min={1}
             max={360}
@@ -122,8 +124,9 @@ export function InstallmentGeneratorForm({
         )}
 
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-foreground-muted">Data do 1° Vencimento</label>
           <DatePickerWithWarning
+            id="gerador-data-primeiro-vencimento"
+            label="Data do 1º vencimento"
             value={dataPrimeiroVencimento}
             onChange={onDataPrimeiroVencimentoChange}
             warningMessage="Atenção: data no passado. Parcelas serão geradas com vencimentos retroativos."
@@ -146,7 +149,7 @@ export function InstallmentGeneratorForm({
               Gerando plano...
             </span>
           ) : (
-            "Gerar Plano de Pagamento"
+            "Gerar plano de pagamento"
           )}
         </Button>
       </div>

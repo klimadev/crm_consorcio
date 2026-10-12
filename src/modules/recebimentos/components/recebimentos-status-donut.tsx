@@ -34,14 +34,14 @@ export function RecebimentosStatusDonut({ distribuicao, churn }: RecebimentosSta
   return (
     <Card className="rounded-2xl border-border bg-background-surface shadow-sm">
       <CardHeader>
-        <CardTitle className="text-base font-semibold text-foreground">Distribuicao por status</CardTitle>
-        <p className="text-sm text-foreground-muted">Veja rapidamente onde estao os gargalos, a tracao dos recebimentos e a perda por churn.</p>
+        <CardTitle className="text-base font-semibold text-foreground">Distribuição por status</CardTitle>
+        <p className="text-sm text-foreground-muted">Veja onde estão os gargalos da cobrança e a perda por cancelamento.</p>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         <div className="flex flex-col gap-6 md:flex-row md:items-center">
           <div className="relative mx-auto flex h-44 w-44 items-center justify-center">
             <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
-              <circle cx="50" cy="50" r="36" fill="none" stroke="#e2e8f0" strokeWidth="12" />
+              <circle cx="50" cy="50" r="36" fill="none" stroke="var(--border)" strokeWidth="12" />
               {fatias.map((item) => (
                 <circle
                   key={item.status}
@@ -81,32 +81,32 @@ export function RecebimentosStatusDonut({ distribuicao, churn }: RecebimentosSta
           </div>
         </div>
 
-        <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-background-surface via-background-elevated to-amber-500/10 p-4">
+        <div className="rounded-2xl border border-warning/25 bg-gradient-to-br from-background-surface via-background-elevated to-warning/10 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground-muted">Perda por churn</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground-muted">Perda por cancelamento</p>
               <p className="mt-1 text-2xl font-bold tracking-tight text-foreground">{formataMoeda(churn.totalPerdidoChurn)}</p>
             </div>
             <div className="flex gap-2">
-              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-600">
-                {churn.quantidadePerdidas} parcelas perdidas
+              <span className="rounded-full border border-warning/30 bg-warning/10 px-3 py-1 text-xs font-semibold text-warning">
+                {churn.quantidadePerdidas} parcelas fora da cobrança
               </span>
               <span
                 className={cn(
                   "rounded-full border px-3 py-1 text-xs font-semibold",
                   percentualRetencao >= 90
                     ? "border-success/25 bg-success/10 text-success"
-                    : "border-amber-500/30 bg-amber-500/10 text-amber-600",
+                    : "border-warning/30 bg-warning/10 text-warning",
                 )}
               >
-                Retencao {percentualRetencao.toFixed(1)}%
+                Retenção {percentualRetencao.toFixed(1)}%
               </span>
             </div>
           </div>
 
           {churn.churnPorParcela.length > 0 ? (
             <div className="mt-4">
-              <p className="mb-2 text-xs font-medium text-foreground-muted">Canceladas por numero da parcela</p>
+              <p className="mb-2 text-xs font-medium text-foreground-muted">Canceladas por parcela</p>
               <div className="h-32 w-full">
                 <ResponsiveContainer width="100%" height={128}>
                   <BarChart data={churn.churnPorParcela}>
@@ -115,23 +115,23 @@ export function RecebimentosStatusDonut({ distribuicao, churn }: RecebimentosSta
                       tickLine={false}
                       axisLine={false}
                       tickFormatter={(valor: number) => `#${valor}`}
-                      tick={{ fontSize: 11, fill: "hsl(var(--foreground-muted))" }}
+                      tick={{ fontSize: 11, fill: "var(--foreground-muted)" }}
                     />
-                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={24} tick={{ fontSize: 11, fill: "hsl(var(--foreground-muted))" }} />
+                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={24} tick={{ fontSize: 11, fill: "var(--foreground-muted)" }} />
                     <Tooltip
-                      cursor={{ fill: "rgba(245, 158, 11, 0.08)" }}
+                      cursor={{ fill: "rgb(245 184 77 / 0.08)" }}
                       contentStyle={{
-                        background: "hsl(var(--background-elevated))",
-                        border: "1px solid hsl(var(--border))",
+                        background: "var(--background-elevated)",
+                        border: "1px solid var(--border)",
                         borderRadius: "16px",
                         boxShadow: "0 20px 45px rgba(0, 0, 0, 0.35)",
                       }}
                       labelFormatter={(valor) => `Parcela #${valor}`}
-                      formatter={(valor, nome) => (nome === "quantidade" ? [`${valor} canceladas`, "Churn"] : [formataMoeda(Number(valor)), "Valor perdido"])}
+                      formatter={(valor, nome) => (nome === "quantidade" ? [`${valor} canceladas`, "Cancelamentos"] : [formataMoeda(Number(valor)), "Valor perdido"])}
                     />
                     <Bar dataKey="quantidade" name="quantidade" radius={[6, 6, 0, 0]}>
                       {churn.churnPorParcela.map((item) => (
-                        <Cell key={item.numero_parcela} fill="#f59e0b" />
+                        <Cell key={item.numero_parcela} fill="var(--warning)" />
                       ))}
                     </Bar>
                   </BarChart>
@@ -141,8 +141,8 @@ export function RecebimentosStatusDonut({ distribuicao, churn }: RecebimentosSta
           ) : (
             <p className="mt-4 text-xs text-foreground-muted">
               {temChurn
-                ? "Nao ha cancelamentos mapeados por numero de parcela neste recorte."
-                : "Nenhuma parcela cancelada ou abortada neste recorte — retencao em alta."}
+                ? "Não há cancelamentos por parcela neste recorte."
+                : "Nenhuma parcela cancelada ou encerrada neste recorte. Retenção em alta."}
             </p>
           )}
         </div>

@@ -6,28 +6,22 @@ type ResultadoApi<T> =
   | { ok: true; dados: T }
   | { ok: false; erro: string };
 
-export type AbaRecebimentos = "todos" | "recebidos" | "a_vencer" | "atrasados" | "canceladas";
-export type OrdenacaoRecebimentos = "vencimento" | "pagamento" | "valor";
-export type DirecaoOrdenacao = "asc" | "desc";
-
-export type RecebimentoItem = {
-  id: string;
-  numero_parcela: number;
-  quantidade_total: number;
-  valor: number;
-  status: "AGUARDANDO" | "ATRASADA" | "PAGA" | "CANCELADA" | "ABORTADA";
-  data_vencimento: string;
-  data_pagamento: string | null;
-  dias_em_atraso: number;
-  lead: {
-    id: string;
-    nome: string;
-    telefone: string;
-    valor_consorcio: number;
-    estagio: string;
-  };
-  pdv: { id: string; nome: string } | null;
-  responsavel: { id: string; nome: string };
+// Unidade de trabalho da carteira: um cliente, uma linha, uma verdade.
+// Estado derivado das parcelas dele dentro do filtro atual.
+export type ClienteCarteira = {
+  id_lead: string;
+  nome: string;
+  telefone: string;
+  estado: "em_atraso" | "em_dia" | "pago_no_periodo";
+  valorEmRisco: number;
+  quantidadeAtrasadas: number;
+  quantidadePendentes: number;
+  valorPendente: number;
+  proximoVencimento: string | null;
+  primeiroAtraso: string | null;
+  ultimoPagamento: string | null;
+  pagasPlano: number;
+  totalPlano: number;
 };
 
 export type ChurnPorParcela = {
@@ -67,43 +61,26 @@ export type RecebimentosResposta = {
     recebimentosPorPeriodo: Array<{ label: string; recebido: number; previsto: number }>;
     distribuicaoStatus: DistribuicaoStatusItem[];
   };
-  lista: RecebimentoItem[];
-  contadoresAbas: Record<AbaRecebimentos, number>;
+  carteira: ClienteCarteira[];
   filtrosAplicados: {
-    aba: AbaRecebimentos;
     busca?: string;
     data_inicial?: string;
     data_final?: string;
     id_pdv?: string;
     id_funcionario?: string;
-    ordenar: OrdenacaoRecebimentos;
-    direcao: DirecaoOrdenacao;
-    pagina: number;
-    limite: number;
   };
   opcoes: {
     pdvs: Array<{ id: string; nome: string }>;
     responsaveis: Array<{ id: string; nome: string }>;
   };
-  paginacao: {
-    pagina: number;
-    limite: number;
-    total: number;
-    totalPaginas: number;
-  };
 };
 
 export type FiltrosRecebimentos = {
-  aba?: AbaRecebimentos;
   busca?: string;
   data_inicial?: string;
   data_final?: string;
   id_pdv?: string;
   id_funcionario?: string;
-  ordenar?: OrdenacaoRecebimentos;
-  direcao?: DirecaoOrdenacao;
-  pagina?: number;
-  limite?: number;
 };
 
 async function lerJsonSeguro<T>(resposta: Response): Promise<T> {

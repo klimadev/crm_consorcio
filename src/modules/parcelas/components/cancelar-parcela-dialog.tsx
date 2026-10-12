@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { formataMoeda } from "@/lib/utils";
+import { ROTULOS_MODO_CANCELAMENTO, ROTULOS_STATUS } from "@/lib/financeiro/vocabulario";
 import type { Parcela } from "@/lib/api/parcelas";
 
 export type ModoCancelamento = "PONTUAL" | "SUBSEQUENTES";
@@ -28,7 +29,7 @@ type CancelarParcelaDialogProps = {
   onConfirmar: (modo: ModoCancelamento, motivo?: string) => Promise<boolean>;
 };
 
-function calcularParcelasQueSeraoAbortadas(parcela: Parcela, parcelasDoLead: Parcela[]) {
+function calcularParcelasQueSeraoEncerradas(parcela: Parcela, parcelasDoLead: Parcela[]) {
   return parcelasDoLead
     .filter(
       (item) =>
@@ -46,7 +47,7 @@ function vibrarSucesso() {
       navigator.vibrate([15, 50, 15]);
     }
   } catch {
-    // Vibracao e um refinamento opcional; falhas sao ignoradas.
+    // Vibração é um refinamento opcional; falhas são ignoradas.
   }
 }
 
@@ -70,8 +71,8 @@ export function CancelarParcelaDialog({
   }, [aberto, parcela?.id]);
 
   const numeroK = parcela?.numero_parcela ?? 0;
-  const subsequentes = parcela ? calcularParcelasQueSeraoAbortadas(parcela, parcelasDoLead) : [];
-  const totalAbortado = subsequentes.reduce((acc, item) => acc + item.valor, 0);
+  const subsequentes = parcela ? calcularParcelasQueSeraoEncerradas(parcela, parcelasDoLead) : [];
+  const totalEncerrado = subsequentes.reduce((acc, item) => acc + item.valor, 0);
 
   const confirmar = async () => {
     if (!parcela || cancelando) return;
@@ -89,9 +90,9 @@ export function CancelarParcelaDialog({
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-warning/10">
             <TriangleAlert className="h-6 w-6 text-warning" />
           </div>
-          <DialogTitle className="text-center">Cancelar Parcela</DialogTitle>
+          <DialogTitle className="text-center">Cancelar parcela</DialogTitle>
           <DialogDescription className="text-center">
-            Escolha o alcance do cancelamento da Parcela #{numeroK} de {parcela?.quantidade_total ?? 0}.
+            Escolha o que fazer com a parcela #{numeroK} de {parcela?.quantidade_total ?? 0}.
           </DialogDescription>
         </DialogHeader>
 
@@ -99,18 +100,18 @@ export function CancelarParcelaDialog({
           <RadioGroup value={modo} onValueChange={(valor) => setModo(valor as ModoCancelamento)}>
             <RadioGroupItem value="PONTUAL" disabled={cancelando} textoAcessivel="Cancelar apenas esta parcela">
               <span className="block text-sm font-medium text-foreground">
-                Cancelar apenas a Parcela #{numeroK}
+                {ROTULOS_MODO_CANCELAMENTO.PONTUAL.titulo}
               </span>
               <span className="mt-0.5 block text-xs text-foreground-muted">
-                As demais parcelas do plano permanecem no fluxo de cobranca.
+                {ROTULOS_MODO_CANCELAMENTO.PONTUAL.descricao}
               </span>
             </RadioGroupItem>
-            <RadioGroupItem value="SUBSEQUENTES" disabled={cancelando} textoAcessivel="Cancelar o plano a partir desta parcela abortando futuras">
+            <RadioGroupItem value="SUBSEQUENTES" disabled={cancelando} textoAcessivel="Cancelar esta parcela e encerrar as futuras">
               <span className="block text-sm font-medium text-foreground">
-                Cancelar o plano a partir da Parcela #{numeroK} (abortar futuras)
+                {ROTULOS_MODO_CANCELAMENTO.SUBSEQUENTES.titulo}
               </span>
               <span className="mt-0.5 block text-xs text-foreground-muted">
-                As parcelas seguintes em aberto serao abortadas e saem do fluxo futuro.
+                {ROTULOS_MODO_CANCELAMENTO.SUBSEQUENTES.descricao}
               </span>
             </RadioGroupItem>
           </RadioGroup>
@@ -119,17 +120,18 @@ export function CancelarParcelaDialog({
             <div className="rounded-xl border border-warning/25 bg-warning/10 p-3 text-sm text-foreground">
               {subsequentes.length > 0 ? (
                 <p>
-                  A Parcela <strong>#{numeroK}</strong> sera marcada como <strong>Cancelada</strong>. As Parcelas{" "}
+                  A parcela <strong>#{numeroK}</strong> será <strong>{ROTULOS_STATUS.CANCELADA.rotulo}</strong>. As
+                  parcelas{" "}
                   <strong>
-                    #{subsequentes[0].numero_parcela}..#{subsequentes[subsequentes.length - 1].numero_parcela}
+                    #{subsequentes[0].numero_parcela} a #{subsequentes[subsequentes.length - 1].numero_parcela}
                   </strong>{" "}
-                  serao <strong>Abortadas</strong> (total de <strong>{formataMoeda(totalAbortado)}</strong> fora do
-                  fluxo futuro).
+                  serão <strong>{ROTULOS_STATUS.ABORTADA.rotulo}</strong> (total de{" "}
+                  <strong>{formataMoeda(totalEncerrado)}</strong> fora da cobrança futura).
                 </p>
               ) : (
                 <p>
-                  A Parcela <strong>#{numeroK}</strong> sera marcada como <strong>Cancelada</strong>. Nao ha parcelas
-                  futuras em aberto para abortar.
+                  A parcela <strong>#{numeroK}</strong> será <strong>{ROTULOS_STATUS.CANCELADA.rotulo}</strong>. Não há
+                  parcelas futuras em aberto para encerrar.
                 </p>
               )}
             </div>
@@ -144,7 +146,7 @@ export function CancelarParcelaDialog({
               value={motivo}
               onChange={(evento) => setMotivo(evento.target.value)}
               maxLength={500}
-              placeholder="Ex.: cliente desistiu do consorcio nesta parcela."
+              placeholder="Ex.: cliente desistiu do consórcio nesta parcela."
               disabled={cancelando}
             />
           </div>

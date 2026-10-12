@@ -15,7 +15,7 @@ export async function exigirSessao(request: NextRequest): Promise<
   if (!sessao) {
     return {
       sessao: null,
-      erro: NextResponse.json({ erro: "Nao autenticado." }, { status: 401 }),
+      erro: NextResponse.json({ erro: "Não autenticado." }, { status: 401 }),
     };
   }
 
@@ -182,7 +182,7 @@ export function podeVerAuditoriaEquipe(sessao: SessaoToken) {
 }
 
 export function respostaSemPermissao() {
-  return NextResponse.json({ erro: "Sem permissao." }, { status: 403 });
+  return NextResponse.json({ erro: "Sem permissão." }, { status: 403 });
 }
 
 export async function whereLeadsPorPerfil(sessao: SessaoToken) {

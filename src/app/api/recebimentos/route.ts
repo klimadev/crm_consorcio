@@ -4,8 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { ok } from "@/lib/api/http";
 import { validateQuery } from "@/lib/api/route-validation";
 import { withPerfis } from "@/lib/api/route-guards";
-import { calcularStatusParcela, inicioDoDia } from "@/lib/financeiro/parcelas";
-import type { StatusParcela } from "@/lib/api/parcelas";
+import { inicioDoDia } from "@/lib/financeiro/parcelas";
+import { montarCarteira } from "@/lib/financeiro/carteira";
 import { esquemaListarRecebimentos } from "@/lib/validacoes";
 
 const DIA_MS = 24 * 60 * 60 * 1000;
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     const dataInicial = filtros.data_inicial ? new Date(filtros.data_inicial) : null;
     const dataFinal = filtros.data_final ? new Date(filtros.data_final) : null;
 
-    // Filtros comuns a todas as consultas: empresa + periodo (vencimento OU pagamento) + responsavel/pdv.
+    // Filtros comuns a todas as consultas: empresa + período (vencimento OU pagamento) + responsável/pdv.
     const limitesPeriodo = {
       ...(dataInicial ? { gte: dataInicial } : {}),
       ...(dataFinal ? { lte: dataFinal } : {}),
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
         : {}),
     };
 
-    // Busca textual empurrada para o banco (LIKE do SQLite ja e case-insensitive para ASCII).
+    // Busca textual empurrada para o banco (LIKE do SQLite já é case-insensitive para ASCII).
     const whereBusca: Prisma.ParcelaWhereInput = busca
       ? {
           AND: [
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
         }
       : whereBase;
 
-    // Status derivado replicado em SQL (mesma semantica de calcularStatusParcela):
+    // Status derivado replicado em SQL (mesma semântica de calcularStatusParcela):
     // PAGA = status "PAGA" OU pagamento preenchido (fora de canceladas/abortadas);
     // AGUARDANDO/ATRASADA = status ativo sem pagamento, separado pelo vencimento.
     const condPaga: Prisma.ParcelaWhereInput = {
@@ -111,42 +111,13 @@ export async function GET(request: NextRequest) {
     const condAbortadas: Prisma.ParcelaWhereInput = { status: "ABORTADA" };
     const condPerdidas: Prisma.ParcelaWhereInput = { status: { in: [...STATUS_PERDIDOS] } };
 
-    const condAba: Prisma.ParcelaWhereInput | undefined =
-      filtros.aba === "recebidos"
-        ? condPaga
-        : filtros.aba === "a_vencer"
-          ? condAguardando
-          : filtros.aba === "atrasados"
-            ? condAtrasada
-            : filtros.aba === "canceladas"
-              ? condPerdidas
-              : undefined;
-
-    const whereLista: Prisma.ParcelaWhereInput = condAba
-      ? { AND: [whereBusca, condAba] }
-      : whereBusca;
-
-    // Ordenacao preserva os casos especiais da versao anterior: atrasados forca vencimento asc
-    // e recebidos forca pagamento desc quando ordenando por vencimento. "id" desempata para
-    // paginacao deterministica.
-    const orderBy: Prisma.ParcelaOrderByWithRelationInput[] =
-      filtros.ordenar === "valor"
-        ? [{ valor: filtros.direcao }, { id: filtros.direcao }]
-        : filtros.ordenar === "pagamento"
-          ? [{ data_pagamento: filtros.direcao }, { id: filtros.direcao }]
-          : filtros.aba === "atrasados"
-            ? [{ data_vencimento: "asc" }, { id: "asc" }]
-            : filtros.aba === "recebidos"
-              ? [{ data_pagamento: "desc" }, { id: "desc" }]
-              : [{ data_vencimento: filtros.direcao }, { id: filtros.direcao }];
-
     const periodoComparativo = obterPeriodoComparativo(filtros.data_inicial, filtros.data_final);
 
     const whereRecebidoPeriodo: Prisma.ParcelaWhereInput = {
       AND: [whereBusca, { data_pagamento: { not: null, ...limitesPeriodo } }],
     };
 
-    // O periodo anterior compara contra o conjunto sem filtro de busca, como na versao anterior.
+    // O período anterior compara contra o conjunto sem filtro de busca, como na versão anterior.
     const whereRecebidoPeriodoAnterior: Prisma.ParcelaWhereInput | null = periodoComparativo
       ? {
           AND: [
@@ -161,15 +132,13 @@ export async function GET(request: NextRequest) {
         }
       : null;
 
-    // Vencendo nos proximos 7 dias = status AGUARDANDO com vencimento entre hoje e hoje+7.
+    // Vencendo nos próximos 7 dias = status AGUARDANDO com vencimento entre hoje e hoje+7.
     const limiteVencimento7Dias = new Date(hoje.getTime() + 8 * DIA_MS);
     const whereVencendo7Dias: Prisma.ParcelaWhereInput = {
       AND: [whereBusca, condAguardando, { data_vencimento: { lt: limiteVencimento7Dias } }],
     };
 
     const [
-      listaParcelas,
-      totalLista,
       aggPaga,
       aggAguardando,
       aggAtrasada,
@@ -183,32 +152,11 @@ export async function GET(request: NextRequest) {
       aggRecebidoPeriodoAnterior,
       linhasGrafico,
       funcionariosOpcoes,
+      grupoAtraso,
+      grupoAguardando,
+      grupoPagasPeriodo,
+      grupoPagasPlano,
     ] = await Promise.all([
-      prisma.parcela.findMany({
-        where: whereLista,
-        orderBy,
-        skip: (filtros.pagina - 1) * filtros.limite,
-        take: filtros.limite,
-        include: {
-          lead: {
-            select: {
-              id: true,
-              nome: true,
-              telefone: true,
-              valor_consorcio: true,
-              estagio: { select: { nome: true } },
-              funcionario: {
-                select: {
-                  id: true,
-                  nome: true,
-                  pdv: { select: { id: true, nome: true } },
-                },
-              },
-            },
-          },
-        },
-      }),
-      prisma.parcela.count({ where: whereLista }),
       prisma.parcela.aggregate({ where: { AND: [whereBusca, condPaga] }, _count: true, _sum: { valor: true } }),
       prisma.parcela.aggregate({ where: { AND: [whereBusca, condAguardando] }, _count: true, _sum: { valor: true } }),
       prisma.parcela.aggregate({ where: { AND: [whereBusca, condAtrasada] }, _count: true, _sum: { valor: true } }),
@@ -228,8 +176,8 @@ export async function GET(request: NextRequest) {
       whereRecebidoPeriodoAnterior
         ? prisma.parcela.aggregate({ where: whereRecebidoPeriodoAnterior, _sum: { valor: true } })
         : Promise.resolve(null),
-      // Apenas colunas leves, sem include de relacoes, para os buckets mensais do grafico:
-      // o bucket por mes usa fuso local do Date em JS, igual a versao anterior.
+      // Apenas colunas leves, sem include de relações, para os buckets mensais do gráfico:
+      // o bucket por mês usa fuso local do Date em JS, igual a versão anterior.
       prisma.parcela.findMany({
         where: whereBusca,
         select: { valor: true, status: true, data_vencimento: true, data_pagamento: true },
@@ -238,6 +186,36 @@ export async function GET(request: NextRequest) {
         where: { id_empresa: sessao.id_empresa },
         select: { id: true, nome: true, pdv: { select: { id: true, nome: true } } },
         orderBy: { nome: "asc" },
+      }),
+      // Carteira: agregados por cliente. Volume por empresa é pequeno; a
+      // ordenação por risco fica em memória (montarCarteira), não no SQL.
+      prisma.parcela.groupBy({
+        by: ["id_lead"],
+        where: { AND: [whereBusca, condAtrasada] },
+        _count: { _all: true },
+        _sum: { valor: true },
+        _min: { data_vencimento: true },
+        _max: { quantidade_total: true },
+      }),
+      prisma.parcela.groupBy({
+        by: ["id_lead"],
+        where: { AND: [whereBusca, condAguardando] },
+        _count: { _all: true },
+        _sum: { valor: true },
+        _min: { data_vencimento: true },
+        _max: { quantidade_total: true },
+      }),
+      prisma.parcela.groupBy({
+        by: ["id_lead"],
+        where: { AND: [whereBusca, condPaga] },
+        _count: { _all: true },
+        _max: { data_pagamento: true, quantidade_total: true },
+      }),
+      // Progresso do plano: pagas globais do lead, fora do filtro de período.
+      prisma.parcela.groupBy({
+        by: ["id_lead"],
+        where: { id_empresa: sessao.id_empresa, status: "PAGA" },
+        _count: { _all: true },
       }),
     ]);
 
@@ -261,10 +239,10 @@ export async function GET(request: NextRequest) {
         ? 100
         : 0;
 
-    // Bucket mensal do grafico: mes da data de pagamento (ou vencimento), calculado em fuso local.
+    // Bucket mensal do gráfico: mês da data de pagamento (ou vencimento), calculado em fuso local.
     const gruposPeriodo = new Map<string, { label: string; recebido: number; previsto: number }>();
     for (const linha of linhasGrafico) {
-      // Churn (CANCELADA/ABORTADA) nao entra no previsto ativo.
+      // Cancelamento (CANCELADA/ABORTADA) não entra no previsto ativo.
       if (linha.status === "CANCELADA" || linha.status === "ABORTADA") continue;
 
       const data = linha.data_pagamento ?? linha.data_vencimento;
@@ -281,50 +259,30 @@ export async function GET(request: NextRequest) {
       gruposPeriodo.set(chave, existente);
     }
 
-    const lista = listaParcelas.map((parcela) => {
-      const statusCalculado = calcularStatusParcela({
-        status: parcela.status as StatusParcela,
-        data_vencimento: parcela.data_vencimento.toISOString(),
-        data_pagamento: parcela.data_pagamento?.toISOString() ?? null,
-      });
-
-      return {
-        id: parcela.id,
-        numero_parcela: parcela.numero_parcela,
-        quantidade_total: parcela.quantidade_total,
-        valor: parcela.valor,
-        status: statusCalculado,
-        data_vencimento: parcela.data_vencimento.toISOString(),
-        data_pagamento: parcela.data_pagamento?.toISOString() ?? null,
-        lead: {
-          id: parcela.lead.id,
-          nome: parcela.lead.nome,
-          telefone: parcela.lead.telefone,
-          valor_consorcio: parcela.lead.valor_consorcio,
-          estagio: parcela.lead.estagio.nome,
-        },
-        pdv: parcela.lead.funcionario.pdv
-          ? {
-              id: parcela.lead.funcionario.pdv.id,
-              nome: parcela.lead.funcionario.pdv.nome,
-            }
-          : null,
-        responsavel: {
-          id: parcela.lead.funcionario.id,
-          nome: parcela.lead.funcionario.nome,
-        },
-        dias_em_atraso:
-          statusCalculado === "ATRASADA"
-            ? Math.max(0, Math.floor((hoje.getTime() - inicioDoDia(parcela.data_vencimento).getTime()) / DIA_MS))
-            : 0,
-      };
-    });
-
     const churnPorParcela = gruposChurn.map((grupo) => ({
       numero_parcela: grupo.numero_parcela,
       quantidade: grupo._count._all,
       valor: grupo._sum.valor ?? 0,
     }));
+
+    const idsLeads = new Set<string>();
+    for (const grupo of [...grupoAtraso, ...grupoAguardando, ...grupoPagasPeriodo]) {
+      idsLeads.add(grupo.id_lead);
+    }
+    const leadsCarteira = idsLeads.size > 0
+      ? await prisma.lead.findMany({
+          where: { id: { in: [...idsLeads] }, id_empresa: sessao.id_empresa },
+          select: { id: true, nome: true, telefone: true },
+        })
+      : [];
+    const pagasGlobais = Object.fromEntries(grupoPagasPlano.map((grupo) => [grupo.id_lead, grupo._count._all]));
+    const carteira = montarCarteira({
+      leads: leadsCarteira,
+      grupoAtraso,
+      grupoAguardando,
+      grupoPagasPeriodo,
+      pagasGlobais,
+    });
 
     const opcoesPdvs = Array.from(
       new Map(
@@ -366,14 +324,7 @@ export async function GET(request: NextRequest) {
           { status: "ABORTADA", quantidade: aggAbortadas._count, valor: aggAbortadas._sum.valor ?? 0 },
         ],
       },
-      lista,
-      contadoresAbas: {
-        todos: totalMonitoradas,
-        recebidos: quantidadeRecebidas,
-        a_vencer: quantidadePendentes,
-        atrasados: quantidadeAtrasadas,
-        canceladas: quantidadePerdidas,
-      },
+      carteira,
       filtrosAplicados: filtros,
       opcoes: {
         pdvs: opcoesPdvs,
@@ -381,12 +332,6 @@ export async function GET(request: NextRequest) {
           id: funcionario.id,
           nome: funcionario.nome,
         })),
-      },
-      paginacao: {
-        pagina: filtros.pagina,
-        limite: filtros.limite,
-        total: totalLista,
-        totalPaginas: Math.max(1, Math.ceil(totalLista / filtros.limite)),
       },
     });
   });

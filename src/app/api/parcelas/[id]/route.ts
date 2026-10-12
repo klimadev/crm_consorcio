@@ -40,7 +40,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   });
 
   if (!parcela) {
-    return notFound("Parcela nao encontrada.");
+    return notFound("Parcela não encontrada.");
   }
 
   const wherePermitido = await whereLeadsPorPerfil(auth.sessao);
@@ -50,11 +50,11 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   });
 
   if (!leadPermitido) {
-    return notFound("Parcela nao encontrada.");
+    return notFound("Parcela não encontrada.");
   }
 
   if (parcela.status === "CANCELADA" || parcela.status === "ABORTADA") {
-    return badRequest("Parcela cancelada ou abortada nao pode ser editada. Reabra a parcela primeiro.");
+    return badRequest("Parcela cancelada ou encerrada não pode ser editada. Reabra a parcela primeiro.");
   }
 
   const dados = validacao.data;
@@ -74,6 +74,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       data_vencimento: dados.data_vencimento ? new Date(dados.data_vencimento) : parcela.data_vencimento,
       status: proximoStatus === "PAGA" ? "PAGA" : proximoStatus === "ATRASADA" ? "ATRASADA" : "AGUARDANDO",
       data_pagamento: proximoStatus === "PAGA" ? proximaDataPagamento : null,
+      ...(dados.observacao_cobranca !== undefined ? { observacao_cobranca: dados.observacao_cobranca } : {}),
     },
   });
 
@@ -96,11 +97,11 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   });
 
   if (!parcela) {
-    return notFound("Parcela nao encontrada.");
+    return notFound("Parcela não encontrada.");
   }
 
   if (parcela.status === "PAGA" || parcela.data_pagamento) {
-    return badRequest("Nao e possivel excluir uma parcela ja paga.");
+    return badRequest("Não é possível excluir uma parcela já paga.");
   }
 
   const wherePermitido = await whereLeadsPorPerfil(auth.sessao);
@@ -110,7 +111,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   });
 
   if (!leadPermitido) {
-    return notFound("Parcela nao encontrada.");
+    return notFound("Parcela não encontrada.");
   }
 
   await prisma.parcela.delete({ where: { id: parcela.id } });

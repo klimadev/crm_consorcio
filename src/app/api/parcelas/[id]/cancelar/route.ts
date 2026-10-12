@@ -37,15 +37,15 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   });
 
   if (!parcela) {
-    return notFound("Parcela nao encontrada.");
+    return notFound("Parcela não encontrada.");
   }
 
   if (parcela.status === "PAGA" || parcela.data_pagamento) {
-    return badRequest("Parcela paga nao pode ser cancelada.");
+    return badRequest("Parcela paga não pode ser cancelada.");
   }
 
   if (parcela.status === "CANCELADA") {
-    return badRequest("Parcela ja esta cancelada.");
+    return badRequest("Parcela já está cancelada.");
   }
 
   const dados = validacao.data;
@@ -65,7 +65,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ ok: true, canceladas: 1, abortadas: 0 });
   }
 
-  // Modo SUBSEQUENTES: cancela a parcela K e aborta as parcelas posteriores nao pagas do mesmo lead
+  // Modo SUBSEQUENTES: cancela a parcela K e encerra as posteriores não pagas do mesmo lead
   const abortadas = await prisma.$transaction(async (tx) => {
     await tx.parcela.update({
       where: { id: parcela.id },

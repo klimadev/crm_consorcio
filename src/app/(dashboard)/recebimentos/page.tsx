@@ -13,8 +13,8 @@ export default async function PaginaRecebimentos() {
   if (sessao.perfil !== "EMPRESA") {
     return (
       <AccessDeniedCard
-        title="Sem permissao para acessar recebimentos"
-        description="Este modulo consolidado e exclusivo do administrador da empresa. Gerentes continuam com acesso as parcelas diretamente pelo drawer do lead."
+        title="Sem permissão para acessar Recebimentos"
+        description="Este módulo é exclusivo do administrador da empresa. Gerentes continuam com acesso às parcelas pelo painel do lead no Kanban."
       />
     );
   }

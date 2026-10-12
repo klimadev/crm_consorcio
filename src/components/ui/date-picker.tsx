@@ -1,10 +1,12 @@
 "use client";
 
-import * as React from "react";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface DatePickerProps {
+  id?: string;
+  /** Rótulo para leitores de tela, quando o label visível vive fora do controle. */
+  rotuloAcessivel?: string;
   value?: string;
   onChange?: (value: string) => void;
   min?: string;
@@ -14,6 +16,8 @@ export interface DatePickerProps {
 }
 
 export function DatePicker({
+  id,
+  rotuloAcessivel,
   value,
   onChange,
   min,
@@ -25,6 +29,8 @@ export function DatePicker({
     <div className={cn("relative", className)}>
       <input
         type="date"
+        id={id}
+        aria-label={rotuloAcessivel}
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
         min={min}
@@ -45,6 +51,7 @@ export function DatePicker({
 }
 
 export interface DatePickerWithWarningProps {
+  id?: string;
   value?: string;
   onChange?: (value: string) => void;
   label?: string;
@@ -53,6 +60,7 @@ export interface DatePickerWithWarningProps {
 }
 
 export function DatePickerWithWarning({
+  id,
   value,
   onChange,
   label,
@@ -61,22 +69,22 @@ export function DatePickerWithWarning({
 }: DatePickerWithWarningProps) {
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
-  
+
   const dataSelecionada = value ? new Date(value + "T00:00:00") : null;
   const isDataPassado = dataSelecionada && dataSelecionada < hoje;
 
   return (
     <div className="space-y-1.5">
-      {label && (
-        <label className="text-xs font-medium text-foreground-muted">{label}</label>
-      )}
-      <DatePicker value={value} onChange={onChange} disabled={disabled} />
-      {isDataPassado && warningMessage && (
+      {label ? (
+        <label htmlFor={id} className="text-xs font-medium text-foreground-muted">{label}</label>
+      ) : null}
+      <DatePicker id={id} rotuloAcessivel={label} value={value} onChange={onChange} disabled={disabled} />
+      {isDataPassado && warningMessage ? (
         <p className="flex items-center gap-1 text-xs text-warning">
           <CalendarIcon className="h-3 w-3" />
           {warningMessage}
         </p>
-      )}
+      ) : null}
     </div>
   );
 }

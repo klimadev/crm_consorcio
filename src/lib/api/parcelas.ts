@@ -19,6 +19,7 @@ export type Parcela = {
   status: StatusParcela;
   motivo_cancelamento?: string | null;
   cancelado_em?: string | null;
+  observacao_cobranca?: string | null;
 };
 
 export type ParcelaComLead = Parcela & {
@@ -46,6 +47,7 @@ export type PayloadAtualizarParcela = {
   data_vencimento?: string;
   data_pagamento?: string | null;
   status?: "AGUARDANDO" | "ATRASADA" | "PAGA";
+  observacao_cobranca?: string | null;
 };
 
 export type TabFinanceiro = "proximos" | "atrasados" | "recebidos" | "canceladas";

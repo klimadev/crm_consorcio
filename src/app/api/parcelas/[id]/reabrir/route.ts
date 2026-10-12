@@ -37,11 +37,11 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   });
 
   if (!parcela) {
-    return notFound("Parcela nao encontrada.");
+    return notFound("Parcela não encontrada.");
   }
 
   if (parcela.status !== "CANCELADA" && parcela.status !== "ABORTADA") {
-    return badRequest("Apenas parcelas canceladas ou abortadas podem ser reabertas.");
+    return badRequest("Apenas parcelas canceladas ou encerradas podem ser reabertas.");
   }
 
   const reaberta = await prisma.parcela.update({

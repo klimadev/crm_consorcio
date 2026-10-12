@@ -11,7 +11,7 @@ export async function parseJson<T>(request: NextRequest): Promise<ResultadoValid
   try {
     return { ok: true, data: (await request.json()) as T };
   } catch {
-    return { ok: false, response: badRequest("JSON invalido.") };
+    return { ok: false, response: badRequest("JSON inválido.") };
   }
 }
 
@@ -29,7 +29,7 @@ export function validateBody<TSchema extends z.ZodTypeAny>(
 export function validateQuery<TSchema extends z.ZodTypeAny>(
   schema: TSchema,
   payload: unknown,
-  fallbackMessage = "Parametros de busca invalidos.",
+  fallbackMessage = "Parâmetros de busca inválidos.",
 ): ResultadoValidacao<z.infer<TSchema>> {
   const validacao = schema.safeParse(payload);
   if (!validacao.success) {

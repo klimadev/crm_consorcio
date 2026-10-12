@@ -6,12 +6,18 @@ import { cn } from "@/lib/utils";
 
 export type ToastType = "success" | "error" | "warning" | "info";
 
+export type ToastAcao = {
+  label: string;
+  run: () => void;
+};
+
 interface Toast {
   id: string;
   type: ToastType;
   title: string;
   description?: string;
   duration?: number;
+  action?: ToastAcao;
 }
 
 interface ToastContextValue {
@@ -115,6 +121,18 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
             <p className="mt-1 text-sm text-foreground-muted">{toast.description}</p>
           )}
         </div>
+        {toast.action ? (
+          <button
+            type="button"
+            onClick={() => {
+              toast.action?.run();
+              onClose();
+            }}
+            className="shrink-0 self-start rounded-md px-2 py-1 text-sm font-semibold text-foreground underline underline-offset-2 transition-colors hover:bg-muted"
+          >
+            {toast.action.label}
+          </button>
+        ) : null}
         <button
           onClick={onClose}
           className="shrink-0 rounded-md p-1 hover:bg-muted transition-colors"

@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!leadPermitido) {
-      return notFound("Lead nao encontrado.");
+      return notFound("Lead não encontrado.");
     }
   }
 
@@ -109,17 +109,17 @@ export async function DELETE(request: NextRequest) {
   const idLead = searchParams.get("id_lead")?.trim() || null;
 
   if (!idLead) {
-    return badRequest("ID do lead e obrigatorio.");
+    return badRequest("ID do lead é obrigatório.");
   }
 
-  // Verificar se o lead existe e se tem permissão
+  // Verificar se o lead existe e se o usuário tem permissão
   const lead = await prisma.lead.findFirst({
     where: { id: idLead, ...(await whereLeadsPorPerfil(auth.sessao)) },
     select: { id: true },
   });
 
   if (!lead) {
-    return notFound("Lead nao encontrado.");
+    return notFound("Lead não encontrado.");
   }
 
   // Apenas EMPRESA e GERENTE podem excluir
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (!lead) {
-    return notFound("Lead nao encontrado.");
+    return notFound("Lead não encontrado.");
   }
 
   if (auth.sessao.perfil === "COLABORADOR") {
@@ -205,7 +205,7 @@ export async function POST(request: NextRequest) {
   ]);
 
   if (parcelasPendentes > 0) {
-    return conflict("Este lead ja possui parcelas pendentes cadastradas. Edite ou remova as pendentes antes de gerar um novo plano.");
+    return conflict("Este lead já possui parcelas pendentes cadastradas. Edite ou remova as pendentes antes de gerar um novo plano.");
   }
 
   const quantidadeTotalPlano = parcelasExistentes + dados.quantidade_parcelas;

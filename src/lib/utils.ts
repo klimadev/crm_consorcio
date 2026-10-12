@@ -47,3 +47,21 @@ export function converteMoedaBrParaNumero(valor: string) {
   const numero = Number(limpo);
   return Number.isFinite(numero) ? numero : 0;
 }
+
+const UM_DIA_MS = 24 * 60 * 60 * 1000;
+
+// Data relativa na linguagem da cobrança: "hoje", "amanhã", "há 12 dias".
+export function descreveDataRelativa(data: Date | string) {
+  const alvo = new Date(data);
+  alvo.setHours(0, 0, 0, 0);
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+
+  const dias = Math.round((alvo.getTime() - hoje.getTime()) / UM_DIA_MS);
+
+  if (dias === 0) return "hoje";
+  if (dias === 1) return "amanhã";
+  if (dias === -1) return "ontem";
+  if (dias > 1) return `em ${dias} dias`;
+  return `há ${Math.abs(dias)} dias`;
+}

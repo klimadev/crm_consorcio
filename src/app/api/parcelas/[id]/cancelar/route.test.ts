@@ -98,7 +98,7 @@ describe("PATCH /api/parcelas/[id]/cancelar", () => {
     const json = await resposta.json();
 
     expect(resposta.status).toBe(400);
-    expect(json.erro).toBe("Parcela paga nao pode ser cancelada.");
+    expect(json.erro).toBe("Parcela paga não pode ser cancelada.");
   });
 
   it("cancela apenas a parcela no modo PONTUAL", async () => {
