@@ -1,47 +1,79 @@
 import { useState } from "react";
-import { CheckCircle2, Loader2, CalendarDays, Pencil, Trash2 } from "lucide-react";
+import { Ban, CheckCircle2, Loader2, CalendarDays, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { formataData, formataMoeda } from "@/lib/utils";
+import { formataData, formataMoeda, cn } from "@/lib/utils";
 import type { Parcela } from "@/lib/api/parcelas";
-import { cn } from "@/lib/utils";
 
 type InstallmentCardProps = {
   parcela: Parcela;
   pagando: boolean;
   excluindo: boolean;
+  cancelando: boolean;
+  reabrindo: boolean;
+  podeCancelar: boolean;
+  podeReabrir: boolean;
   onPagar: (idParcela: string, dataPagamento?: string) => void;
   onEditar: (parcela: Parcela) => void;
   onExcluir: (idParcela: string) => void;
+  onCancelar: (parcela: Parcela) => void;
+  onReabrir: (idParcela: string) => void;
 };
 
 function StatusBadgeParcela({ status }: { status: Parcela["status"] }) {
-  const statusUi = {
-    PAGO: "bg-success/10 text-success",
-    ATRASADO: "bg-destructive/10 text-destructive",
-    PENDENTE: "bg-warning/10 text-warning",
+  if (status === "ABORTADA") {
+    return (
+      <Badge variant="default" className="text-foreground-muted line-through">
+        Abortada
+      </Badge>
+    );
+  }
+
+  const config = {
+    AGUARDANDO: { variant: "info" as const, label: "Aguardando" },
+    ATRASADA: { variant: "error" as const, label: "Atrasada" },
+    PAGA: { variant: "success" as const, label: "Paga" },
+    CANCELADA: { variant: "warning" as const, label: "Cancelada" },
   }[status];
 
-  const label = {
-    PAGO: "Pago",
-    ATRASADO: "Atrasado",
-    PENDENTE: "Pendente",
-  }[status];
-
-  return <span className={cn("rounded-full px-2.5 py-1 text-xs font-semibold", statusUi)}>{label}</span>;
+  return <Badge variant={config.variant}>{config.label}</Badge>;
 }
 
-export function InstallmentCard({ parcela, pagando, excluindo, onPagar, onEditar, onExcluir }: InstallmentCardProps) {
+export function InstallmentCard({
+  parcela,
+  pagando,
+  excluindo,
+  cancelando,
+  reabrindo,
+  podeCancelar,
+  podeReabrir,
+  onPagar,
+  onEditar,
+  onExcluir,
+  onCancelar,
+  onReabrir,
+}: InstallmentCardProps) {
   const [aberto, setAberto] = useState(false);
   const [dataPagamento, setDataPagamento] = useState(new Date().toISOString().slice(0, 10));
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
+  const paga = parcela.status === "PAGA";
+  const desativada = parcela.status === "CANCELADA" || parcela.status === "ABORTADA";
+  const emAberto = parcela.status === "AGUARDANDO" || parcela.status === "ATRASADA";
+  const ocupada = pagando || excluindo || cancelando || reabrindo;
+
   return (
-    <div className="group relative rounded-xl border border-border bg-background-surface p-4 transition-all duration-200 hover:shadow-md">
+    <div
+      className={cn(
+        "group relative rounded-xl border border-border bg-background-surface p-4 transition-all duration-200",
+        desativada ? "opacity-70" : "hover:shadow-md",
+      )}
+    >
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-foreground">
+          <p className={cn("text-sm font-semibold text-foreground", desativada && "text-foreground-muted")}>
             Parcela {parcela.numero_parcela}/{parcela.quantidade_total}
           </p>
           <p className="flex items-center gap-1 text-xs text-foreground-muted">
@@ -50,44 +82,88 @@ export function InstallmentCard({ parcela, pagando, excluindo, onPagar, onEditar
           </p>
         </div>
 
-        <p className="text-sm font-bold text-foreground">{formataMoeda(parcela.valor)}</p>
-        <StatusBadgeParcela status={parcela.status} />
+        <div className="flex items-center gap-3">
+          <p className={cn("text-sm font-bold text-foreground", desativada && "text-foreground-muted line-through")}>
+            {formataMoeda(parcela.valor)}
+          </p>
+          <StatusBadgeParcela status={parcela.status} />
+        </div>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="border-border text-foreground-muted hover:bg-muted"
-          onClick={() => onEditar(parcela)}
-          disabled={pagando || excluindo}
-        >
-          <Pencil className="mr-1 h-4 w-4" />
-          Editar
-        </Button>
-
-        {parcela.status !== "PAGO" ? (
-          <>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-              onClick={() => setDeleteDialogOpen(true)}
-              disabled={pagando || excluindo}
-            >
-              {excluindo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-            </Button>
-          </>
+        {!desativada ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="min-h-[44px] min-w-[44px] border-border text-foreground-muted hover:bg-muted"
+            onClick={() => onEditar(parcela)}
+            disabled={ocupada}
+          >
+            <Pencil className="mr-1 h-4 w-4" />
+            Editar
+          </Button>
         ) : null}
 
-        {parcela.status !== "PAGO" ? (
+        {emAberto && podeCancelar ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="min-h-[44px] min-w-[44px] text-warning hover:bg-warning/10 hover:text-warning"
+            onClick={() => onCancelar(parcela)}
+            disabled={ocupada}
+          >
+            {cancelando ? (
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+            ) : (
+              <Ban className="mr-1 h-4 w-4" />
+            )}
+            Cancelar Parcela...
+          </Button>
+        ) : null}
+
+        {desativada && podeReabrir ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="min-h-[44px] min-w-[44px] text-info hover:bg-info/10 hover:text-info"
+            onClick={() => onReabrir(parcela.id)}
+            disabled={ocupada}
+          >
+            {reabrindo ? (
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+            ) : (
+              <RotateCcw className="mr-1 h-4 w-4" />
+            )}
+            Reabrir
+          </Button>
+        ) : null}
+
+        {!paga ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="min-h-[44px] min-w-[44px] text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => setDeleteDialogOpen(true)}
+            disabled={ocupada}
+            aria-label={`Excluir parcela ${parcela.numero_parcela}`}
+          >
+            {excluindo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          </Button>
+        ) : null}
+
+        {emAberto ? (
           aberto ? (
             <div className="w-full rounded-xl border border-border bg-muted p-3 sm:w-auto">
-              <label className="text-xs font-medium text-foreground-muted">Data do pagamento</label>
+              <label htmlFor={`data-pagamento-${parcela.id}`} className="text-xs font-medium text-foreground-muted">
+                Data do pagamento
+              </label>
               <Input
                 type="date"
+                id={`data-pagamento-${parcela.id}`}
                 value={dataPagamento}
                 onChange={(event) => setDataPagamento(event.target.value)}
                 className="mt-1 h-9 rounded-lg border-border"
@@ -96,16 +172,23 @@ export function InstallmentCard({ parcela, pagando, excluindo, onPagar, onEditar
                 <Button
                   type="button"
                   size="sm"
-                  className="bg-success text-success-foreground hover:bg-success/90"
+                  className="min-h-[44px] bg-success text-success-foreground hover:bg-success/90"
                   onClick={() => {
                     onPagar(parcela.id, dataPagamento);
                     setAberto(false);
                   }}
-                  disabled={pagando}
+                  disabled={ocupada}
                 >
                   {pagando ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar"}
                 </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => setAberto(false)} disabled={pagando}>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="min-h-[44px]"
+                  variant="outline"
+                  onClick={() => setAberto(false)}
+                  disabled={ocupada}
+                >
                   Cancelar
                 </Button>
               </div>
@@ -115,9 +198,9 @@ export function InstallmentCard({ parcela, pagando, excluindo, onPagar, onEditar
               type="button"
               size="sm"
               variant="ghost"
-                className="text-success hover:bg-success/10 hover:text-success"
+              className="min-h-[44px] min-w-[44px] text-success hover:bg-success/10 hover:text-success"
               onClick={() => setAberto(true)}
-              disabled={pagando}
+              disabled={ocupada}
             >
               {pagando ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1 h-4 w-4" />}
               Marcar como Pago
@@ -126,7 +209,7 @@ export function InstallmentCard({ parcela, pagando, excluindo, onPagar, onEditar
         ) : null}
       </div>
 
-      <Dialog open={deleteDialogOpen} onOpenChange={(aberto) => !aberto && setDeleteDialogOpen(false)}>
+      <Dialog open={deleteDialogOpen} onOpenChange={(abertoDialog) => !abertoDialog && setDeleteDialogOpen(false)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Excluir parcela</DialogTitle>

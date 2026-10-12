@@ -1,7 +1,8 @@
 import { CircleDollarSign } from "lucide-react";
+import type { AbaRecebimentos } from "@/lib/api/recebimentos";
 
 type RecebimentosEmptyStateProps = {
-  aba: "todos" | "recebidos" | "a_vencer" | "atrasados";
+  aba: AbaRecebimentos;
 };
 
 const mensagens = {
@@ -20,6 +21,10 @@ const mensagens = {
   atrasados: {
     titulo: "Nenhuma parcela atrasada agora",
     descricao: "Excelente sinal: nao ha recebimentos vencidos dentro deste filtro no momento.",
+  },
+  canceladas: {
+    titulo: "Nenhuma parcela cancelada ou abortada",
+    descricao: "Cancelamentos e abandonos de plano aparecem aqui, fora da cobranca ativa.",
   },
 };
 

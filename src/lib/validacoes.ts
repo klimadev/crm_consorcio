@@ -550,7 +550,7 @@ export const esquemaAtualizarParcela = z
         z.null(),
       ])
       .optional(),
-    status: z.enum(["PENDENTE", "PAGO"]).optional(),
+    status: z.enum(["AGUARDANDO", "ATRASADA", "PAGA"]).optional(),
   })
   .refine(
     (dados) =>
@@ -563,7 +563,7 @@ export const esquemaAtualizarParcela = z
     },
   )
   .superRefine((dados, ctx) => {
-    if (dados.status === "PAGO" && dados.data_pagamento === undefined) {
+    if (dados.status === "PAGA" && dados.data_pagamento === undefined) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["data_pagamento"],
@@ -571,17 +571,29 @@ export const esquemaAtualizarParcela = z
       });
     }
 
-    if (dados.status === "PENDENTE" && dados.data_pagamento !== undefined && dados.data_pagamento !== null) {
+    if (
+      (dados.status === "AGUARDANDO" || dados.status === "ATRASADA") &&
+      dados.data_pagamento !== undefined &&
+      dados.data_pagamento !== null
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["data_pagamento"],
-        message: "Parcela pendente nao pode manter data de pagamento.",
+        message: "Parcela nao paga nao pode manter data de pagamento.",
       });
     }
   });
 
+export const esquemaCancelarParcela = z.object({
+  modo: z.enum(["PONTUAL", "SUBSEQUENTES"]),
+  motivo: z.string().trim().max(500, "Motivo muito longo.").optional(),
+  data_cancelamento: z.string().datetime().optional(),
+});
+
+export const esquemaReabrirParcela = z.object({}).strict();
+
 export const esquemaListarRecebimentos = z.object({
-  aba: z.enum(["todos", "recebidos", "a_vencer", "atrasados"]).default("todos"),
+  aba: z.enum(["todos", "recebidos", "a_vencer", "atrasados", "canceladas"]).default("todos"),
   busca: z.string().trim().optional(),
   data_inicial: z.string().trim().optional(),
   data_final: z.string().trim().optional(),

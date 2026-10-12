@@ -277,7 +277,7 @@ function intervaloPagamentosMeta(meta: {
 }) {
   return {
     id_empresa: meta.id_empresa,
-    status: "PAGO",
+    status: "PAGA",
     data_pagamento: {
       gte: inicioDoDia(meta.data_inicio),
       lte: fimDoDia(meta.data_fim),

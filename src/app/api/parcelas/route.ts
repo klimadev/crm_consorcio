@@ -6,7 +6,7 @@ import { badRequest, conflict, notFound } from "@/lib/api/http";
 import { parseJson, validateBody } from "@/lib/api/route-validation";
 import { inicioDoDia } from "@/lib/financeiro/parcelas";
 
-type TabParcelas = "proximos" | "atrasados" | "recebidos";
+type TabParcelas = "proximos" | "atrasados" | "recebidos" | "canceladas";
 
 function gerarDatasVencimento(dataInicial: Date, quantidade: number): Date[] {
   const datas: Date[] = [];
@@ -59,17 +59,21 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  let parcelas = await prisma.parcela.findMany({
-    where:
-      tab === "proximos"
-        ? { ...whereBase, status: "PENDENTE", data_pagamento: null, data_vencimento: { gte: hoje } }
-        : tab === "atrasados"
-          ? { ...whereBase, status: "PENDENTE", data_pagamento: null, data_vencimento: { lt: hoje } }
-          : tab === "recebidos"
-            ? { ...whereBase, status: "PAGO" }
+  const whereFiltro =
+    tab === "proximos"
+      ? { ...whereBase, status: { in: ["AGUARDANDO", "ATRASADA"] }, data_pagamento: null, data_vencimento: { gte: hoje } }
+      : tab === "atrasados"
+        ? { ...whereBase, status: { in: ["AGUARDANDO", "ATRASADA"] }, data_pagamento: null, data_vencimento: { lt: hoje } }
+        : tab === "recebidos"
+          ? { ...whereBase, status: "PAGA" }
+          : tab === "canceladas"
+            ? { ...whereBase, status: { in: ["CANCELADA", "ABORTADA"] } }
             : status
               ? { ...whereBase, status }
-              : whereBase,
+              : whereBase;
+
+  let parcelas = await prisma.parcela.findMany({
+    where: whereFiltro,
     include: {
       lead: {
         select: { id: true, nome: true, telefone: true, valor_consorcio: true },
@@ -83,12 +87,13 @@ export async function GET(request: NextRequest) {
   });
 
   parcelas = parcelas.map((parcela) => {
-    if (parcela.status === "PAGO") return parcela;
+    if (parcela.status === "PAGA" || parcela.data_pagamento) return parcela;
+    if (parcela.status === "CANCELADA" || parcela.status === "ABORTADA") return parcela;
     const vencimento = inicioDoDia(parcela.data_vencimento);
-    if (vencimento < hoje && !parcela.data_pagamento) {
-      return { ...parcela, status: "ATRASADO" };
+    if (vencimento < hoje) {
+      return { ...parcela, status: "ATRASADA" };
     }
-    return parcela;
+    return { ...parcela, status: "AGUARDANDO" };
   });
 
   return NextResponse.json({ parcelas });
@@ -135,14 +140,14 @@ export async function DELETE(request: NextRequest) {
   const parcelasPagas = await prisma.parcela.count({
     where: {
       id_lead: idLead,
-      OR: [{ status: "PAGO" }, { data_pagamento: { not: null } }],
+      OR: [{ status: "PAGA" }, { data_pagamento: { not: null } }],
     },
   });
 
   const resultado = await prisma.parcela.deleteMany({
     where:
       parcelasPagas > 0
-        ? { id_lead: idLead, status: { not: "PAGO" }, data_pagamento: null }
+        ? { id_lead: idLead, status: { not: "PAGA" }, data_pagamento: null }
         : { id_lead: idLead },
   });
 
@@ -186,7 +191,12 @@ export async function POST(request: NextRequest) {
       where: { id_empresa: auth.sessao.id_empresa, id_lead: dados.id_lead },
     }),
     prisma.parcela.count({
-      where: { id_empresa: auth.sessao.id_empresa, id_lead: dados.id_lead, data_pagamento: null },
+      where: {
+        id_empresa: auth.sessao.id_empresa,
+        id_lead: dados.id_lead,
+        data_pagamento: null,
+        status: { notIn: ["PAGA", "CANCELADA", "ABORTADA"] },
+      },
     }),
     prisma.parcela.aggregate({
       where: { id_empresa: auth.sessao.id_empresa, id_lead: dados.id_lead },
@@ -208,7 +218,7 @@ export async function POST(request: NextRequest) {
     quantidade_total: quantidadeTotalPlano,
     valor: dados.valor_parcela,
     data_vencimento: dataVencimento,
-    status: "PENDENTE",
+    status: "AGUARDANDO",
   }));
 
   await prisma.$transaction(async (tx) => {

@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
           const result = await prisma.parcela.aggregate({
             where: {
               id_empresa: row.id_empresa,
-              status: "PAGO",
+              status: "PAGA",
               data_pagamento: { gte: dataInicio, lte: dataFim },
               lead: row.id_equipe ? { funcionario: { id_pdv: row.id_equipe } } : undefined,
             },

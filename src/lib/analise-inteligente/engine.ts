@@ -5,7 +5,6 @@ import { prisma } from "@/lib/prisma";
 export type TipoAlerta =
   | "lead_parado"
   | "parcela_vencida"
-  | "sem_responsavel"
   | "quente_parado"
   | "lead_novo_sem_toque";
 
@@ -28,7 +27,9 @@ export type AnaliseResultado = {
     totalLeads: number;
     leadsParados: number;
     parcelasVencidas: number;
-    semResponsavel: number;
+    // Nota: semResponsavel foi removido — Lead.id_funcionario e NOT NULL,
+    // portanto nunca pode haver lead sem responsavel (a query antiga
+    // `id_funcionario: null` era invalida no Prisma 5 e falhava em runtime).
     quentesParados: number;
     novosSemToque: number;
     potencialPerdido: number;
@@ -67,7 +68,7 @@ export async function analisarLeads(idEmpresa: string): Promise<AnaliseResultado
     include: {
       estagio: { select: { ordem: true, nome: true } },
       parcelas: {
-        where: { status: { not: "PAGO" } },
+        where: { status: { notIn: ["PAGA", "CANCELADA", "ABORTADA"] } },
         select: { valor: true, data_vencimento: true, status: true },
       },
     },
@@ -150,24 +151,8 @@ export async function analisarLeads(idEmpresa: string): Promise<AnaliseResultado
     }
   }
 
-  // Leads sem responsável
-  const semResp = await prisma.lead.findMany({
-    where: { id_empresa: idEmpresa, id_funcionario: null },
-    select: { id: true, nome: true, valor_consorcio: true },
-  });
-
-  for (const lead of semResp) {
-    alerts.push({
-      tipo: "sem_responsavel",
-      gravidade: "alerta",
-      titulo: "Lead sem responsável",
-      mensagem: `${lead.nome} não tem responsável atribuído.`,
-      leadId: lead.id,
-      leadNome: lead.nome,
-      valor: lead.valor_consorcio || undefined,
-    });
-  }
-
+  // Bloco "Leads sem responsavel" removido: Lead.id_funcionario e NOT NULL
+  // (a query `id_funcionario: null` lancava "Argument must not be null").
   return {
     premium: true,
     alerts,
@@ -175,7 +160,7 @@ export async function analisarLeads(idEmpresa: string): Promise<AnaliseResultado
       totalLeads: leads.length,
       leadsParados,
       parcelasVencidas: alerts.filter((a) => a.tipo === "parcela_vencida").length,
-      semResponsavel: semResp.length,
+      // semResponsavel: removido (lead sempre tem responsavel — NOT NULL)
       quentesParados,
       novosSemToque,
       potencialPerdido,
@@ -189,7 +174,6 @@ function diffDays(a: Date, b: Date): number {
 
 function emptyMetrics() {
   return {
-    totalLeads: 0, leadsParados: 0, parcelasVencidas: 0,
-    semResponsavel: 0, quentesParados: 0, novosSemToque: 0, potencialPerdido: 0,
+    totalLeads: 0, leadsParados: 0, parcelasVencidas: 0, quentesParados: 0, novosSemToque: 0, potencialPerdido: 0,
   };
 }

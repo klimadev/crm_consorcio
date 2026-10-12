@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { aplicaMascaraMoedaBr, converteMoedaBrParaNumero, formataMoeda } from "@/lib/utils";
 import type { Parcela } from "@/lib/api/parcelas";
+import { CancelarParcelaDialog } from "@/modules/parcelas/components/cancelar-parcela-dialog";
 
 type LeadParcelasTabProps = {
   leadId: string;
@@ -18,17 +19,19 @@ type LeadParcelasTabProps = {
 };
 
 function ParcelasResumo({ parcelas }: { parcelas: { valor: number; status: string }[] }) {
-  const total = parcelas.reduce((acc, p) => acc + p.valor, 0);
-  const pago = parcelas.filter((p) => p.status === "PAGO").reduce((acc, p) => acc + p.valor, 0);
-  const pendente = total - pago;
-  const progresso = total > 0 ? (pago / total) * 100 : 0;
+  const pagas = parcelas.filter((p) => p.status === "PAGA");
+  const emAberto = parcelas.filter((p) => p.status === "AGUARDANDO" || p.status === "ATRASADA");
+  const totalPago = pagas.reduce((acc, p) => acc + p.valor, 0);
+  const totalAberto = emAberto.reduce((acc, p) => acc + p.valor, 0);
+  const base = totalPago + totalAberto;
+  const progresso = base > 0 ? (totalPago / base) * 100 : 0;
 
   return (
     <div className="rounded-xl border border-border bg-background-surface p-4">
       <div className="mb-2 flex items-center justify-between text-sm">
         <span className="text-foreground-muted">Progresso</span>
         <span className="font-semibold text-foreground">
-          {parcelas.filter((p) => p.status === "PAGO").length}/{parcelas.length} parcelas
+          {pagas.length}/{pagas.length + emAberto.length} parcelas
         </span>
       </div>
         <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -41,19 +44,19 @@ function ParcelasResumo({ parcelas }: { parcelas: { valor: number; status: strin
         <div>
           <p className="text-xs text-foreground-muted">Total</p>
           <p className="font-semibold text-foreground">
-            {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(total)}
+            {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(base)}
           </p>
         </div>
         <div>
           <p className="text-xs text-success">Pago</p>
           <p className="font-semibold text-success">
-            {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(pago)}
+            {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalPago)}
           </p>
         </div>
         <div>
-          <p className="text-xs text-warning">Pendente</p>
+          <p className="text-xs text-warning">Em aberto</p>
           <p className="font-semibold text-warning">
-            {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(pendente)}
+            {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalAberto)}
           </p>
         </div>
       </div>
@@ -64,8 +67,9 @@ function ParcelasResumo({ parcelas }: { parcelas: { valor: number; status: strin
 export function LeadParcelasTab({ leadId, perfil }: LeadParcelasTabProps) {
   const vm = useLeadParcelas({ leadId });
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
-  const [parcelaEmEdicao, setParcelaEmEdicao] = useState<Parcela | null>(null);
+  const [parcelaParaCancelar, setParcelaParaCancelar] = useState<Parcela | null>(null);
   const [valorEdicao, setValorEdicao] = useState("");
+  const [parcelaEmEdicao, setParcelaEmEdicao] = useState<Parcela | null>(null);
   const [dataVencimentoEdicao, setDataVencimentoEdicao] = useState("");
 
   const abrirEdicao = (parcela: Parcela) => {
@@ -114,7 +118,7 @@ export function LeadParcelasTab({ leadId, perfil }: LeadParcelasTabProps) {
               ) : (
                 <Trash2 className="mr-2 h-4 w-4" />
               )}
-              {vm.parcelas.some((parcela) => parcela.status === "PAGO") ? "Remover Pendentes" : "Remover Plano"}
+              {vm.parcelas.some((parcela) => parcela.status === "PAGA") ? "Remover Pendentes" : "Remover Plano"}
             </Button>
           </div>
           
@@ -125,9 +129,15 @@ export function LeadParcelasTab({ leadId, perfil }: LeadParcelasTabProps) {
                   parcela={parcela}
                   pagando={vm.pagando === parcela.id}
                   excluindo={vm.deletandoParcela === parcela.id}
+                  cancelando={vm.cancelandoParcela === parcela.id}
+                  reabrindo={vm.reabrindoParcela === parcela.id}
+                  podeCancelar={perfil !== "COLABORADOR"}
+                  podeReabrir={perfil !== "COLABORADOR"}
                   onPagar={vm.pagarParcela}
                   onEditar={abrirEdicao}
                   onExcluir={vm.excluirParcela}
+                  onCancelar={setParcelaParaCancelar}
+                  onReabrir={vm.reabrirParcela}
                 />
               ))}
             </div>
@@ -144,7 +154,7 @@ export function LeadParcelasTab({ leadId, perfil }: LeadParcelasTabProps) {
       ) : null}
 
       {/* Dialog de confirmação para remover */}
-      {vm.parcelas.some((p) => p.status === "PAGO") && perfil !== "COLABORADOR" ? (
+      {vm.parcelas.some((p) => p.status === "PAGA") && perfil !== "COLABORADOR" ? (
         <Dialog open={showRemoveDialog} onOpenChange={(a) => !a && setShowRemoveDialog(false)}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
@@ -248,8 +258,11 @@ export function LeadParcelasTab({ leadId, perfil }: LeadParcelasTabProps) {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Valor da parcela</label>
+              <label htmlFor="edicao-valor-parcela" className="text-sm font-medium text-foreground">
+                Valor da parcela
+              </label>
               <Input
+                id="edicao-valor-parcela"
                 inputMode="numeric"
                 value={valorEdicao}
                 onChange={(event) => setValorEdicao(aplicaMascaraMoedaBr(event.target.value))}
@@ -257,8 +270,15 @@ export function LeadParcelasTab({ leadId, perfil }: LeadParcelasTabProps) {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Data de vencimento</label>
-              <Input type="date" value={dataVencimentoEdicao} onChange={(event) => setDataVencimentoEdicao(event.target.value)} />
+              <label htmlFor="edicao-data-vencimento" className="text-sm font-medium text-foreground">
+                Data de vencimento
+              </label>
+              <Input
+                id="edicao-data-vencimento"
+                type="date"
+                value={dataVencimentoEdicao}
+                onChange={(event) => setDataVencimentoEdicao(event.target.value)}
+              />
             </div>
           </div>
 
@@ -290,6 +310,19 @@ export function LeadParcelasTab({ leadId, perfil }: LeadParcelasTabProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CancelarParcelaDialog
+        aberto={parcelaParaCancelar !== null}
+        parcela={parcelaParaCancelar}
+        parcelasDoLead={vm.parcelas}
+        cancelando={parcelaParaCancelar !== null && vm.cancelandoParcela === parcelaParaCancelar.id}
+        erro={vm.error}
+        onOpenChange={(aberto) => !aberto && setParcelaParaCancelar(null)}
+        onConfirmar={async (modo, motivo) => {
+          if (!parcelaParaCancelar) return false;
+          return vm.cancelarParcela(parcelaParaCancelar.id, modo, motivo);
+        }}
+      />
     </div>
   );
 }

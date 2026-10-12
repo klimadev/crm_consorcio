@@ -52,3 +52,10 @@ Thumbs.db
 
 # Deployment
 /.vercel/
+
+# graphify (grafo de conhecimento - gerado localmente, rebuild automático via hook post-commit)
+graphify-out/
+
+# artefatos locais de empacotamento/análise
+projeto.zip
+repomix-output.xml

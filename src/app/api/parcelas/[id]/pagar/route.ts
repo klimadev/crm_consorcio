@@ -53,15 +53,19 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return notFound("Parcela nao encontrada.");
   }
 
-  if (parcela.status === "PAGO") {
+  if (parcela.status === "PAGA" || parcela.data_pagamento) {
     return badRequest("Parcela ja esta paga.");
+  }
+
+  if (parcela.status === "CANCELADA" || parcela.status === "ABORTADA") {
+    return badRequest("Parcela cancelada ou abortada nao pode ser paga.");
   }
 
   const dataPagamento = new Date(validacao.data.data_pagamento);
   const atualizada = await prisma.parcela.update({
     where: { id: parcela.id },
     data: {
-      status: "PAGO",
+      status: "PAGA",
       data_pagamento: dataPagamento,
     },
   });

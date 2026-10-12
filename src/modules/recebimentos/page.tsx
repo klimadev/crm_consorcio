@@ -35,7 +35,7 @@ export function ModuloRecebimentos() {
 
       <div className="grid gap-4 2xl:grid-cols-[1.45fr_0.95fr]">
         <RecebimentosChartCard dados={vm.graficos.recebimentosPorPeriodo} />
-        <RecebimentosStatusDonut dados={vm.graficos.distribuicaoStatus} />
+        <RecebimentosStatusDonut distribuicao={vm.graficos.distribuicaoStatus} churn={vm.churn} />
       </div>
 
       <RecebimentosFilters vm={vm} />

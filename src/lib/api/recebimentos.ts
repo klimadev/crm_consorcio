@@ -6,7 +6,7 @@ type ResultadoApi<T> =
   | { ok: true; dados: T }
   | { ok: false; erro: string };
 
-export type AbaRecebimentos = "todos" | "recebidos" | "a_vencer" | "atrasados";
+export type AbaRecebimentos = "todos" | "recebidos" | "a_vencer" | "atrasados" | "canceladas";
 export type OrdenacaoRecebimentos = "vencimento" | "pagamento" | "valor";
 export type DirecaoOrdenacao = "asc" | "desc";
 
@@ -15,7 +15,7 @@ export type RecebimentoItem = {
   numero_parcela: number;
   quantidade_total: number;
   valor: number;
-  status: "PAGO" | "PENDENTE" | "ATRASADO";
+  status: "AGUARDANDO" | "ATRASADA" | "PAGA" | "CANCELADA" | "ABORTADA";
   data_vencimento: string;
   data_pagamento: string | null;
   dias_em_atraso: number;
@@ -30,6 +30,18 @@ export type RecebimentoItem = {
   responsavel: { id: string; nome: string };
 };
 
+export type ChurnPorParcela = {
+  numero_parcela: number;
+  quantidade: number;
+  valor: number;
+};
+
+export type DistribuicaoStatusItem = {
+  status: "AGUARDANDO" | "ATRASADA" | "PAGA" | "CANCELADA" | "ABORTADA";
+  quantidade: number;
+  valor: number;
+};
+
 export type RecebimentosResumo = {
   totalRecebidoPeriodo: number;
   totalEmAberto: number;
@@ -41,13 +53,19 @@ export type RecebimentosResumo = {
   quantidadeMonitoradas: number;
   parcelasVencendo7Dias: number;
   variacaoRecebidoPeriodo: number;
+  totalPerdidoChurn: number;
+  quantidadePerdidas: number;
+  taxaRetencaoParcelas: number;
+  churnPorParcela: ChurnPorParcela[];
+  quantidadeAbortadas: number;
+  totalAbortado: number;
 };
 
 export type RecebimentosResposta = {
   resumo: RecebimentosResumo;
   graficos: {
     recebimentosPorPeriodo: Array<{ label: string; recebido: number; previsto: number }>;
-    distribuicaoStatus: Array<{ status: "PAGO" | "PENDENTE" | "ATRASADO"; quantidade: number; valor: number }>;
+    distribuicaoStatus: DistribuicaoStatusItem[];
   };
   lista: RecebimentoItem[];
   contadoresAbas: Record<AbaRecebimentos, number>;

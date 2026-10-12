@@ -5,19 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn, formataData, formataMoeda } from "@/lib/utils";
-import type { UseRecebimentosModuleReturn } from "../types";
+import { isStatusPerdido, STATUS_RECEBIMENTO, type UseRecebimentosModuleReturn } from "../types";
 
 function hojeIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function badgeStatus(status: "PAGO" | "PENDENTE" | "ATRASADO") {
-  return {
-    PAGO: "border-success/25 bg-success/10 text-success",
-    PENDENTE: "border-info/25 bg-info/10 text-info",
-    ATRASADO: "border-destructive/20 bg-destructive/10 text-destructive",
-  }[status];
-}
+const BOTAO_ACAO_MOBILE = "h-11 rounded-xl";
 
 type RecebimentosMobileListProps = {
   vm: UseRecebimentosModuleReturn;
@@ -37,8 +31,8 @@ export function RecebimentosMobileList({ vm }: RecebimentosMobileListProps) {
               <p className="font-semibold text-foreground">{item.lead.nome}</p>
               <p className="text-xs text-foreground-muted">{item.lead.telefone}</p>
             </div>
-            <span className={cn("rounded-full border px-2.5 py-1 text-[11px] font-semibold", badgeStatus(item.status))}>
-              {item.status === "PAGO" ? "Recebido" : item.status === "ATRASADO" ? "Atrasado" : "A vencer"}
+            <span className={cn("rounded-full border px-2.5 py-1 text-[11px] font-semibold", STATUS_RECEBIMENTO[item.status].badge)}>
+              {STATUS_RECEBIMENTO[item.status].rotulo}
             </span>
           </div>
 
@@ -49,7 +43,7 @@ export function RecebimentosMobileList({ vm }: RecebimentosMobileListProps) {
             </div>
             <div>
               <p className="text-xs uppercase tracking-[0.08em] text-foreground-muted">Valor</p>
-              <p className="font-semibold text-foreground">{formataMoeda(item.valor)}</p>
+              <p className={cn("font-semibold text-foreground", isStatusPerdido(item.status) && "text-foreground-muted line-through")}>{formataMoeda(item.valor)}</p>
             </div>
             <div>
               <p className="text-xs uppercase tracking-[0.08em] text-foreground-muted">Vencimento</p>
@@ -64,7 +58,7 @@ export function RecebimentosMobileList({ vm }: RecebimentosMobileListProps) {
           <div className="mt-4 flex flex-col gap-3 border-t border-border pt-3">
             <div className="flex items-center gap-2 text-xs text-foreground-muted">
               <Clock3 className="h-4 w-4" />
-              {item.status === "ATRASADO" ? `${item.dias_em_atraso} dias em atraso` : item.pdv?.nome ?? item.responsavel.nome}
+              {item.status === "ATRASADA" ? `${item.dias_em_atraso} dias em atraso` : item.pdv?.nome ?? item.responsavel.nome}
             </div>
 
             {vm.pagando === item.id ? (
@@ -72,13 +66,27 @@ export function RecebimentosMobileList({ vm }: RecebimentosMobileListProps) {
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Registrando pagamento...
               </div>
-            ) : item.status === "PAGO" ? (
-              <Button asChild variant="ghost" size="sm" className="w-full text-info hover:bg-info/10 hover:text-info">
-                <Link href={`/kanban?lead=${item.lead.id}`}>
-                  <ArrowUpRight className="mr-1 h-4 w-4" />
-                  Abrir lead
-                </Link>
-              </Button>
+            ) : item.status === "PAGA" || isStatusPerdido(item.status) ? (
+              <div className="flex gap-2">
+                <Button asChild variant="ghost" size="sm" className={cn(BOTAO_ACAO_MOBILE, "flex-1 text-info hover:bg-info/10 hover:text-info")}>
+                  <Link href={`/kanban?lead=${item.lead.id}`}>
+                    <ArrowUpRight className="mr-1 h-4 w-4" />
+                    {isStatusPerdido(item.status) ? "Ver lead" : "Abrir lead"}
+                  </Link>
+                </Button>
+                {isStatusPerdido(item.status) ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className={cn(BOTAO_ACAO_MOBILE, "w-11 px-0 text-destructive hover:bg-destructive/10 hover:text-destructive")}
+                    onClick={() => setDeleteConfirmId(item.id)}
+                    disabled={vm.pagando !== null || vm.deletando !== null}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                ) : null}
+              </div>
             ) : pagamentoAberto === item.id ? (
               <div className="space-y-2 rounded-xl border border-border bg-muted p-3">
                 <label className="text-xs font-medium text-foreground-muted">Data do pagamento</label>
@@ -92,7 +100,7 @@ export function RecebimentosMobileList({ vm }: RecebimentosMobileListProps) {
                   <Button
                     type="button"
                     size="sm"
-                    className="bg-success text-success-foreground hover:bg-success/90"
+                    className={cn(BOTAO_ACAO_MOBILE, "bg-success text-success-foreground hover:bg-success/90")}
                     onClick={() => {
                       const dataIso = new Date(dataPagamento + "T00:00:00").toISOString();
                       void vm.pagarParcela(item.id, dataIso);
@@ -105,6 +113,7 @@ export function RecebimentosMobileList({ vm }: RecebimentosMobileListProps) {
                     type="button"
                     size="sm"
                     variant="outline"
+                    className={BOTAO_ACAO_MOBILE}
                     onClick={() => setPagamentoAberto(null)}
                     disabled={vm.pagando !== null}
                   >
@@ -118,7 +127,7 @@ export function RecebimentosMobileList({ vm }: RecebimentosMobileListProps) {
                   type="button"
                   size="sm"
                   variant="ghost"
-                  className="flex-1 text-success hover:bg-success/10 hover:text-success"
+                  className={cn(BOTAO_ACAO_MOBILE, "flex-1 text-success hover:bg-success/10 hover:text-success")}
                   onClick={() => {
                     setDataPagamento(hojeIso());
                     setPagamentoAberto(item.id);
@@ -132,13 +141,13 @@ export function RecebimentosMobileList({ vm }: RecebimentosMobileListProps) {
                   type="button"
                   size="sm"
                   variant="ghost"
-                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  className={cn(BOTAO_ACAO_MOBILE, "w-11 px-0 text-destructive hover:bg-destructive/10 hover:text-destructive")}
                   onClick={() => setDeleteConfirmId(item.id)}
                   disabled={vm.pagando !== null || vm.deletando !== null}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
-                <Button asChild variant="ghost" size="sm" className="text-info hover:bg-info/10 hover:text-info">
+                <Button asChild variant="ghost" size="sm" className={cn(BOTAO_ACAO_MOBILE, "w-11 px-0 text-info hover:bg-info/10 hover:text-info")}>
                   <Link href={`/kanban?lead=${item.lead.id}`}>
                     <ArrowUpRight className="h-4 w-4" />
                   </Link>

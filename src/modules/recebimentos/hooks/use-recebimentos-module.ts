@@ -126,7 +126,7 @@ export function useRecebimentosModule(): UseRecebimentosModuleReturn {
           ...anterior,
           lista: anterior.lista.map((item) =>
             item.id === idParcela
-              ? { ...item, status: "PAGO" as const, data_pagamento: dataEfetiva, dias_em_atraso: 0 }
+              ? { ...item, status: "PAGA" as const, data_pagamento: dataEfetiva, dias_em_atraso: 0 }
               : item,
           ),
         };
@@ -187,7 +187,13 @@ export function useRecebimentosModule(): UseRecebimentosModuleReturn {
     recebimentos: dados?.lista ?? [],
     resumo: dados?.resumo ?? null,
     graficos: dados?.graficos ?? { recebimentosPorPeriodo: [], distribuicaoStatus: [] },
-    contadoresAbas: dados?.contadoresAbas ?? { todos: 0, recebidos: 0, a_vencer: 0, atrasados: 0 },
+    churn: {
+      totalPerdidoChurn: dados?.resumo?.totalPerdidoChurn ?? 0,
+      quantidadePerdidas: dados?.resumo?.quantidadePerdidas ?? 0,
+      taxaRetencaoParcelas: dados?.resumo?.taxaRetencaoParcelas ?? 1,
+      churnPorParcela: dados?.resumo?.churnPorParcela ?? [],
+    },
+    contadoresAbas: dados?.contadoresAbas ?? { todos: 0, recebidos: 0, a_vencer: 0, atrasados: 0, canceladas: 0 },
     filtros,
     pagina,
     limite,

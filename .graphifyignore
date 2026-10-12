@@ -1,0 +1,4 @@
+# graphify: escaneia apenas src/ (decisão de escopo da sessão).
+# graphify-out/ já é pulado automaticamente pelo próprio graphify.
+/*
+!/src/

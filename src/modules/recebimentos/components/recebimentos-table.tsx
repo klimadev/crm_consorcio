@@ -6,26 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn, formataData, formataMoeda } from "@/lib/utils";
-import type { UseRecebimentosModuleReturn } from "../types";
+import { isStatusPerdido, STATUS_RECEBIMENTO, type UseRecebimentosModuleReturn } from "../types";
 
 function hojeIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function StatusBadge({ status }: { status: "PAGO" | "PENDENTE" | "ATRASADO" }) {
-  const estilos = {
-    PAGO: "border-success/25 bg-success/10 text-success",
-    PENDENTE: "border-info/25 bg-info/10 text-info",
-    ATRASADO: "border-destructive/20 bg-destructive/10 text-destructive",
-  }[status];
-
-  const label = {
-    PAGO: "Recebido",
-    PENDENTE: "A vencer",
-    ATRASADO: "Atrasado",
-  }[status];
-
-  return <span className={cn("rounded-full border px-2.5 py-1 text-xs font-semibold", estilos)}>{label}</span>;
+function StatusBadge({ status }: { status: keyof typeof STATUS_RECEBIMENTO }) {
+  const config = STATUS_RECEBIMENTO[status];
+  return <span className={cn("rounded-full border px-2.5 py-1 text-xs font-semibold", config.badge)}>{config.rotulo}</span>;
 }
 
 type RecebimentosTableProps = {
@@ -70,11 +59,11 @@ export function RecebimentosTable({ vm }: RecebimentosTableProps) {
                <TableCell className="py-4 text-foreground-muted">{item.numero_parcela}/{item.quantidade_total}</TableCell>
                <TableCell className="py-4 text-foreground-muted">{formataData(item.data_vencimento)}</TableCell>
                <TableCell className="py-4 text-foreground-muted">{item.data_pagamento ? formataData(item.data_pagamento) : "-"}</TableCell>
-               <TableCell className="py-4 font-semibold text-foreground">{formataMoeda(item.valor)}</TableCell>
+              <TableCell className={cn("py-4 font-semibold text-foreground", isStatusPerdido(item.status) && "text-foreground-muted line-through")}>{formataMoeda(item.valor)}</TableCell>
               <TableCell className="py-4">
                 <div className="space-y-1">
                   <StatusBadge status={item.status} />
-                   {item.status === "ATRASADO" ? <p className="text-[11px] text-destructive">{item.dias_em_atraso} dias em atraso</p> : null}
+                  {item.status === "ATRASADA" ? <p className="text-[11px] text-destructive">{item.dias_em_atraso} dias em atraso</p> : null}
                 </div>
               </TableCell>
                <TableCell className="py-4 text-foreground-muted">{item.pdv?.nome ?? "-"}</TableCell>
@@ -85,13 +74,27 @@ export function RecebimentosTable({ vm }: RecebimentosTableProps) {
                     <Loader2 className="h-4 w-4 animate-spin text-success" />
                     <span className="text-xs text-foreground-muted">Registrando...</span>
                   </div>
-                ) : item.status === "PAGO" ? (
-                  <Button asChild variant="ghost" size="sm" className="text-info hover:bg-info/10 hover:text-info">
-                    <Link href={`/kanban?lead=${item.lead.id}`}>
-                      <ArrowUpRight className="mr-1 h-4 w-4" />
-                      Abrir lead
-                    </Link>
-                  </Button>
+                ) : item.status === "PAGA" || isStatusPerdido(item.status) ? (
+                  <div className="flex items-center justify-end gap-1">
+                    <Button asChild variant="ghost" size="sm" className="text-info hover:bg-info/10 hover:text-info">
+                      <Link href={`/kanban?lead=${item.lead.id}`}>
+                        <ArrowUpRight className="mr-1 h-4 w-4" />
+                        {isStatusPerdido(item.status) ? "Ver lead" : "Abrir lead"}
+                      </Link>
+                    </Button>
+                    {!isStatusPerdido(item.status) ? null : (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => setDeleteConfirmId(item.id)}
+                        disabled={vm.pagando !== null || vm.deletando !== null}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 ) : pagamentoAberto === item.id ? (
                   <div className="flex items-center justify-end gap-2 flex-wrap">
                     <Input

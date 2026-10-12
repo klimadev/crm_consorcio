@@ -12,6 +12,7 @@ import {
   type Parcela,
 } from "@/lib/api/parcelas";
 import { computarStatusParcelas } from "@/lib/financeiro/parcelas";
+import type { ModoCancelamento } from "@/modules/parcelas/components/cancelar-parcela-dialog";
 import { aplicaMascaraMoedaBr, converteMoedaBrParaNumero } from "@/lib/utils";
 
 type UseLeadParcelasParams = {
@@ -37,6 +38,8 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
   const [removendo, setRemovendo] = useState(false);
   const [salvandoEdicao, setSalvandoEdicao] = useState<string | null>(null);
   const [deletandoParcela, setDeletandoParcela] = useState<string | null>(null);
+  const [cancelandoParcela, setCancelandoParcela] = useState<string | null>(null);
+  const [reabrindoParcela, setReabrindoParcela] = useState<string | null>(null);
 
   const carregarParcelas = useCallback(async () => {
     if (!leadId) {
@@ -113,7 +116,7 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
       setParcelas((anterior) =>
         anterior.map((item) =>
           item.id === idParcela
-            ? { ...item, status: "PAGO", data_pagamento: dataEfetiva }
+            ? { ...item, status: "PAGA", data_pagamento: dataEfetiva }
             : item,
         ),
       );
@@ -177,6 +180,76 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
     [addToast, carregarParcelas],
   );
 
+  const cancelarParcela = useCallback(
+    async (idParcela: string, modo: ModoCancelamento, motivo?: string) => {
+      setCancelandoParcela(idParcela);
+      setError(null);
+
+      const resposta = await fetch(`/api/parcelas/${encodeURIComponent(idParcela)}/cancelar`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modo, ...(motivo ? { motivo } : {}) }),
+      });
+      const json = (await resposta.json().catch(() => ({}))) as {
+        ok?: boolean;
+        canceladas?: number;
+        abortadas?: number;
+        erro?: string;
+      };
+
+      if (!resposta.ok || !json.ok) {
+        setError(json.erro ?? "Erro ao cancelar parcela.");
+        setCancelandoParcela(null);
+        return false;
+      }
+
+      addToast({
+        type: "success",
+        title: "Parcela cancelada",
+        description:
+          json.abortadas && json.abortadas > 0
+            ? `A parcela foi cancelada e ${json.abortadas} parcela(s) futura(s) foram abortadas.`
+            : "A parcela foi marcada como cancelada.",
+      });
+
+      setCancelandoParcela(null);
+      await carregarParcelas();
+      return true;
+    },
+    [addToast, carregarParcelas],
+  );
+
+  const reabrirParcela = useCallback(
+    async (idParcela: string) => {
+      setReabrindoParcela(idParcela);
+      setError(null);
+
+      const resposta = await fetch(`/api/parcelas/${encodeURIComponent(idParcela)}/reabrir`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const json = (await resposta.json().catch(() => ({}))) as { ok?: boolean; erro?: string };
+
+      if (!resposta.ok || !json.ok) {
+        setError(json.erro ?? "Erro ao reabrir parcela.");
+        setReabrindoParcela(null);
+        return false;
+      }
+
+      addToast({
+        type: "success",
+        title: "Parcela reaberta",
+        description: "A parcela voltou para o fluxo de cobranca.",
+      });
+
+      setReabrindoParcela(null);
+      await carregarParcelas();
+      return true;
+    },
+    [addToast, carregarParcelas],
+  );
+
   const editarParcela = useCallback(
     async (idParcela: string, dados: { valor: number; data_vencimento: string }) => {
       setSalvandoEdicao(idParcela);
@@ -232,6 +305,10 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
     salvandoEdicao,
     deletandoParcela,
     excluirParcela: excluirParcelaInd,
+    cancelarParcela,
+    cancelandoParcela,
+    reabrirParcela,
+    reabrindoParcela,
     limparFormulario,
   };
 }

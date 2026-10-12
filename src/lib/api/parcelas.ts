@@ -6,7 +6,7 @@ type ResultadoApi<T> =
   | { ok: true; dados: T }
   | { ok: false; erro: string };
 
-export type StatusParcela = "PENDENTE" | "PAGO" | "ATRASADO";
+export type StatusParcela = "AGUARDANDO" | "ATRASADA" | "PAGA" | "CANCELADA" | "ABORTADA";
 
 export type Parcela = {
   id: string;
@@ -17,6 +17,8 @@ export type Parcela = {
   data_vencimento: string;
   data_pagamento: string | null;
   status: StatusParcela;
+  motivo_cancelamento?: string | null;
+  cancelado_em?: string | null;
 };
 
 export type ParcelaComLead = Parcela & {
@@ -43,10 +45,10 @@ export type PayloadAtualizarParcela = {
   valor?: number;
   data_vencimento?: string;
   data_pagamento?: string | null;
-  status?: "PENDENTE" | "PAGO";
+  status?: "AGUARDANDO" | "ATRASADA" | "PAGA";
 };
 
-export type TabFinanceiro = "proximos" | "atrasados" | "recebidos";
+export type TabFinanceiro = "proximos" | "atrasados" | "recebidos" | "canceladas";
 
 async function lerJsonSeguro<T>(resposta: Response): Promise<T> {
   return (await resposta.json().catch(() => ({}))) as T;
