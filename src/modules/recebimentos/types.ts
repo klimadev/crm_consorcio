@@ -1,5 +1,6 @@
 import type { Parcela, StatusParcela } from "@/lib/api/parcelas";
 import { ROTULOS_STATUS } from "@/lib/financeiro/vocabulario";
+import type { ModoCancelamento } from "@/modules/parcelas/components/cancelar-parcela-dialog";
 import type {
   ClienteCarteira,
   RecebimentosResposta,
@@ -43,6 +44,7 @@ export type RecebimentosKpi = {
   apoio: string;
   tom: "emerald" | "blue" | "rose" | "amber";
   tendencia?: string;
+  tendenciaPositiva?: boolean;
 };
 
 export type ChurnRecebimentos = Pick<
@@ -81,7 +83,10 @@ export type UseRecebimentosModuleReturn = {
   carregarParcelasCliente: (idLead: string) => Promise<void>;
   salvarObservacao: (idParcela: string, idLead: string, observacao: string | null) => Promise<boolean>;
   pagando: string | null;
+  cancelandoParcela: string | null;
   pagarParcela: (idParcela: string, idLead: string, dataPagamento?: string) => Promise<void>;
+  cancelarParcela: (idParcela: string, idLead: string, modo: ModoCancelamento, motivo?: string) => Promise<boolean>;
+  encerrarPlano: (idParcelaParada: string, idLead: string, motivo?: string) => Promise<boolean>;
 };
 
-export type { ClienteCarteira };
+export type { ClienteCarteira, ModoCancelamento };

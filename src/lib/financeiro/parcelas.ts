@@ -64,3 +64,33 @@ export function calcularResumoParcelas<T extends Pick<Parcela, "valor" | "status
     taxaRetencaoParcelas: denominadorRetencao > 0 ? totalRecebido / denominadorRetencao : 1,
   };
 }
+
+export function obterParcelasEmAberto<T extends Pick<Parcela, "id" | "numero_parcela" | "status" | "valor">>(
+  parcelas: T[],
+): T[] {
+  return parcelas
+    .filter((parcela) => parcela.status === "AGUARDANDO" || parcela.status === "ATRASADA")
+    .sort((a, b) => a.numero_parcela - b.numero_parcela);
+}
+
+// "Onde o plano parou": por padrão, a primeira parcela em aberto (o sistema
+// já sabe; a operadora só confirma). Dela em diante, tudo sai da cobrança
+// via cancelamento SUBSEQUENTES, sem apagar nada.
+export function calcularEncerramentoPlano<T extends Pick<Parcela, "id" | "numero_parcela" | "status" | "valor">>(
+  parcelas: T[],
+  idParcelaParada?: string,
+) {
+  const emAberto = obterParcelasEmAberto(parcelas);
+  const parada = emAberto.find((parcela) => parcela.id === idParcelaParada) ?? emAberto[0] ?? null;
+
+  if (!parada) {
+    return { parada: null, foraDaCobranca: [] as T[], totalForaDaCobranca: 0 };
+  }
+
+  const foraDaCobranca = emAberto.filter((parcela) => parcela.numero_parcela >= parada.numero_parcela);
+  return {
+    parada,
+    foraDaCobranca,
+    totalForaDaCobranca: foraDaCobranca.reduce((total, parcela) => total + parcela.valor, 0),
+  };
+}

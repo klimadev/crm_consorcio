@@ -10,6 +10,7 @@ import {
   type Parcela,
 } from "@/lib/api/parcelas";
 import { computarStatusParcelas } from "@/lib/financeiro/parcelas";
+import type { ModoCancelamento } from "@/modules/parcelas/components/cancelar-parcela-dialog";
 import { useToast } from "@/components/ui/toast";
 import { formataMoeda } from "@/lib/utils";
 import type { ChipCarteira, RecebimentosFiltroForm, UseRecebimentosModuleReturn } from "../types";
@@ -118,6 +119,7 @@ export function useRecebimentosModule(): UseRecebimentosModuleReturn {
         apoio: `${dados.resumo.quantidadeRecebidas} pagamentos registrados`,
         tom: "emerald" as const,
         tendencia: `${dados.resumo.variacaoRecebidoPeriodo >= 0 ? "+" : ""}${dados.resumo.variacaoRecebidoPeriodo.toFixed(1)}% vs período anterior`,
+        tendenciaPositiva: dados.resumo.variacaoRecebidoPeriodo >= 0,
       },
       {
         id: "aberto",
@@ -148,6 +150,7 @@ export function useRecebimentosModule(): UseRecebimentosModuleReturn {
   const [parcelasExpandidas, setParcelasExpandidas] = useState<Record<string, Parcela[]>>({});
   const [expandindo, setExpandindo] = useState<string | null>(null);
   const [pagando, setPagando] = useState<string | null>(null);
+  const [cancelandoParcela, setCancelandoParcela] = useState<string | null>(null);
 
   const carregarParcelasCliente = useCallback(async (idLead: string) => {
     setExpandindo(idLead);
@@ -278,6 +281,56 @@ export function useRecebimentosModule(): UseRecebimentosModuleReturn {
     [addToast, carteira, carregarParcelasCliente, desfazerPagamento, parcelasExpandidas],
   );
 
+  // A desistência nasce na cobrança: cancelar daqui, sem sair da carteira.
+  const cancelarParcelaModule = useCallback(
+    async (idParcela: string, idLead: string, modo: ModoCancelamento, motivo?: string) => {
+      setCancelandoParcela(idParcela);
+      setErro(null);
+
+      const resposta = await fetch(`/api/parcelas/${encodeURIComponent(idParcela)}/cancelar`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modo, ...(motivo ? { motivo } : {}) }),
+      });
+      const json = (await resposta.json().catch(() => ({}))) as {
+        ok?: boolean;
+        canceladas?: number;
+        abortadas?: number;
+        erro?: string;
+      };
+
+      if (!resposta.ok || !json.ok) {
+        const mensagem = json.erro ?? "Erro ao cancelar parcela.";
+        setErro(mensagem);
+        addToast({ type: "error", title: "Erro ao cancelar parcela", description: mensagem });
+        setCancelandoParcela(null);
+        return false;
+      }
+
+      addToast({
+        type: "success",
+        title: "Parcela cancelada",
+        description:
+          json.abortadas && json.abortadas > 0
+            ? `A parcela foi cancelada e ${json.abortadas} futura(s) também foram canceladas.`
+            : "A parcela foi cancelada.",
+      });
+
+      setCancelandoParcela(null);
+      setChaveRecarga((atual) => atual + 1);
+      void carregarParcelasCliente(idLead);
+      return true;
+    },
+    [addToast, carregarParcelasCliente],
+  );
+
+  // Encerrar o plano = cancelar a partir da parcela onde parou.
+  const encerrarPlanoModule = useCallback(
+    async (idParcelaParada: string, idLead: string, motivo?: string) =>
+      cancelarParcelaModule(idParcelaParada, idLead, "SUBSEQUENTES", motivo),
+    [cancelarParcelaModule],
+  );
+
   return {
     carregando,
     atualizando,
@@ -319,6 +372,9 @@ export function useRecebimentosModule(): UseRecebimentosModuleReturn {
     carregarParcelasCliente,
     salvarObservacao,
     pagando,
+    cancelandoParcela,
     pagarParcela: pagarParcelaModule,
+    cancelarParcela: cancelarParcelaModule,
+    encerrarPlano: encerrarPlanoModule,
   };
 }

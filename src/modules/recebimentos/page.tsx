@@ -8,7 +8,7 @@ import { RecebimentosHeader } from "./components/recebimentos-header";
 import { RespostaDeHoje } from "./components/resposta-de-hoje";
 import { CarteiraToolbar } from "./components/carteira-toolbar";
 import { CarteiraLista } from "./components/carteira-lista";
-import { Panorama } from "./components/panorama";
+import { PanoramaSheet } from "./components/panorama-sheet";
 import { ModoFoco } from "./components/modo-foco";
 
 export function ModuloRecebimentos() {
@@ -24,6 +24,7 @@ export function ModuloRecebimentos() {
 function PainelRecebimentos() {
   const vm = useRecebimentosModule();
   const [focoAberto, setFocoAberto] = useState(false);
+  const [panoramaAberto, setPanoramaAberto] = useState(false);
 
   return (
     <ModulePageShell spacing="lg">
@@ -42,10 +43,10 @@ function PainelRecebimentos() {
         onIniciar={() => setFocoAberto(true)}
       />
 
-      <CarteiraToolbar vm={vm} />
+      <CarteiraToolbar vm={vm} onAbrirPanorama={() => setPanoramaAberto(true)} />
       <CarteiraLista vm={vm} />
 
-      <Panorama vm={vm} />
+      <PanoramaSheet vm={vm} aberto={panoramaAberto} onOpenChange={setPanoramaAberto} />
 
       {focoAberto ? <ModoFoco vm={vm} onFechar={() => setFocoAberto(false)} /> : null}
     </ModulePageShell>

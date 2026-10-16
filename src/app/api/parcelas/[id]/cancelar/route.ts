@@ -4,6 +4,7 @@ import { exigirSessao, respostaSemPermissao, whereLeadsPorPerfil } from "@/lib/p
 import { esquemaCancelarParcela } from "@/lib/validacoes";
 import { badRequest, notFound } from "@/lib/api/http";
 import { parseJson, validateBody } from "@/lib/api/route-validation";
+import { invalidarCacheRecebimentos } from "@/lib/financeiro/cache-recebimentos";
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -62,6 +63,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       data: { status: "CANCELADA", ...dadosCancelamento },
     });
 
+    invalidarCacheRecebimentos(auth.sessao.id_empresa);
+
     return NextResponse.json({ ok: true, canceladas: 1, abortadas: 0 });
   }
 
@@ -84,6 +87,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
     return resultado.count;
   });
+
+  invalidarCacheRecebimentos(auth.sessao.id_empresa);
 
   return NextResponse.json({ ok: true, canceladas: 1, abortadas });
 }

@@ -74,7 +74,6 @@ export function InstallmentCard({
           </p>
           <Badge
             variant={statusVisual.tom}
-            className={parcela.status === "ABORTADA" ? "line-through" : undefined}
           >
             {statusVisual.rotulo}
           </Badge>

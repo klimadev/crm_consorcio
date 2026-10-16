@@ -5,6 +5,7 @@ import { esquemaGerarParcelas } from "@/lib/validacoes";
 import { badRequest, conflict, notFound } from "@/lib/api/http";
 import { parseJson, validateBody } from "@/lib/api/route-validation";
 import { inicioDoDia } from "@/lib/financeiro/parcelas";
+import { invalidarCacheRecebimentos } from "@/lib/financeiro/cache-recebimentos";
 
 type TabParcelas = "proximos" | "atrasados" | "recebidos" | "canceladas";
 
@@ -134,6 +135,8 @@ export async function DELETE(request: NextRequest) {
       where: { id_lead: idLead },
     });
 
+    invalidarCacheRecebimentos(auth.sessao.id_empresa);
+
     return NextResponse.json({ ok: true, excluidas: resultado.count, preservadas_pagas: 0 });
   }
 
@@ -150,6 +153,8 @@ export async function DELETE(request: NextRequest) {
         ? { id_lead: idLead, status: { not: "PAGA" }, data_pagamento: null }
         : { id_lead: idLead },
   });
+
+  invalidarCacheRecebimentos(auth.sessao.id_empresa);
 
   return NextResponse.json({ ok: true, excluidas: resultado.count, preservadas_pagas: parcelasPagas });
 }
@@ -231,6 +236,8 @@ export async function POST(request: NextRequest) {
 
     await tx.parcela.createMany({ data: parcelasParaCriar });
   });
+
+  invalidarCacheRecebimentos(auth.sessao.id_empresa);
 
   return NextResponse.json({ ok: true, parcelas_criadas: parcelasParaCriar.length }, { status: 201 });
 }

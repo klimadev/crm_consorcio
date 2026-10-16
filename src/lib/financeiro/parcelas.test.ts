@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { calcularResumoParcelas, calcularStatusParcela, computarStatusParcelas } from "@/lib/financeiro/parcelas";
+import { calcularEncerramentoPlano, calcularResumoParcelas, calcularStatusParcela, computarStatusParcelas } from "@/lib/financeiro/parcelas";
 
 const hoje = new Date("2026-10-11T12:00:00.000Z");
 const futuro = "2026-12-10T00:00:00.000Z";
@@ -103,5 +103,51 @@ describe("calcularResumoParcelas (segregação de churn)", () => {
     expect(resumo.quantidadeAtrasadas).toBe(1);
     expect(resumo.totalAtrasado).toBe(300);
     expect(resumo.totalPerdidoChurn).toBe(300);
+  });
+});
+
+describe("encerramento de plano (onde parou)", () => {
+  type ParcelaPlano = { id: string; numero_parcela: number; status: ParcelaBase["status"]; valor: number };
+
+  const plano: ParcelaPlano[] = [
+    { id: "p1", numero_parcela: 1, status: "PAGA", valor: 500 },
+    { id: "p12", numero_parcela: 12, status: "PAGA", valor: 500 },
+    { id: "p13", numero_parcela: 13, status: "ATRASADA", valor: 400 },
+    { id: "p14", numero_parcela: 14, status: "AGUARDANDO", valor: 400 },
+    { id: "p60", numero_parcela: 60, status: "AGUARDANDO", valor: 400 },
+    { id: "p40", numero_parcela: 40, status: "CANCELADA", valor: 400 },
+  ];
+
+  it("a parcela de parada padrão é a primeira parcela em aberto, por número", () => {
+    const { parada } = calcularEncerramentoPlano(plano);
+
+    expect(parada?.id).toBe("p13");
+  });
+
+  it("tudo da parada em diante sai da cobrança, com a soma do valor", () => {
+    const { parada, foraDaCobranca, totalForaDaCobranca } = calcularEncerramentoPlano(plano);
+
+    expect(parada?.numero_parcela).toBe(13);
+    expect(foraDaCobranca.map((parcela) => parcela.id)).toEqual(["p13", "p14", "p60"]);
+    expect(totalForaDaCobranca).toBe(1200);
+  });
+
+  it("respeita a escolha manual da operadora", () => {
+    const { parada, foraDaCobranca } = calcularEncerramentoPlano(plano, "p14");
+
+    expect(parada?.id).toBe("p14");
+    expect(foraDaCobranca.map((parcela) => parcela.id)).toEqual(["p14", "p60"]);
+  });
+
+  it("sem parcelas em aberto não há encerramento e nada é cobrado", () => {
+    const planoQuitado: ParcelaPlano[] = [
+      { id: "p1", numero_parcela: 1, status: "PAGA", valor: 500 },
+      { id: "p2", numero_parcela: 2, status: "CANCELADA", valor: 500 },
+    ];
+    const resultado = calcularEncerramentoPlano(planoQuitado);
+
+    expect(resultado.parada).toBeNull();
+    expect(resultado.foraDaCobranca).toEqual([]);
+    expect(resultado.totalForaDaCobranca).toBe(0);
   });
 });

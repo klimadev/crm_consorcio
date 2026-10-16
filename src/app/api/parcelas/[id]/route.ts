@@ -4,6 +4,7 @@ import { exigirSessao, respostaSemPermissao, whereLeadsPorPerfil } from "@/lib/p
 import { esquemaAtualizarParcela } from "@/lib/validacoes";
 import { badRequest, notFound, ok } from "@/lib/api/http";
 import { parseJson, validateBody } from "@/lib/api/route-validation";
+import { invalidarCacheRecebimentos } from "@/lib/financeiro/cache-recebimentos";
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -78,6 +79,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     },
   });
 
+  invalidarCacheRecebimentos(auth.sessao.id_empresa);
+
   return NextResponse.json({ parcela: atualizada });
 }
 
@@ -115,6 +118,8 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   }
 
   await prisma.parcela.delete({ where: { id: parcela.id } });
+
+  invalidarCacheRecebimentos(auth.sessao.id_empresa);
 
   return ok({ excluida: true, parcela });
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, Loader2, Trash2, TriangleAlert } from "lucide-react";
+import { AlertCircle, Flag, Loader2, Trash2, TriangleAlert } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useLeadParcelas } from "../hooks/use-lead-parcelas";
 import { InstallmentCard } from "./parcelas/installment-card";
@@ -9,9 +9,11 @@ import { InstallmentGeneratorForm } from "./parcelas/installment-generator-form"
 import { ConfirmDialog } from "./confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { aplicaMascaraMoedaBr, converteMoedaBrParaNumero, formataMoeda } from "@/lib/utils";
+import { aplicaMascaraMoedaBr, converteMoedaBrParaNumero, descreveDataRelativa, formataMoeda } from "@/lib/utils";
+import { obterParcelasEmAberto } from "@/lib/financeiro/parcelas";
 import type { Parcela } from "@/lib/api/parcelas";
 import { CancelarParcelaDialog } from "@/modules/parcelas/components/cancelar-parcela-dialog";
+import { EncerrarPlanoDialog } from "@/modules/parcelas/components/encerrar-plano-dialog";
 
 type LeadParcelasTabProps = {
   leadId: string;
@@ -66,11 +68,22 @@ function ParcelasResumo({ parcelas }: { parcelas: { valor: number; status: strin
 
 export function LeadParcelasTab({ leadId, perfil }: LeadParcelasTabProps) {
   const vm = useLeadParcelas({ leadId });
-  const [showRemoveDialog, setShowRemoveDialog] = useState(false);
+  const [encerrarAberto, setEncerrarAberto] = useState(false);
+  const [excluirAberto, setExcluirAberto] = useState(false);
   const [parcelaParaCancelar, setParcelaParaCancelar] = useState<Parcela | null>(null);
   const [valorEdicao, setValorEdicao] = useState("");
   const [parcelaEmEdicao, setParcelaEmEdicao] = useState<Parcela | null>(null);
   const [dataVencimentoEdicao, setDataVencimentoEdicao] = useState("");
+
+  const parcelasEmAberto = obterParcelasEmAberto(vm.parcelas);
+  const podeGerirPlano = perfil !== "COLABORADOR";
+  const podeEncerrar = parcelasEmAberto.length > 0 && podeGerirPlano;
+
+  // Onde o plano parou: a primeira cancelada por número (o gatilho do
+  // encerramento). A cascata inteira carrega o mesmo motivo.
+  const primeiraCancelada = vm.parcelas
+    .filter((parcela) => parcela.status === "CANCELADA")
+    .sort((a, b) => a.numero_parcela - b.numero_parcela)[0];
 
   const abrirEdicao = (parcela: Parcela) => {
     setParcelaEmEdicao(parcela);
@@ -103,23 +116,37 @@ export function LeadParcelasTab({ leadId, perfil }: LeadParcelasTabProps) {
         <>
           <ParcelasResumo parcelas={vm.parcelas} />
 
-          {/* Botão para remover o plano */}
+          {primeiraCancelada ? (
+            <div className="rounded-xl border border-warning/25 bg-warning/10 p-3">
+              <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <Flag className="h-4 w-4 shrink-0 text-warning" />
+                Plano encerrado na parcela #{primeiraCancelada.numero_parcela}
+              </p>
+              {primeiraCancelada.motivo_cancelamento ? (
+                <p className="mt-1 text-xs text-foreground-muted">Motivo: {primeiraCancelada.motivo_cancelamento}</p>
+              ) : null}
+              {primeiraCancelada.cancelado_em ? (
+                <p className="mt-0.5 text-xs text-foreground-muted">
+                  Encerrado {descreveDataRelativa(primeiraCancelada.cancelado_em)} · reabra uma parcela para voltar à cobrança
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="flex justify-end">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-              onClick={() => setShowRemoveDialog(true)}
-              disabled={vm.removendo}
-            >
-              {vm.removendo ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Trash2 className="mr-2 h-4 w-4" />
-              )}
-              {vm.parcelas.some((parcela) => parcela.status === "PAGA") ? "Remover pendentes" : "Remover plano"}
-            </Button>
+            {podeEncerrar ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="min-h-[44px] text-warning hover:bg-warning/10 hover:text-warning"
+                onClick={() => setEncerrarAberto(true)}
+                disabled={vm.removendo || vm.cancelandoParcela !== null}
+              >
+                <Flag className="mr-2 h-4 w-4" />
+                Encerrar plano
+              </Button>
+            ) : null}
           </div>
 
           <div className="space-y-2">
@@ -131,8 +158,8 @@ export function LeadParcelasTab({ leadId, perfil }: LeadParcelasTabProps) {
                   excluindo={vm.deletandoParcela === parcela.id}
                   cancelando={vm.cancelandoParcela === parcela.id}
                   reabrindo={vm.reabrindoParcela === parcela.id}
-                  podeCancelar={perfil !== "COLABORADOR"}
-                  podeReabrir={perfil !== "COLABORADOR"}
+                  podeCancelar={podeGerirPlano}
+                  podeReabrir={podeGerirPlano}
                   onPagar={vm.pagarParcela}
                   onEditar={abrirEdicao}
                   onExcluir={vm.excluirParcela}
@@ -154,17 +181,29 @@ export function LeadParcelasTab({ leadId, perfil }: LeadParcelasTabProps) {
         </div>
       ) : null}
 
-      {/* Dialog de confirmação para remover */}
-      {vm.parcelas.some((p) => p.status === "PAGA") && perfil !== "COLABORADOR" ? (
-        <Dialog open={showRemoveDialog} onOpenChange={(a) => !a && setShowRemoveDialog(false)}>
+      <EncerrarPlanoDialog
+        aberto={encerrarAberto}
+        parcelas={vm.parcelas}
+        encerrando={vm.cancelandoParcela !== null}
+        erro={vm.error}
+        onOpenChange={setEncerrarAberto}
+        onEncerrar={(idParcelaParada, motivo) => vm.cancelarParcela(idParcelaParada, "SUBSEQUENTES", motivo)}
+        onExcluirRegistro={() => setExcluirAberto(true)}
+      />
+
+      {/* Exclusão técnica: só para correção de cadastro errado. O encerramento
+          acima é o caminho de negócio; aqui apaga registro de verdade. */}
+      {vm.parcelas.some((p) => p.status === "PAGA") && podeGerirPlano ? (
+        <Dialog open={excluirAberto} onOpenChange={(a) => !a && setExcluirAberto(false)}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-warning/10">
-                <TriangleAlert className="h-6 w-6 text-warning" />
+              <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+                <TriangleAlert className="h-6 w-6 text-destructive" />
               </div>
-              <DialogTitle className="text-center">Remover plano de pagamento</DialogTitle>
+              <DialogTitle className="text-center">Excluir registro do plano</DialogTitle>
               <DialogDescription className="text-center">
-                O plano tem <strong>{vm.parcelas.length} parcelas</strong>, incluindo pagamentos já registrados.
+                O plano tem <strong>{vm.parcelas.length} parcelas</strong>, incluindo pagamentos registrados. Isso é
+                correção de cadastro, não evento de negócio: prefira encerrar o plano.
               </DialogDescription>
             </DialogHeader>
 
@@ -177,39 +216,42 @@ export function LeadParcelasTab({ leadId, perfil }: LeadParcelasTabProps) {
               </div>
             ) : null}
 
-            {/* A ação segura vem primeiro; a destrutiva fica por último, em tom discreto. */}
             <DialogFooter className="flex-col gap-2 sm:flex-col">
               <Button
                 type="button"
                 variant="outline"
-                className="w-full"
+                className="min-h-[44px] w-full"
                 disabled={vm.removendo}
                 onClick={async () => {
                   await vm.removerPlano(false);
-                  setShowRemoveDialog(false);
+                  setExcluirAberto(false);
                 }}
               >
                 Manter pagas e remover pendentes
               </Button>
               <Button
                 type="button"
-                variant="ghost"
-                className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+                variant="destructive"
+                className="min-h-[44px] w-full"
                 disabled={vm.removendo}
                 onClick={async () => {
                   await vm.removerPlano(true);
-                  setShowRemoveDialog(false);
+                  setExcluirAberto(false);
                 }}
               >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Excluir plano inteiro (inclui pagas)
+                {vm.removendo ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="mr-2 h-4 w-4" />
+                )}
+                Excluir tudo (inclui pagas)
               </Button>
               <Button
                 type="button"
                 variant="ghost"
-                className="w-full"
+                className="min-h-[44px] w-full"
                 disabled={vm.removendo}
-                onClick={() => setShowRemoveDialog(false)}
+                onClick={() => setExcluirAberto(false)}
               >
                 Cancelar
               </Button>
@@ -218,24 +260,24 @@ export function LeadParcelasTab({ leadId, perfil }: LeadParcelasTabProps) {
         </Dialog>
       ) : (
         <ConfirmDialog
-          aberto={showRemoveDialog}
-          titulo="Remover plano de pagamento"
+          aberto={excluirAberto}
+          titulo="Excluir registro do plano"
           descricao={
             <p>
-              Tem certeza que deseja remover o plano de <strong>{vm.parcelas.length} parcelas</strong>?
+              Tem certeza que deseja excluir o registro de <strong>{vm.parcelas.length} parcelas</strong>?
               <br />
-              <span className="text-destructive">Esta ação não pode ser desfeita.</span>
+              <span className="text-destructive">Esta ação não pode ser desfeita. Para eventos de negócio, prefira encerrar o plano.</span>
             </p>
           }
           erro={vm.error}
           confirmando={vm.removendo}
-          textoConfirmar="Remover"
-          textoConfirmando="Removendo..."
+          textoConfirmar="Excluir registro"
+          textoConfirmando="Excluindo..."
           textoCancel="Cancelar"
-          onCancelar={() => setShowRemoveDialog(false)}
+          onCancelar={() => setExcluirAberto(false)}
           onConfirmar={async () => {
             await vm.removerPlano(false);
-            setShowRemoveDialog(false);
+            setExcluirAberto(false);
           }}
           modo="destrutivo"
           icone={<Trash2 className="h-6 w-6" />}

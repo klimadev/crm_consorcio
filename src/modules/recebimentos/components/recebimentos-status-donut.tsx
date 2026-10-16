@@ -13,9 +13,22 @@ type RecebimentosStatusDonutProps = {
 
 const CIRCUNFERENCIA = 226;
 
+// Na tela existe um único conceito de cancelamento: a cascata do encerramento
+// (ABORTADA) e a cancelada direto somam na mesma fatia "Cancelada".
 export function RecebimentosStatusDonut({ distribuicao, churn }: RecebimentosStatusDonutProps) {
-  const totalParcelas = distribuicao.reduce((acc, item) => acc + item.quantidade, 0) || 1;
-  const fatias = distribuicao
+  const canceladas = distribuicao.find((item) => item.status === "CANCELADA");
+  const abortadas = distribuicao.find((item) => item.status === "ABORTADA");
+  const distribuicaoUnificada: DistribuicaoStatusItem[] = [
+    ...distribuicao.filter((item) => item.status !== "CANCELADA" && item.status !== "ABORTADA"),
+    {
+      status: "CANCELADA",
+      quantidade: (canceladas?.quantidade ?? 0) + (abortadas?.quantidade ?? 0),
+      valor: (canceladas?.valor ?? 0) + (abortadas?.valor ?? 0),
+    },
+  ];
+
+  const totalParcelas = distribuicaoUnificada.reduce((acc, item) => acc + item.quantidade, 0) || 1;
+  const fatias = distribuicaoUnificada
     .filter((item) => item.quantidade > 0)
     .reduce<Array<DistribuicaoStatusItem & { dash: string; offset: number }>>((acc, item) => {
       const percentual = item.quantidade / totalParcelas;
@@ -59,12 +72,12 @@ export function RecebimentosStatusDonut({ distribuicao, churn }: RecebimentosSta
             </svg>
             <div className="absolute text-center">
               <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground-muted">Parcelas</p>
-              <p className="text-3xl font-bold text-foreground">{distribuicao.reduce((acc, item) => acc + item.quantidade, 0)}</p>
+              <p className="text-3xl font-bold text-foreground">{distribuicaoUnificada.reduce((acc, item) => acc + item.quantidade, 0)}</p>
             </div>
           </div>
 
           <div className="flex-1 space-y-3">
-            {distribuicao.map((item) => (
+            {distribuicaoUnificada.map((item) => (
               <div key={item.status} className="flex items-center justify-between rounded-xl border border-border bg-muted/50 px-3 py-2">
                 <div className="flex items-center gap-3">
                   <span className="h-3 w-3 rounded-full" style={{ backgroundColor: STATUS_RECEBIMENTO[item.status].cor }} />
@@ -106,7 +119,7 @@ export function RecebimentosStatusDonut({ distribuicao, churn }: RecebimentosSta
 
           {churn.churnPorParcela.length > 0 ? (
             <div className="mt-4">
-              <p className="mb-2 text-xs font-medium text-foreground-muted">Canceladas por parcela</p>
+              <p className="mb-2 text-xs font-medium text-foreground-muted">Em qual parcela os planos param</p>
               <div className="h-32 w-full">
                 <ResponsiveContainer width="100%" height={128}>
                   <BarChart data={churn.churnPorParcela}>
@@ -127,7 +140,7 @@ export function RecebimentosStatusDonut({ distribuicao, churn }: RecebimentosSta
                         boxShadow: "0 20px 45px rgba(0, 0, 0, 0.35)",
                       }}
                       labelFormatter={(valor) => `Parcela #${valor}`}
-                      formatter={(valor, nome) => (nome === "quantidade" ? [`${valor} canceladas`, "Cancelamentos"] : [formataMoeda(Number(valor)), "Valor perdido"])}
+                      formatter={(valor, nome) => (nome === "quantidade" ? [`${valor} planos pararam aqui`, "Cancelamentos"] : [formataMoeda(Number(valor)), "Valor perdido"])}
                     />
                     <Bar dataKey="quantidade" name="quantidade" radius={[6, 6, 0, 0]}>
                       {churn.churnPorParcela.map((item) => (
@@ -142,7 +155,7 @@ export function RecebimentosStatusDonut({ distribuicao, churn }: RecebimentosSta
             <p className="mt-4 text-xs text-foreground-muted">
               {temChurn
                 ? "Não há cancelamentos por parcela neste recorte."
-                : "Nenhuma parcela cancelada ou encerrada neste recorte. Retenção em alta."}
+                : "Nenhuma parcela cancelada neste recorte. Retenção em alta."}
             </p>
           )}
         </div>

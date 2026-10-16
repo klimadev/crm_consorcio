@@ -248,7 +248,7 @@ export function useLeadParcelas({ leadId }: UseLeadParcelasParams) {
         title: "Parcela cancelada",
         description:
           json.abortadas && json.abortadas > 0
-            ? `A parcela foi cancelada e ${json.abortadas} parcela(s) futura(s) foram encerradas.`
+            ? `A parcela foi cancelada e ${json.abortadas} parcela(s) futura(s) também foram canceladas.`
             : "A parcela foi cancelada.",
       });
 

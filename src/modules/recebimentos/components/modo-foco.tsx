@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { normalizarTelefoneParaWhatsapp } from "@/lib/phone";
 import { descreveDataRelativa, formataMoeda } from "@/lib/utils";
 import { NotaCobranca } from "@/modules/parcelas/components/nota-cobranca";
+import { EncerrarPlanoDialog } from "@/modules/parcelas/components/encerrar-plano-dialog";
 import type { ClienteCarteira, UseRecebimentosModuleReturn } from "../types";
 
 type ModoFocoProps = {
@@ -16,7 +17,7 @@ type ModoFocoProps = {
 // Fila de cobrança um cliente por vez: a pessoa decide sobre uma pessoa de
 // cada vez, sem a lista inteira ao fundo. Abre no "Iniciar cobranças" do hero.
 export function ModoFoco({ vm, onFechar }: ModoFocoProps) {
-  const { carregarParcelasCliente, parcelasExpandidas, expandindo, pagando, salvarObservacao, pagarParcela } = vm;
+  const { carregarParcelasCliente, parcelasExpandidas, expandindo, pagando, cancelandoParcela, salvarObservacao, pagarParcela, encerrarPlano } = vm;
 
   // Snapshot da fila na abertura: pagamentos no meio não reordenam a fila
   // debaixo de quem está cobrando.
@@ -24,6 +25,7 @@ export function ModoFoco({ vm, onFechar }: ModoFocoProps) {
     vm.carteira.filter((cliente) => cliente.estado === "em_atraso"),
   );
   const [indice, setIndice] = useState(0);
+  const [encerrarAberto, setEncerrarAberto] = useState(false);
   const cliente = fila[indice] as ClienteCarteira | undefined;
 
   const idLeadAtual = cliente?.id_lead;
@@ -52,7 +54,7 @@ export function ModoFoco({ vm, onFechar }: ModoFocoProps) {
   const atrasadas = parcelas.filter((parcela) => parcela.status === "ATRASADA");
   const primeiraAtrasada = atrasadas[0];
   const whatsapp = cliente ? normalizarTelefoneParaWhatsapp(cliente.telefone) : null;
-  const registrando = pagando !== null;
+  const ocupado = pagando !== null || cancelandoParcela !== null;
   const tudoResolvido = Boolean(cliente) && !primeiraAtrasada && expandindo !== idLeadAtual;
 
   return (
@@ -151,9 +153,9 @@ export function ModoFoco({ vm, onFechar }: ModoFocoProps) {
                     onClick={() => {
                       if (primeiraAtrasada) void pagarParcela(primeiraAtrasada.id, cliente.id_lead);
                     }}
-                    disabled={!primeiraAtrasada || registrando}
+                    disabled={!primeiraAtrasada || ocupado}
                   >
-                    {registrando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    {pagando !== null ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     {primeiraAtrasada
                       ? `Registrar pagamento de ${formataMoeda(primeiraAtrasada.valor)}`
                       : "Registrar pagamento"}
@@ -163,11 +165,21 @@ export function ModoFoco({ vm, onFechar }: ModoFocoProps) {
                     variant="ghost"
                     className="min-h-11 rounded-xl text-foreground-muted"
                     onClick={() => setIndice((atual) => atual + 1)}
-                    disabled={registrando}
+                    disabled={ocupado}
                   >
                     Depois
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
+                  {primeiraAtrasada ? (
+                    <button
+                      type="button"
+                      onClick={() => setEncerrarAberto(true)}
+                      disabled={ocupado}
+                      className="pt-1 text-center text-xs text-foreground-disabled underline underline-offset-2 transition-colors hover:text-warning"
+                    >
+                      Cliente desistiu? Encerrar o plano
+                    </button>
+                  ) : null}
                 </>
               )}
             </div>
@@ -189,6 +201,17 @@ export function ModoFoco({ vm, onFechar }: ModoFocoProps) {
           </div>
         )}
       </div>
+
+      {cliente ? (
+        <EncerrarPlanoDialog
+          aberto={encerrarAberto}
+          parcelas={parcelas}
+          encerrando={cancelandoParcela !== null}
+          erro={vm.erro}
+          onOpenChange={setEncerrarAberto}
+          onEncerrar={(idParcelaParada, motivo) => encerrarPlano(idParcelaParada, cliente.id_lead, motivo)}
+        />
+      ) : null}
     </dialog>
   );
 }

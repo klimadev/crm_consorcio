@@ -100,3 +100,43 @@ Verificação: 19/19 testes (5 novos de `montarCarteira`), oxlint sem erros nos 
 - **Craft e a11y**: todos os controles da carteira, chips e modo foco em 44px; labels do gerador de plano vinculados (o primitivo `DatePicker` ganhou `id` + `rotuloAcessivel`); `prefers-reduced-motion` já existia no globals.css e cobre os animates.
 
 Verificação: oxlint com 0 erros nos arquivos da entrega, 24/24 testes (5 novos do contrato do PATCH com nota: salva, limpa com null, cancelada bloqueada, Zod >500, COLABORADOR 403) e build de produção verde.
+
+## Encerramento inteligente de plano + vocabulário unificado (2026-10-12)
+
+- **"Encerrar plano" substitui "Remover plano"** no drawer: o diálogo pergunta "Onde o plano parou?" (pré-preenchido com a primeira parcela em aberto — `calcularEncerramentoPlano` em `lib/financeiro/parcelas.ts`, pura e testada), "Por que pararam?" (chips de motivos comuns + campo livre) e mostra o preview de consequência. Executa via `cancelar SUBSEQUENTES` na parcela escolhida: **nada é apagado**, pagas viram histórico, canceladas alimentam o churn, motivo/autor/data ficam gravados. O hard delete desceu para link de rodapé ("Plano cadastrado errado? Excluir registro") — correção de cadastro, não evento de negócio.
+- **Banner do plano encerrado** no drawer: "Plano encerrado na parcela #13 · Motivo: X · Encerrado há N dias" — a pergunta "onde pararam e por quê" respondida na primeira olhada.
+- **Vocabulário unificado**: na tela existe só **"Cancelada"**. A cascata (ABORTADA) mantém código interno próprio porque a curva "em qual parcela os planos param" depende de saber qual parcela foi o gatilho — fundir no banco inflaria a curva com a cascata inteira e ela mentiria. Donut soma as duas fatias numa "Cancelada"; badges idênticos.
+- **Panorama vira sala lateral** (Sheet, 1 clique no topo da carteira) em vez de seção recolhível no fim da página; KPIs redesenhados sem gradiente decorativo (número grande em cor semântica, tendência com seta); **chips de recorte ativo** na carteira (período/PDV/responsável/busca), visíveis e removíveis — a lista nunca mente sobre o que está mostrando.
+
+Verificação: oxlint 0 erros, 28/28 testes (4 novos de `calcularEncerramentoPlano`: parada padrão, consequência com soma, escolha manual, plano quitado) e build de produção verde.
+
+## Cancelamento dentro da carteira (2026-10-12)
+
+A desistência nasce durante a cobrança, então o cancelamento precisa estar onde a cobrança acontece — não a um clique do lead no Kanban. Três entradas, com hierarquia:
+
+- **No card expandido da carteira**: header "Parcelas do plano" com botão "Encerrar plano" (nível cliente, o caso comum) e ícone discreto de cancelar por linha de parcela (caso pontual). Ambos reabrem `EncerrarPlanoDialog`/`CancelarParcelaDialog`, os mesmos diálogos do drawer — zero divergência de UX.
+- **No Modo Foco**: link "Cliente desistiu? Encerrar o plano" abaixo das ações — o momento real da desistência (durante a ligação). Após encerrar, o cartão mostra "Tudo resolvido" e oferece Próximo.
+- A VM da carteira ganhou `cancelarParcela` (mesmo `PATCH /api/parcelas/[id]/cancelar`) e `encerrarPlano` (SUBSEQUENTES); nada de API nova. `EncerrarPlanoDialog` tornou `onExcluirRegistro` opcional (carteira não oferece exclusão técnica).
+
+Verificação: oxlint 0 erros, 28/28 testes, build de produção verde.
+
+## Carregamento quase instantâneo da carteira (2026-10-12)
+
+Com ~28 mil parcelas na base real, o carregamento demorava meio segundo "de vez em quando": a rota disparava ~18 scans paralelos (um por aggregate/groupBy) e ainda descia **todas** as parcelas da empresa para agrupar o gráfico mensal em JS — custo que crescia para sempre com o histórico. Duas frentes, ambas sem daemon/streaming (técnicas que já congelaram uma VPS em projeto anterior e ficaram banidas aqui):
+
+1. **Um scan por granularidade** (`lib/financeiro/consultas-recebimentos.ts`): resumo global, buckets mensais e carteira por cliente viraram três consultas SQL com `SUM(CASE WHEN …)` — o SQLite avalia todas as métricas na mesma passada. O gráfico mensal agregou no banco (`strftime` com `localtime`, para casar com o fuso do `getMonth()` legado). Detalhes que a migração revelou: binds de data sempre em epoch ms (a engine envia `Date` como ISO e `INTEGER >= TEXT` nunca casa), `CAST(… AS REAL)` nos SUMs (soma redonda volta INTEGER e quebra o unpack da engine), e a chave do bucket mantida igual à legada — uma parcela histórica com pagamento no ano 6 d.C. continua caindo no fim do gráfico, onde o usuário sempre a viu.
+2. **Cache em memória com invalidação explícita** (`lib/financeiro/cache-recebimentos.ts`): um `Map` ancorado em `globalThis` (em dev cada rota carrega sua cópia do módulo — sem a âncora, a mutação não alcançava o cache da leitura), TTL de 60s como rede de segurança, teto de 96 entradas (~15 MB) com remoção FIFO. **Toda** mutação de parcela (criar, pagar, editar, cancelar PONTUAL/SUBSEQUENTES, reabrir, excluir) invalida a cache da empresa na hora — provado ao vivo: pagamento seguido de GET já mostra o novo estado.
+
+O WAL do SQLite, que elimina o "lento de vez em quando" causado por leitor bloqueado por escritor (jobs de WhatsApp), **já é aplicado no boot** pelo `src/lib/prisma.ts` (`journal_mode=WAL`, `busy_timeout`, `synchronous=NORMAL`) — produção não precisa de passo extra.
+
+Números contra a base real (27.799 parcelas, 891 leads), cenário a cenário — cada campo comparado contra a implementação antiga, paridade total:
+
+| Cenário | Antes | Depois (cache vazio) | Cache hit |
+|---|---|---|---|
+| Sem filtros | 553ms | 136ms | ~14ms |
+| Período trimestre | 375ms | 123ms | ~14ms |
+| Busca textual | 567ms | 217ms | ~14ms |
+| Período + busca | 399ms | 89ms | ~14ms |
+| Por PDV | 514ms | 128ms | ~14ms |
+
+Verificação: paridade campo a campo em 5 cenários (resumo, distribuição, buckets, carteira completa), 33/33 testes (5 novos do módulo SQL: binds, curingas LIKE, coerções BigInt/INTEGER/NULL, chave/ordem dos buckets), smoke HTTP de invalidação, oxlint 0 erros, build de produção verde.

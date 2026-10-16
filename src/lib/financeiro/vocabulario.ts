@@ -44,12 +44,15 @@ export const ROTULOS_STATUS: Record<StatusParcela, RotuloStatus> = {
     cor: "var(--warning)",
     descricao: "saiu da cobrança por decisão da operação",
   },
+  // A cascata do encerramento mantém código interno próprio (ABORTADA) porque
+  // a curva de churn por parcela depende de saber qual parcela foi o gatilho.
+  // Na tela, porém, existe um único conceito: "Cancelada".
   ABORTADA: {
-    rotulo: "Encerrada",
-    tom: "default",
-    classeBadge: "border-border bg-muted text-foreground-muted",
-    cor: "var(--muted-foreground)",
-    descricao: "plano interrompido antes desta parcela",
+    rotulo: "Cancelada",
+    tom: "warning",
+    classeBadge: "border-warning/25 bg-warning/10 text-warning",
+    cor: "var(--warning)",
+    descricao: "cancelada em cascata: o plano foi encerrado antes desta parcela",
   },
 };
 
@@ -59,7 +62,7 @@ export const ROTULOS_MODO_CANCELAMENTO = {
     descricao: "As demais parcelas do plano seguem na cobrança.",
   },
   SUBSEQUENTES: {
-    titulo: "Cancelar esta e encerrar as próximas",
-    descricao: "As parcelas seguintes em aberto saem da cobrança futura.",
+    titulo: "Cancelar esta e as próximas",
+    descricao: "As parcelas seguintes em aberto também serão canceladas.",
   },
 } as const;
