@@ -211,7 +211,7 @@ async function reativar(id: string) {
                 </TableCell>
               )}
               <TableCell className="py-5">
-                <StatusBadge ativo={funcionario.ativo} />
+                <StatusBadge ativo={funcionario?.ativo ?? false} />
               </TableCell>
               <TableCell className="py-5 text-right">
                 <div className="flex flex-col gap-1 items-end">
@@ -240,30 +240,30 @@ async function reativar(id: string) {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (funcionario.ativo) {
+                        if (funcionario?.ativo) {
                           vm.abrirModalInativacao(funcionario);
                         } else {
                           void reativar(funcionario.id);
                         }
                       }}
-                      disabled={idReativando === funcionario.id}
-                      title={funcionario.ativo ? "Inativar colaborador" : "Reativar colaborador"}
-                      aria-label={funcionario.ativo ? `Inativar ${funcionario.nome}` : `Reativar ${funcionario.nome}`}
+                      disabled={!funcionario || idReativando === funcionario.id}
+                      title={funcionario?.ativo ? "Inativar colaborador" : "Reativar colaborador"}
+                      aria-label={funcionario?.ativo ? `Inativar ${funcionario.nome}` : `Reativar ${funcionario.nome}`}
                       className={
-                        funcionario.ativo
+                        funcionario?.ativo
                           ? "inline-flex items-center gap-1.5 rounded-lg border border-destructive/30 text-destructive px-2 py-1.5 text-xs font-medium hover:bg-destructive/10 hover:border-destructive/50 transition-colors disabled:opacity-50 disabled:pointer-events-none"
                           : "inline-flex items-center gap-1.5 rounded-lg border border-success/30 text-success px-2 py-1.5 text-xs font-medium hover:bg-success/10 hover:border-success/50 transition-colors disabled:opacity-50 disabled:pointer-events-none"
                       }
                     >
                       {idReativando === funcionario.id ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : funcionario.ativo ? (
+                      ) : funcionario?.ativo ? (
                         <UserMinus className="h-3.5 w-3.5" />
                       ) : (
                         <UserCheck className="h-3.5 w-3.5" />
                       )}
                       <span className="text-xs font-medium">
-                        {funcionario.ativo ? "Inativar" : "Reativar"}
+                        {funcionario?.ativo ? "Inativar" : "Reativar"}
                       </span>
                     </button>
                   )}

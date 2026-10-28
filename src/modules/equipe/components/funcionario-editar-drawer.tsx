@@ -160,7 +160,8 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
     }
   };
 
-  const handleAcaoStatus = async (funcionario: Funcionario) => {
+  const handleAcaoStatus = async (funcionario: Funcionario | null) => {
+    if (!funcionario) return;
     setMostrarMenuAcoes(false);
 
     if (funcionario.ativo) {
@@ -454,7 +455,7 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
                 </div>
               </div>
 
-              {funcionario.ativo ? (
+              {funcionario?.ativo ?? false ? (
                 <>
                   <div className="mb-3 flex items-center gap-2">
                     <AlertCircle className="h-4 w-4 text-destructive" />
@@ -463,8 +464,8 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
                   <Button
                     variant="outline"
                     className="h-10 w-full justify-start gap-2 rounded-lg border-destructive/30 text-destructive hover:bg-destructive/10 hover:border-destructive/50"
-                    onClick={() => handleAcaoStatus(funcionario)}
-                    disabled={idAcaoEmAndamento === funcionario.id || salvando}
+                    onClick={() => handleAcaoStatus(funcionario ?? undefined)}
+                    disabled={!funcionario || idAcaoEmAndamento === funcionario.id || salvando}
                   >
                     {idAcaoEmAndamento === funcionario.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -486,8 +487,8 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
                   <Button
                     variant="success"
                     className="h-10 w-full justify-start gap-2 rounded-lg border-success/30 text-success hover:bg-success/10 hover:border-success/50"
-                    onClick={() => handleAcaoStatus(funcionario)}
-                    disabled={idAcaoEmAndamento === funcionario.id || salvando}
+                    onClick={() => handleAcaoStatus(funcionario ?? undefined)}
+                    disabled={!funcionario || idAcaoEmAndamento === funcionario.id || salvando}
                   >
                     {idAcaoEmAndamento === funcionario.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -545,11 +546,11 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
                     Redefinir senha
                   </button>
                   <hr className="my-2 border-border" />
-                  {funcionario.ativo ? (
+                  {funcionario?.ativo ?? false ? (
                     <button
                       className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={() => handleAcaoStatus(funcionario)}
-                      disabled={idAcaoEmAndamento === funcionario.id || salvando}
+                      onClick={() => handleAcaoStatus(funcionario ?? undefined)}
+                      disabled={!funcionario || idAcaoEmAndamento === funcionario.id || salvando}
                     >
                       <UserMinus className="h-4 w-4" />
                       Inativar colaborador
@@ -557,8 +558,8 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
                   ) : (
                     <button
                       className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-success hover:bg-success/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={() => handleAcaoStatus(funcionario)}
-                      disabled={idAcaoEmAndamento === funcionario.id || salvando}
+                      onClick={() => handleAcaoStatus(funcionario ?? undefined)}
+                      disabled={!funcionario || idAcaoEmAndamento === funcionario.id || salvando}
                     >
                       <UserCheck className="h-4 w-4" />
                       Reativar colaborador

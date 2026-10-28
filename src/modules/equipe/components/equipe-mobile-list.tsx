@@ -93,7 +93,7 @@ export function EquipeMobileList({ vm }: EquipeMobileListProps) {
                 <div className="flex items-center justify-between">
                   <p className="truncate font-medium text-foreground">{funcionario.nome}</p>
                   <div className="flex items-center gap-1.5">
-                    {vm.podeInativar && (
+                    {vm.podeInativar && funcionario && (
                       <Button
                         size="sm"
                         variant={funcionario.ativo ? "destructive" : "success"}
@@ -107,7 +107,7 @@ export function EquipeMobileList({ vm }: EquipeMobileListProps) {
                         {funcionario.ativo ? "Inativar" : "Reativar"}
                       </Button>
                     )}
-                    <StatusBadge ativo={funcionario.ativo} />
+                    <StatusBadge ativo={funcionario?.ativo ?? false} />
                     {vm.podeGerenciarEmpresa && (
                       <button
                         type="button"
