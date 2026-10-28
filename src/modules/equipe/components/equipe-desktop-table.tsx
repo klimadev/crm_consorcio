@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import {
   ArrowDown,
   ArrowUp,
@@ -9,6 +11,8 @@ import {
   Pencil,
   Search,
   Users,
+  UserMinus,
+  UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -22,6 +26,18 @@ type EquipeDesktopTableProps = {
 };
 
 export function EquipeDesktopTable({ vm, modoDetail }: EquipeDesktopTableProps) {
+const [idReativando, setIdReativando] = useState<string | null>(null);
+
+async function reativar(id: string) {
+  const funcionario = vm.funcionarios.find((item) => item.id === id);
+  if (!funcionario) return;
+  setIdReativando(id);
+  try {
+    await vm.reativarFuncionarioIndividual(funcionario);
+  } finally {
+    setIdReativando(null);
+  }
+}
   const campoOrdenacao = vm.ordenarPor as "nome" | "email" | "cargo" | "status" | "pdv";
 
   function alternarOrdenacao(campo: "nome" | "email" | "cargo" | "status" | "pdv") {
@@ -198,26 +214,60 @@ export function EquipeDesktopTable({ vm, modoDetail }: EquipeDesktopTableProps) 
                 <StatusBadge ativo={funcionario.ativo} />
               </TableCell>
               <TableCell className="py-5 text-right">
-                {vm.podeGerenciarEmpresa && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      vm.loginComo(funcionario.id);
-                    }}
-                    disabled={vm.loginComoLoading === funcionario.id}
-                    title="Login como"
-                    aria-label={`Login como ${funcionario.nome}`}
-                    className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-foreground-muted hover:bg-background-surface hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {vm.loginComoLoading === funcionario.id ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <LogIn className="h-3.5 w-3.5" />
-                    )}
-                    Login
-                  </button>
-                )}
+                <div className="flex flex-col gap-1 items-end">
+                  {vm.podeGerenciarEmpresa && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        vm.loginComo(funcionario.id);
+                      }}
+                      disabled={vm.loginComoLoading === funcionario.id}
+                      title="Login como"
+                      aria-label={`Login como ${funcionario.nome}`}
+                      className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-foreground-muted hover:bg-background-surface hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {vm.loginComoLoading === funcionario.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <LogIn className="h-3.5 w-3.5" />
+                      )}
+                      Login
+                    </button>
+                  )}
+                  {vm.podeInativar && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (funcionario.ativo) {
+                          vm.abrirModalInativacao(funcionario);
+                        } else {
+                          void reativar(funcionario.id);
+                        }
+                      }}
+                      disabled={idReativando === funcionario.id}
+                      title={funcionario.ativo ? "Inativar colaborador" : "Reativar colaborador"}
+                      aria-label={funcionario.ativo ? `Inativar ${funcionario.nome}` : `Reativar ${funcionario.nome}`}
+                      className={
+                        funcionario.ativo
+                          ? "inline-flex items-center gap-1.5 rounded-lg border border-destructive/30 text-destructive px-2 py-1.5 text-xs font-medium hover:bg-destructive/10 hover:border-destructive/50 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                          : "inline-flex items-center gap-1.5 rounded-lg border border-success/30 text-success px-2 py-1.5 text-xs font-medium hover:bg-success/10 hover:border-success/50 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                      }
+                    >
+                      {idReativando === funcionario.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : funcionario.ativo ? (
+                        <UserMinus className="h-3.5 w-3.5" />
+                      ) : (
+                        <UserCheck className="h-3.5 w-3.5" />
+                      )}
+                      <span className="text-xs font-medium">
+                        {funcionario.ativo ? "Inativar" : "Reativar"}
+                      </span>
+                    </button>
+                  )}
+                </div>
               </TableCell>
             </TableRow>
           ))}

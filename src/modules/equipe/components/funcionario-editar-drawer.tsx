@@ -11,9 +11,9 @@ import {
   Shield,
   MoreHorizontal,
   AlertCircle,
-  CheckCircle2,
   HelpCircle,
   UserMinus,
+  UserCheck,
   History,
   Key,
   Eye,
@@ -104,6 +104,7 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
   const [dados, setDados] = useState<DadosEdicao | null>(null);
   const [erros, setErros] = useState<Record<string, string>>({});
   const [mostrarMenuAcoes, setMostrarMenuAcoes] = useState(false);
+  const [idAcaoEmAndamento, setIdAcaoEmAndamento] = useState<string | null>(null);
 
   const [dialogSenhaAberto, setDialogSenhaAberto] = useState(false);
   const [novaSenha, setNovaSenha] = useState("");
@@ -159,10 +160,20 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
     }
   };
 
-  const handleInativar = () => {
-    if (funcionario) {
+  const handleAcaoStatus = async (funcionario: Funcionario) => {
+    setMostrarMenuAcoes(false);
+
+    if (funcionario.ativo) {
       vm.abrirModalInativacao(funcionario);
-      setMostrarMenuAcoes(false);
+      return;
+    }
+
+    setIdAcaoEmAndamento(funcionario.id);
+    try {
+      await vm.reativarFuncionarioIndividual(funcionario);
+      onFechar();
+    } finally {
+      setIdAcaoEmAndamento(null);
     }
   };
 
@@ -443,24 +454,53 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
                 </div>
               </div>
 
-              {/* Zona de Perigo */}
-              <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
-                <div className="mb-3 flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-destructive" />
-                  <h4 className="text-sm font-semibold text-destructive">Zona de Perigo</h4>
-                </div>
-                <Button
-                  variant="outline"
-                  className="h-10 w-full justify-start gap-2 rounded-lg border-destructive/30 text-destructive hover:bg-destructive/10 hover:border-destructive/50"
-                  onClick={handleInativar}
-                >
-                  <UserMinus className="h-4 w-4" />
-                  <span className="flex-1 text-left">Inativar colaborador</span>
-                </Button>
-                <p className="mt-2 text-xs text-destructive/60">
-                  O colaborador não conseguirá mais acessar o sistema
-                </p>
-              </div>
+              {funcionario.ativo ? (
+                <>
+                  <div className="mb-3 flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-destructive" />
+                    <h4 className="text-sm font-semibold text-destructive">Zona de Perigo</h4>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="h-10 w-full justify-start gap-2 rounded-lg border-destructive/30 text-destructive hover:bg-destructive/10 hover:border-destructive/50"
+                    onClick={() => handleAcaoStatus(funcionario)}
+                    disabled={idAcaoEmAndamento === funcionario.id || salvando}
+                  >
+                    {idAcaoEmAndamento === funcionario.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <UserMinus className="h-4 w-4" />
+                    )}
+                    <span className="flex-1 text-left">Inativar colaborador</span>
+                  </Button>
+                  <p className="mt-2 text-xs text-destructive/60">
+                    O colaborador não conseguirá mais acessar o sistema
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="mb-3 flex items-center gap-2">
+                    <UserCheck className="h-4 w-4 text-success" />
+                    <h4 className="text-sm font-semibold text-success">Colaborador inativo</h4>
+                  </div>
+                  <Button
+                    variant="success"
+                    className="h-10 w-full justify-start gap-2 rounded-lg border-success/30 text-success hover:bg-success/10 hover:border-success/50"
+                    onClick={() => handleAcaoStatus(funcionario)}
+                    disabled={idAcaoEmAndamento === funcionario.id || salvando}
+                  >
+                    {idAcaoEmAndamento === funcionario.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <UserCheck className="h-4 w-4" />
+                    )}
+                    <span className="flex-1 text-left">Reativar colaborador</span>
+                  </Button>
+                  <p className="mt-2 text-xs text-success/70">
+                    Reativar devolve o acesso ao sistema neste PDV.
+                  </p>
+                </>
+              )}
             </TabsContent>
           </Tabs>
 
@@ -505,13 +545,25 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
                     Redefinir senha
                   </button>
                   <hr className="my-2 border-border" />
-                  <button
-                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-destructive hover:bg-destructive/10"
-                    onClick={handleInativar}
-                  >
-                    <UserMinus className="h-4 w-4" />
-                    Inativar colaborador
-                  </button>
+                  {funcionario.ativo ? (
+                    <button
+                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => handleAcaoStatus(funcionario)}
+                      disabled={idAcaoEmAndamento === funcionario.id || salvando}
+                    >
+                      <UserMinus className="h-4 w-4" />
+                      Inativar colaborador
+                    </button>
+                  ) : (
+                    <button
+                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-success hover:bg-success/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => handleAcaoStatus(funcionario)}
+                      disabled={idAcaoEmAndamento === funcionario.id || salvando}
+                    >
+                      <UserCheck className="h-4 w-4" />
+                      Reativar colaborador
+                    </button>
+                  )}
                 </div>
               )}
             </div>

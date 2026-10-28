@@ -1,10 +1,10 @@
 "use client";
-
+import { useState } from "react";
 import { Loader2, LogIn, Pencil, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "./shared/status-badge";
 import { Avatar } from "./shared/avatar";
-import { cn } from "@/lib/utils";
+import type { Funcionario } from "../types";
 import type { UseEquipeModuleReturn } from "../types";
 
 type EquipeMobileListProps = {
@@ -12,6 +12,20 @@ type EquipeMobileListProps = {
 };
 
 export function EquipeMobileList({ vm }: EquipeMobileListProps) {
+  const [idReativando, setIdReativando] = useState<string | null>(null);
+
+  const handleAcaoMobile = async (funcionario: Funcionario) => {
+    if (funcionario.ativo) {
+      vm.abrirModalInativacao(funcionario);
+      return;
+    }
+    setIdReativando(funcionario.id);
+    try {
+      await vm.reativarFuncionarioIndividual(funcionario);
+    } finally {
+      setIdReativando(null);
+    }
+  };
   const todosDaPaginaSelecionados =
     vm.funcionarios.length > 0 && vm.funcionarios.every((item) => vm.idsSelecionados.includes(item.id));
 
@@ -79,6 +93,20 @@ export function EquipeMobileList({ vm }: EquipeMobileListProps) {
                 <div className="flex items-center justify-between">
                   <p className="truncate font-medium text-foreground">{funcionario.nome}</p>
                   <div className="flex items-center gap-1.5">
+                    {vm.podeInativar && (
+                      <Button
+                        size="sm"
+                        variant={funcionario.ativo ? "destructive" : "success"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleAcaoMobile(funcionario);
+                        }}
+                        disabled={idReativando === funcionario.id}
+                        className="text-xs"
+                      >
+                        {funcionario.ativo ? "Inativar" : "Reativar"}
+                      </Button>
+                    )}
                     <StatusBadge ativo={funcionario.ativo} />
                     {vm.podeGerenciarEmpresa && (
                       <button
