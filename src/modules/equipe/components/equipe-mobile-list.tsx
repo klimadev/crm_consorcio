@@ -14,11 +14,14 @@ type EquipeMobileListProps = {
 export function EquipeMobileList({ vm }: EquipeMobileListProps) {
   const [idReativando, setIdReativando] = useState<string | null>(null);
 
-  const handleAcaoMobile = async (funcionario: Funcionario) => {
+  const handleAcaoMobile = async (funcionario: Funcionario | null) => {
+    if (!funcionario) return;
+
     if (funcionario.ativo) {
       vm.abrirModalInativacao(funcionario);
       return;
     }
+
     setIdReativando(funcionario.id);
     try {
       await vm.reativarFuncionarioIndividual(funcionario);
@@ -62,6 +65,8 @@ export function EquipeMobileList({ vm }: EquipeMobileListProps) {
       </div>
 
       {vm.funcionarios.map((funcionario) => {
+        if (!funcionario) return null;
+
         const isSelected = vm.idsSelecionados.includes(funcionario.id);
 
         return (
@@ -93,15 +98,16 @@ export function EquipeMobileList({ vm }: EquipeMobileListProps) {
                 <div className="flex items-center justify-between">
                   <p className="truncate font-medium text-foreground">{funcionario.nome}</p>
                   <div className="flex items-center gap-1.5">
-                    {vm.podeInativar && funcionario && (
+                    {vm.podeInativar && (
                       <Button
                         size="sm"
                         variant={funcionario.ativo ? "destructive" : "success"}
                         onClick={(e) => {
                           e.stopPropagation();
+                          if (!funcionario) return;
                           void handleAcaoMobile(funcionario);
                         }}
-                        disabled={idReativando === funcionario.id}
+                        disabled={!funcionario || idReativando === funcionario.id}
                         className="text-xs"
                       >
                         {funcionario.ativo ? "Inativar" : "Reativar"}
@@ -113,11 +119,12 @@ export function EquipeMobileList({ vm }: EquipeMobileListProps) {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
+                          if (!funcionario) return;
                           vm.loginComo(funcionario.id);
                         }}
-                        disabled={vm.loginComoLoading === funcionario.id}
+                        disabled={!funcionario || vm.loginComoLoading === funcionario.id}
                         title="Login como"
-                        aria-label={`Login como ${funcionario.nome}`}
+                        aria-label={`Login como ${funcionario?.nome}`}
                         className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-foreground-disabled transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {vm.loginComoLoading === funcionario.id ? (

@@ -164,113 +164,119 @@ async function reativar(id: string) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {vm.funcionarios.map((funcionario) => (
-            <TableRow 
-              key={funcionario.id} 
-              className="cursor-pointer border-border/60 transition-all duration-200 hover:bg-muted/80 hover:shadow-sm"
-              onClick={() => vm.iniciarEdicao(funcionario)}
-            >
-              {vm.podeExecutarAcoesLote && (
+          {vm.funcionarios.map((funcionario) => {
+            if (!funcionario) return null;
+
+            return (
+              <TableRow
+                key={funcionario.id}
+                className="cursor-pointer border-border/60 transition-all duration-200 hover:bg-muted/80 hover:shadow-sm"
+                onClick={() => vm.iniciarEdicao(funcionario)}
+              >
+                {vm.podeExecutarAcoesLote && (
+                  <TableCell className="py-5">
+                    <input
+                      type="checkbox"
+                      checked={vm.idsSelecionados.includes(funcionario.id)}
+                      onChange={(e) => vm.alternarSelecao(funcionario.id, e.target.checked)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-4 w-4 rounded border-border text-foreground-muted focus:ring-ring"
+                      aria-label={`Selecionar ${funcionario.nome}`}
+                    />
+                  </TableCell>
+                )}
                 <TableCell className="py-5">
-                  <input
-                    type="checkbox"
-                    checked={vm.idsSelecionados.includes(funcionario.id)}
-                    onChange={(e) => vm.alternarSelecao(funcionario.id, e.target.checked)}
-                    onClick={(e) => e.stopPropagation()}
-                    className="h-4 w-4 rounded border-border text-foreground-muted focus:ring-ring"
-                    aria-label={`Selecionar ${funcionario.nome}`}
-                  />
-                </TableCell>
-              )}
-              <TableCell className="py-5">
-                <button
-                  type="button"
-                  className="-mx-2 flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1 transition-all duration-200 hover:bg-background-surface hover:shadow-sm"
-                  onClick={() => vm.iniciarEdicao(funcionario)}
-                  title="Clique para editar"
-                >
-                  <Avatar nome={funcionario.nome} tamanho="md" />
-                  <div className="flex flex-col items-start">
-                    <p className="text-sm font-medium text-foreground">{funcionario.nome}</p>
-                    <span className="flex items-center gap-1 text-xs text-info opacity-0 transition-opacity hover:opacity-100">
-                      <Pencil className="h-3 w-3" />
-                      Editar
-                    </span>
-                  </div>
-                </button>
-              </TableCell>
-              <TableCell className="py-5">
-                <p className="text-sm text-foreground-muted">{funcionario.email}</p>
-              </TableCell>
-              <TableCell className="py-5">
-                <span className="text-sm text-foreground-muted">{funcionario.cargo}</span>
-              </TableCell>
-              {!modoDetail && (
-                <TableCell className="py-5 text-foreground-muted">
-                  <span className="text-sm">{funcionario.pdv?.nome}</span>
-                </TableCell>
-              )}
-              <TableCell className="py-5">
-                <StatusBadge ativo={funcionario?.ativo ?? false} />
-              </TableCell>
-              <TableCell className="py-5 text-right">
-                <div className="flex flex-col gap-1 items-end">
-                  {vm.podeGerenciarEmpresa && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        vm.loginComo(funcionario.id);
-                      }}
-                      disabled={vm.loginComoLoading === funcionario.id}
-                      title="Login como"
-                      aria-label={`Login como ${funcionario.nome}`}
-                      className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-foreground-muted hover:bg-background-surface hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {vm.loginComoLoading === funcionario.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <LogIn className="h-3.5 w-3.5" />
-                      )}
-                      Login
-                    </button>
-                  )}
-                  {vm.podeInativar && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (funcionario?.ativo) {
-                          vm.abrirModalInativacao(funcionario);
-                        } else {
-                          void reativar(funcionario.id);
-                        }
-                      }}
-                      disabled={!funcionario || idReativando === funcionario.id}
-                      title={funcionario?.ativo ? "Inativar colaborador" : "Reativar colaborador"}
-                      aria-label={funcionario?.ativo ? `Inativar ${funcionario.nome}` : `Reativar ${funcionario.nome}`}
-                      className={
-                        funcionario?.ativo
-                          ? "inline-flex items-center gap-1.5 rounded-lg border border-destructive/30 text-destructive px-2 py-1.5 text-xs font-medium hover:bg-destructive/10 hover:border-destructive/50 transition-colors disabled:opacity-50 disabled:pointer-events-none"
-                          : "inline-flex items-center gap-1.5 rounded-lg border border-success/30 text-success px-2 py-1.5 text-xs font-medium hover:bg-success/10 hover:border-success/50 transition-colors disabled:opacity-50 disabled:pointer-events-none"
-                      }
-                    >
-                      {idReativando === funcionario.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : funcionario?.ativo ? (
-                        <UserMinus className="h-3.5 w-3.5" />
-                      ) : (
-                        <UserCheck className="h-3.5 w-3.5" />
-                      )}
-                      <span className="text-xs font-medium">
-                        {funcionario?.ativo ? "Inativar" : "Reativar"}
+                  <button
+                    type="button"
+                    className="-mx-2 flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1 transition-all duration-200 hover:bg-background-surface hover:shadow-sm"
+                    onClick={() => vm.iniciarEdicao(funcionario)}
+                    title="Clique para editar"
+                  >
+                    <Avatar nome={funcionario.nome} tamanho="md" />
+                    <div className="flex flex-col items-start">
+                      <p className="text-sm font-medium text-foreground">{funcionario.nome}</p>
+                      <span className="flex items-center gap-1 text-xs text-info opacity-0 transition-opacity hover:opacity-100">
+                        <Pencil className="h-3 w-3" />
+                        Editar
                       </span>
-                    </button>
-                  )}
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
+                    </div>
+                  </button>
+                </TableCell>
+                <TableCell className="py-5">
+                  <p className="text-sm text-foreground-muted">{funcionario.email}</p>
+                </TableCell>
+                <TableCell className="py-5">
+                  <span className="text-sm text-foreground-muted">{funcionario.cargo}</span>
+                </TableCell>
+                {!modoDetail && (
+                  <TableCell className="py-5 text-foreground-muted">
+                    <span className="text-sm">{funcionario.pdv?.nome}</span>
+                  </TableCell>
+                )}
+                <TableCell className="py-5">
+                  <StatusBadge ativo={funcionario?.ativo ?? false} />
+                </TableCell>
+                <TableCell className="py-5 text-right">
+                  <div className="flex flex-col gap-1 items-end">
+                    {vm.podeGerenciarEmpresa && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!funcionario) return;
+                          vm.loginComo(funcionario.id);
+                        }}
+                        disabled={!funcionario || vm.loginComoLoading === funcionario.id}
+                        title="Login como"
+                        aria-label={`Login como ${funcionario?.nome}`}
+                        className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-foreground-muted hover:bg-background-surface hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {vm.loginComoLoading === funcionario.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <LogIn className="h-3.5 w-3.5" />
+                        )}
+                        Login
+                      </button>
+                    )}
+                    {vm.podeInativar && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!funcionario) return;
+                          if (funcionario?.ativo) {
+                            vm.abrirModalInativacao(funcionario);
+                          } else {
+                            void reativar(funcionario.id);
+                          }
+                        }}
+                        disabled={!funcionario || idReativando === funcionario.id}
+                        title={funcionario?.ativo ? "Inativar colaborador" : "Reativar colaborador"}
+                        aria-label={funcionario?.ativo ? `Inativar ${funcionario.nome}` : `Reativar ${funcionario.nome}`}
+                        className={
+                          funcionario?.ativo
+                            ? "inline-flex items-center gap-1.5 rounded-lg border border-destructive/30 text-destructive px-2 py-1.5 text-xs font-medium hover:bg-destructive/10 hover:border-destructive/50 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                            : "inline-flex items-center gap-1.5 rounded-lg border border-success/30 text-success px-2 py-1.5 text-xs font-medium hover:bg-success/10 hover:border-success/50 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                        }
+                      >
+                        {idReativando === funcionario.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : funcionario?.ativo ? (
+                          <UserMinus className="h-3.5 w-3.5" />
+                        ) : (
+                          <UserCheck className="h-3.5 w-3.5" />
+                        )}
+                        <span className="text-xs font-medium">
+                          {funcionario?.ativo ? "Inativar" : "Reativar"}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>
