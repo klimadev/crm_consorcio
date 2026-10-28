@@ -160,16 +160,19 @@ export function EquipeBulkActions({ vm }: EquipeBulkActionsProps) {
                       <SelectValue placeholder="Destino para reatribuição" />
                     </SelectTrigger>
                     <SelectContent>
-                      {vm.funcionariosAtivosParaDestino.map((funcionario) => (
-                        <SelectItem key={funcionario.id} value={funcionario.id}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{funcionario.nome}</span>
-                            <span className="text-xs text-foreground-muted">
-                              {funcionario.cargo} &bull; {funcionario.pdv?.nome}
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
+                      {vm.funcionariosAtivosParaDestino.map((funcionario) => {
+                        if (!funcionario) return null;
+                        return (
+                          <SelectItem key={funcionario.id} value={funcionario.id}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{funcionario.nome}</span>
+                              <span className="text-xs text-foreground-muted">
+                                {funcionario.cargo} &bull; {funcionario.pdv?.nome}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
 

@@ -52,16 +52,19 @@ export function InativacaoDialog({ vm }: InativacaoDialogProps) {
                   <SelectValue placeholder="Selecione um colaborador" />
                 </SelectTrigger>
                 <SelectContent>
-                  {vm.funcionariosDestinoMesmoPdv.map((funcionario) => (
-                    <SelectItem key={funcionario.id} value={funcionario.id}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{funcionario.nome}</span>
-                        <span className="text-xs text-slate-500">
-                          {funcionario.cargo} • {funcionario.pdv?.nome}
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
+                  {vm.funcionariosDestinoMesmoPdv.map((funcionario) => {
+                    if (!funcionario) return null;
+                    return (
+                      <SelectItem key={funcionario.id} value={funcionario.id}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{funcionario.nome}</span>
+                          <span className="text-xs text-slate-500">
+                            {funcionario.cargo} • {funcionario.pdv?.nome}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>

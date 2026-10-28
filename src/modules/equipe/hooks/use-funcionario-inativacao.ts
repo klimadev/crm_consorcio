@@ -48,12 +48,12 @@ export function useFuncionarioInativacao({
 
   const funcionariosDestinoMesmoPdv = useMemo(() => {
     if (!funcionarioDestinoInativacao) return [];
-    const origem = funcionarios.find((funcionario) => funcionario.id === funcionarioDestinoInativacao.id);
+    const origem = funcionarios.find((funcionario) => funcionario?.id === funcionarioDestinoInativacao.id);
     if (!origem?.pdv?.id) return [];
 
     return funcionarios.filter(
       (funcionario) =>
-        funcionario.ativo && funcionario.id !== funcionarioDestinoInativacao.id && funcionario.pdv?.id === origem.pdv.id,
+        funcionario?.ativo && funcionario?.id !== funcionarioDestinoInativacao.id && funcionario.pdv?.id === origem.pdv.id,
     );
   }, [funcionarios, funcionarioDestinoInativacao]);
 
@@ -110,7 +110,7 @@ export function useFuncionarioInativacao({
   const abrirModalInativacao = useCallback(
     (funcionario: Funcionario) => {
       const destinoMesmoPdv = funcionariosAtivosParaDestino.filter(
-        (item) => item.id !== funcionario.id && item.pdv?.id === funcionario.pdv?.id,
+        (item) => item?.id !== funcionario.id && item.pdv?.id === funcionario.pdv?.id,
       );
       const destinoAutomatico = destinoMesmoPdv[0];
 

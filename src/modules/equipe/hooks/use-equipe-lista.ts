@@ -81,7 +81,7 @@ export function useEquipeLista({
       setKpis(kpisCalculados);
       setKpisTotais(kpisTotaisCalculados);
 
-      setIdsSelecionados((atual) => atual.filter((id) => lista.some((funcionario) => funcionario.id === id)));
+      setIdsSelecionados((atual) => atual.filter((id) => lista.some((funcionario) => funcionario?.id === id)));
     } finally {
       setCarregandoLista(false);
     }
@@ -115,12 +115,12 @@ export function useEquipeLista({
   }, [funcionarios]);
 
   const funcionariosAtivosParaDestino = useMemo(
-    () => funcionarios.filter((funcionario) => funcionario.ativo),
+    () => funcionarios.filter((funcionario) => funcionario?.ativo),
     [funcionarios],
   );
 
   const todosDaPaginaSelecionados = useMemo(
-    () => funcionarios.length > 0 && funcionarios.every((item) => idsSelecionados.includes(item.id)),
+    () => funcionarios.length > 0 && funcionarios.every((item) => item?.id && idsSelecionados.includes(item.id)),
     [funcionarios, idsSelecionados],
   );
 

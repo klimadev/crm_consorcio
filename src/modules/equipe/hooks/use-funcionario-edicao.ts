@@ -179,7 +179,8 @@ export function useFuncionarioEdicao({ pdvs, setFuncionarios, addToast }: UseFun
   );
 
   const iniciarEdicao = useCallback(
-    (funcionario: Funcionario) => {
+    (funcionario: Funcionario | null) => {
+      if (!funcionario) return;
       limparTimerAutoSave();
       setEditandoFuncionario(funcionario);
       setEditandoId(funcionario.id);
