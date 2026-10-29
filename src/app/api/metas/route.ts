@@ -52,7 +52,23 @@ function filtroAcessoMetas(sessao: { perfil: string; id_pdv: string | null }) {
   return "__sem_acesso__"; // nunca encontra
 }
 
-async function serializarMetaNova(row: any): Promise<Meta> {
+type MetaNovaRow = {
+  id: string;
+  id_empresa: string;
+  titulo: string;
+  tipo_meta: string;
+  origem: string;
+  alvo: number;
+  semana: number | null;
+  mes_referencia: string | null;
+  data_inicio: Date;
+  data_fim: Date;
+  ativo: boolean;
+  id_equipe: string | null;
+  equipe: { id: string; nome: string } | null;
+};
+
+async function serializarMetaNova(row: MetaNovaRow): Promise<Meta> {
   // Busca progresso real (pagamentos / leads)
   const dataInicio = new Date(row.data_inicio);
   const dataFim = new Date(row.data_fim);

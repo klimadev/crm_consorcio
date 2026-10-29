@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { executarAcaoLoteEquipe, inativarFuncionario as inativarFuncionarioApi } from "@/lib/api/equipe";
 import type { Funcionario, FuncionarioDestinoInativacao } from "../types";
 
@@ -56,6 +56,7 @@ export function useFuncionarioInativacao({
         funcionario?.ativo && funcionario?.id !== funcionarioDestinoInativacao.id && funcionario.pdv?.id === origem.pdv.id,
     );
   }, [funcionarios, funcionarioDestinoInativacao]);
+  const reativarRef = useRef<((funcionario: Funcionario) => Promise<void>) | null>(null);
 
   const inativarFuncionario = useCallback(
     async (id: string, destino: string, obs?: string) => {
@@ -99,7 +100,13 @@ export function useFuncionarioInativacao({
         type: "success",
         title: "Colaborador inativado",
         description: "Os leads foram reatribuídos e o colaborador pode ser reativado depois.",
-        duration: 4000,
+        duration: 6000,
+        action: {
+          label: "Desfazer",
+          run: () => {
+            void reativarRef.current?.(funcionarioAnterior);
+          },
+        },
       });
       void Promise.all([carregarFuncionarios(), carregarPdvs()]);
       return true;
@@ -174,6 +181,7 @@ export function useFuncionarioInativacao({
     },
     [addToast, carregarFuncionarios, carregarPdvs, setFuncionarios],
   );
+  reativarRef.current = reativarFuncionarioIndividual;
 
   return {
     dialogInativacaoAberto,

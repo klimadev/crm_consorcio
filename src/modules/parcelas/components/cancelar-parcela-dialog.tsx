@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AlertCircle, Loader2, TriangleAlert } from "lucide-react";
 import {
   Dialog,
@@ -63,12 +63,7 @@ export function CancelarParcelaDialog({
   const [modo, setModo] = useState<ModoCancelamento>("PONTUAL");
   const [motivo, setMotivo] = useState("");
 
-  useEffect(() => {
-    if (aberto) {
-      setModo("PONTUAL");
-      setMotivo("");
-    }
-  }, [aberto, parcela?.id]);
+  // Estado reinicia automaticamente ao remontar (Dialog desmonta quando fechado)
 
   const numeroK = parcela?.numero_parcela ?? 0;
   const subsequentes = parcela ? calcularParcelasQueSeraoEncerradas(parcela, parcelasDoLead) : [];

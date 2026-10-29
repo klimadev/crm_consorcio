@@ -53,7 +53,7 @@ function posicaoIcone(posicao: number) {
 }
 
 /** Tooltip customizado do recharts */
-function ChartTooltip({ active, payload, label }: any) {
+function ChartTooltip({ active, payload, label }: { active: boolean; payload: { payload: RankingItem } | null; label: string }) {
   if (!active || !payload?.length) return null;
   const item = payload[0]?.payload;
   if (!item) return null;
@@ -107,16 +107,16 @@ export function MetaRanking({
     // Encontra dado de comparação para esta equipe
     const compRanking = dadosComparacao?.ranking ?? [];
     const compItem = compRanking.find((c: RankingItem) => c.id_equipe === item.id_equipe);
-    const nome = (item as any).nome ?? "";
+    const nome = item.nome ?? "";
     return {
-      id_equipe: (item as any).id_equipe ?? "",
+      id_equipe: item.id_equipe ?? "",
       nome,
       nome_curto: nome.length > 18 ? nome.slice(0, 16) + "..." : nome,
-      percentual: (item as any).percentual ?? 0,
+      percentual: item.percentual ?? 0,
       percentual_comparacao: compItem?.percentual ?? null,
-      realizado: (item as any).realizado ?? 0,
-      alvo: (item as any).alvo ?? 0,
-      posicao: (item as any).posicao ?? 0,
+      realizado: item.realizado ?? 0,
+      alvo: item.alvo ?? 0,
+      posicao: item.posicao ?? 0,
       delta: "delta_percentual" in item ? (item as ComparacaoItem).delta_percentual : null,
     };
   });

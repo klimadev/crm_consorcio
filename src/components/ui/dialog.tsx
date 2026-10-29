@@ -30,18 +30,18 @@ const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(({ className, children, ...props }, ref) => (
-  <DialogPortal>
-    <DialogOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-background-elevated p-6 shadow-2xl shadow-black/50 animate-scale-in",
-        "focus:outline-none",
-        className,
-      )}
-      suppressHydrationWarning
-      {...props}
-    >
+    <DialogPortal>
+      <DialogOverlay />
+      <DialogPrimitive.Content
+        ref={ref}
+        className={cn(
+          "fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-background-elevated p-6 shadow-2xl shadow-black/50 animate-scale-in",
+          "focus:outline-none",
+          className,
+        )}
+        suppressHydrationWarning
+        {...props}
+      >
       {children}
       <DialogClose className="absolute right-4 top-4 rounded-lg p-1 text-foreground-disabled transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background">
         <X className="h-4 w-4" />

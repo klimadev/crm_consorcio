@@ -32,8 +32,8 @@ After careful consideration, I'll output:
 Hope this helps!`;
     const result = extractJson(raw);
     expect(result).toHaveProperty("analysis");
-    expect((result as any).analysis[0].leadName).toBe("João");
-    expect((result as any).summary.totalLeads).toBe(1);
+    expect(result.analysis[0].leadName).toBe("João");
+    expect(result.summary.totalLeads).toBe(1);
   });
 
   it("extrai JSON com reasoning do modelo", () => {

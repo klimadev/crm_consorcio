@@ -19,7 +19,7 @@ function SheetContent({
   const isRight = side === "right";
   return (
     <SheetPortal>
-      <DrawerPrimitive.Overlay className="fixed inset-0 z-50 bg-[color:var(--overlay)]" />
+      <DrawerPrimitive.Overlay className="fixed inset-0 z-50 bg-[color:var(--overlay)]" suppressHydrationWarning />
       <DrawerPrimitive.Content
         className={cn(
           "fixed top-0 bottom-0 z-50 flex flex-col border border-border bg-background-elevated shadow-xl shadow-black/50 transition-transform duration-300 ease-out",
@@ -28,6 +28,7 @@ function SheetContent({
             : "left-0 w-full max-w-md rounded-r-2xl data-[state=closed]:-translate-x-full data-[state=open]:translate-x-0",
           className,
         )}
+        suppressHydrationWarning
         {...props}
       />
     </SheetPortal>

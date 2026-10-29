@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { AlertCircle, Flag, Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -51,12 +51,7 @@ export function EncerrarPlanoDialog({
   const [idParada, setIdParada] = useState("");
   const [motivo, setMotivo] = useState("");
 
-  useEffect(() => {
-    if (aberto) {
-      setIdParada(emAberto[0]?.id ?? "");
-      setMotivo("");
-    }
-  }, [aberto, emAberto]);
+  // Estado reinicia automaticamente ao remontar (Dialog desmonta quando fechado)
 
   const { parada, foraDaCobranca, totalForaDaCobranca } = useMemo(
     () => calcularEncerramentoPlano(parcelas, idParada),

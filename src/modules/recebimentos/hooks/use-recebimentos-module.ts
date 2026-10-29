@@ -45,13 +45,9 @@ export function useRecebimentosModule(): UseRecebimentosModuleReturn {
     },
     [filtros, pathname, router],
   );
-
   // A busca responde ao que a pessoa digita sem martelar a API a cada tecla:
   // o input é imediato, a URL (e o fetch) esperam 350ms de pausa.
   const [buscaDigitada, setBuscaDigitada] = useState(filtros.busca);
-  useEffect(() => {
-    setBuscaDigitada(filtros.busca);
-  }, [filtros.busca]);
   useEffect(() => {
     if (buscaDigitada === filtros.busca) return;
     const timer = setTimeout(() => mudarFiltro({ busca: buscaDigitada }), 350);
@@ -68,9 +64,10 @@ export function useRecebimentosModule(): UseRecebimentosModuleReturn {
 
   useEffect(() => {
     let ativo = true;
-    setAtualizando(true);
 
-    void listarRecebimentos(filtros).then((resultado) => {
+    const carregar = async () => {
+      setAtualizando(true);
+      const resultado = await listarRecebimentos(filtros);
       if (!ativo) return;
 
       if (resultado.ok) {
@@ -82,8 +79,9 @@ export function useRecebimentosModule(): UseRecebimentosModuleReturn {
 
       setCarregando(false);
       setAtualizando(false);
-    });
+    };
 
+    void carregar();
     return () => {
       ativo = false;
     };

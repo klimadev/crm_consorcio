@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Loader2, PenLine, StickyNote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,9 +22,6 @@ export function NotaCobranca({ parcela, podeEditar, onSalvar }: NotaCobrancaProp
   const [salvando, setSalvando] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  useEffect(() => {
-    if (!editando) setTexto(parcela.observacao_cobranca ?? "");
-  }, [editando, parcela.observacao_cobranca]);
 
   useEffect(() => {
     if (editando) textareaRef.current?.focus();

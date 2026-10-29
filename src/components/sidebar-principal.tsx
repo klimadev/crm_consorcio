@@ -102,11 +102,11 @@ function MenuItemComBadge({
         {label}
       </div>
       {temPendencia && (
-            <span
-              className={cn(
-                "flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold text-white",
-                temPendenciaCritica ? "bg-destructive" : "bg-warning",
-              )}
+        <span
+          className={cn(
+            "flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold text-white",
+            temPendenciaCritica ? "bg-destructive" : "bg-warning",
+          )}
         >
           {resumo.total > 99 ? "99+" : resumo.total}
         </span>
@@ -132,11 +132,11 @@ export function SidebarPrincipal({ sessao, dadosUsuario }: Props) {
   };
 
   type Secao = {
-  titulo: string;
-  itens: ItemMenu[];
-};
+    titulo: string;
+    itens: ItemMenu[];
+  };
 
-const secoes: Secao[] = [
+  const secoes: Secao[] = [
     {
       titulo: "GERAL",
       itens: [{ href: "/resumo", label: "Resumo", icon: BarChart3, tourTarget: TOUR_TARGETS.sidebarResumo }],
@@ -147,10 +147,6 @@ const secoes: Secao[] = [
         { href: "/chat", label: "Chat", icon: MessageSquare, badge: "Beta" },
         { href: "/kanban", label: "Leads", icon: LayoutGrid, tourTarget: TOUR_TARGETS.sidebarKanban },
         ...(sessao.perfil === "EMPRESA" ? [{ href: "/recebimentos", label: "Recebimentos", icon: WalletCards }] : []),
-        // [HYPE CRM] Feature em desenvolvimento - Produtos será uma feature exclusiva do HYPE CRM
-        // ...(sessao.perfil === "EMPRESA" || sessao.perfil === "GERENTE"
-        //   ? [{ href: "/produtos", label: "Produtos", icon: Package }]
-        //   : []),
         ...(sessao.perfil !== "COLABORADOR"
           ? [
               {
@@ -212,15 +208,10 @@ const secoes: Secao[] = [
 
   const conteudoSidebar = (
     <div className="flex h-full flex-col gap-4 rounded-2xl border border-border bg-background p-4 shadow-sm shadow-black/10 lg:min-h-full lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none">
-        <div className="space-y-4">
+      <div className="space-y-4">
         <div className="flex items-center gap-3 px-1">
           <div className="relative h-9 w-9 overflow-hidden rounded-xl">
-            <Image
-              src="/logo.png"
-              alt="MC Consórcio"
-              fill
-              className="object-cover"
-            />
+            <Image src="/logo.png" alt="MC Consórcio" fill className="object-cover" />
           </div>
           <div>
             <p className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">MC CRM Consórcio</p>
@@ -253,22 +244,16 @@ const secoes: Secao[] = [
                       resumo={resumo ?? undefined}
                       tourTarget={item.tourTarget}
                       onClick={() => setSidebarAberta(false)}
-                      />
+                    />
                   );
                 }
 
-                // Item com submenu (ex: Equipe)
                 if (temChildren) {
                   const submenuId = `${baseSubmenuId}-${item.href.replace(/\//g, "-")}`;
 
                   return (
                     <div key={item.href}>
-                      <div
-                        className={cn(
-                          "relative flex w-full items-center justify-between rounded-[10px] px-3 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-foreground-muted transition-all duration-200 hover:bg-muted hover:text-foreground",
-                          ativo && "bg-muted pl-4 text-foreground",
-                        )}
-                      >
+                      <div suppressHydrationWarning>
                         <Link
                           href={item.href}
                           onClick={() => setSidebarAberta(false)}
@@ -289,6 +274,7 @@ const secoes: Secao[] = [
                           aria-label={isSubmenuOpen ? `Fechar submenu de ${item.label}` : `Abrir submenu de ${item.label}`}
                           aria-expanded={isSubmenuOpen}
                           aria-controls={submenuId}
+                          suppressHydrationWarning
                         >
                           <ChevronDown
                             className={cn(
@@ -299,9 +285,8 @@ const secoes: Secao[] = [
                         </button>
                       </div>
 
-                      {/* Sub-itens */}
                       {isSubmenuOpen && (
-                          <div id={submenuId} className="ml-4 mt-1 space-y-1 border-l-2 border-border pl-3">
+                        <div id={submenuId} className="ml-4 mt-1 space-y-1 border-l-2 border-border pl-3">
                           {item.children!.map((child) => {
                             const ChildIcon = child.icon;
                             const childAtivo = pathname === child.href || pathname.startsWith(`${child.href}/`);
@@ -312,12 +297,10 @@ const secoes: Secao[] = [
                                 onClick={() => setSidebarAberta(false)}
                                 className={cn(
                                   "relative flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-[13px] font-medium tracking-[-0.01em] transition-all duration-200",
-                                  childAtivo
-                                   ? "bg-muted text-foreground"
-                                   : "text-foreground-muted hover:bg-muted hover:text-foreground",
+                                  childAtivo ? "bg-muted text-foreground" : "text-foreground-muted hover:bg-muted hover:text-foreground",
                                 )}
                               >
-                                 <ChildIcon className={cn("h-3.5 w-3.5", childAtivo ? "text-foreground" : "text-foreground-muted")} />
+                                <ChildIcon className={cn("h-3.5 w-3.5", childAtivo ? "text-foreground" : "text-foreground-muted")} />
                                 {child.label}
                               </Link>
                             );
@@ -328,7 +311,6 @@ const secoes: Secao[] = [
                   );
                 }
 
-                // Item com devLock (Laboratorio)
                 if (item.devLock) {
                   return (
                     <button
@@ -342,6 +324,7 @@ const secoes: Secao[] = [
                         "relative flex w-full items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-amber-500 transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-400",
                         ativo && "bg-amber-500/10 pl-4 text-amber-400",
                       )}
+                      suppressHydrationWarning
                     >
                       {ativo ? <span className="absolute left-1 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-amber-500" /> : null}
                       <Icone className={cn("h-4 w-4", ativo ? "text-amber-400" : "text-amber-500")} />
@@ -355,7 +338,6 @@ const secoes: Secao[] = [
                   );
                 }
 
-                // Item normal sem submenu
                 return (
                   <Link
                     key={item.href}
@@ -366,6 +348,7 @@ const secoes: Secao[] = [
                       "relative flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-foreground-muted transition-all duration-200 hover:bg-muted hover:text-foreground",
                       ativo && "bg-muted pl-4 text-foreground",
                     )}
+                    suppressHydrationWarning
                   >
                     {ativo ? <span className="absolute left-1 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-background" /> : null}
                     <Icone className={cn("h-4 w-4", ativo ? "text-foreground" : "text-foreground-muted")} />
@@ -390,12 +373,10 @@ const secoes: Secao[] = [
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[14px] font-medium tracking-[-0.01em] text-foreground">
-              {nomeExibicao}
-            </p>
+            <p className="truncate text-[14px] font-medium tracking-[-0.01em] text-foreground">{nomeExibicao}</p>
             <div className="flex items-center gap-2">
               <p className="truncate text-xs uppercase tracking-wide text-foreground-muted">{cargoExibicao}</p>
-      <span className="rounded-md bg-primary px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-foreground">
+              <span className="rounded-md bg-primary px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-foreground">
                 {SIGLA_PERFIL[sessao.perfil]}
               </span>
             </div>
@@ -414,6 +395,7 @@ const secoes: Secao[] = [
         onClick={() => setSidebarAberta(true)}
         className="fixed left-4 top-4 z-40 flex h-10 w-10 items-center justify-center rounded-lg bg-background-surface shadow-sm ring-1 ring-border lg:hidden"
         aria-label="Abrir menu"
+        suppressHydrationWarning
       >
         <Menu className="h-5 w-5 text-foreground" />
       </button>
@@ -423,10 +405,7 @@ const secoes: Secao[] = [
 
         {sidebarAberta && (
           <div className="fixed inset-0 z-50 lg:hidden">
-            <div
-              className="absolute inset-0 bg-black/50"
-              onClick={() => setSidebarAberta(false)}
-            />
+            <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarAberta(false)} />
             <div className="absolute left-0 top-0 h-full w-80 max-w-[85vw] p-4" role="dialog" aria-modal="true" aria-label="Menu principal">
               <button
                 ref={closeButtonRef}
@@ -434,6 +413,7 @@ const secoes: Secao[] = [
                 onClick={() => setSidebarAberta(false)}
                 className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-lg bg-background-surface shadow-sm ring-1 ring-border"
                 aria-label="Fechar menu"
+                suppressHydrationWarning
               >
                 <X className="h-4 w-4 text-foreground" />
               </button>

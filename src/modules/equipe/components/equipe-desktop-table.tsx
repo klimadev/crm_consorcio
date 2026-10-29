@@ -251,16 +251,25 @@ async function reativar(id: string) {
                             void reativar(funcionario.id);
                           }
                         }}
-                        disabled={!funcionario || idReativando === funcionario.id}
+                        disabled={
+                          !funcionario ||
+                          idReativando === funcionario.id ||
+                          (vm.dialogInativacaoAberto &&
+                            vm.funcionarioDestinoInativacao?.id === funcionario.id) ||
+                          (vm.executandoInativacaoIndividual &&
+                            vm.funcionarioDestinoInativacao?.id === funcionario.id)
+                        }
                         title={funcionario?.ativo ? "Inativar colaborador" : "Reativar colaborador"}
                         aria-label={funcionario?.ativo ? `Inativar ${funcionario.nome}` : `Reativar ${funcionario.nome}`}
                         className={
                           funcionario?.ativo
                             ? "inline-flex items-center gap-1.5 rounded-lg border border-destructive/30 text-destructive px-2 py-1.5 text-xs font-medium hover:bg-destructive/10 hover:border-destructive/50 transition-colors disabled:opacity-50 disabled:pointer-events-none"
-                            : "inline-flex items-center gap-1.5 rounded-lg border border-success/30 text-success px-2 py-1.5 text-xs font-medium hover:bg-success/10 hover:border-success/50 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                            : "inline-flex items-center gap-1.5 rounded-lg border border-emerald-600 text-white bg-emerald-600 px-2 py-1.5 text-xs font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:pointer-events-none"
                         }
                       >
                         {idReativando === funcionario.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (vm.dialogInativacaoAberto && vm.funcionarioDestinoInativacao?.id === funcionario.id) || (vm.executandoInativacaoIndividual && vm.funcionarioDestinoInativacao?.id === funcionario.id) ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : funcionario?.ativo ? (
                           <UserMinus className="h-3.5 w-3.5" />

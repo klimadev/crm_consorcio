@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { exigirSessao, respostaSemPermissao } from "@/lib/permissoes";
 import { prisma } from "@/lib/prisma";
 import { calcularProgresso, calcularRanking } from "@/modules/metas/lib/calculator";
+import type { RankingItem } from "@/modules/metas/types";
 import { handleRouteError } from "@/lib/api/route-errors";
 import { validateQuery } from "@/lib/api/route-validation";
 import { z } from "zod";
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // Busca todas as metas ativas da empresa no período
-    const where: any = {
+    const where: Record<string, unknown> = {
       id_empresa: auth.sessao.id_empresa,
       ativo: true,
     };
@@ -115,7 +116,7 @@ export async function GET(request: NextRequest) {
     );
 
     // Ranking calculado pelo calculator.ts (agrupa por equipe)
-    const ranking = calcularRanking(metasComProgresso as any);
+    const ranking = calcularRanking(metasComProgresso as RankingItem[]);
 
     const mediaGeral =
       ranking.length > 0

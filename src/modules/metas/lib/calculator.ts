@@ -46,7 +46,7 @@ export function calcularProgresso(
   const percentual = percentualSeguro(realizado, meta.alvo);
 
   return {
-    id_meta: "id_meta" in meta ? (meta as any).id : "",
+    id_meta: "id_meta" in meta ? (meta as { id_meta: string }).id_meta : "",
     realizado,
     percentual,
     faltante: Math.max(0, Number((meta.alvo - realizado).toFixed(2))),

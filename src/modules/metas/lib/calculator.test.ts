@@ -111,7 +111,7 @@ describe("calcularProgresso (bug: UTC/Local)", () => {
     const progresso = calcularProgresso(
       { alvo: 10, tipo_meta: "VOLUME", origem: "FECHADOS", data_fim: "2026-06-21T23:59:59.999Z" },
       undefined,
-      [{ id: "1" } as any, { id: "2" } as any],
+      [{ id: "1" }, { id: "2" }],
     );
 
     expect(progresso.realizado).toBe(2);

@@ -24,7 +24,7 @@ export function InativacaoDialog({ vm }: InativacaoDialogProps) {
     >
         <DialogContent className="rounded-2xl sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Inativar colaborador</DialogTitle>
+            <DialogTitle>Inativar {vm.funcionariosDestinoInativacao?.nome ?? "colaborador"}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">

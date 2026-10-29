@@ -93,7 +93,7 @@ export function ResumoFunnelChart({
       </CardHeader>
       <CardContent>
         <div className="h-[260px] sm:h-[300px] lg:h-[320px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={260}>
             <BarChart data={dados} barCategoryGap={8}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
               <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "#64748b", fontSize: 11 }} />

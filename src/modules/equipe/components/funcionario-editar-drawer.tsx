@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Loader2,
   Save,
@@ -104,7 +104,6 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
   const [dados, setDados] = useState<DadosEdicao | null>(null);
   const [erros, setErros] = useState<Record<string, string>>({});
   const [mostrarMenuAcoes, setMostrarMenuAcoes] = useState(false);
-  const [idAcaoEmAndamento, setIdAcaoEmAndamento] = useState<string | null>(null);
 
   const [dialogSenhaAberto, setDialogSenhaAberto] = useState(false);
   const [novaSenha, setNovaSenha] = useState("");
@@ -112,8 +111,26 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
   const [erroSenha, setErroSenha] = useState("");
   const [redefinindoSenha, setRedefinindoSenha] = useState(false);
   const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [idAcaoEmAndamento, setIdAcaoEmAndamento] = useState<string | null>(null);
+  const [ativo, setAtivo] = useState(funcionario?.ativo ?? false);
+  const ativoRef = useRef(ativo);
+  ativoRef.current = ativo;
+
+  // Espelha o status do colaborador vindo da lista (update otimístico da inativação/reativação)
+  // e fecha o drawer ao inativar, igual ao fluxo de reativação.
+  useEffect(() => {
+    if (!funcionario) return;
+    const f = vm.funcionarios.find((item) => item.id === funcionario.id);
+    if (f && f.ativo !== ativoRef.current) {
+      setAtivo(f.ativo);
+      if (!f.ativo) {
+        onFechar();
+      }
+    }
+  }, [vm.funcionarios, funcionario?.id, onFechar]);
 
   useEffect(() => {
+    setAtivo(funcionario?.ativo ?? false);
     if (aberto && funcionario) {
       const sincronizacao = setTimeout(() => {
         setDados({
@@ -128,6 +145,8 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
       return () => clearTimeout(sincronizacao);
     }
   }, [aberto, funcionario]);
+
+  if (!funcionario) return null;
 
   const aoMudar = (campo: keyof DadosEdicao, valor: string) => {
     if (!dados) return;
@@ -164,7 +183,7 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
     if (!funcionario) return;
     setMostrarMenuAcoes(false);
 
-    if (funcionario.ativo) {
+    if (ativo) {
       vm.abrirModalInativacao(funcionario);
       return;
     }
@@ -172,6 +191,7 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
     setIdAcaoEmAndamento(funcionario.id);
     try {
       await vm.reativarFuncionarioIndividual(funcionario);
+      setAtivo(true);
       onFechar();
     } finally {
       setIdAcaoEmAndamento(null);
@@ -254,7 +274,7 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
                 Editar Colaborador
               </SheetTitle>
               <div className="flex flex-wrap items-center gap-2">
-                <StatusBadge ativo={funcionario?.ativo ?? false} />
+                <StatusBadge ativo={ativo} />
                 <Badge variant="secondary" className="font-medium">
                   <Shield className="mr-1.5 h-3 w-3" />
                   {getCargoLabel(funcionario?.cargo || "")}
@@ -455,7 +475,7 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
                 </div>
               </div>
 
-              {funcionario?.ativo ?? false ? (
+              {ativo ? (
                 <>
                   <div className="mb-3 flex items-center gap-2">
                     <AlertCircle className="h-4 w-4 text-destructive" />
@@ -485,8 +505,7 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
                     <h4 className="text-sm font-semibold text-success">Colaborador inativo</h4>
                   </div>
                   <Button
-                    variant="success"
-                    className="h-10 w-full justify-start gap-2 rounded-lg border-success/30 text-success hover:bg-success/10 hover:border-success/50"
+                    className="h-10 w-full justify-start gap-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
                     onClick={() => handleAcaoStatus(funcionario ?? undefined)}
                     disabled={!funcionario || idAcaoEmAndamento === funcionario.id || salvando}
                   >
@@ -546,7 +565,7 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
                     Redefinir senha
                   </button>
                   <hr className="my-2 border-border" />
-                  {funcionario?.ativo ?? false ? (
+                  {ativo ? (
                     <button
                       className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={() => handleAcaoStatus(funcionario ?? undefined)}
@@ -557,7 +576,7 @@ export function FuncionarioEditarDrawer({ vm, funcionario, aberto, onFechar }: F
                     </button>
                   ) : (
                     <button
-                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-success hover:bg-success/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={() => handleAcaoStatus(funcionario ?? undefined)}
                       disabled={!funcionario || idAcaoEmAndamento === funcionario.id || salvando}
                     >

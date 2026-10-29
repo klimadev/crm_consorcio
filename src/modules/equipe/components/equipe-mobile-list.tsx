@@ -1,9 +1,10 @@
 "use client";
 import { useState } from "react";
-import { Loader2, LogIn, Pencil, Users } from "lucide-react";
+import { Loader2, LogIn, Pencil, UserCheck, UserMinus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "./shared/status-badge";
 import { Avatar } from "./shared/avatar";
+import { cn } from "@/lib/utils";
 import type { Funcionario } from "../types";
 import type { UseEquipeModuleReturn } from "../types";
 
@@ -13,12 +14,18 @@ type EquipeMobileListProps = {
 
 export function EquipeMobileList({ vm }: EquipeMobileListProps) {
   const [idReativando, setIdReativando] = useState<string | null>(null);
+  const [idInativando, setIdInativando] = useState<string | null>(null);
 
   const handleAcaoMobile = async (funcionario: Funcionario | null) => {
     if (!funcionario) return;
 
     if (funcionario.ativo) {
-      vm.abrirModalInativacao(funcionario);
+      setIdInativando(funcionario.id);
+      try {
+        vm.abrirModalInativacao(funcionario);
+      } finally {
+        setIdInativando(null);
+      }
       return;
     }
 
@@ -70,14 +77,21 @@ export function EquipeMobileList({ vm }: EquipeMobileListProps) {
         const isSelected = vm.idsSelecionados.includes(funcionario.id);
 
         return (
-          <button
-            type="button"
+          <div
+            role="button"
+            tabIndex={0}
             key={funcionario.id}
             className={cn(
               "relative w-full cursor-pointer rounded-xl border bg-background-surface p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md",
               isSelected ? "border-info/30 bg-info/5" : "border-border",
             )}
             onClick={() => vm.iniciarEdicao(funcionario)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                vm.iniciarEdicao(funcionario);
+              }
+            }}
             aria-label={`Editar colaborador ${funcionario.nome}`}
           >
             <div className="flex items-start gap-3">
@@ -101,15 +115,33 @@ export function EquipeMobileList({ vm }: EquipeMobileListProps) {
                     {vm.podeInativar && (
                       <Button
                         size="sm"
-                        variant={funcionario.ativo ? "destructive" : "success"}
+                        variant={funcionario.ativo ? "destructive" : undefined}
                         onClick={(e) => {
                           e.stopPropagation();
                           if (!funcionario) return;
                           void handleAcaoMobile(funcionario);
                         }}
-                        disabled={!funcionario || idReativando === funcionario.id}
-                        className="text-xs"
+                        disabled={
+                          !funcionario ||
+                          idReativando === funcionario.id ||
+                          idInativando === funcionario.id ||
+                          vm.dialogInativacaoAberto &&
+                            vm.funcionarioDestinoInativacao?.id === funcionario.id ||
+                          (vm.executandoInativacaoIndividual &&
+                            vm.funcionarioDestinoInativacao?.id === funcionario.id)
+                        }
+                        className={cn(
+                          funcionario.ativo ? "" : "bg-emerald-600 text-white hover:bg-emerald-700",
+                          "text-xs",
+                        )}
                       >
+                        {idReativando === funcionario.id || idInativando === funcionario.id || (vm.dialogInativacaoAberto && vm.funcionarioDestinoInativacao?.id === funcionario.id) || (vm.executandoInativacaoIndividual && vm.funcionarioDestinoInativacao?.id === funcionario.id) ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : funcionario.ativo ? (
+                          <UserMinus className="h-3.5 w-3.5" />
+                        ) : (
+                          <UserCheck className="h-3.5 w-3.5" />
+                        )}
                         {funcionario.ativo ? "Inativar" : "Reativar"}
                       </Button>
                     )}
@@ -147,7 +179,7 @@ export function EquipeMobileList({ vm }: EquipeMobileListProps) {
                 </div>
               </div>
             </div>
-          </button>
+          </div>
         );
       })}
     </div>

@@ -21,7 +21,23 @@ const schemaEditarMeta = z.object({
   id_equipe: z.string().trim().optional(),
 }).refine((d) => Object.keys(d).length > 0, { message: "Informe ao menos um campo para atualizar." });
 
-async function serializarMetaNova(row: any): Promise<Meta> {
+type MetaNovaRow = {
+  id: string;
+  id_empresa: string;
+  titulo: string;
+  tipo_meta: string;
+  origem: string;
+  alvo: number;
+  semana: number | null;
+  mes_referencia: string | null;
+  data_inicio: Date;
+  data_fim: Date;
+  ativo: boolean;
+  id_equipe: string | null;
+  equipe: { id: string; nome: string } | null;
+};
+
+async function serializarMetaNova(row: MetaNovaRow): Promise<Meta> {
   let progresso = null;
   if (row.ativo) {
     const dataInicio = new Date(row.data_inicio);
@@ -133,7 +149,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   try {
-    const updateData: any = {};
+    const updateData: Partial<Meta> = {};
     if (payload.titulo !== undefined) updateData.titulo = payload.titulo;
     if (payload.tipo_meta !== undefined) updateData.tipo_meta = payload.tipo_meta;
     if (payload.origem !== undefined) updateData.origem = payload.origem;
