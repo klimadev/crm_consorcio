@@ -141,7 +141,8 @@ function getLeadVisualCue(lead: Lead, estagio: Estagio, pendencias?: PendenciaLe
   };
 }
 
-function formatarTempoRelativo(atualizadoEm: string, agoraMs: number): string {
+function formatarTempoRelativo(atualizadoEm: string, agoraMs: number | null): string {
+  if (agoraMs === null) return "";
   const atualizadoMs = new Date(atualizadoEm).getTime();
   if (Number.isNaN(atualizadoMs)) return "";
 
@@ -286,7 +287,7 @@ export function KanbanBoard({
   onRecusarTransferencia,
 }: KanbanBoardProps) {
   // Sempre usa leadsFiltradosPorEstagio - que já inclui ordenação e é idêntico a leadsPorEstagio quando não há filtros
-  const [agoraMs, setAgoraMs] = useState<number | null>(() => typeof window === "undefined" ? null : Date.now());
+  const [agoraMs, setAgoraMs] = useState<number | null>(null);
   const [excluindoIndefinidos, setExcluindoIndefinidos] = useState(false);
   const [cardsVisiveisPorEstagio, setCardsVisiveisPorEstagio] = useState<Record<string, number>>({});
   const leadsDiferidosPorEstagio = useDeferredValue(leadsFiltradosPorEstagio);

@@ -107,9 +107,11 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
   const [erroExclusaoLead, setErroExclusaoLead] = useState<string | null>(null);
   const [mostrarTrocaDocumento, setMostrarTrocaDocumento] = useState(false);
   const [modoDocumento, setModoDocumento] = useState<"arquivo" | "url">("arquivo");
-  const [dataAprovacao, setDataAprovacao] = useState(obterDataLocalAtual());
+  const [dataAprovacao, setDataAprovacao] = useState<string>("");
   const [gestorIdAprovacao, setGestorIdAprovacao] = useState<string | null>(null);
   const [consultorIdAprovacao, setConsultorIdAprovacao] = useState<string | null>(null);
+  const [agoraMs, setAgoraMs] = useState<number>(0);
+  const [atalhoSalvar, setAtalhoSalvar] = useState<string>("Ctrl+S");
 
   const initialUrl = leadSelecionado?.documento_aprovacao_url ?? "";
   const hasChanges = temAlteracoes || documentoAprovacaoUrl !== initialUrl;
@@ -124,19 +126,27 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
 
   const textoUltimaAtualizacao = useMemo(() => {
     if (!ultimaAtualizacaoSalvaEm) return null;
-
     return new Intl.DateTimeFormat("pt-BR", {
       hour: "2-digit",
       minute: "2-digit",
+      timeZone: "UTC",
     }).format(ultimaAtualizacaoSalvaEm);
   }, [ultimaAtualizacaoSalvaEm]);
 
-  const atalhoSalvar = useMemo(() => {
-    if (typeof navigator !== "undefined" && navigator.platform.toLowerCase().includes("mac")) {
-      return "Cmd+S";
-    }
+  useEffect(() => {
+    setDataAprovacao(obterDataLocalAtual());
+  }, []);
 
-    return "Ctrl+S";
+  useEffect(() => {
+    setAgoraMs(Date.now());
+  }, []);
+
+  useEffect(() => {
+    if (typeof navigator !== "undefined" && navigator.platform.toLowerCase().includes("mac")) {
+      setAtalhoSalvar("Cmd+S");
+    } else {
+      setAtalhoSalvar("Ctrl+S");
+    }
   }, []);
 
   const statusSalvar = useMemo(() => {
@@ -205,7 +215,7 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
     const estagioAtual = estagios.find((estagio) => estagio.id === leadSelecionado.id_estagio);
     const temPendenciaDocumento = pendenciasLead.some((pendencia) => pendencia.tipo === "DOCUMENTO_APROVACAO_PENDENTE");
     const temPendenciaAprovacao = pendenciasLead.some((pendencia) => pendencia.tipo === "APROVACAO_GERENCIA_PENDENTE");
-    const diasParados = Math.floor((Date.now() - new Date(leadSelecionado.atualizado_em).getTime()) / (1000 * 60 * 60 * 24));
+    const diasParados = agoraMs === 0 ? 0 : Math.floor((agoraMs - new Date(leadSelecionado.atualizado_em).getTime()) / (1000 * 60 * 60 * 24));
 
     let proximoPasso = "Atualizar dados do lead";
     let tom = "border-border/70 bg-muted/80 text-foreground";
@@ -236,7 +246,7 @@ export function LeadDetailsDrawer(props: LeadDetailsDrawerProps) {
       diasParados,
       tom,
     };
-  }, [estagios, leadSelecionado, pendenciasLead]);
+  }, [estagios, leadSelecionado, pendenciasLead, agoraMs]);
 
   const fecharDrawer = useCallback(() => {
     onOpenChange(false);

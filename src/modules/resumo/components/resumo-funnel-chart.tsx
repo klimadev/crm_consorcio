@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 const formatadorMoeda = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
+  timeZone: "UTC",
 });
 
 export function ResumoFunnelChart({

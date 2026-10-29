@@ -11,13 +11,13 @@ function formatarTimestamp(timestamp: number): string {
   const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
   if (diffDias === 0) {
-    return data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    return data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
   }
   if (diffDias === 1) return "Ontem";
   if (diffDias < 7) {
-    return data.toLocaleDateString("pt-BR", { weekday: "short" });
+    return data.toLocaleDateString("pt-BR", { weekday: "short", timeZone: "UTC" });
   }
-  return data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  return data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "UTC" });
 }
 
 function truncar(str: string, max: number): string {

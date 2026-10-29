@@ -9,11 +9,12 @@ export function formataMoeda(valor: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
+    timeZone: "UTC",
   }).format(valor);
 }
 
 export function formataData(data: Date | string) {
-  return new Intl.DateTimeFormat("pt-BR").format(new Date(data));
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(new Date(data));
 }
 
 export function aplicaMascaraTelefoneBr(valor: string) {
@@ -39,6 +40,7 @@ export function aplicaMascaraMoedaBr(valor: string) {
   return new Intl.NumberFormat("pt-BR", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
+    timeZone: "UTC",
   }).format(reais);
 }
 

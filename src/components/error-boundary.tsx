@@ -3,6 +3,8 @@
 import { useEffect, Component, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 
+let errorCounter = 0;
+
 type ErrorFallbackRender = (props: {
   error?: Error;
   errorInfo?: React.ErrorInfo;
@@ -32,7 +34,7 @@ class ErrorBoundary extends Component<
   }
 
   static getDerivedStateFromError(error: Error) {
-    return { error, errorId: `erro-${Date.now().toString(36)}`, hasError: true };
+    return { error, errorId: `erro-${++errorCounter}`, hasError: true };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {

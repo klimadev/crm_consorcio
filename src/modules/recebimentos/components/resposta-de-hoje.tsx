@@ -15,7 +15,7 @@ export function RespostaDeHoje({ carregando, clientesEmAtraso, totalAtrasado, ve
     return <div className="h-32 rounded-2xl border border-border bg-background-elevated animate-shimmer" />;
   }
 
-  const hojePorExtenso = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" }).format(new Date());
+  const hojePorExtenso = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date());
 
   if (clientesEmAtraso === 0) {
     return (

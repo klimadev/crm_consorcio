@@ -160,7 +160,7 @@ export function KanbanHeader({
     filtros.data_fim !== null;
   const inputBuscaRef = useRef<HTMLInputElement>(null);
   const inputNomeNovoLeadRef = useRef<HTMLInputElement>(null);
-  const [agoraMs, setAgoraMs] = useState(() => Date.now());
+  const [agoraMs, setAgoraMs] = useState<number>(0);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => setAgoraMs(Date.now()), 60 * 1000);
