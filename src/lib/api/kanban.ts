@@ -196,6 +196,7 @@ export async function aprovarLeadKanban(
 ): Promise<ResultadoApi<{ lead?: Lead }>> {
   const resposta = await fetch(`/api/leads/${idLead}/aprovar`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload ?? {}),
   });
